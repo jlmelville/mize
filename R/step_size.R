@@ -6,11 +6,11 @@
 make_step_size <- function(sub_stage) {
   sub_stage$type <- "step_size"
   if (!is.null(sub_stage$init)) {
-    attr(sub_stage$init, 'event') <- 'init'
+    attr(sub_stage$init, 'event') <- paste0('init ', sub_stage$type)
     attr(sub_stage$init, 'name') <- paste0(sub_stage$type,' init')
   }
   if (!is.null(sub_stage$calculate)) {
-    attr(sub_stage$calculate, 'event') <- sub_stage$type
+    attr(sub_stage$calculate, 'event') <- paste0('during ', sub_stage$type)
     attr(sub_stage$calculate, 'name') <- paste0(sub_stage$type, ' calculate')
   }
   if (!is.null(sub_stage$after_step)) {
@@ -25,16 +25,14 @@ make_step_size <- function(sub_stage) {
 
 
 constant_step_size <- function(value = 1) {
-  make_step_size(
-    list(
+  make_step_size(list(
       name = "constant",
       calculate = function(opt, stage, sub_stage, par, fn, gr, iter) {
-        message("Calculating constant step size")
-        list(stage = stage)
+        #message("Constant step size: ", formatC(sub_stage$value))
+        list()
       },
       value = value
-    )
-  )
+    ))
 }
 
 
@@ -53,13 +51,13 @@ bold_driver <- function(inc_mult = 1.1, dec_mult = 0.5,
   make_step_size(list(
     name = "bold_driver",
     init = function(opt, stage, sub_stage, par, fn, gr, iter) {
-      message("Initializing bold driver for ", stage$type)
+      #message("Initializing bold driver for ", stage$type)
 
       if (!is_first_stage(opt, stage)) {
         # Bold driver requires knowing f at the current location
         # If this step size is part of any stage other than the first
         # we have to turn eager updating
-        message("bold driver for ", stage$type, ": setting stage updating to eager")
+        #message("bold driver for ", stage$type, ": setting stage updating to eager")
         opt$eager_update <- TRUE
       }
       sub_stage$value <- sub_stage$init_value
@@ -73,18 +71,18 @@ bold_driver <- function(inc_mult = 1.1, dec_mult = 0.5,
       if (stage == "gradient_descent"
           && has_gr_curr(opt, iter)
           && dot(opt$cache$gr_curr, pm) > 0) {
-        message(stage$type, " ", sub_stage$name, ": direction is not descent, setting to min value")
+        #message(stage$type, " ", sub_stage$name, ": direction is not descent, setting to min value")
         sub_stage$value <- sub_stage$min_value
       }
       else {
-        message(stage$type, " ", sub_stage$name, " calculating")
+        #message(stage$type, " ", sub_stage$name, " calculating")
 
         if (is_first_stage(opt, stage) && has_fn_curr(opt, iter)) {
-          message(stage$type, " ", sub_stage$name, ": fetching fn_curr from cache")
+          #message(stage$type, " ", sub_stage$name, ": fetching fn_curr from cache")
           f0 <- opt$cache$fn_curr
         }
         else {
-          message(stage$type, " ", sub_stage$name, ": calculating f0")
+          #message(stage$type, " ", sub_stage$name, ": calculating f0")
           opt <- calc_fn(opt, par, fn)
           f0 <- opt$fn
         }
@@ -99,16 +97,16 @@ bold_driver <- function(inc_mult = 1.1, dec_mult = 0.5,
                           max = sub_stage$max_value)
 
           para <- par + pm * alpha
+          #message(stage$type, " ", sub_stage$name, " calculating cost for candidate step size")
           opt <- calc_fn(opt, para, fn)
-
         }
         sub_stage$value <- alpha
         if (!is.finite(opt$fn)) {
           stop(stage$type, " ", sub_stage$name, " non finite cost found at iter ", iter)
         }
-        message(stage$type, " ", sub_stage$name,
-                " step size = ", formatC(sub_stage$value),
-                " cost = ", formatC(opt$fn))
+        #message(stage$type, " ", sub_stage$name,
+         #       " step size = ", formatC(sub_stage$value),
+          #      " cost = ", formatC(opt$fn))
 
         if (is_last_stage(opt, stage)) {
           message(stage$type, " ", sub_stage$name, " setting fn_step for iter ", iter)
@@ -119,7 +117,7 @@ bold_driver <- function(inc_mult = 1.1, dec_mult = 0.5,
     },
     after_step = function(opt, stage, sub_stage, par, fn, gr, iter, par0,
                           update) {
-      message(stage$type, " ", sub_stage$name, " after step")
+      #message(stage$type, " ", sub_stage$name, " after step")
 
       alpha_old <- sub_stage$value
       # increase the step size for the next step
@@ -127,10 +125,10 @@ bold_driver <- function(inc_mult = 1.1, dec_mult = 0.5,
       sub_stage$value <- sclamp(alpha_new,
                                 min = sub_stage$min_value,
                                 max = sub_stage$max_value)
-      message(stage$type, " ", sub_stage$name, ": step size is now = ", formatC(sub_stage$value))
+      #message(stage$type, " ", sub_stage$name, ": step size is now = ", formatC(sub_stage$value))
 
       if (is_last_stage(opt, stage) && has_fn_new(opt, iter)) {
-        message(stage$type, " ", sub_stage$name,  ": setting next fn_curr from fn_new for ", iter)
+        #message(stage$type, " ", sub_stage$name,  ": setting next fn_curr from fn_new for ", iter)
         opt <- set_fn_curr(opt, opt$cache$fn_new, iter + 1)
       }
 
@@ -166,12 +164,12 @@ jacobs <- function(inc_mult = 1.1, dec_mult = 0.5,
     min_gain = min_gain,
     epsilon = epsilon,
     init = function(opt, stage, sub_stage, par, fn, gr, iter) {
-      message("Initializing Jacobs")
+      #message("Initializing Jacobs")
       sub_stage$old_gain <- rep(1, length(par))
       list(sub_stage = sub_stage)
     },
     calculate = function(opt, stage, sub_stage, par, fn, gr, iter) {
-      message("Jacobs calculate")
+      #message("Jacobs calculate")
       gm <- opt$cache$gr_curr
       old_gain <- sub_stage$old_gain
       inc_fn <- sub_stage$inc_fn
@@ -191,7 +189,7 @@ jacobs <- function(inc_mult = 1.1, dec_mult = 0.5,
     },
     after_step = function(opt, stage, sub_stage, par, fn, gr, iter, par0,
                           update) {
-      message("After step Jacobs")
+      #message("After step Jacobs")
       sub_stage$old_gain <- sub_stage$gain
       list(opt = opt, sub_stage = sub_stage)
     },

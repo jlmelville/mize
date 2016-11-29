@@ -29,163 +29,6 @@
 #   validation
 
 
-make_life_cycle_hook <- function(life_cycle_name) {
-  function(opt, par, fn, gr, iter, ...) {
-    # Optimizer hook
-    if (!is.null(opt[[life_cycle_name]])) {
-      opt <- opt[[life_cycle_name]](opt, par, fn, gr, iter, ...)
-    }
-
-    # Stage hook
-    for (i in 1:length(opt$stages)) {
-      stage <- opt$stages[[i]]
-      if (!is.null(stage[[life_cycle_name]])) {
-        stage_res <- stage[[life_cycle_name]](opt, stage, par, fn, gr, iter,
-                                              ...)
-        if (!is.null(stage_res$opt)) {
-          opt <- stage_res$opt
-        }
-        if (!is.null(stage_res$stage)) {
-          stage <- stage_res$stage
-        }
-      }
-
-      # Sub stage hooks
-      for (sub_stage_name in c("direction", "step_size")) {
-        if (!is.null(stage[[sub_stage_name]][[life_cycle_name]])) {
-          #message("Calling ", stage$type, "#", sub_stage_name, "#", life_cycle_name)
-          sub_stage_res <-
-            stage[[sub_stage_name]][[life_cycle_name]](opt, stage, par, fn, gr,
-                                                       iter, ...)
-          if (!is.null(sub_stage_res$opt)) {
-            opt <- sub_stage_res$opt
-          }
-          if (!is.null(sub_stage_res$stage)) {
-            stage <- sub_stage_res$stage
-          }
-        }
-      }
-
-      opt$stages[[i]] <- stage
-    }
-    opt
-  }
-}
-
-# Triggers around each stage
-make_life_cycle_stage_hook <- function(life_cycle_name) {
-  function(opt, stage, par, fn, gr, iter, ...) {
-    # Optimizer hook
-    # Defining a stage hook for the opt means this function will trigger
-    # for every stage
-    if (!is.null(opt[[life_cycle_name]])) {
-      opt <- opt[[life_cycle_name]](opt, stage, par, fn, gr, iter, ...)
-    }
-
-    # Stage hook
-    if (!is.null(stage[[life_cycle_name]])) {
-      stage_res <- stage[[life_cycle_name]](opt, stage, par, fn, gr, iter,
-                                            ...)
-      if (!is.null(stage_res$opt)) {
-        opt <- stage_res$opt
-      }
-      if (!is.null(stage_res$stage)) {
-        stage <- stage_res$stage
-      }
-    }
-
-    # Sub stage hooks
-    for (sub_stage_name in c("direction", "step_size")) {
-      if (!is.null(stage[[sub_stage_name]][[life_cycle_name]])) {
-        sub_stage_res <-
-          stage[[sub_stage_name]][[life_cycle_name]](opt, stage, par, fn, gr,
-                                                     iter, ...)
-        if (!is.null(sub_stage_res$opt)) {
-          opt <- sub_stage_res$opt
-        }
-        if (!is.null(sub_stage_res$stage)) {
-          stage <- sub_stage_res$stage
-        }
-      }
-    }
-    list(opt = opt, stage = stage)
-  }
-}
-
-life_cycle_before_stage <- make_life_cycle_stage_hook("before_stage")
-
-add_stage_validate <- function(stage, validate, sub_stage = NULL) {
-  if (!is.null(sub_stage)) {
-    phase <- stage[[sub_stage]]
-  }
-  else {
-    phase <- stage
-  }
-
-  if (!is.null(phase$validate)) {
-    old_validate <- phase$validate
-    new_validate <- function(opt, par, fn, gr, iter, par0, update) {
-      old_res <- old_validate(opt, stage, par, fn, gr, iter, par0, update)
-      if (!is.null(old_res$opt)) {
-        opt <- old_res$opt
-      }
-      if (!is.null(old_res$stage)) {
-        stage <- old_res$stage
-      }
-      validate(opt, stage, par, fn, gr, iter, par0, update)
-    }
-  }
-  else {
-    new_validate <- validate
-  }
-
-  if (!is.null(sub_stage)) {
-    stage[[sub_stage]]$validate <- new_validate
-  }
-  else {
-    stage$validate <- new_validate
-  }
-  stage
-}
-
-# If sub_stage is NULL, then the function is added to the stage directly
-# Otherwise should be one of "gradient_descent" or "momentum"
-add_stage_after_step <- function(stage, after_step, sub_stage = NULL) {
-
-  if (!is.null(sub_stage)) {
-    phase <- stage[[sub_stage]]
-  }
-  else {
-    phase <- stage
-  }
-
-  if (!is.null(phase$after_step)) {
-    old_after_step <- phase$after_step
-
-    new_after_step <- function(opt, stage, par, fn, gr, iter, par0, update) {
-      old_res <- old_after_step(opt, stage, par, fn, gr, iter, par0, update)
-      if (!is.null(old_res$opt)) {
-        opt <- old_res$opt
-      }
-      if (!is.null(old_res$stage)) {
-        stage <- old_res$stage
-      }
-      after_step(opt, stage, par, fn, gr, iter, par0, update)
-    }
-  }
-  else {
-    new_after_step <- after_step
-  }
-
-  if (!is.null(sub_stage)) {
-    stage[[sub_stage]]$after_step <- new_after_step
-  }
-  else {
-    stage$after_step <- new_after_step
-  }
-  stage
-}
-
 
 # phase:
 #   step
@@ -208,7 +51,8 @@ add_stage_after_step <- function(stage, after_step, sub_stage = NULL) {
 
 # Calls all hooks registered with the phase firing this event
 life_cycle_hook <- function(phase, advice_type, opt, par, fn, gr, iter, ...) {
-#  message("life cycle advice_type: '", advice_type, "' phase: '", phase, "' triggered")
+  message("life cycle phase: '", phase, "' advice_type: '",
+          advice_type, "' triggered")
   hooks <- opt$hooks
   if (is.null(hooks)) {
     return(opt)
@@ -228,6 +72,75 @@ life_cycle_hook <- function(phase, advice_type, opt, par, fn, gr, iter, ...) {
     opt <- hook(opt, par, fn, gr, iter, ...)
   }
 
+  opt
+}
+
+
+# registers all hook functions:
+#   functions in the phase (opt, stage, sub_stage) object itself with attribute
+#     'name'. These are intended to be private functions for housekeeping of
+#     the phase itself and any calculated values would not be shared. These
+#     stage callbacks will be passed the stage, and sub_stage callbacks the
+#     stage and the sub_stage so local data can be stored in these objects
+#   functions in the depends list. These functions are NOT passed the stage or
+#     sub_stage objects, because they are intended to be shared functionality
+#     between arbitrary parts of the optimizer tree (e.g. storing the gradient)
+register_hooks <- function(opt) {
+  # Optimizer hook
+  opt$hooks <- list()
+
+#  message("Looking for hooks in opt")
+  for (name in names(opt)) {
+    if (!is.null(attr(opt[[name]], 'event'))) {
+      message("registering opt hook for event ", attr(opt[[name]], 'event'))
+      opt <- register_hook(opt, opt[[name]])
+    }
+  }
+  if (!is.null(opt$depends)) {
+#    message("Registering depends hooks for opt")
+    opt <- depends_to_hooks(opt, opt)
+  }
+
+
+  # Stage hook
+#  message("Registering stage hooks")
+  for (i in 1:length(opt$stages)) {
+    stage <- opt$stages[[i]]
+#    message("Looking for stage hooks for stage ", i, " '", stage$type, "'")
+    for (stage_prop_name in names(stage)) {
+      stage_prop <- stage[[stage_prop_name]]
+      if (!is.null(attr(stage_prop, 'event'))) {
+        message("registering hook '", stage_prop_name, "' for event ", attr(stage_prop, 'event'))
+        opt <- register_hook(opt, stage_prop, stage$type)
+      }
+    }
+
+#    message("Registering depends for stage ", i, " '", stage$type, "'")
+    if (!is.null(stage$depends)) {
+      opt <- depends_to_hooks(opt, stage)
+    }
+
+    # Sub stage hooks
+    for (sub_stage_type in c("direction", "step_size")) {
+#      message("Looking for sub stage hooks for stage ", i, " '", stage$type, " ", sub_stage_type, "'")
+
+      sub_stage <- stage[[sub_stage_type]]
+      for (sub_stage_prop_name in names(sub_stage)) {
+        sub_stage_prop <- sub_stage[[sub_stage_prop_name]]
+        if (!is.null(attr(sub_stage_prop, 'event'))) {
+          message("registering hook '", sub_stage_prop_name, "' for event ", attr(sub_stage_prop, 'event'))
+          opt <- register_hook(opt, sub_stage[[sub_stage_prop_name]],
+                               stage$type, sub_stage_type)
+        }
+      }
+
+      # message("Registering depends for sub stage hooks for stage ", i,
+      #         " '", stage$type, " ", sub_stage_type, "'")
+      if (!is.null(sub_stage$depends)) {
+        opt <- depends_to_hooks(opt, sub_stage)
+      }
+    }
+  }
   opt
 }
 
@@ -257,13 +170,20 @@ register_hook <- function(opt, hook,
   }
 
   event_tok <- strsplit(event, "\\s+")[[1]]
-  if (length(event_tok) == 2) {
-    advice_type <- event_tok[1]
-    join_point <- event_tok[2]
-  }
-  else {
-    advice_type <- "during"
-    join_point <- event_tok[1]
+
+  advice_type <- event_tok[1]
+  join_point <- event_tok[2]
+
+  # Functions defined outside of the stage/sub stage constructors can
+  # define events completely e.g. "init momentum step_size"
+  # but functions defined inside a sub stage don't know the stage
+  # that they are defind for and only define e.g. "init step_size"
+  # For the free functions, temporarily redefine the join point to just be e.g.
+  # "step_size"
+  if (length(event_tok) == 3) {
+    stage_type <- event_tok[2]
+    sub_stage_type <- event_tok[3]
+    join_point <- sub_stage_type
   }
 
   if (!is.null(sub_stage_type)) {
@@ -272,14 +192,14 @@ register_hook <- function(opt, hook,
     }
     if (join_point == "direction" || join_point == "step_size") {
       join_point <- paste0(stage_type, " ", join_point)
-    #message("wrapping sub stage hook '", name, "' for event '", join_point,
-    #        "' from phase: '", stage_type, " ", sub_stage_type, "'")
+      message("wrapping sub stage hook '", name, "' for join_point '", join_point,
+           "' from phase: '", stage_type, "+", sub_stage_type, "'")
     }
     hook <- wrap_sub_stage_hook(hook, stage_type, sub_stage_type)
   }
   else if (!is.null(stage_type)) {
-    #message("wrapping stage hook '", name, "' for event '", event,
-    #        "' from phase: '", stage_type, "'")
+    message("wrapping stage hook '", name, "' for event '", event,
+           "' from phase: '", stage_type, "'")
     hook <- wrap_stage_hook(hook, stage_type)
   }
 
@@ -294,8 +214,8 @@ register_hook <- function(opt, hook,
   }
   advice <- join_point_hooks[[advice_type]]
 
-#message("registering name: '", name, "' advice_type: '", advice_type,
-#          "' join_point: '", join_point, "'")
+message("registering name: '", name, "' advice_type: '", advice_type,
+         "' join_point: '", join_point, "'")
   advice[[name]] <- hook
   join_point_hooks[[advice_type]] <- advice
   opt$hooks[[join_point]] <- join_point_hooks
@@ -334,7 +254,6 @@ wrap_sub_stage_hook <- function(sub_stage_hook, stage_type, sub_stage_type) {
     stage <- opt$stages[[stage_type]]
     sub_stage <- stage[[sub_stage_type]]
     res <- callback(opt, stage, sub_stage, par, fn, gr, iter, ...)
-
     if (!is.null(res$opt)) {
       opt <- res$opt
     }
@@ -353,69 +272,6 @@ wrap_sub_stage_hook <- function(sub_stage_hook, stage_type, sub_stage_type) {
     opt
   }
 }
-
-# registers all hook functions:
-#   functions in the phase (opt, stage, sub_stage) object itself with attribute
-#     'name'. These are intended to be private functions for housekeeping of
-#     the phase itself and any calculated values would not be shared. These
-#     stage callbacks will be passed the stage, and sub_stage callbacks the
-#     stage and the sub_stage so local data can be stored in these objects
-#   functions in the depends list. These functions are NOT passed the stage or
-#     sub_stage objects, because they are intended to be shared functionality
-#     between arbitrary parts of the optimizer tree (e.g. storing the gradient)
-register_hooks <- function(opt) {
-  # Optimizer hook
-  opt$hooks <- list()
-
-  for (name in names(opt)) {
-    if (!is.null(attr(opt[[name]], 'event'))) {
-      message("registering ", attr(opt[[name]], 'event'))
-      opt <- register_hook(opt, opt[[name]])
-    }
-  }
-  if (!is.null(opt$depends)) {
-    opt <- depends_to_hooks(opt, opt)
-  }
-
-
-  # Stage hook
-  for (i in 1:length(opt$stages)) {
-    stage <- opt$stages[[i]]
-    #message("Looking for stage hooks for stage ", i, " '", stage$type, "'")
-    for (stage_prop_name in names(stage)) {
-      if (!is.null(attr(stage[[stage_prop_name]], 'event'))) {
-        #message("Found hook '", stage_prop_name, "'")
-        opt <- register_hook(opt, stage[[stage_prop_name]], stage$type)
-      }
-    }
-
-    if (!is.null(stage$depends)) {
-      opt <- depends_to_hooks(opt, stage)
-    }
-
-    # Sub stage hooks
-
-    for (sub_stage_type in c("direction", "step_size")) {
-      #message("Looking for sub stage hooks for stage ", i, " '", stage$type, " ", sub_stage_type, "'")
-
-      sub_stage <- stage[[sub_stage_type]]
-      for (sub_stage_prop_name in names(sub_stage)) {
-        if (!is.null(attr(sub_stage[[sub_stage_prop_name]], 'event'))) {
-          #message("Found hook '", sub_stage_prop_name, "'")
-
-          opt <- register_hook(opt, sub_stage[[sub_stage_prop_name]],
-                               stage$type, sub_stage_type)
-        }
-      }
-
-      if (!is.null(sub_stage$depends)) {
-        opt <- depends_to_hooks(opt, sub_stage)
-      }
-    }
-  }
-  opt
-}
-
 
 depends_to_hooks <- function(opt, phase, stage_type = NULL,
                              sub_stage_type = NULL) {
@@ -440,4 +296,22 @@ depend_to_hook <- function(opt, depend, stage_type = NULL,
   }
 
   opt
+}
+
+
+list_hooks <- function(opt) {
+  if (!is.null(opt$hooks)) {
+    hooks <- opt$hooks
+    for (phase in names(hooks)) {
+      phooks <- hooks[[phase]]
+      for (advice in names(phooks)) {
+        aphooks <- phooks[[advice]]
+        for (name in names(aphooks)) {
+          message("phase: '", phase,
+                  "' advice: '", advice,
+                  "' name: '", name, "'")
+        }
+      }
+    }
+  }
 }

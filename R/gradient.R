@@ -3,11 +3,11 @@
 make_direction <- function(sub_stage) {
   sub_stage$type <- "direction"
   if (!is.null(sub_stage$init)) {
-    attr(sub_stage$init, 'event') <- 'init'
+    attr(sub_stage$init, 'event') <- paste0('init ', sub_stage$type)
     attr(sub_stage$init, 'name') <- paste0(sub_stage$type,' init')
   }
   if (!is.null(sub_stage$calculate)) {
-    attr(sub_stage$calculate, 'event') <- sub_stage$type
+    attr(sub_stage$calculate, 'event') <- paste0('during ', sub_stage$type)
     attr(sub_stage$calculate, 'name') <- paste0(sub_stage$type, ' calculate')
   }
   if (!is.null(sub_stage$after_step)) {
@@ -23,7 +23,7 @@ sd_direction <- function(normalize = FALSE) {
 
   make_direction(list(
     calculate = function(opt, stage, sub_stage, par, fn, gr, iter) {
-      message("Calculating steepest descent direction")
+      #message("Calculating steepest descent direction")
 
       sub_stage$value <- -opt$cache$gr_curr
 
@@ -31,7 +31,7 @@ sd_direction <- function(normalize = FALSE) {
         sub_stage$value <- normalize(sub_stage$value)
       }
 
-      message("sd pm = ", vec_formatC(sub_stage$value))
+      #message("sd pm = ", vec_formatC(sub_stage$value))
 
       list(sub_stage = sub_stage)
     },
@@ -72,7 +72,7 @@ cg_direction <- function(ortho_check = FALSE, nu = 0.1,
         #message("beta = ", formatC(beta), " pm = ", vec_formatC(pm))
         descent <- dot(gm, pm)
         if (descent > 0) {
-          message("Next CG direction is not a descent direction, resetting to SD")
+          #message("Next CG direction is not a descent direction, resetting to SD")
           pm <- -gm
         }
       }
@@ -174,7 +174,7 @@ bfgs_direction <- function(eps =  .Machine$double.eps,
 
         descent <- dot(gm, pm)
         if (descent > 0) {
-          message("BFGS direction is not a descent direction, resetting to SD")
+          #message("BFGS direction is not a descent direction, resetting to SD")
           pm <- -gm
         }
       }
@@ -260,7 +260,7 @@ lbfgs_direction <- function(memory = 100, scale_inverse = FALSE,
 
         descent <- dot(gm, pm)
         if (descent > 0) {
-          message("L-BFGS direction is not a descent direction, resetting to SD")
+          #message("L-BFGS direction is not a descent direction, resetting to SD")
           pm <- -gm
         }
 
