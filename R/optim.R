@@ -195,13 +195,15 @@ optimize_step <- function(opt, par, fn, gr, iter) {
   step_result <- NULL
   counts <- make_counts()
   for (i in 1:length(opt$stages)) {
-
+    opt$stage_i <- i
     stage <- opt$stages[[i]]
     opt <- life_cycle_hook(stage$type, "before", opt, par, fn, gr, iter)
     opt <- life_cycle_hook(stage$type, "during", opt, par, fn, gr, iter)
     opt <- life_cycle_hook(stage$type, "after", opt, par, fn, gr, iter)
 
+    # should run "after stage"
     stage <- opt$stages[[i]]
+
     if (is.null(step_result)) {
       step_result <- stage$result
     }
@@ -209,17 +211,15 @@ optimize_step <- function(opt, par, fn, gr, iter) {
       step_result <- step_result + stage$result
     }
 
+    # should run "after stage"
     if (opt$eager_update) {
       par <- par + stage$result
     }
-    message(iter, " ", substr(stage$type, 1, 2)
-            ," par = ", vec_formatC(par)
-            ," p = ", vec_formatC(stage$direction$value)
-            , " a = ", formatC(stage$step_size$value)
-            , " ap = ", vec_formatC(stage$result)
-            , " f = ", formatC(fn(par)))
+
+    opt <- life_cycle_hook("stage", "after", opt, par, fn, gr, iter)
   }
 
+  # should run "after stages"
   if (!opt$eager_update) {
     par <- par + step_result
   }
@@ -305,6 +305,7 @@ make_opt <- function(stages,
   opt <- list(
     init = function(opt, par, fn, gr, iter) {
       for (i in 1:length(opt$stages)) {
+        opt$stage_i <- i
         opt <- life_cycle_hook(opt$stages[[i]]$type, "init", opt, par, fn, gr, iter)
       }
       opt
@@ -312,13 +313,15 @@ make_opt <- function(stages,
     cache = list(),
     stages = stages,
     counts = make_counts(),
+    hooks = list(),
+    handlers = list(),
     eager_update = FALSE,
     verbose = verbose
   )
 
   if (!is.null(opt$init)) {
     attr(opt$init, 'event') <- 'init opt'
-    attr(opt$init, 'name') <- 'init opt'
+    attr(opt$init, 'name') <- 'handler'
   }
   opt
 }
@@ -340,13 +343,19 @@ make_stage <- function(type, direction, step_size, depends = NULL) {
     calculate = function(opt, stage, par, fn, gr, iter) {
       for (sub_stage_name in c("direction", "step_size")) {
         phase <- paste0(stage$type, " ", sub_stage_name)
+        message("emitting during ", phase)
+
         opt <- life_cycle_hook(phase, "during", opt, par, fn, gr, iter)
       }
 
       list(opt = opt)
     },
     after_stage = function(opt, stage, par, fn, gr, iter) {
-      #message("After stage: Calculating stage result")
+      for (sub_stage_name in c("direction", "step_size")) {
+        phase <- paste0(stage$type, " ", sub_stage_name)
+        message("emitting after ", phase)
+        opt <- life_cycle_hook(phase, "after", opt, par, fn, gr, iter)
+      }
       stage$result <- stage$direction$value * stage$step_size$value
       list(stage = stage)
     },
@@ -359,15 +368,15 @@ make_stage <- function(type, direction, step_size, depends = NULL) {
 
   if (!is.null(stage$init)) {
     attr(stage$init, 'event') <- paste0('init ', type)
-    attr(stage$init, 'name') <- paste0(type,' init')
+    attr(stage$init, 'name') <- 'handler'
   }
   if (!is.null(stage$calculate)) {
     attr(stage$calculate, 'event') <- paste0('during ', type)
-    attr(stage$calculate, 'name') <- paste0(type, ' calculate')
+    attr(stage$calculate, 'name') <- 'handler'
   }
   if (!is.null(stage$after_stage)) {
     attr(stage$after_stage, 'event') <- paste0('after ', type)
-    attr(stage$after_stage, 'name') <- paste0(type, ' after stage')
+    attr(stage$after_stage, 'name') <- 'handler'
   }
   if (!is.null(stage$after_step)) {
     attr(stage$after_step, 'event') <- 'after step'
@@ -377,6 +386,23 @@ make_stage <- function(type, direction, step_size, depends = NULL) {
   res <- list()
   res[[type]] <- stage
   res
+}
+
+make_sub_stage <- function(sub_stage, type) {
+  sub_stage$type <- type
+  if (!is.null(sub_stage$init)) {
+    attr(sub_stage$init, 'event') <- paste0('init ', sub_stage$type)
+    attr(sub_stage$init, 'name') <- 'handler'
+  }
+  if (!is.null(sub_stage$calculate)) {
+    attr(sub_stage$calculate, 'event') <- paste0('during ', sub_stage$type)
+    attr(sub_stage$calculate, 'name') <- 'handler'
+  }
+  if (!is.null(sub_stage$after_step)) {
+    attr(sub_stage$after_step, 'event') <- 'after step'
+    attr(sub_stage$after_step, 'name') <-  paste0(sub_stage$type, ' after step')
+  }
+  sub_stage
 }
 
 gradient_stage <- function(direction, step_size) {
@@ -448,7 +474,7 @@ attr(require_update_old, 'name') <- 'update_old'
 attr(require_update_old, 'depends') <- 'update_old_init'
 
 require_update_old_init <- function(opt, stage, sub_stage, par, fn, gr, iter) {
-  message("Initializing update_old")
+#  message("Initializing update_old")
   opt$cache$update_old <- rep(0, length(par))
   list(opt = opt)
 }
@@ -458,11 +484,11 @@ attr(require_update_old_init, 'name') <- 'update_old_init'
 require_adaptive_restart <- function(opt, par, fn, gr, iter, par0, update) {
   if (!opt$ok) {
     opt <- life_cycle_hook("momentum", "init", opt, par, fn, gr, iter)
-    message("adaptive restart: clearing old update")
+    message("adaptive restart: restarting momentum")
   }
   else {
     opt$cache$update_old <- update
-    message("adaptive restart: saving old update")
+    message("adaptive restart: continuing")
   }
   opt
 }
@@ -475,7 +501,7 @@ attr(require_adaptive_restart, 'depends') <- 'update_old_init'
 
 # Gradient Dependencies ------------------------------------------------------------
 
-require_gradient <- function(opt, par, fn, gr, iter) {
+require_gradient <- function(opt, stage, par, fn, gr, iter) {
   if (!has_gr_curr(opt, iter)) {
     #message("require gradient: calculating gr_curr ", iter)
     opt <- calc_gr_curr(opt, par, gr, iter)
@@ -487,7 +513,7 @@ require_gradient <- function(opt, par, fn, gr, iter) {
   else {
     #message("require gradient: already have gr_curr")
   }
-  opt
+  list(opt = opt)
 }
 attr(require_gradient, 'event') <- 'before gradient_descent'
 attr(require_gradient, 'name') <- 'gradient'
@@ -518,9 +544,9 @@ attr(require_validate_fn, 'depends') <- 'fn_new fn_curr save_cache_on_failure'
 # Wants: gradient
 require_validate_gr <- function(opt, par, fn, gr, iter, par0, update) {
   opt$ok <- dot(opt$cache$gr_curr, update) < 0
-  message("validating by gradient: ", "g = ", vec_formatC(opt$cache$gr_curr),
-    " v = ", vec_formatC(update), " g.v = ", formatC(dot(opt$cache$gr_curr, update)),
-    " ok = ", opt$ok)
+  # message("validating by gradient: ", "g = ", vec_formatC(opt$cache$gr_curr),
+  #   " v = ", vec_formatC(update), " g.v = ", formatC(dot(opt$cache$gr_curr, update)),
+  #   " ok = ", opt$ok)
 
   opt
 }
@@ -575,7 +601,7 @@ require_save_cache_on_failure <- function(opt, par, fn, gr, iter, par0, update) 
   # stage: Nesterov results in moving par via momentum before grad calc.
   # Different result will occur after restart
   if (!opt$ok && opt$stages[[1]]$type == "gradient_descent") {
-    message("Saving 'curr' values in cache due to validation failure")
+#    message("Saving 'curr' values in cache due to validation failure")
     cache <- opt$cache
     for (name in names(cache)) {
       if (endsWith(name, "_curr")) {
@@ -593,6 +619,22 @@ require_save_cache_on_failure <- function(opt, par, fn, gr, iter, par0, update) 
 }
 attr(require_save_cache_on_failure, 'name') <- 'save_cache_on_failure'
 attr(require_save_cache_on_failure, 'event') <- 'after step'
+
+
+# Logging Hooks -----------------------------------------------------------
+
+
+require_log_vals <- function(opt, stage, par, fn, gr, iter) {
+  message(iter, " ", substr(stage$type, 1, 2)
+          ," par = ", vec_formatC(par)
+          ," p = ", vec_formatC(stage$direction$value)
+          , " a = ", formatC(stage$step_size$value)
+          , " ap = ", vec_formatC(stage$result)
+          , " f = ", formatC(fn(par)))
+  list()
+}
+attr(require_log_vals, 'name') <- 'log_vals'
+attr(require_log_vals, 'event') <- 'after stage'
 
 # Predicates --------------------------------------------------------------
 

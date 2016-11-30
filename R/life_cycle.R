@@ -1,5 +1,21 @@
 # Life Cycle Constructors ------------------------------------------------------
 
+# advice_type:
+#   init
+#   before
+#   during
+#   after
+# phase
+#   opt
+#     step
+#     gradient_descent
+#       direction
+#       step_size
+#     momentum
+#     validation
+
+
+
 # [before|during|after] [init|step|gradient_descent|momentum|validation] [direction|step_size]
 
 # initialization
@@ -51,8 +67,34 @@
 
 # Calls all hooks registered with the phase firing this event
 life_cycle_hook <- function(phase, advice_type, opt, par, fn, gr, iter, ...) {
-  message("life cycle phase: '", phase, "' advice_type: '",
-          advice_type, "' triggered")
+  # message("life cycle phase: '", phase, "' advice_type: '",
+  #         advice_type, "' triggered")
+
+  handler <- life_cycle_handler(phase, advice_type, opt)
+  if (is.null(handler)) {
+    message("Invoking default handler for '", advice_type, " ", phase, "'")
+   opt <- default_handler(phase, advice_type, opt, par, fn, gr, iter, ...)
+  }
+  else {
+    message("Invoking handler for '", advice_type, " ", phase, "'")
+    opt <- handler(opt, par, fn, gr, iter, ...)
+  }
+  opt
+}
+
+life_cycle_handler <- function(phase, advice_type, opt) {
+  handlers <- opt$handlers
+  if (is.null(handlers)) {
+    return(NULL)
+  }
+  handlers <- handlers[[phase]]
+  if (is.null(handlers)) {
+    return(NULL)
+  }
+  handlers[[advice_type]]
+}
+
+default_handler <- function(phase, advice_type, opt, par, fn, gr, iter, ...) {
   hooks <- opt$hooks
   if (is.null(hooks)) {
     return(opt)
@@ -66,15 +108,17 @@ life_cycle_hook <- function(phase, advice_type, opt, par, fn, gr, iter, ...) {
     return(opt)
   }
 
+  if (length(names(hooks)) > 0) {
+    message("life cycle phase: '", phase, "' advice_type: '",
+            advice_type, "' firing")
+  }
   for (name in names(hooks)) {
     hook <- hooks[[name]]
     #message("life_cycle_hook: ", name)
     opt <- hook(opt, par, fn, gr, iter, ...)
   }
-
   opt
 }
-
 
 # registers all hook functions:
 #   functions in the phase (opt, stage, sub_stage) object itself with attribute
@@ -87,12 +131,11 @@ life_cycle_hook <- function(phase, advice_type, opt, par, fn, gr, iter, ...) {
 #     between arbitrary parts of the optimizer tree (e.g. storing the gradient)
 register_hooks <- function(opt) {
   # Optimizer hook
-  opt$hooks <- list()
 
 #  message("Looking for hooks in opt")
   for (name in names(opt)) {
     if (!is.null(attr(opt[[name]], 'event'))) {
-      message("registering opt hook for event ", attr(opt[[name]], 'event'))
+#      message("registering opt hook for event ", attr(opt[[name]], 'event'))
       opt <- register_hook(opt, opt[[name]])
     }
   }
@@ -110,7 +153,7 @@ register_hooks <- function(opt) {
     for (stage_prop_name in names(stage)) {
       stage_prop <- stage[[stage_prop_name]]
       if (!is.null(attr(stage_prop, 'event'))) {
-        message("registering hook '", stage_prop_name, "' for event ", attr(stage_prop, 'event'))
+#        message("registering hook '", stage_prop_name, "' for event ", attr(stage_prop, 'event'))
         opt <- register_hook(opt, stage_prop, stage$type)
       }
     }
@@ -128,7 +171,7 @@ register_hooks <- function(opt) {
       for (sub_stage_prop_name in names(sub_stage)) {
         sub_stage_prop <- sub_stage[[sub_stage_prop_name]]
         if (!is.null(attr(sub_stage_prop, 'event'))) {
-          message("registering hook '", sub_stage_prop_name, "' for event ", attr(sub_stage_prop, 'event'))
+#          message("registering hook '", sub_stage_prop_name, "' for event ", attr(sub_stage_prop, 'event'))
           opt <- register_hook(opt, sub_stage[[sub_stage_prop_name]],
                                stage$type, sub_stage_type)
         }
@@ -156,9 +199,9 @@ register_hook <- function(opt, hook,
                           sub_stage_type = NULL) {
   name <- attr(hook, "name")
   if (is.null(name)) {
-    stop("No 'name' attribute for hook function")
+    stop("No 'name' attribute for function")
   }
-  if (!is.null(sub_stage_type)) {
+  if (!is.null(sub_stage_type) && name != "handler") {
     # Deambiguate the specific sub stage function by adding stage type
     # e.g. could choose bold driver for both gradient descent and momentum
     name <- paste0(stage_type, " ", name)
@@ -173,6 +216,12 @@ register_hook <- function(opt, hook,
 
   advice_type <- event_tok[1]
   join_point <- event_tok[2]
+  if (join_point == "stage"
+      || join_point == "gradient_descent"
+      || join_point == "momentum"
+      && is.null(stage_type)) {
+    stage_type <- join_point
+  }
 
   # Functions defined outside of the stage/sub stage constructors can
   # define events completely e.g. "init momentum step_size"
@@ -192,33 +241,24 @@ register_hook <- function(opt, hook,
     }
     if (join_point == "direction" || join_point == "step_size") {
       join_point <- paste0(stage_type, " ", join_point)
-      message("wrapping sub stage hook '", name, "' for join_point '", join_point,
-           "' from phase: '", stage_type, "+", sub_stage_type, "'")
+#      message("wrapping sub stage hook '", name, "' for join_point '", join_point,
+#           "' from phase: '", stage_type, "+", sub_stage_type, "'")
     }
     hook <- wrap_sub_stage_hook(hook, stage_type, sub_stage_type)
   }
   else if (!is.null(stage_type)) {
-    message("wrapping stage hook '", name, "' for event '", event,
-           "' from phase: '", stage_type, "'")
+#    message("wrapping stage hook '", name, "' for event '", event,
+#           "' from phase: '", stage_type, "'")
     hook <- wrap_stage_hook(hook, stage_type)
   }
 
-  # store the hook
-  if (is.null(opt$hooks[[join_point]])) {
-    opt$hooks[[join_point]] <- list()
+  if (name == "handler") {
+    opt <- store_handler(opt, join_point, advice_type, hook)
   }
-  join_point_hooks <- opt$hooks[[join_point]]
-
-  if (is.null(join_point_hooks[[advice_type]])) {
-    join_point_hooks[[advice_type]] <- list()
+  else {
+    # store the hook
+    opt <- store_hook(opt, join_point, advice_type, name, hook)
   }
-  advice <- join_point_hooks[[advice_type]]
-
-message("registering name: '", name, "' advice_type: '", advice_type,
-         "' join_point: '", join_point, "'")
-  advice[[name]] <- hook
-  join_point_hooks[[advice_type]] <- advice
-  opt$hooks[[join_point]] <- join_point_hooks
 
   depends <- attr(hook, "depends")
   if (!is.null(depends)) {
@@ -232,17 +272,53 @@ message("registering name: '", name, "' advice_type: '", advice_type,
   opt
 }
 
+store_hook <- function(opt, join_point, advice_type, name, hook) {
+  if (is.null(opt$hooks[[join_point]])) {
+    opt$hooks[[join_point]] <- list()
+  }
+  join_point_hooks <- opt$hooks[[join_point]]
+
+  if (is.null(join_point_hooks[[advice_type]])) {
+    join_point_hooks[[advice_type]] <- list()
+  }
+  advice <- join_point_hooks[[advice_type]]
+
+  message("registering hook: '", name, "' for: '", advice_type, " ", join_point, "'")
+  advice[[name]] <- hook
+  join_point_hooks[[advice_type]] <- advice
+  opt$hooks[[join_point]] <- join_point_hooks
+
+  opt
+}
+
+store_handler <- function(opt, join_point, advice_type, handler) {
+  if (is.null(opt$handlers[[join_point]])) {
+    opt$handlers[[join_point]] <- list()
+  }
+  join_point_handlers <- opt$handlers[[join_point]]
+
+  if (is.null(join_point_handlers[[advice_type]])) {
+    join_point_handlers[[advice_type]] <- list()
+  }
+
+  message("registering handler for: '", advice_type, " ", join_point, "'")
+  join_point_handlers[[advice_type]] <- handler
+  opt$handlers[[join_point]] <- join_point_handlers
+
+  opt
+}
+
 wrap_stage_hook <- function(stage_hook, stage_type) {
   callback <- stage_hook
   function(opt, par, fn, gr, iter, ...) {
-    stage <- opt$stages[[stage_type]]
+    stage <- opt$stages[[opt$stage_i]]
     res <- callback(opt, stage, par, fn, gr, iter, ...)
 
     if (!is.null(res$opt)) {
       opt <- res$opt
     }
     if (!is.null(res$stage)) {
-      opt$stages[[stage_type]] <- res$stage
+      opt$stages[[opt$stage_i]] <- res$stage
     }
     opt
   }
@@ -300,6 +376,18 @@ depend_to_hook <- function(opt, depend, stage_type = NULL,
 
 
 list_hooks <- function(opt) {
+  message("handlers")
+  if (!is.null(opt$handlers)) {
+    handlers <- opt$handlers
+    for (phase in names(handlers)) {
+      phandlers <- handlers[[phase]]
+      for (advice in names(phandlers)) {
+        message(advice, " ", phase)
+      }
+    }
+  }
+
+  message("hooks")
   if (!is.null(opt$hooks)) {
     hooks <- opt$hooks
     for (phase in names(hooks)) {
@@ -307,9 +395,7 @@ list_hooks <- function(opt) {
       for (advice in names(phooks)) {
         aphooks <- phooks[[advice]]
         for (name in names(aphooks)) {
-          message("phase: '", phase,
-                  "' advice: '", advice,
-                  "' name: '", name, "'")
+          message(advice, " ", phase, ": ", name)
         }
       }
     }

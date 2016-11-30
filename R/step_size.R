@@ -4,21 +4,7 @@
 # Constructor -------------------------------------------------------------
 
 make_step_size <- function(sub_stage) {
-  sub_stage$type <- "step_size"
-  if (!is.null(sub_stage$init)) {
-    attr(sub_stage$init, 'event') <- paste0('init ', sub_stage$type)
-    attr(sub_stage$init, 'name') <- paste0(sub_stage$type,' init')
-  }
-  if (!is.null(sub_stage$calculate)) {
-    attr(sub_stage$calculate, 'event') <- paste0('during ', sub_stage$type)
-    attr(sub_stage$calculate, 'name') <- paste0(sub_stage$type, ' calculate')
-  }
-  if (!is.null(sub_stage$after_step)) {
-    attr(sub_stage$after_step, 'event') <- 'after step'
-    attr(sub_stage$after_step, 'name') <- paste0(sub_stage$type, ' after step')
-  }
-
-  sub_stage
+  make_sub_stage(sub_stage, 'step_size')
 }
 
 # Constant ----------------------------------------------------------------

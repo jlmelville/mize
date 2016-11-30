@@ -699,7 +699,6 @@ test_that("Polak Ribiere CG with Rasmussen LS", {
         step_size = rasmussen_ls(initial_step_length = 1.8440535542657e-05)),
       verbose = FALSE))
 
-
   res <- optloop(opt, out0, rosenbrock_fg$fn, rosenbrock_fg$gr, 3,
                  store_progress = TRUE, verbose = FALSE)
 

@@ -141,7 +141,6 @@ rcg_line_search <- function(ls_fn,
     },
     after_step = function(opt, stage, sub_stage, par, fn, gr, iter, par0,
                           update) {
-
       if (is_last_stage(opt, stage) && has_fn_new(opt, iter)) {
 #        message("wolfe: setting next f_old from f for iter ", iter, " "
 #                , formatC(opt$cache$fn_new)
