@@ -184,7 +184,21 @@ nesterov_momentum_direction <- function() {
   ))
 }
 
-nesterov_convex_step <- function(start_at = 0) {
+# q is inversely proportional to how strongly convex the function is
+# 0 gives the highest momentum, 1 gives zero momentum
+nesterov_convex_step <- function(start_at = 0, q = 0) {
+  if (q == 0) {
+    # Use the expression for momentum from the Sutskever paper appendix
+    nesterov_strong_convex_step(start_at = start_at)
+  }
+  else {
+    # Use the expression for momentum from Candeis paper which includes q term
+    nesterov_convex_step_q(q = q, start_at = start_at)
+  }
+}
+
+
+nesterov_strong_convex_step <- function(start_at) {
   make_step_size(list(
     start_at = start_at,
     name = "nesterov_convex",
@@ -221,7 +235,50 @@ nesterov_convex_step <- function(start_at = 0) {
   ))
 }
 
-# solves quadratic equation. Returns either two roots (even if concident)
+nesterov_convex_step_q <- function(q, start_at = 0) {
+  make_step_size(list(
+    start_at = start_at,
+    name = "nesterov_convex",
+    init = function(opt, stage, sub_stage, par, fn, gr, iter) {
+      #message("Nesterov convex init")
+      sub_stage$theta_old <- 1
+      list(sub_stage = sub_stage)
+    },
+    calculate = function(opt, stage, sub_stage, par, fn, gr, iter) {
+      if (iter < start_at) {
+        sub_stage$value <- 0
+        sub_stage$theta_old <- 1
+      }
+      else {
+        theta_old <- sub_stage$theta_old
+        thetas <- solve_theta(theta_old, q)
+        theta <- max(thetas)
+        # Step 4 of algorithm 1 in https://arxiv.org/abs/1204.3982
+        # Calculates beta, effectively the momentum
+        # q (taking a value between 0 and 1) is related to the strong convexity
+        # parameter (which has the symbol mu in the paper, it's not the momentum!).
+        # A q of 1 causes momentum to be zero. A q of 0 gives the same results as
+        # the Sutskever momentum (not the approximation he gives, but the actual
+        # expression given in the appendix/thesis).
+        sub_stage$value <- theta_old * (1 - theta_old) / (theta_old * theta_old + theta)
+        sub_stage$theta_old <- theta
+        #message("Nesterov momentum = ", formatC(sub_stage$value))
+      }
+      list(sub_stage = sub_stage)
+    },
+    after_step = function(opt, stage, sub_stage, par, fn, gr, iter, par0,
+                          update) {
+      #message("nesterov_convex: after step")
+      if (!opt$ok) {
+        sub_stage$theta_old <- 1
+      }
+      list(sub_stage = sub_stage)
+    }
+  ))
+}
+
+
+# solves quadratic equation. Returns either two roots (even if coincident)
 # or NULL if there's no solution
 solve_quad <- function(a, b, c) {
   disc <- b * b - 4 * a * c
@@ -238,21 +295,6 @@ solve_theta <- function(theta_old, q = 0) {
   theta2 <- theta_old * theta_old
   solve_quad(1, theta2 - q, -theta2)
 }
-
-# Step 4 of algorithm 1 in https://arxiv.org/abs/1204.3982
-# Calculates beta, effectively the momentum
-# q (taking a value between 0 and 1) is related to the strong convexity
-# parameter (which has the symbol mu in the paper, it's not the momentum!).
-# A q of 1 causes momentum to be zero. A q of 0 gives the same results as
-# the Sutskever momentum (not the approximation he gives, but the actual
-# expression given in the appendix/thesis).
-nesterov_q_momentum <- function(theta_old, q = 0) {
-  thetas <- solve_theta(theta_old, q)
-  theta <- max(thetas)
-  beta <- theta_old * (1 - theta_old) / (theta_old * theta_old + theta)
-  list(beta = beta, theta = theta)
-}
-
 
 # Momentum Correction -----------------------------------------------------
 

@@ -665,7 +665,6 @@ test_that("nesterov accelerated gradient with wolfe line search", {
   expect_equal(res$opt$all_fs, all_fs, tol = 1e-3)
 })
 
-
 test_that("nesterov momentum with wolfe line search is like NAG", {
 
   # Add start_at = 2 so the first two updates are gradient-only, like NAG
@@ -708,8 +707,107 @@ test_that("nesterov momentum with wolfe line search is like NAG", {
   expect_equal(res$progress$step, steps, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
   expect_equal(res$opt$all_fs, all_fs, tol = 1e-3)
-
 })
+
+test_that("NAG with q = 1 is steepest descent", {
+
+  opt <- make_opt(
+    make_stages(
+      gradient_stage(
+        direction = sd_direction(),
+        step_size = more_thuente_ls(c2 = 1.e-9)),
+      momentum_stage(
+        direction = nesterov_momentum_direction(),
+        step_size = nesterov_convex_step(q = 1)
+      ),
+      verbose = FALSE))
+
+  res <- optloop(opt, out0, rosenbrock_fg$fn, rosenbrock_fg$gr, 3,
+                 store_progress = TRUE, verbose = FALSE)
+
+
+  nfs <- c(0, 9, 17, 22)
+  ngs <- c(0, 9, 17, 22)
+  fs <- c(24.2, 4.128, 3.886, 3.704)
+  g2ns <- c(232.87, 1.777, 18.114, 1.843)
+  steps <- c(0, 0.184, 0.235, 0.020)
+  par <- c(-0.923, 0.860)
+
+  expect_equal(res$progress$nf, nfs)
+  expect_equal(res$progress$ng, ngs)
+  expect_equal(res$progress$f, fs, tol = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
+  expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$par, par, tol = 1e-3)
+})
+
+test_that("NAG with q close to 0 is the same as == 0", {
+
+  # This should be the same as NAG with Wolfe Line Search test
+  # If is exactly zero we use the slightly simpler momentum expression
+  # given by Sutskever in the appendix, otherwise use the expression
+  # in the Candeis paper which is more complex but allows q to vary from zero
+
+  opt <- make_opt(
+    make_stages(
+      gradient_stage(
+        direction = sd_direction(),
+        step_size = more_thuente_ls(c2 = 1.e-9)),
+      momentum_stage(
+        direction = nesterov_momentum_direction(),
+        step_size = nesterov_convex_step(q = 1e-8)
+      ),
+      verbose = FALSE))
+
+  res <- optloop(opt, out0, rosenbrock_fg$fn, rosenbrock_fg$gr, 3,
+                 store_progress = TRUE, verbose = FALSE)
+
+  nfs <- c(0, 9, 17, 22)
+  ngs <- c(0, 9, 17, 22)
+  fs <- c(24.2, 4.128, 3.913, 3.558)
+  g2ns <- c(232.87, 1.777, 23.908, 7.200)
+  steps <- c(0, 0.184, 0.301, 0.048)
+  par <- c(-0.869, 0.781)
+
+  expect_equal(res$progress$nf, nfs)
+  expect_equal(res$progress$ng, ngs)
+  expect_equal(res$progress$f, fs, tol = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
+  expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$par, par, tol = 1e-3)
+})
+
+test_that("NAG with q = 0.5 between full NAG and SD", {
+
+  opt <- make_opt(
+    make_stages(
+      gradient_stage(
+        direction = sd_direction(),
+        step_size = more_thuente_ls(c2 = 1.e-9)),
+      momentum_stage(
+        direction = nesterov_momentum_direction(),
+        step_size = nesterov_convex_step(q = 0.5)
+      ),
+      verbose = FALSE))
+
+  res <- optloop(opt, out0, rosenbrock_fg$fn, rosenbrock_fg$gr, 3,
+                 store_progress = TRUE, verbose = FALSE)
+
+  nfs <- c(0, 9, 17, 21)
+  ngs <- c(0, 9, 17, 21)
+  fs <- c(24.2, 4.128, 3.891, 3.664)
+  g2ns <- c(232.87, 1.777, 20.711, 3.442)
+  steps <- c(0, 0.184, 0.265, 0.028)
+  par <- c(-0.903, 0.831)
+
+  expect_equal(res$progress$nf, nfs)
+  expect_equal(res$progress$ng, ngs)
+  expect_equal(res$progress$f, fs, tol = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
+  expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$par, par, tol = 1e-3)
+})
+
 
 # Delta-Bar-Delta
 test_that("classical momentum with approximate delta-bar-delta", {
