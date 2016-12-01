@@ -556,7 +556,7 @@ test_that("classical momentum with bold driver adaptive fn momentum prevents cos
   expect_equal(res$par, par, tol = 1e-3)
 })
 
-test_that("nesterov momentum with bold driver", {
+test_that("sutskever nesterov momentum with bold driver", {
 
   opt <- make_opt(
     make_stages(
@@ -638,8 +638,13 @@ test_that("nesterov accelerated gradient with wolfe line search", {
       ),
       verbose = FALSE))
 
+  opt$eager_update <- TRUE
+  #opt$depends <- c(opt$depends, 'log_vals')
+  opt$depends <- c(opt$depends, 'keep_stage_fs')
+
   res <- optloop(opt, out0, rosenbrock_fg$fn, rosenbrock_fg$gr, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, ret_opt = TRUE)
+
 
   nfs <- c(0, 9, 17, 22)
   ngs <- c(0, 9, 17, 22)
@@ -647,6 +652,9 @@ test_that("nesterov accelerated gradient with wolfe line search", {
   g2ns <- c(232.87, 1.777, 23.908, 7.200)
   steps <- c(0, 0.184, 0.301, 0.048)
   par <- c(-0.869, 0.781)
+  # also records fn after gradient stage - compare with momentum-first
+  # and see that these have the same values
+  all_fs <- c(4.128, 4.128, 3.886, 3.913, 3.583, 3.558)
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
@@ -654,6 +662,53 @@ test_that("nesterov accelerated gradient with wolfe line search", {
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$opt$all_fs, all_fs, tol = 1e-3)
+})
+
+
+test_that("nesterov momentum with wolfe line search is like NAG", {
+
+  # Add start_at = 2 so the first two updates are gradient-only, like NAG
+  # But even then, won't give exactly same result as "real" NAG
+  # because parameters are returned half-way between steps compared to real NAG
+  # Uncomment the 'log_vals' hook in this and the test above to see that
+  # you do get the same values for each stage
+
+  opt <- make_opt(
+    make_stages(
+      momentum_stage(
+        direction = momentum_direction(),
+        step_size = nesterov_convex_step(start_at = 2)),
+      gradient_stage(
+        direction = sd_direction(),
+        step_size = more_thuente_ls(c2 = 1.e-9)),
+      verbose = FALSE))
+  opt$eager_update <- TRUE
+  # Uncomment this to see the grad and mom values logged to screen
+  #opt$depends <- c(opt$depends, 'log_vals')
+  opt$depends <- c(opt$depends, 'keep_stage_fs')
+
+  res <- optloop(opt, out0, rosenbrock_fg$fn, rosenbrock_fg$gr, 3,
+                 store_progress = TRUE, verbose = FALSE, ret_opt = TRUE)
+
+  nfs <- c(0, 9, 17, 22)
+  ngs <- c(0, 9, 17, 22)
+  fs <- c(24.2, 4.128, 3.886, 3.582)
+  g2ns <- c(232.87, 1.777, 18.114, 1.858)
+  steps <- c(0, 0.184, 0.235, 0.0709)
+  par <- c(-0.891, 0.802)
+  # compare with real NAG all_fns, after first stage, consecutive values are
+  # the same
+  all_fs <- c(24.2, 4.128, 4.128, 3.886, 3.913, 3.583)
+
+  expect_equal(res$progress$nf, nfs)
+  expect_equal(res$progress$ng, ngs)
+  expect_equal(res$progress$f, fs, tol = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
+  expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$opt$all_fs, all_fs, tol = 1e-3)
+
 })
 
 # Delta-Bar-Delta

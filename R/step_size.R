@@ -95,7 +95,7 @@ bold_driver <- function(inc_mult = 1.1, dec_mult = 0.5,
           #      " cost = ", formatC(opt$fn))
 
         if (is_last_stage(opt, stage)) {
-          message(stage$type, " ", sub_stage$name, " setting fn_step for iter ", iter)
+          #message(stage$type, " ", sub_stage$name, " setting fn_step for iter ", iter)
           opt <- set_fn_new(opt, opt$fn, iter)
         }
       }

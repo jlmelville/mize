@@ -72,11 +72,11 @@ life_cycle_hook <- function(phase, advice_type, opt, par, fn, gr, iter, ...) {
 
   handler <- life_cycle_handler(phase, advice_type, opt)
   if (is.null(handler)) {
-    message("Invoking default handler for '", advice_type, " ", phase, "'")
+#    message("Invoking default handler for '", advice_type, " ", phase, "'")
    opt <- default_handler(phase, advice_type, opt, par, fn, gr, iter, ...)
   }
   else {
-    message("Invoking handler for '", advice_type, " ", phase, "'")
+#    message("Invoking handler for '", advice_type, " ", phase, "'")
     opt <- handler(opt, par, fn, gr, iter, ...)
   }
   opt
@@ -109,8 +109,8 @@ default_handler <- function(phase, advice_type, opt, par, fn, gr, iter, ...) {
   }
 
   if (length(names(hooks)) > 0) {
-    message("life cycle phase: '", phase, "' advice_type: '",
-            advice_type, "' firing")
+#    message("life cycle phase: '", phase, "' advice_type: '",
+#            advice_type, "' firing")
   }
   for (name in names(hooks)) {
     hook <- hooks[[name]]
@@ -283,7 +283,7 @@ store_hook <- function(opt, join_point, advice_type, name, hook) {
   }
   advice <- join_point_hooks[[advice_type]]
 
-  message("registering hook: '", name, "' for: '", advice_type, " ", join_point, "'")
+#  message("registering hook: '", name, "' for: '", advice_type, " ", join_point, "'")
   advice[[name]] <- hook
   join_point_hooks[[advice_type]] <- advice
   opt$hooks[[join_point]] <- join_point_hooks
@@ -301,7 +301,7 @@ store_handler <- function(opt, join_point, advice_type, handler) {
     join_point_handlers[[advice_type]] <- list()
   }
 
-  message("registering handler for: '", advice_type, " ", join_point, "'")
+#  message("registering handler for: '", advice_type, " ", join_point, "'")
   join_point_handlers[[advice_type]] <- handler
   opt$handlers[[join_point]] <- join_point_handlers
 

@@ -122,7 +122,8 @@ calc_gr <- function(opt, par, gr) {
 # Optimizer ---------------------------------------------------------------
 
 optloop <- function(opt, par, fn, gr, max_iter = 10, verbose = FALSE,
-                    store_progress = FALSE, invalidate_cache = FALSE) {
+                    store_progress = FALSE, invalidate_cache = FALSE,
+                    ret_opt = FALSE) {
 
   opt <- opt_init(opt, par, fn, gr, 0)
 
@@ -182,6 +183,9 @@ optloop <- function(opt, par, fn, gr, max_iter = 10, verbose = FALSE,
   }
   if (store_progress) {
     res$progress <- progress
+  }
+  if (ret_opt) {
+    res$opt <- opt
   }
   res
 }
@@ -247,13 +251,12 @@ optimize_step <- function(opt, par, fn, gr, iter) {
 opt_init <- function(opt, par, fn, gr, iter) {
   opt <- register_hooks(opt)
   opt <- life_cycle_hook("opt", "init", opt, par, fn, gr, iter)
-  list_hooks(opt)
+#  list_hooks(opt)
 
   opt
 }
 
 opt_results <- function(opt, par, fn, gr, iter, par0 = NULL) {
-
   f <- fn(par)
   g <- gr(par)
   g2n <- norm2(g)
@@ -343,7 +346,7 @@ make_stage <- function(type, direction, step_size, depends = NULL) {
     calculate = function(opt, stage, par, fn, gr, iter) {
       for (sub_stage_name in c("direction", "step_size")) {
         phase <- paste0(stage$type, " ", sub_stage_name)
-        message("emitting during ", phase)
+  #      message("emitting during ", phase)
 
         opt <- life_cycle_hook(phase, "during", opt, par, fn, gr, iter)
       }
@@ -353,7 +356,7 @@ make_stage <- function(type, direction, step_size, depends = NULL) {
     after_stage = function(opt, stage, par, fn, gr, iter) {
       for (sub_stage_name in c("direction", "step_size")) {
         phase <- paste0(stage$type, " ", sub_stage_name)
-        message("emitting after ", phase)
+  #      message("emitting after ", phase)
         opt <- life_cycle_hook(phase, "after", opt, par, fn, gr, iter)
       }
       stage$result <- stage$direction$value * stage$step_size$value
@@ -631,10 +634,19 @@ require_log_vals <- function(opt, stage, par, fn, gr, iter) {
           , " a = ", formatC(stage$step_size$value)
           , " ap = ", vec_formatC(stage$result)
           , " f = ", formatC(fn(par)))
-  list()
+  list(opt = opt)
 }
 attr(require_log_vals, 'name') <- 'log_vals'
 attr(require_log_vals, 'event') <- 'after stage'
+
+require_keep_stage_fs <- function(opt, stage, par, fn, gr, iter) {
+  if (is.null(opt$all_fs)) { opt$all_fs <- c() }
+  f <- fn(par)
+  opt$all_fs <- c(opt$all_fs, f)
+  list(opt = opt)
+}
+attr(require_keep_stage_fs, 'name') <- 'require_keep_stage_fs'
+attr(require_keep_stage_fs, 'event') <- 'after stage'
 
 # Predicates --------------------------------------------------------------
 
