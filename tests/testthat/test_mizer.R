@@ -1,3 +1,4 @@
+context("Basic Tests")
 test_that("steepest descent with constant step size", {
 
   opt <- make_opt(
