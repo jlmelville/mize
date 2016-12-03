@@ -154,7 +154,6 @@ test_that("classical momentum with constant step size", {
   expect_equal(res$par, par, tol = 1e-3)
 })
 
-
 test_that("eager classical momentum with constant step size should give same results as non-eager", {
 
   opt <- make_opt(
@@ -402,7 +401,6 @@ test_that("bold classical momentum with bold driver without cache gives same res
   expect_equal(res$par, par, tol = 1e-3)
 })
 
-
 test_that("classical momentum with bold driver and fn adaptive restart, same results as without when everything is ok", {
 
   opt <- make_opt(
@@ -575,6 +573,123 @@ test_that("classical momentum with bold driver adaptive fn momentum prevents cos
   steps <- c(0, 0.25, 0, 0.076)
   mus <- c(0.4, 0.4, 0.4, 0.4)
   par <- c(-1.035, 1.058)
+
+  expect_equal(res$progress$nf, nfs)
+  expect_equal(res$progress$ng, ngs)
+  expect_equal(res$progress$f, fs, tol = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
+  expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
+  expect_equal(res$par, par, tol = 1e-3)
+})
+
+test_that("classical momentum with constant function factory", {
+
+  # should give same results as using constant step size
+
+  opt <- make_opt(
+    make_stages(
+      gradient_stage(
+        direction = sd_direction(normalize = TRUE),
+        step_size = constant_step_size(
+          value = 0.01)),
+      momentum_stage(
+        direction = momentum_direction(),
+        step_size = make_momentum_step(
+          make_constant(
+            value = 0.2
+          ))
+      ),
+      verbose = FALSE))
+
+  res <- optloop(opt, out0, rosenbrock_fg$fn, rosenbrock_fg$gr, 3,
+                 store_progress = TRUE, verbose = FALSE)
+
+  nfs <- c(0, 0, 0, 0)
+  ngs <- c(0, 1, 2, 3)
+  fs <- c(24.2, 21.95, 19.44, 17.06)
+  g2ns <- c(232.87, 217.96, 200.42, 182.69)
+  steps <- c(0, 0.01, 0.012, 0.0124)
+  mus <- c(0.2, 0.2, 0.2, 0.2)
+  par <- c(-1.168, 1.013)
+
+  expect_equal(res$progress$nf, nfs)
+  expect_equal(res$progress$ng, ngs)
+  expect_equal(res$progress$f, fs, tol = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
+  expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
+  expect_equal(res$par, par, tol = 1e-3)
+})
+
+test_that("classical momentum with ramp function", {
+
+  opt <- make_opt(
+    make_stages(
+      gradient_stage(
+        direction = sd_direction(normalize = TRUE),
+        step_size = constant_step_size(
+          value = 0.01)),
+      momentum_stage(
+        direction = momentum_direction(),
+        step_size = make_momentum_step(
+          make_ramp(
+            init_value = 0.0,
+            final_value = 0.3,
+            max_iter = 3
+          ))
+      ),
+      verbose = FALSE))
+
+  res <- optloop(opt, out0, rosenbrock_fg$fn, rosenbrock_fg$gr, 3,
+                 store_progress = TRUE, verbose = FALSE)
+
+  nfs <- c(0, 0, 0, 0)
+  ngs <- c(0, 1, 2, 3)
+  fs <- c(24.2, 21.95, 19.44, 16.84)
+  g2ns <- c(232.87, 217.96, 200.42, 181.00)
+  steps <- c(0, 0.01, 0.012, 0.0136)
+  mus <- c(0.0, 0.1, 0.2, 0.3)
+  par <- c(-1.167, 1.014)
+
+  expect_equal(res$progress$nf, nfs)
+  expect_equal(res$progress$ng, ngs)
+  expect_equal(res$progress$f, fs, tol = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
+  expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
+  expect_equal(res$par, par, tol = 1e-3)
+})
+
+test_that("classical momentum with switch function", {
+
+  opt <- make_opt(
+    make_stages(
+      gradient_stage(
+        direction = sd_direction(normalize = TRUE),
+        step_size = constant_step_size(
+          value = 0.01)),
+      momentum_stage(
+        direction = momentum_direction(),
+        step_size = make_momentum_step(
+          make_switch(
+            init_value = 0.5,
+            final_value = 0.8,
+            switch_iter = 2
+          ))
+      ),
+      verbose = FALSE))
+
+  res <- optloop(opt, out0, rosenbrock_fg$fn, rosenbrock_fg$gr, 3,
+                 store_progress = TRUE, verbose = FALSE)
+
+  nfs <- c(0, 0, 0, 0)
+  ngs <- c(0, 1, 2, 3)
+  fs <- c(24.2, 21.95, 18.26, 14.00)
+  g2ns <- c(232.87, 217.96, 191.79, 157.67)
+  steps <- c(0, 0.01, 0.018, 0.0244)
+  mus <- c(0.5, 0.5, 0.8, 0.8)
+  par <- c(-1.152, 1.020)
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
@@ -869,11 +984,13 @@ test_that("NAG with approximate convex momentum", {
 
   nfs <- c(0, 9, 15, 26)
   ngs <- c(0, 9, 15, 26)
-  fs <- c(24.2, 6.786, 4.105, 10.49)
-  g2ns <- c(232.87, 70.86, 1.787, 65.14)
-  steps <- c(0, 0.257, 0.0740, 1.569)
-  mus <- c(0, 0.4, 0.5, 0.571)
-  par <- c(-0.185, -0.267)
+  fs <- c(24.2, 8.223, 4.097, 15.55)
+  g2ns <- c(232.87, 86.69, 1.791, 77.44)
+  steps <- c(0, 0.275, 0.0926, 1.703)
+  # From reading the Sutskever paper, it seems to be the case that mu = 0.4
+  # (from t = 0) is not intended to ever be used
+  mus <- c(0.4, 0.5, 0.571, 0.625)
+  par <- c(-0.09, -0.371)
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)

@@ -55,10 +55,10 @@ make_nesterov_convex_approx <- function(burn_in = 0) {
 
 # Sutskever's approximation to Nesterov Momentum Scheme
 nesterov_convex_approx_step <- function(burn_in = 0) {
-  make_momentum_step(make_nesterov_convex_approx(burn_in = 0),
-                               init_momentum = 0,
-                               min_momentum = 0,
-                               max_momentum = 1)
+  make_momentum_step(mu_fn =
+                       make_nesterov_convex_approx(burn_in = 0),
+                    min_momentum = 0,
+                   max_momentum = 1)
 }
 
 # q is inversely proportional to how strongly convex the function is

@@ -21,15 +21,14 @@ momentum_direction <- function(normalize = FALSE) {
 }
 
 make_momentum_step <- function(mu_fn,
-                               init_momentum = 0,
                                min_momentum = 0,
                                max_momentum = 1,
                                verbose = FALSE) {
   make_step_size(list(
     name = "momentum_step",
     init = function(opt, stage, sub_stage, par, fn, gr, iter) {
-      sub_stage$t <- 0
-      sub_stage$value <- sub_stage$init_value
+      sub_stage$t <- 1
+      sub_stage$value <- sub_stage$mu_fn(0)
       list(sub_stage = sub_stage)
     },
     calculate = function(opt, stage, sub_stage, par, fn, gr, iter) {
@@ -49,7 +48,6 @@ make_momentum_step <- function(mu_fn,
       list(sub_stage = sub_stage)
     },
     mu_fn = mu_fn,
-    init_value = init_momentum,
     min_value = min_momentum,
     max_value = max_momentum,
     t = 0
