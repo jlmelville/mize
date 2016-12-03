@@ -107,6 +107,7 @@ test_that("classical momentum with 0 step size should be like using no momentum"
   fs <- c(24.2, 21.95, 19.84, 17.88)
   g2ns <- c(232.87, 217.96, 203.31, 188.93)
   steps <- c(0, 1e-2, 1e-2, 1e-2)
+  mus <- c(0, 0, 0, 0)
   par <- c(-1.172, 1.011)
 
   expect_equal(res$progress$nf, nfs)
@@ -114,6 +115,7 @@ test_that("classical momentum with 0 step size should be like using no momentum"
   expect_equal(res$progress$f, fs, tol = 1e-3)
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
 })
 
@@ -140,6 +142,7 @@ test_that("classical momentum with constant step size", {
   fs <- c(24.2, 21.95, 19.44, 17.06)
   g2ns <- c(232.87, 217.96, 200.42, 182.69)
   steps <- c(0, 0.01, 0.012, 0.0124)
+  mus <- c(0.2, 0.2, 0.2, 0.2)
   par <- c(-1.168, 1.013)
 
   expect_equal(res$progress$nf, nfs)
@@ -147,6 +150,7 @@ test_that("classical momentum with constant step size", {
   expect_equal(res$progress$f, fs, tol = 1e-3)
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
 })
 
@@ -175,6 +179,7 @@ test_that("eager classical momentum with constant step size should give same res
   fs <- c(24.2, 21.95, 19.44, 17.06)
   g2ns <- c(232.87, 217.96, 200.42, 182.69)
   steps <- c(0, 0.01, 0.012, 0.0124)
+  mus <- c(0.2, 0.2, 0.2, 0.2)
   par <- c(-1.168, 1.013)
 
   expect_equal(res$progress$nf, nfs)
@@ -182,6 +187,7 @@ test_that("eager classical momentum with constant step size should give same res
   expect_equal(res$progress$f, fs, tol = 1e-3)
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
 })
 
@@ -208,6 +214,7 @@ test_that("classical momentum with bold driver", {
   fs <- c(24.2, 6.32, 5.25, 4.62)
   g2ns <- c(232.87, 64.72, 47.19, 33.88)
   steps <- c(0, 0.25, 0.020, 0.0795)
+  mus <- c(0.2, 0.2, 0.2, 0.2)
   par <- c(-1.051, 1.040)
 
   expect_equal(res$progress$nf, nfs)
@@ -215,6 +222,7 @@ test_that("classical momentum with bold driver", {
   expect_equal(res$progress$f, fs, tol = 1e-3)
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
 })
 
@@ -241,6 +249,7 @@ test_that("eager classical momentum with bold driver same as 'lazy' result", {
   fs <- c(24.2, 6.32, 5.25, 4.62)
   g2ns <- c(232.87, 64.72, 47.19, 33.88)
   steps <- c(0, 0.25, 0.020, 0.0795)
+  mus <- c(0.2, 0.2, 0.2, 0.2)
   par <- c(-1.051, 1.040)
 
   expect_equal(res$progress$nf, nfs)
@@ -248,6 +257,7 @@ test_that("eager classical momentum with bold driver same as 'lazy' result", {
   expect_equal(res$progress$f, fs, tol = 1e-3)
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
 })
 
@@ -275,6 +285,7 @@ test_that("linear weighted classical momentum with bold driver", {
   fs <- c(24.2, 4.27, 5.04, 4.67)
   g2ns <- c(232.87, 17.16, 42.78, 33.27)
   steps <- c(0, 0.2, 0.027, 0.01)
+  mus <- c(0.2, 0.2, 0.2, 0.2)
   par <- c(-0.998, 1.078)
 
   expect_equal(res$progress$nf, nfs)
@@ -282,6 +293,7 @@ test_that("linear weighted classical momentum with bold driver", {
   expect_equal(res$progress$f, fs, tol = 1e-3)
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
 })
 
@@ -310,6 +322,7 @@ test_that("linear weighted eager classical momentum with bold driver", {
   fs <- c(24.2, 4.27, 5.04, 4.67)
   g2ns <- c(232.87, 17.16, 42.78, 33.27)
   steps <- c(0, 0.2, 0.027, 0.01)
+  mus <- c(0.2, 0.2, 0.2, 0.2)
   par <- c(-0.998, 1.078)
 
   expect_equal(res$progress$nf, nfs)
@@ -317,6 +330,7 @@ test_that("linear weighted eager classical momentum with bold driver", {
   expect_equal(res$progress$f, fs, tol = 1e-3)
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
 })
 
@@ -343,6 +357,7 @@ test_that("bold classical momentum with bold driver", {
   fs <- c(24.2, 6.32, 4.12, 4.10)
   g2ns <- c(232.87, 64.72, 2.81, 2.41)
   steps <- c(0, 0.25, 0.064, 0.0047)
+  mus <- c(1, 1.1, 4.73e-3, 1.64e-8)
   par <- c(-1.027, 1.059)
 
   expect_equal(res$progress$nf, nfs)
@@ -350,6 +365,7 @@ test_that("bold classical momentum with bold driver", {
   expect_equal(res$progress$f, fs, tol = 1e-3)
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
 })
 
@@ -374,6 +390,7 @@ test_that("bold classical momentum with bold driver without cache gives same res
   fs <- c(24.2, 6.32, 4.12, 4.10)
   g2ns <- c(232.87, 64.72, 2.81, 2.41)
   steps <- c(0, 0.25, 0.064, 0.0047)
+  mus <- c(1, 1.1, 4.73e-3, 1.64e-8)
   par <- c(-1.027, 1.059)
 
   expect_equal(res$progress$nf, nfs)
@@ -381,6 +398,7 @@ test_that("bold classical momentum with bold driver without cache gives same res
   expect_equal(res$progress$f, fs, tol = 1e-3)
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
 })
 
@@ -412,6 +430,7 @@ test_that("classical momentum with bold driver and fn adaptive restart, same res
   fs <- c(24.2, 6.32, 5.25, 4.62)
   g2ns <- c(232.87, 64.72, 47.19, 33.88)
   steps <- c(0, 0.25, 0.020, 0.0795)
+  mus <- c(0.2, 0.2, 0.2, 0.2)
   par <- c(-1.051, 1.040)
 
   expect_equal(res$progress$nf, nfs)
@@ -419,6 +438,7 @@ test_that("classical momentum with bold driver and fn adaptive restart, same res
   expect_equal(res$progress$f, fs, tol = 1e-3)
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
 })
 
@@ -447,6 +467,7 @@ test_that("classical momentum with bold driver and gr adaptive restart, same res
   fs <- c(24.2, 6.32, 5.25, 4.62)
   g2ns <- c(232.87, 64.72, 47.19, 33.88)
   steps <- c(0, 0.25, 0.020, 0.0795)
+  mus <- c(0.2, 0.2, 0.2, 0.2)
   par <- c(-1.051, 1.040)
 
   expect_equal(res$progress$nf, nfs)
@@ -454,6 +475,7 @@ test_that("classical momentum with bold driver and gr adaptive restart, same res
   expect_equal(res$progress$f, fs, tol = 1e-3)
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
 })
 
@@ -479,6 +501,7 @@ test_that("classical momentum with bold driver aggressive momentum can cause cos
   fs <- c(24.2, 6.32, 8.71, 4.69)
   g2ns <- c(232.87, 64.72, 91.13, 34.39)
   steps <- c(0, 0.25, 0.033, 0.064)
+  mus <- c(0.4, 0.4, 0.4, 0.4)
   par <- c(-0.989, 1.064)
 
   expect_equal(res$progress$nf, nfs)
@@ -486,6 +509,7 @@ test_that("classical momentum with bold driver aggressive momentum can cause cos
   expect_equal(res$progress$f, fs, tol = 1e-3)
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
 })
 
@@ -513,6 +537,7 @@ test_that("classical momentum with bold driver adaptive gr momentum prevents cos
   fs <- c(24.2, 6.32, 6.32, 4.16)
   g2ns <- c(232.87, 64.72, 64.72, 9.70)
   steps <- c(0, 0.25, 0, 0.076)
+  mus <- c(0.4, 0.4, 0.4, 0.4)
   par <- c(-1.035, 1.058)
 
   expect_equal(res$progress$nf, nfs)
@@ -520,6 +545,7 @@ test_that("classical momentum with bold driver adaptive gr momentum prevents cos
   expect_equal(res$progress$f, fs, tol = 1e-3)
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
 })
 
@@ -547,6 +573,7 @@ test_that("classical momentum with bold driver adaptive fn momentum prevents cos
   fs <- c(24.2, 6.32, 6.32, 4.16)
   g2ns <- c(232.87, 64.72, 64.72, 9.70)
   steps <- c(0, 0.25, 0, 0.076)
+  mus <- c(0.4, 0.4, 0.4, 0.4)
   par <- c(-1.035, 1.058)
 
   expect_equal(res$progress$nf, nfs)
@@ -554,6 +581,7 @@ test_that("classical momentum with bold driver adaptive fn momentum prevents cos
   expect_equal(res$progress$f, fs, tol = 1e-3)
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
 })
 
@@ -581,6 +609,7 @@ test_that("sutskever nesterov momentum with bold driver", {
   fs <- c(24.2, 6.32, 4.33, 4.78)
   g2ns <- c(232.87, 64.72, 22.22, 36.89)
   steps <- c(0, 0.25, 0.088, 0.0584)
+  mus <- c(0.2, 0.2, 0.2, 0.2)
   par <- c(-0.987, 1.065)
 
   expect_equal(res$progress$nf, nfs)
@@ -588,6 +617,7 @@ test_that("sutskever nesterov momentum with bold driver", {
   expect_equal(res$progress$f, fs, tol = 1e-3)
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
 })
 
@@ -616,6 +646,7 @@ test_that("nesterov momentum with bold driver and adaptive fn", {
   fs <- c(24.2, 6.32, 4.33, 4.33)
   g2ns <- c(232.87, 64.72, 22.22, 22.22)
   steps <- c(0, 0.25, 0.088, 0)
+  mus <- c(0.2, 0.2, 0.2, 0.2)
   par <- c(-1.042, 1.046)
 
   expect_equal(res$progress$nf, nfs)
@@ -623,6 +654,7 @@ test_that("nesterov momentum with bold driver and adaptive fn", {
   expect_equal(res$progress$f, fs, tol = 1e-3)
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
 })
 
@@ -652,6 +684,7 @@ test_that("nesterov accelerated gradient with wolfe line search", {
   fs <- c(24.2, 4.128, 3.913, 3.558)
   g2ns <- c(232.87, 1.777, 23.908, 7.200)
   steps <- c(0, 0.184, 0.301, 0.048)
+  mus <- c(0, 0, 0.282, 0.434)
   par <- c(-0.869, 0.781)
   # also records fn after gradient stage - compare with momentum-first
   # and see that these have the same values
@@ -662,13 +695,14 @@ test_that("nesterov accelerated gradient with wolfe line search", {
   expect_equal(res$progress$f, fs, tol = 1e-3)
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
   expect_equal(res$opt$all_fs, all_fs, tol = 1e-3)
 })
 
 test_that("nesterov momentum with wolfe line search is like NAG", {
 
-  # Add start_at = 2 so the first two updates are gradient-only, like NAG
+  # Add burn_in = 2 so the first two updates are gradient-only, like NAG
   # But even then, won't give exactly same result as "real" NAG
   # because parameters are returned half-way between steps compared to real NAG
   # Uncomment the 'log_vals' hook in this and the test above to see that
@@ -678,7 +712,7 @@ test_that("nesterov momentum with wolfe line search is like NAG", {
     make_stages(
       momentum_stage(
         direction = momentum_direction(),
-        step_size = nesterov_convex_step(start_at = 2)),
+        step_size = nesterov_convex_step(burn_in = 2)),
       gradient_stage(
         direction = sd_direction(),
         step_size = more_thuente_ls(c2 = 1.e-9)),
@@ -696,6 +730,7 @@ test_that("nesterov momentum with wolfe line search is like NAG", {
   fs <- c(24.2, 4.128, 3.886, 3.582)
   g2ns <- c(232.87, 1.777, 18.114, 1.858)
   steps <- c(0, 0.184, 0.235, 0.0709)
+  mus <- c(0, 0, 0, 0.282)
   par <- c(-0.891, 0.802)
   # compare with real NAG all_fns, after first stage, consecutive values are
   # the same
@@ -706,6 +741,7 @@ test_that("nesterov momentum with wolfe line search is like NAG", {
   expect_equal(res$progress$f, fs, tol = 1e-3)
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
   expect_equal(res$opt$all_fs, all_fs, tol = 1e-3)
 })
@@ -732,6 +768,7 @@ test_that("NAG with q = 1 is steepest descent", {
   fs <- c(24.2, 4.128, 3.886, 3.704)
   g2ns <- c(232.87, 1.777, 18.114, 1.843)
   steps <- c(0, 0.184, 0.235, 0.020)
+  mus <- c(0, 0, 0, 0)
   par <- c(-0.923, 0.860)
 
   expect_equal(res$progress$nf, nfs)
@@ -739,6 +776,7 @@ test_that("NAG with q = 1 is steepest descent", {
   expect_equal(res$progress$f, fs, tol = 1e-3)
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
 })
 
@@ -768,6 +806,7 @@ test_that("NAG with q close to 0 is the same as == 0", {
   fs <- c(24.2, 4.128, 3.913, 3.558)
   g2ns <- c(232.87, 1.777, 23.908, 7.200)
   steps <- c(0, 0.184, 0.301, 0.048)
+  mus <- c(0, 0, 0.282, 0.434)
   par <- c(-0.869, 0.781)
 
   expect_equal(res$progress$nf, nfs)
@@ -775,6 +814,7 @@ test_that("NAG with q close to 0 is the same as == 0", {
   expect_equal(res$progress$f, fs, tol = 1e-3)
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
 })
 
@@ -799,6 +839,7 @@ test_that("NAG with q = 0.5 between full NAG and SD", {
   fs <- c(24.2, 4.128, 3.891, 3.664)
   g2ns <- c(232.87, 1.777, 20.711, 3.442)
   steps <- c(0, 0.184, 0.265, 0.028)
+  mus <- c(0, 0, 0.128, 0.159)
   par <- c(-0.903, 0.831)
 
   expect_equal(res$progress$nf, nfs)
@@ -806,8 +847,43 @@ test_that("NAG with q = 0.5 between full NAG and SD", {
   expect_equal(res$progress$f, fs, tol = 1e-3)
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
 })
+
+test_that("NAG with approximate convex momentum", {
+
+  opt <- make_opt(
+    make_stages(
+      gradient_stage(
+        direction = sd_direction(),
+        step_size = more_thuente_ls(c2 = 1.e-9)),
+      momentum_stage(
+        direction = nesterov_momentum_direction(),
+        step_size = nesterov_convex_approx_step()
+      ),
+      verbose = FALSE))
+
+  res <- optloop(opt, out0, rosenbrock_fg$fn, rosenbrock_fg$gr, 3,
+                 store_progress = TRUE, verbose = FALSE)
+
+  nfs <- c(0, 9, 15, 26)
+  ngs <- c(0, 9, 15, 26)
+  fs <- c(24.2, 6.786, 4.105, 10.49)
+  g2ns <- c(232.87, 70.86, 1.787, 65.14)
+  steps <- c(0, 0.257, 0.0740, 1.569)
+  mus <- c(0, 0.4, 0.5, 0.571)
+  par <- c(-0.185, -0.267)
+
+  expect_equal(res$progress$nf, nfs)
+  expect_equal(res$progress$ng, ngs)
+  expect_equal(res$progress$f, fs, tol = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
+  expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
+  expect_equal(res$par, par, tol = 1e-3)
+})
+
 
 # Wolfe line search
 test_that("Polak Ribiere CG with Rasmussen LS", {
@@ -958,6 +1034,7 @@ test_that("delta bar delta adaptive learning rate using momentum", {
   fs <- c(24.2, 7.10, 6.53, 4.84)
   g2ns <- c(232.87, 83.18, 67.62, 37.87)
   steps <- c(0, 0.11, 0.143, 0.032)
+  mus <- c(0.2, 0.2, 0.2, 0.2)
   par <- c(-0.993, 1.080)
 
   expect_equal(res$progress$nf, nfs)
@@ -965,6 +1042,7 @@ test_that("delta bar delta adaptive learning rate using momentum", {
   expect_equal(res$progress$f, fs, tol = 1e-3)
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
 })
 
@@ -998,6 +1076,7 @@ test_that("delta bar delta adaptive learning rate using momentum and additive in
   fs <- c(24.2, 5.59, 9.45, 6.01)
   g2ns <- c(232.87, 53.36, 97.69, 60.21)
   steps <- c(0, 0.238, 0.052, 0.044)
+  mus <- c(0.4, 0.4, 0.4, 0.4)
   par <- c(-0.966, 1.079)
 
   expect_equal(res$progress$nf, nfs)
@@ -1005,5 +1084,6 @@ test_that("delta bar delta adaptive learning rate using momentum and additive in
   expect_equal(res$progress$f, fs, tol = 1e-3)
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
 })

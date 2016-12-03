@@ -160,6 +160,7 @@ rcg_line_search <- function(ls_fn,
 
 make_phi_alpha <- function(par, fn, gr, pm,
                             calc_gradient_default = FALSE, debug = FALSE) {
+  # LS functions are responsible for updating fn and gr count
   function(alpha, calc_gradient = calc_gradient_default) {
     y_alpha <- par + (alpha * pm)
 

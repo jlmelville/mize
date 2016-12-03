@@ -1,5 +1,62 @@
 # Functions used only for testing
 
+
+# Rosenbrock ---------------------------------------------------------------
+
+out0 <- c(-1.2, 1)
+# taken from the optim man page
+rosenbrock_fg <- list(
+  fn = function(x) {
+    x1 <- x[1]
+    x2 <- x[2]
+    100 * (x2 - x1 * x1) ^ 2 + (1 - x1) ^ 2
+  },
+  gr = function(x) {
+    x1 <- x[1]
+    x2 <- x[2]
+    c(
+      -400 * x1 * (x2 - x1 * x1) - 2 * (1 - x1),
+      200 *      (x2 - x1 * x1))
+  },
+  fg <- function(x) {
+    x1 <- x[1]
+    x2 <- x[2]
+    a <- (x2 - x1 * x1)
+    b <- 1 - x1
+    list(
+      f = 100 * a * a + b * b,
+      g = c(
+        -400 * x1 * a - 2 * b,
+        200 * a
+      )
+    )
+  },
+  n = 2
+)
+
+wrap_fg <- function(fg) {
+  nc <- fg$n
+  nr <- 1
+
+  list(
+    nc = nc,
+    nr = nr,
+    method = list(
+      cost = list(
+        fn = function(inp, out, method) {
+          fg$fn(out$ym)
+        }
+      ),
+      eps = .Machine$double.eps
+    ),
+    grad_func = function(inp, out, method, mat_name) {
+      list(gm = matrix(fg$gr(out[[mat_name]]), nrow = nr, ncol = nc))
+    }
+  )
+}
+rosenbrock <- wrap_fg(rosenbrock_fg)
+
+
 # Create Initial Step Value
 #
 # Given a set of start parameters and a search direction, initializes the

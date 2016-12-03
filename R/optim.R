@@ -1,124 +1,3 @@
-
-# Test Data ---------------------------------------------------------------
-
-out0 <- c(-1.2, 1)
-# taken from the optim man page
-rosenbrock_fg <- list(
-  fn = function(x) {
-    x1 <- x[1]
-    x2 <- x[2]
-    100 * (x2 - x1 * x1) ^ 2 + (1 - x1) ^ 2
-  },
-  gr = function(x) {
-    x1 <- x[1]
-    x2 <- x[2]
-    c(
-     -400 * x1 * (x2 - x1 * x1) - 2 * (1 - x1),
-      200 *      (x2 - x1 * x1))
-  },
-  fg <- function(x) {
-    x1 <- x[1]
-    x2 <- x[2]
-    a <- (x2 - x1 * x1)
-    b <- 1 - x1
-    list(
-       f = 100 * a * a + b * b,
-       g = c(
-         -400 * x1 * a - 2 * b,
-          200 * a
-        )
-    )
-  },
-  n = 2
-)
-
-wrap_fg <- function(fg) {
-  nc <- fg$n
-  nr <- 1
-
-  list(
-    nc = nc,
-    nr = nr,
-    method = list(
-      cost = list(
-        fn = function(inp, out, method) {
-          fg$fn(out$ym)
-        }
-      ),
-      eps = .Machine$double.eps
-    ),
-    grad_func = function(inp, out, method, mat_name) {
-      list(gm = matrix(fg$gr(out[[mat_name]]), nrow = nr, ncol = nc))
-    }
-  )
-}
-rosenbrock <- wrap_fg(rosenbrock_fg)
-
-# Function / Gradient ----------------------------------------------------------------
-
-# Uncached function evaluation for arbitrary values of par
-calc_fn <- function(opt, par, fn) {
-  opt$fn <- fn(par)
-  opt$counts$fn <- opt$counts$fn + 1
-  opt
-}
-
-# Cached function evaluation for par value after finding a step size
-# (possibly re-usable)
-calc_fn_new <- function(opt, par, fn, iter) {
-  if (is.null(opt$cache$fn_new_iter) || opt$cache$fn_new_iter != iter) {
-    opt <- set_fn_new(opt, fn(par), iter)
-    opt$counts$fn <- opt$counts$fn + 1
-  }
-  opt
-}
-
-set_fn_new <- function(opt, val, iter) {
-  opt$cache$fn_new <- val
-  opt$cache$fn_new_iter <- iter
-  opt
-}
-
-# Cached function evaluation for par at starting point
-# (possibly re-usable)
-calc_fn_curr <- function(opt, par, fn, iter) {
-  if (is.null(opt$cache$fn_curr_iter) || opt$cache$fn_curr_iter != iter) {
-    opt <- set_fn_curr(opt, fn(par), iter)
-    opt$counts$fn <- opt$counts$fn + 1
-    #message("Calculated and cached fn = ", formatC(opt$cache$fn_curr))
-  }
-  opt
-}
-
-set_fn_curr <- function(opt, val, iter) {
-  opt$cache$fn_curr <- val
-  opt$cache$fn_curr_iter <- iter
-  opt
-}
-
-# Cached gradient evaluation for par value at start of iteration
-# (possibly re-usable)
-calc_gr_curr <- function(opt, par, gr, iter) {
-  if (is.null(opt$cache$gr_curr_iter) || opt$cache$gr_curr_iter != iter) {
-    opt <- set_gr_curr(opt, gr(par), iter)
-    opt$counts$gr <- opt$counts$gr + 1
-  }
-  opt
-}
-
-set_gr_curr <- function(opt, val, iter) {
-  opt$cache$gr_curr <- val
-  opt$cache$gr_curr_iter <- iter
-  opt
-}
-
-# Uncached gradient evaluation for arbitrary values of par
-calc_gr <- function(opt, par, gr) {
-  opt$gr <- gr(par)
-  opt$counts$gr <- opt$counts$gr + 1
-  opt
-}
-
 # Optimizer ---------------------------------------------------------------
 
 optloop <- function(opt, par, fn, gr, max_iter = 10, verbose = FALSE,
@@ -263,7 +142,7 @@ opt_results <- function(opt, par, fn, gr, iter, par0 = NULL) {
   g2n <- norm2(g)
   step_size <- norm2(par - par0)
 
-  list(
+  res <- list(
     f = f,
     g2n = g2n,
     nf = opt$counts$fn,
@@ -272,6 +151,15 @@ opt_results <- function(opt, par, fn, gr, iter, par0 = NULL) {
     step = step_size,
     iter = iter
   )
+
+  if ("momentum" %in% names(opt$stages)) {
+    res$mu <- opt$stages[["momentum"]]$step_size$value
+    if (is.null(res$mu)) {
+      res$mu <- 0
+    }
+  }
+
+  res
 }
 
 opt_report <- function(opt_result, print_time = FALSE, print_par = FALSE) {
@@ -294,10 +182,14 @@ opt_report <- function(opt_result, print_time = FALSE, print_par = FALSE) {
 }
 
 update_progress <- function(opt_res, progress) {
-  progress <- rbind(progress, c(opt_res$f, opt_res$g2n, opt_res$nf, opt_res$ng,
-                                opt_res$step))
+  res_names <- c("f", "g2n", "nf", "ng", "step")
+  if (!is.null(opt_res$mu)) {
+    res_names <- c(res_names, "mu")
+  }
+  progress <- rbind(progress, opt_res[res_names])
+
   # Probably not a major performance issue to regenerate column names each time
-  colnames(progress) <- c("f", "g2n", "nf", "ng", "step")
+  colnames(progress) <- res_names
   rownames(progress)[nrow(progress)] <- opt_res$iter
   progress
 }
@@ -451,204 +343,70 @@ update_counts <- function(counts, new_counts) {
   counts
 }
 
-# Wrappers ----------------------------------------------------------------
+# Function / Gradient ----------------------------------------------------------------
 
-prepend_stage <- function(opt, stage) {
-  opt$stages <- append(stage, opt$stages)
+# Uncached function evaluation for arbitrary values of par
+calc_fn <- function(opt, par, fn) {
+  opt$fn <- fn(par)
+  opt$counts$fn <- opt$counts$fn + 1
   opt
 }
 
-append_stage <- function(opt, stage) {
-  opt$stages <- append(opt$stages, stage)
-  opt
-}
-
-
-
-
-# Momentum Dependencies ------------------------------------------------------------
-
-# After step
-require_update_old <- function(opt, par, fn, gr, iter, par0, update) {
-  #message("update_old: saving old update")
-  opt$cache$update_old <- update
-  opt
-}
-attr(require_update_old, 'event') <- 'after step'
-attr(require_update_old, 'name') <- 'update_old'
-attr(require_update_old, 'depends') <- 'update_old_init'
-
-require_update_old_init <- function(opt, stage, sub_stage, par, fn, gr, iter) {
-  # message("Initializing update_old")
-  opt$cache$update_old <- rep(0, length(par))
-  list(opt = opt)
-}
-attr(require_update_old_init, 'event') <- 'init momentum direction'
-attr(require_update_old_init, 'name') <- 'update_old_init'
-
-require_adaptive_restart <- function(opt, par, fn, gr, iter, par0, update) {
-  if (!opt$ok) {
-    opt <- life_cycle_hook("momentum", "init", opt, par, fn, gr, iter)
-    message("adaptive restart: restarting momentum")
-  }
-  else {
-    opt$cache$update_old <- update
-    message("adaptive restart: continuing")
+# Cached function evaluation for par value after finding a step size
+# (possibly re-usable)
+calc_fn_new <- function(opt, par, fn, iter) {
+  if (is.null(opt$cache$fn_new_iter) || opt$cache$fn_new_iter != iter) {
+    opt <- set_fn_new(opt, fn(par), iter)
+    opt$counts$fn <- opt$counts$fn + 1
   }
   opt
 }
-attr(require_adaptive_restart, 'event') <- 'after step'
-# Should have the same name as normal update old: we want to replace that hook
-attr(require_adaptive_restart, 'name') <- 'update_old'
-attr(require_adaptive_restart, 'depends') <- 'update_old_init'
 
-
-
-# Gradient Dependencies ------------------------------------------------------------
-
-require_gradient <- function(opt, stage, par, fn, gr, iter) {
-  if (!has_gr_curr(opt, iter)) {
-    #message("require gradient: calculating gr_curr ", iter)
-    opt <- calc_gr_curr(opt, par, gr, iter)
-
-    if (any(is.nan(opt$cache$gr_curr))) {
-      stop("NaN in grad. descent at iter ", iter)
-    }
-  }
-  else {
-    #message("require gradient: already have gr_curr")
-  }
-  list(opt = opt)
-}
-attr(require_gradient, 'event') <- 'before gradient_descent'
-attr(require_gradient, 'name') <- 'gradient'
-
-require_gradient_old <- function(opt, par, fn, gr, iter, par0, update) {
-#  message("saving old gradient")
-  opt$cache$gr_old <- opt$cache$gr_curr
+set_fn_new <- function(opt, val, iter) {
+  opt$cache$fn_new <- val
+  opt$cache$fn_new_iter <- iter
   opt
 }
-attr(require_gradient_old, 'event') <- 'after step'
-attr(require_gradient_old, 'name') <- 'gradient_old'
 
-# Validate ----------------------------------------------------------------
-
-require_validate_fn <- function(opt, par, fn, gr, iter, par0, update) {
-  #message("validating fn")
-  #message("fn_new = ", formatC(opt$cache$fn_new), " fn_curr = ", formatC(opt$cache$fn_curr))
-  opt$ok <- opt$cache$fn_new < opt$cache$fn_curr
-  opt
-}
-attr(require_validate_fn, 'name') <- 'validate_fn'
-attr(require_validate_fn, 'event') <- 'during validation'
-attr(require_validate_fn, 'depends') <- 'fn_new fn_curr save_cache_on_failure'
-
-
-# This relies on the gradient being calculated in the "classical" location
-# i.e. not using the implementation of Nesterov Acceleration
-# Wants: gradient
-require_validate_gr <- function(opt, par, fn, gr, iter, par0, update) {
-  opt$ok <- dot(opt$cache$gr_curr, update) < 0
-  # message("validating by gradient: ", "g = ", vec_formatC(opt$cache$gr_curr),
-  #   " v = ", vec_formatC(update), " g.v = ", formatC(dot(opt$cache$gr_curr, update)),
-  #   " ok = ", opt$ok)
-
-  opt
-}
-attr(require_validate_gr, 'name') <- 'validate_gr'
-attr(require_validate_gr, 'event') <- 'during validation'
-attr(require_validate_gr, 'depends') <- 'gradient save_cache_on_failure'
-
-# Validate Dependencies ------------------------------------------------------------
-
-require_fn_curr <- function(opt, par, fn, gr, iter, par0, update) {
-  #message("requiring fn_curr")
-  if (!has_fn_curr(opt, iter)) {
-    #message("require fn curr: calculating fn_curr ", iter)
-    opt <- calc_fn_curr(opt, par, fn, iter)
-  }
-  #else {
-    #message("require fn curr: already have fn_curr")
-  #}
-
-  opt
-}
-attr(require_fn_curr, 'name') <- 'fn_curr'
-attr(require_fn_curr, 'event') <- 'before step'
-attr(require_fn_curr, 'depends') <- 'update_fn_cache'
-
-require_fn_new <- function(opt, par, fn, gr, iter, par0, update) {
-  #message("require fn_new")
-  if (!has_fn_new(opt, iter)) {
-    #message("require fn new: calculating fn_new ", iter)
-    opt <- calc_fn_new(opt, par, fn, iter)
-  }
-  else {
-    #message("require fn new: already have fn_new")
+# Cached function evaluation for par at starting point
+# (possibly re-usable)
+calc_fn_curr <- function(opt, par, fn, iter) {
+  if (is.null(opt$cache$fn_curr_iter) || opt$cache$fn_curr_iter != iter) {
+    opt <- set_fn_curr(opt, fn(par), iter)
+    opt$counts$fn <- opt$counts$fn + 1
+    #message("Calculated and cached fn = ", formatC(opt$cache$fn_curr))
   }
   opt
 }
-attr(require_fn_new, 'name') <- 'fn_new'
-attr(require_fn_new, 'event') <- 'before validation'
 
-require_update_fn_cache <- function(opt, par, fn, gr, iter, par0, update) {
-  if (opt$ok && has_fn_new(opt, iter)) {
-    #message("prestoring f_curr for iter ", iter + 1)
-    opt <- set_fn_curr(opt, opt$cache$fn_new, iter + 1)
+set_fn_curr <- function(opt, val, iter) {
+  opt$cache$fn_curr <- val
+  opt$cache$fn_curr_iter <- iter
+  opt
+}
+
+# Cached gradient evaluation for par value at start of iteration
+# (possibly re-usable)
+calc_gr_curr <- function(opt, par, gr, iter) {
+  if (is.null(opt$cache$gr_curr_iter) || opt$cache$gr_curr_iter != iter) {
+    opt <- set_gr_curr(opt, gr(par), iter)
+    opt$counts$gr <- opt$counts$gr + 1
   }
   opt
 }
-attr(require_update_fn_cache, 'name') <- 'update_fn_cache'
-attr(require_update_fn_cache, 'event') <- 'after step'
 
-require_save_cache_on_failure <- function(opt, par, fn, gr, iter, par0, update) {
-  # not safe to re-use gr_curr and fn_curr unless gradient calc is the first
-  # stage: Nesterov results in moving par via momentum before grad calc.
-  # Different result will occur after restart
-  if (!opt$ok && opt$stages[[1]]$type == "gradient_descent") {
-#    message("Saving 'curr' values in cache due to validation failure")
-    cache <- opt$cache
-    for (name in names(cache)) {
-      if (endsWith(name, "_curr")) {
-        iter_name <- paste0(name, "_iter")
-        cache_iter <- cache[[iter_name]]
-        if (!is.null(cache_iter) && cache_iter == iter) {
-          #message("Saving '", name, "'")
-          cache[[iter_name]] <- cache_iter + 1
-        }
-      }
-    }
-    opt$cache <- cache
-  }
+set_gr_curr <- function(opt, val, iter) {
+  opt$cache$gr_curr <- val
+  opt$cache$gr_curr_iter <- iter
   opt
 }
-attr(require_save_cache_on_failure, 'name') <- 'save_cache_on_failure'
-attr(require_save_cache_on_failure, 'event') <- 'after step'
 
-
-# Logging Hooks -----------------------------------------------------------
-
-
-require_log_vals <- function(opt, stage, par, fn, gr, iter) {
-  message(iter, " ", substr(stage$type, 1, 2)
-          ," par = ", vec_formatC(par)
-          ," p = ", vec_formatC(stage$direction$value)
-          , " a = ", formatC(stage$step_size$value)
-          , " ap = ", vec_formatC(stage$result)
-          , " f = ", formatC(fn(par)))
-  list(opt = opt)
+# Uncached gradient evaluation for arbitrary values of par
+calc_gr <- function(opt, par, gr) {
+  opt$gr <- gr(par)
+  opt$counts$gr <- opt$counts$gr + 1
+  opt
 }
-attr(require_log_vals, 'name') <- 'log_vals'
-attr(require_log_vals, 'event') <- 'after stage'
-
-require_keep_stage_fs <- function(opt, stage, par, fn, gr, iter) {
-  if (is.null(opt$all_fs)) { opt$all_fs <- c() }
-  f <- fn(par)
-  opt$all_fs <- c(opt$all_fs, f)
-  list(opt = opt)
-}
-attr(require_keep_stage_fs, 'name') <- 'require_keep_stage_fs'
-attr(require_keep_stage_fs, 'event') <- 'after stage'
 
 # Predicates --------------------------------------------------------------
 

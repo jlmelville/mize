@@ -261,3 +261,29 @@ lbfgs_direction <- function(memory = 100, scale_inverse = FALSE,
   ))
 }
 
+# Gradient Dependencies ------------------------------------------------------------
+
+require_gradient <- function(opt, stage, par, fn, gr, iter) {
+  if (!has_gr_curr(opt, iter)) {
+    #message("require gradient: calculating gr_curr ", iter)
+    opt <- calc_gr_curr(opt, par, gr, iter)
+
+    if (any(is.nan(opt$cache$gr_curr))) {
+      stop("NaN in grad. descent at iter ", iter)
+    }
+  }
+  else {
+    #message("require gradient: already have gr_curr")
+  }
+  list(opt = opt)
+}
+attr(require_gradient, 'event') <- 'before gradient_descent'
+attr(require_gradient, 'name') <- 'gradient'
+
+require_gradient_old <- function(opt, par, fn, gr, iter, par0, update) {
+  #  message("saving old gradient")
+  opt$cache$gr_old <- opt$cache$gr_curr
+  opt
+}
+attr(require_gradient_old, 'event') <- 'after step'
+attr(require_gradient_old, 'name') <- 'gradient_old'

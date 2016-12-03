@@ -52,3 +52,27 @@ format_vec <- function(vec) {
 }
 
 
+# Logging Hooks -----------------------------------------------------------
+
+
+require_log_vals <- function(opt, stage, par, fn, gr, iter) {
+  message(iter, " ", substr(stage$type, 1, 2)
+          ," par = ", vec_formatC(par)
+          ," p = ", vec_formatC(stage$direction$value)
+          , " a = ", formatC(stage$step_size$value)
+          , " ap = ", vec_formatC(stage$result)
+          , " f = ", formatC(fn(par)))
+  list(opt = opt)
+}
+attr(require_log_vals, 'name') <- 'log_vals'
+attr(require_log_vals, 'event') <- 'after stage'
+
+require_keep_stage_fs <- function(opt, stage, par, fn, gr, iter) {
+  if (is.null(opt$all_fs)) { opt$all_fs <- c() }
+  f <- fn(par)
+  opt$all_fs <- c(opt$all_fs, f)
+  list(opt = opt)
+}
+attr(require_keep_stage_fs, 'name') <- 'require_keep_stage_fs'
+attr(require_keep_stage_fs, 'event') <- 'after stage'
+
