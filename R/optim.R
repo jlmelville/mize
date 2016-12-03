@@ -250,8 +250,9 @@ optimize_step <- function(opt, par, fn, gr, iter) {
 
 opt_init <- function(opt, par, fn, gr, iter) {
   opt <- register_hooks(opt)
-  opt <- life_cycle_hook("opt", "init", opt, par, fn, gr, iter)
 #  list_hooks(opt)
+
+  opt <- life_cycle_hook("opt", "init", opt, par, fn, gr, iter)
 
   opt
 }
@@ -307,6 +308,7 @@ make_opt <- function(stages,
                      verbose = FALSE) {
   opt <- list(
     init = function(opt, par, fn, gr, iter) {
+      opt <- default_handler("opt", "init", opt, par, fn, gr, iter)
       for (i in 1:length(opt$stages)) {
         opt$stage_i <- i
         opt <- life_cycle_hook(opt$stages[[i]]$type, "init", opt, par, fn, gr, iter)
@@ -477,7 +479,7 @@ attr(require_update_old, 'name') <- 'update_old'
 attr(require_update_old, 'depends') <- 'update_old_init'
 
 require_update_old_init <- function(opt, stage, sub_stage, par, fn, gr, iter) {
-#  message("Initializing update_old")
+  # message("Initializing update_old")
   opt$cache$update_old <- rep(0, length(par))
   list(opt = opt)
 }

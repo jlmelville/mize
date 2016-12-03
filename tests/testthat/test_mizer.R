@@ -808,40 +808,6 @@ test_that("NAG with q = 0.5 between full NAG and SD", {
   expect_equal(res$par, par, tol = 1e-3)
 })
 
-
-# Delta-Bar-Delta
-test_that("classical momentum with approximate delta-bar-delta", {
-
-  opt <- make_opt(
-    make_stages(
-      gradient_stage(
-        direction = sd_direction(normalize = TRUE),
-        step_size = jacobs(epsilon = 0.1)),
-      momentum_stage(
-        direction = momentum_direction(),
-        step_size = constant_step_size(
-          value = 0.2
-        )),
-      verbose = FALSE))
-
-  res <- optloop(opt, out0, rosenbrock_fg$fn, rosenbrock_fg$gr, 3,
-                 store_progress = TRUE, verbose = FALSE)
-
-  nfs <- c(0, 0, 0, 0)
-  ngs <- c(0, 1, 2, 3)
-  fs <- c(24.2, 7.10, 6.53, 4.84)
-  g2ns <- c(232.87, 83.18, 67.62, 37.87)
-  steps <- c(0, 0.11, 0.143, 0.032)
-  par <- c(-0.993, 1.080)
-
-  expect_equal(res$progress$nf, nfs)
-  expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
-})
-
 # Wolfe line search
 test_that("Polak Ribiere CG with Rasmussen LS", {
 
@@ -931,4 +897,112 @@ test_that("L-BFGS with More-Thuente LS gives same results as BFGS with sufficien
   expect_equal(res$par, par, tol = 1e-3)
 })
 
+test_that("delta bar delta adaptive learning rate", {
 
+  opt <- make_opt(
+    make_stages(
+      gradient_stage(
+        direction = sd_direction(normalize = TRUE),
+        step_size = delta_bar_delta(
+          epsilon = 0.1,
+          kappa_fun = `*`,
+          kappa = 1.1,
+          phi = 0.5,
+          theta = 0.2))),
+      verbose = FALSE)
+
+  res <- optloop(opt, out0, rosenbrock_fg$fn, rosenbrock_fg$gr, 3,
+                 store_progress = TRUE, verbose = FALSE)
+
+  nfs <- c(0, 0, 0, 0)
+  ngs <- c(0, 1, 2, 3)
+  fs <- c(24.2, 7.10, 5.28, 4.21)
+  g2ns <- c(232.87, 83.18, 47.48, 13.66)
+  steps <- c(0, 0.11, 0.121, 0.0605)
+  par <- c(-1.040, 1.060)
+
+  expect_equal(res$progress$nf, nfs)
+  expect_equal(res$progress$ng, ngs)
+  expect_equal(res$progress$f, fs, tol = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
+  expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$par, par, tol = 1e-3)
+})
+
+test_that("delta bar delta adaptive learning rate using momentum", {
+
+  # similar to van der Maaten formulation in t-SNE matlab code
+  opt <- make_opt(
+    make_stages(
+      gradient_stage(
+        direction = sd_direction(normalize = TRUE),
+        step_size = delta_bar_delta(
+          epsilon = 0.1,
+          use_momentum = TRUE,
+          kappa_fun = `*`,
+          kappa = 1.1,
+          phi = 0.5)),
+      momentum_stage(
+        direction = momentum_direction(),
+        step_size = constant_step_size(
+          value = 0.2
+        )),
+      verbose = FALSE))
+
+  res <- optloop(opt, out0, rosenbrock_fg$fn, rosenbrock_fg$gr, 3,
+                 store_progress = TRUE, verbose = FALSE)
+
+  nfs <- c(0, 0, 0, 0)
+  ngs <- c(0, 1, 2, 3)
+  fs <- c(24.2, 7.10, 6.53, 4.84)
+  g2ns <- c(232.87, 83.18, 67.62, 37.87)
+  steps <- c(0, 0.11, 0.143, 0.032)
+  par <- c(-0.993, 1.080)
+
+  expect_equal(res$progress$nf, nfs)
+  expect_equal(res$progress$ng, ngs)
+  expect_equal(res$progress$f, fs, tol = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
+  expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$par, par, tol = 1e-3)
+})
+
+test_that("delta bar delta adaptive learning rate using momentum and additive increase", {
+
+  # even more similar to van der Maaten formulation in t-SNE matlab code
+  # in that the step length is increased with a fixed value rather than a
+  # percent; also don't normalize direction vector
+  opt <- make_opt(
+    make_stages(
+      gradient_stage(
+        direction = sd_direction(normalize = FALSE),
+        step_size = delta_bar_delta(
+          epsilon = 0.001,
+          use_momentum = TRUE,
+          kappa_fun = `+`,
+          kappa = 0.02,
+          phi = 0.8)),
+      momentum_stage(
+        direction = momentum_direction(),
+        step_size = constant_step_size(
+          value = 0.4
+        )),
+      verbose = FALSE))
+
+  res <- optloop(opt, out0, rosenbrock_fg$fn, rosenbrock_fg$gr, 3,
+                 store_progress = TRUE, verbose = FALSE)
+
+  nfs <- c(0, 0, 0, 0)
+  ngs <- c(0, 1, 2, 3)
+  fs <- c(24.2, 5.59, 9.45, 6.01)
+  g2ns <- c(232.87, 53.36, 97.69, 60.21)
+  steps <- c(0, 0.238, 0.052, 0.044)
+  par <- c(-0.966, 1.079)
+
+  expect_equal(res$progress$nf, nfs)
+  expect_equal(res$progress$ng, ngs)
+  expect_equal(res$progress$f, fs, tol = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
+  expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$par, par, tol = 1e-3)
+})

@@ -128,60 +128,66 @@ bold_driver <- function(inc_mult = 1.1, dec_mult = 0.5,
     ))
 }
 
-
-# Jacobs ------------------------------------------------------------------
-
-
-
-# Wants: gradient, update_old
-jacobs <- function(inc_mult = 1.1, dec_mult = 0.5,
-                   inc_fn = partial(`*`, inc_mult),
-                   dec_fn = partial(`*`, dec_mult),
-                   init_gain = 1,
-                   min_gain = 0.01,
-                   epsilon = 1) {
-
-
+delta_bar_delta <- function(kappa = 1.1, kappa_fun = `*`,
+                                      phi = 0.5, epsilon = 1,
+                                min_eps = 0,
+                                theta = 0.1,
+                                use_momentum = FALSE) {
   make_step_size(list(
-    name = "jacob",
-    inc_fn = inc_fn,
-    dec_fn = dec_fn,
-    init_gain = init_gain,
-    min_gain = min_gain,
+    name = "delta_bar_delta",
+    kappa = kappa,
+    kappa_fun = kappa_fun,
+    phi = phi,
+    min_eps = min_eps,
+    theta = theta,
     epsilon = epsilon,
+    use_momentum = use_momentum,
     init = function(opt, stage, sub_stage, par, fn, gr, iter) {
-      #message("Initializing Jacobs")
-      sub_stage$old_gain <- rep(1, length(par))
+      sub_stage$delta_bar_old <- rep(0, length(par))
+      sub_stage$gamma_old <- rep(1, length(par))
+      sub_stage$value <- rep(sub_stage$init_eps, length(par))
       list(sub_stage = sub_stage)
     },
     calculate = function(opt, stage, sub_stage, par, fn, gr, iter) {
-      #message("Jacobs calculate")
-      gm <- opt$cache$gr_curr
-      old_gain <- sub_stage$old_gain
-      inc_fn <- sub_stage$inc_fn
-      dec_fn <- sub_stage$dec_fn
-      update <- opt$cache$update_old
-      min_gain <- sub_stage$min_gain
+      delta <- opt$cache$gr_curr
 
-      new_gain <-
-        inc_fn(old_gain) * abs(sign(gm) != sign(update)) +
-        dec_fn(old_gain) * abs(sign(gm) == sign(update))
+      if (use_momentum && !is.null(opt$cache$update_old)) {
+        # previous update includes -eps*grad_old, so reverse sign
+        delta_bar_old <- -opt$cache$update_old
+      }
+      else {
+        delta_bar_old <- sub_stage$delta_bar_old
+      }
+      # technically delta_bar_delta = delta_bar * delta
+      # but only its sign matters, so just compare signs of delta_bar and delta
+      if (iter == 1) {
+        # Force step size increase on first stage to be like the t-SNE
+        # implementation
+        delta_bar_delta <- TRUE
+      }
+      else {
+        delta_bar_delta <- sign(delta_bar_old) == sign(delta)
+      }
+      kappa <- sub_stage$kappa
+      phi <- sub_stage$phi
+      gamma_old <- sub_stage$gamma_old
 
-      new_gain <- clamp(new_gain, min_gain)
+      # signs of delta_bar and delta are the same, increase step size
+      # if they're not, decrease.
+      gamma <-
+        (kappa_fun(gamma_old,kappa)) * abs(delta_bar_delta) +
+        (gamma_old * phi) * abs(!delta_bar_delta)
 
-      sub_stage$gain <- new_gain
-      sub_stage$value <- new_gain * sub_stage$epsilon
+      sub_stage$value <- clamp(epsilon * gamma, min_val = sub_stage$min_eps)
+
+      if (!use_momentum || is.null(opt$cache$update_old)) {
+        theta <- sub_stage$theta
+        sub_stage$delta_bar_old <- ((1 - theta) * delta) + (theta * delta_bar_old)
+      }
+      sub_stage$gamma_old <- gamma
+
       list(opt = opt, sub_stage = sub_stage)
     },
-    after_step = function(opt, stage, sub_stage, par, fn, gr, iter, par0,
-                          update) {
-      #message("After step Jacobs")
-      sub_stage$old_gain <- sub_stage$gain
-      list(opt = opt, sub_stage = sub_stage)
-    },
-    depends = c("gradient", "update_old")
+    depends = c("gradient")
   ))
 }
-
-
-

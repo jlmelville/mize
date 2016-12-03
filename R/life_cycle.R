@@ -68,15 +68,15 @@
 # Calls all hooks registered with the phase firing this event
 life_cycle_hook <- function(phase, advice_type, opt, par, fn, gr, iter, ...) {
   # message("life cycle phase: '", phase, "' advice_type: '",
-  #         advice_type, "' triggered")
+  #          advice_type, "' triggered")
 
   handler <- life_cycle_handler(phase, advice_type, opt)
   if (is.null(handler)) {
-#    message("Invoking default handler for '", advice_type, " ", phase, "'")
+    # message("Invoking default handler for '", advice_type, " ", phase, "'")
    opt <- default_handler(phase, advice_type, opt, par, fn, gr, iter, ...)
   }
   else {
-#    message("Invoking handler for '", advice_type, " ", phase, "'")
+    # message("Invoking handler for '", advice_type, " ", phase, "'")
     opt <- handler(opt, par, fn, gr, iter, ...)
   }
   opt
@@ -107,14 +107,13 @@ default_handler <- function(phase, advice_type, opt, par, fn, gr, iter, ...) {
   if (is.null(hooks)) {
     return(opt)
   }
-
-  if (length(names(hooks)) > 0) {
-#    message("life cycle phase: '", phase, "' advice_type: '",
-#            advice_type, "' firing")
-  }
+  # if (length(names(hooks)) > 0) {
+  #  message("life cycle phase: '", phase, "' advice_type: '",
+  #          advice_type, "' firing")
+  # }
   for (name in names(hooks)) {
     hook <- hooks[[name]]
-    #message("life_cycle_hook: ", name)
+    # message("life_cycle_hook: ", name)
     opt <- hook(opt, par, fn, gr, iter, ...)
   }
   opt
