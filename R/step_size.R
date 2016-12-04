@@ -113,8 +113,8 @@ bold_driver <- function(inc_mult = 1.1, dec_mult = 0.5,
                                 max = sub_stage$max_value)
       #message(stage$type, " ", sub_stage$name, ": step size is now = ", formatC(sub_stage$value))
 
-      if (is_last_stage(opt, stage) && has_fn_new(opt, iter)) {
-        #message(stage$type, " ", sub_stage$name,  ": setting next fn_curr from fn_new for ", iter)
+      if (opt$ok && is_last_stage(opt, stage) && has_fn_new(opt, iter)) {
+        # message(stage$type, " ", sub_stage$name,  ": setting next fn_curr from fn_new for ", iter)
         opt <- set_fn_curr(opt, opt$cache$fn_new, iter + 1)
       }
 
