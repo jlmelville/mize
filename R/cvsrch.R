@@ -2,8 +2,7 @@
 #'
 #' Line Search Factory Function
 #'
-#' Returns a line search function that can be used in the
-#'  \code{\link{conj_grad}} function. This uses a variant of the More-Thuente
+#' Returns a line search function using a variant of the More-Thuente
 #'  line search originally implemented in
 #'  \href{http://www.netlib.org/minpack/}{MINPACK}.
 #'
@@ -12,8 +11,7 @@
 #' @param c2 Constant used in curvature condition. Should take a value between
 #'   \code{c1} and 1.
 #' @param max_fn Maximum number of function evaluations allowed.
-#' @return Line search function for use in the conjugate gradient routine.
-#' @export
+#' @return Line search function.
 #' @references
 #' More, J. J., & Thuente, D. J. (1994).
 #' Line search algorithms with guaranteed sufficient decrease.
@@ -22,11 +20,6 @@
 #' @seealso This code is based on a translation of the original MINPACK code
 #'  for Matlab by
 #'  \href{https://www.cs.umd.edu/users/oleary/software/}{Dianne O'Leary}.
-#' @examples
-#' \dontrun{
-#'  # assign to the line_search parameter in conj_grad:
-#'  conj_grad(line_search = more_thuente(c1 = 0.05, c2 = 0.1), ...)
-#' }
 more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf) {
   function(phi, step0, alpha) {
     res <- cvsrch(phi, step0, alpha = alpha, c1 = c1, c2 = c2, maxfev = max_fn)

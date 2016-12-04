@@ -25,13 +25,7 @@
 #'   too large.
 #' @param int Interpolation constant. Prevents step size being too small.
 #' @param max_fn Maximum number of function evaluations allowed.
-#' @return Line search function for use in the \code{\link{conj_grad}} routine.
-#' @export
-#' @examples
-#' \dontrun{
-#' # assign to the line_search parameter in conj_grad:
-#'  conj_grad(line_search = rasmussen(c1 = 0.05, c2 = 0.1), ...)
-#' }
+#' @return Line search function.
 #' @seealso Line search based on Matlab code by
 #'  \href{http://learning.eng.cam.ac.uk/carl/code/minimize/}{Carl Edward Rasmussen}
 #'  and also part of the Matlab
