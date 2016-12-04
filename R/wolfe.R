@@ -8,40 +8,49 @@
 # More-Thuente ------------------------------------------------------------
 
 more_thuente_ls <- function(c1 = c2 / 2, c2 = 0.1,
-                             max_alpha_mult = 10,
-                             min_step_size = .Machine$double.eps,
-                             initializer = "s",
-                             initial_step_length = 1,
-                             stop_at_min = TRUE, debug = FALSE) {
+                            max_alpha_mult = 10,
+                            min_step_size = .Machine$double.eps,
+                            initializer = "s",
+                            initial_step_length = 1,
+                            stop_at_min = TRUE,
+                            max_fn = Inf,
+                            max_gr = Inf,
+                            max_fg = Inf,
+                            debug = FALSE) {
 
-  line_search(more_thuente(c1 = c1, c2 = c2),
-                  name = "more-thuente",
-                   max_alpha_mult = max_alpha_mult,
-                   min_step_size = min_step_size, stop_at_min = stop_at_min,
-                   initializer = initializer,
-                   initial_step_length = initial_step_length,
-                   debug = debug)
+  line_search(more_thuente(c1 = c1, c2 = c2,
+                           max_fn = min(max_fn, max_gr, max_fg)),
+              name = "more-thuente",
+              max_alpha_mult = max_alpha_mult,
+              min_step_size = min_step_size, stop_at_min = stop_at_min,
+              initializer = initializer,
+              initial_step_length = initial_step_length,
+              debug = debug)
 }
 
 
 # Rasmussen ---------------------------------------------------------------
 
 rasmussen_ls <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
-                          max_alpha_mult = 10,
-                          min_step_size = .Machine$double.eps,
-                          initializer = "s",
-                          initial_step_length = 1,
-                          stop_at_min = TRUE, eps = .Machine$double.eps,
+                         max_alpha_mult = 10,
+                         min_step_size = .Machine$double.eps,
+                         initializer = "s",
+                         initial_step_length = 1,
+                         stop_at_min = TRUE, eps = .Machine$double.eps,
+                         max_fn = Inf,
+                         max_gr = Inf,
+                         max_fg = Inf,
                          debug = FALSE) {
 
-  line_search(rasmussen(c1 = c1, c2 = c2, int = int, ext = ext),
-                  name = "rasmussen",
-                  max_alpha_mult = max_alpha_mult,
-                   min_step_size = min_step_size, stop_at_min = stop_at_min,
-                   initializer = initializer,
-                   initial_step_length = initial_step_length,
-                  eps = eps,
-                   debug = debug)
+  line_search(rasmussen(c1 = c1, c2 = c2, int = int, ext = ext,
+                        max_fn = min(max_fn, max_gr, max_fg)),
+              name = "rasmussen",
+              max_alpha_mult = max_alpha_mult,
+              min_step_size = min_step_size, stop_at_min = stop_at_min,
+              initializer = initializer,
+              initial_step_length = initial_step_length,
+              eps = eps,
+              debug = debug)
 }
 
 
