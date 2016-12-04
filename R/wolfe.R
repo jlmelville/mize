@@ -14,7 +14,7 @@ more_thuente_ls <- function(c1 = c2 / 2, c2 = 0.1,
                              initial_step_length = 1,
                              stop_at_min = TRUE, debug = FALSE) {
 
-  rcg_line_search(more_thuente(c1 = c1, c2 = c2),
+  line_search(more_thuente(c1 = c1, c2 = c2),
                   name = "more-thuente",
                    max_alpha_mult = max_alpha_mult,
                    min_step_size = min_step_size, stop_at_min = stop_at_min,
@@ -31,26 +31,31 @@ rasmussen_ls <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
                           min_step_size = .Machine$double.eps,
                           initializer = "s",
                           initial_step_length = 1,
-                          stop_at_min = TRUE, debug = FALSE) {
+                          stop_at_min = TRUE, eps = .Machine$double.eps,
+                         debug = FALSE) {
 
-  rcg_line_search(rasmussen(c1 = c1, c2 = c2, int = int, ext = ext),
+  line_search(rasmussen(c1 = c1, c2 = c2, int = int, ext = ext),
                   name = "rasmussen",
                   max_alpha_mult = max_alpha_mult,
                    min_step_size = min_step_size, stop_at_min = stop_at_min,
                    initializer = initializer,
                    initial_step_length = initial_step_length,
+                  eps = eps,
                    debug = debug)
 }
 
-rcg_line_search <- function(ls_fn,
-                            name,
-                            initializer = "s",
-                            initial_step_length = 1,
-                            max_alpha_mult = 10,
-                            min_step_size = .Machine$double.eps,
-                            stop_at_min = TRUE,
-                            debug = FALSE,
-                            eps = .Machine$double.eps) {
+
+# Line Search -------------------------------------------------------------
+
+line_search <- function(ls_fn,
+                        name,
+                        initializer = "s",
+                        initial_step_length = 1,
+                        max_alpha_mult = 10,
+                        min_step_size = .Machine$double.eps,
+                        stop_at_min = TRUE,
+                        debug = FALSE,
+                        eps = .Machine$double.eps) {
   make_step_size(list(
     name = name,
     eps = eps,
@@ -92,7 +97,18 @@ rcg_line_search <- function(ls_fn,
       )
 
       old_step_length <- sub_stage$value
-      sub_stage$value <- initial_step_length
+
+      if (is.numeric(initial_step_length)) {
+        sub_stage$value <- initial_step_length
+      }
+      else {
+        if (initial_step_length == "r") { # Rasmussen default from minimize.m
+          sub_stage$value <- 1 / (1 - step0$d)
+        }
+        else {
+          stop("Unknown initial step method '", initial_step_length, "'")
+        }
+      }
 
       phi_alpha <- make_phi_alpha(par, fn, gr, pm,
                                   calc_gradient_default = TRUE, debug = debug)
