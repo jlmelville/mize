@@ -41,10 +41,11 @@ append_depends <- function(opt, stage_type = NULL, sub_stage_type = NULL,
   opt
 }
 
-adaptive_restart <- function(opt, validation_type) {
+adaptive_restart <- function(opt, validation_type, wait = 1) {
   if (!("momentum" %in% names(opt$stages))) {
     stop("Adaptive restart is only applicable to optimizers which use momentum")
   }
+  opt$restart_wait <- wait
   append_depends(opt, "momentum", "direction",
                  c('adaptive_restart', paste0('validate_', validation_type)))
 }
@@ -58,9 +59,12 @@ adaptive_restart_gr <- function(opt) {
 }
 
 require_adaptive_restart <- function(opt, par, fn, gr, iter, par0, update) {
-  if (!opt$ok) {
-    opt <- life_cycle_hook("momentum", "init", opt, par, fn, gr, iter)
-    #    message("adaptive restart: restarting momentum")
+  if (!opt$ok
+      && (is.null(opt$restart_at)
+          || iter - opt$restart_at > opt$restart_wait)) {
+      opt <- life_cycle_hook("momentum", "init", opt, par, fn, gr, iter)
+      #message("adaptive restart: restarting momentum")
+      opt$restart_at <- iter
   }
   else {
     opt$cache$update_old <- update
