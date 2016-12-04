@@ -16,6 +16,8 @@ mizer <- function(par, fn, gr,
                   max_fn = Inf,
                   max_gr = Inf,
                   max_fg = Inf,
+                  rel_tol = sqrt(.Machine$double.eps),
+                  grad_tol = 1e-5,
                   verbose = FALSE,
                   store_progress = FALSE) {
 
@@ -30,6 +32,7 @@ mizer <- function(par, fn, gr,
   optloop(opt, par, fn, gr,
           max_iter = max_iter,
           max_fn = max_fn, max_gr = max_gr, max_fg = max_fg,
+          rel_tol = rel_tol, grad_tol = grad_tol,
           store_progress = store_progress,
           verbose = verbose)
 }

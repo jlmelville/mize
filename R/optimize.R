@@ -3,11 +3,14 @@
 optloop <- function(opt, par, fn, gr, max_iter = 10, verbose = FALSE,
                     store_progress = FALSE, invalidate_cache = FALSE,
                     max_fn = Inf, max_gr = Inf, max_fg = Inf,
+                    abs_tol = sqrt(.Machine$double.eps),
+                    rel_tol = abs_tol, grad_tol = 1.e-5,
                     ret_opt = FALSE) {
 
   opt <- opt_init(opt, par, fn, gr, 0)
 
   progress <- data.frame()
+  terminate <- list()
 
   if (verbose || store_progress) {
     res <- opt_results(opt, par, fn, gr, 0)
@@ -15,7 +18,7 @@ optloop <- function(opt, par, fn, gr, max_iter = 10, verbose = FALSE,
       progress <- update_progress(opt_res = res, progress = progress)
     }
     if (verbose) {
-      opt_report(res, print_time = TRUE, print_par = TRUE)
+      opt_report(res, print_time = TRUE, print_par = FALSE)
     }
   }
 
@@ -46,30 +49,24 @@ optloop <- function(opt, par, fn, gr, max_iter = 10, verbose = FALSE,
     opt <- step_res$opt
     par <- step_res$par
 
-
     if (verbose || store_progress) {
       res <- opt_results(opt, par, fn, gr, iter, par0)
       if (store_progress) {
         progress <- update_progress(opt_res = res, progress = progress)
       }
       if (verbose) {
-        opt_report(res, print_time = TRUE, print_par = TRUE)
+        opt_report(res, print_time = TRUE, print_par = FALSE)
       }
     }
 
     # Check termination conditions
-    terminate <- NULL
-    if (opt$counts$fn > max_fn) {
-      terminate <- paste0("fn evals: ", opt$counts$fn, " >= ", max_fn)
-    }
-    else if (opt$counts$gr > max_gr) {
-      terminate <- paste0("gr evals: ", opt$counts$gr, " >= ", max_gr)
-    }
-    else if (opt$counts$fn + opt$counts$gr > max_fg) {
-      terminate <- paste0("fn + gr evals: ", opt$counts$fn + opt$counts$gr,
-                          " >= ", max_fg)
-    }
-    if (!is.null(terminate)) {
+    terminate <- check_termination(terminate, opt, iter = iter,
+                                   max_fn = max_fn, max_gr = max_gr,
+                                   max_fg = max_fg,
+                                   abs_tol = abs_tol, rel_tol = rel_tol,
+                                   grad_tol = grad_tol)
+
+    if (!is.null(terminate$what)) {
       break
     }
   }
@@ -83,12 +80,70 @@ optloop <- function(opt, par, fn, gr, max_iter = 10, verbose = FALSE,
   if (ret_opt) {
     res$opt <- opt
   }
-  if (is.null(terminate)) {
-    terminate <- paste0("max iters: ", max_iter, " reached")
+  if (is.null(terminate$what)) {
+    terminate <- list(what = "max_iter", val = max_iter)
   }
-  res$terminate <- terminate
+  res$terminate <- terminate[c("what", "val")]
   res
 }
+
+check_termination <- function(terminate, opt, iter, max_fn, max_gr, max_fg,
+                              abs_tol, rel_tol, grad_tol) {
+  if (opt$counts$fn > max_fn) {
+    terminate <- list(
+      what = "max_fn",
+      val = opt$counts$fn
+    )
+  }
+  else if (opt$counts$gr > max_gr) {
+    terminate <- list(
+      what = "max_gr",
+      val = opt$counts$gr
+    )
+  }
+  else if (opt$counts$fn + opt$counts$gr > max_fg) {
+    terminate <- list(
+      what = "max_fg",
+      val = opt$counts$fn + opt$counts$gr
+    )
+  }
+  if (!is.null(grad_tol) && !is.null(opt$cache$gr_curr)) {
+    gtol <- norm2(opt$cache$gr_curr)
+    if (gtol <= grad_tol) {
+      terminate <- list(
+        what = "grad_tol",
+        val = gtol
+      )
+    }
+  }
+  if (!is.null(rel_tol) || !is.null(abs_tol)) {
+    if (!is.null(opt$cache$fn_curr)) {
+      fn_new <- opt$cache$fn_curr
+
+      if (!is.null(terminate$fn_new)) {
+        fn_old <- terminate$fn_new
+        atol <- abs(fn_old - fn_new)
+        if (is.null(opt$restart_at) || (opt$restart_at != iter)) {
+          if (!is.null(abs_tol) && atol < abs_tol) {
+            terminate$what <- "abs_tol"
+            terminate$val <- atol
+          }
+          else {
+            rtol <- abs(fn_old - fn_new) / min(abs(fn_new), abs(fn_old))
+            if (rtol < rel_tol) {
+              terminate$what <- "rel_tol"
+              terminate$val <- rtol
+            }
+          }
+        }
+      }
+
+      terminate$fn_new <- fn_new
+    }
+  }
+  terminate
+}
+
 
 # One Step of Optimization
 #
@@ -158,8 +213,18 @@ opt_init <- function(opt, par, fn, gr, iter) {
 }
 
 opt_results <- function(opt, par, fn, gr, iter, par0 = NULL) {
-  f <- fn(par)
-  g <- gr(par)
+  if (!has_fn_curr(opt, iter + 1)) {
+    f <- fn(par)
+  }
+  else {
+    f <- opt$cache$fn_curr
+  }
+  if (!has_gr_curr(opt, iter + 1)) {
+    g <- gr(par)
+  }
+  else {
+    g <- opt$cache$gr_curr
+  }
   g2n <- norm2(g)
   step_size <- norm2(par - par0)
 

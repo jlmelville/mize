@@ -20,7 +20,8 @@ test_that("CG gives same results as minimize.m webpage", {
       verbose = FALSE))
 
   res <- optloop(opt, c(0,0), rosenbrock_fg$fn, rosenbrock_fg$gr, 15,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, grad_tol = 0,
+                 abs_tol = 0)
 
   # function evaluations and g2norms calculated from running minimize.m
   # in Octave
