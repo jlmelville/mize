@@ -216,4 +216,58 @@ f4 <- list(fn = fn4, gr = gr4)
 f5 <- list(fn = fn5, gr = gr5)
 f6 <- list(fn = fn6, gr = gr6)
 
+eurofg <- function() {
+  dxm <- as.matrix(eurodist)
 
+  par_to_ym <- function(par) {
+    matrix(par, ncol = 2, byrow = TRUE)
+  }
+
+  par_to_dym <- function(par) {
+    as.matrix(dist(par_to_ym(par)))
+  }
+
+  f <- function(par) {
+    dym <- par_to_dym(par)
+    diff2 <- (dxm - dym) ^ 2
+    sum(diff2)
+  }
+
+  g <- function(par) {
+    dym <- par_to_dym(par)
+    km <- (dxm - dym) / (dym + 1.e-10)
+
+    ym <- par_to_ym(par)
+    gm <- matrix(nrow = nrow(ym), ncol = ncol(ym))
+    for (i in 1:nrow(ym)) {
+      dyij <- sweep(-ym, 2, -ym[i, ])
+      gm[i, ] <- apply(dyij * km[, i], 2, sum)
+    }
+
+    - 4 * as.vector(t(gm))
+  }
+
+  eps <- 1.e-3
+  gfd <- function(par) {
+    g <- rep(0, length(par))
+    for (i in 1:length(par)) {
+      oldx <- par[i]
+
+      par[i] <- oldx + eps
+      fplus <- f(par)
+
+      par[i] <- oldx - eps
+      fminus <- f(par)
+      par[i] <- oldx
+
+      g[i] <- (fplus - fminus) / (2 * eps)
+    }
+    g
+  }
+
+  list(f = f,
+       g = g,
+       gfd = gfd)
+}
+
+ed0 <- rnorm(attr(eurodist, 'Size') * 2)
