@@ -1,14 +1,23 @@
 # Adaptive Restart --------------------------------------------------------
 
-append_depends <- function(opt, stage = NULL, sub_stage = NULL, new_depends) {
-  if (!is.null(sub_stage)) {
-    if (is.null(stage)) {
-      stop("Must provide stage for sub_stage '", sub_stage, "'")
+append_depends <- function(opt, stage_type = NULL, sub_stage_type = NULL,
+                           new_depends) {
+  if (!is.null(sub_stage_type)) {
+    if (is.null(stage_type)) {
+      stop("Must provide stage for sub_stage '", sub_stage_type, "'")
     }
-    depends <- opt$stages[[stage]][[sub_stage]]$depends
+    stage <- opt$stages[[stage_type]]
+    if (is.null(stage)) {
+      stop("No stage '", stage_type, "' exists for this optimizer")
+    }
+    depends <- stage[[sub_stage_type]]$depends
   }
   else if (!is.null(stage)) {
-    depends <- opt$stages[[stage]]$depends
+    stage <- opt$stages[[stage_type]]
+    if (is.null(stage)) {
+      stop("No stage '", stage_type, "' exists for this optimizer")
+    }
+    depends <- stage$depends
   }
   else {
     depends <- opt$depends
@@ -19,11 +28,11 @@ append_depends <- function(opt, stage = NULL, sub_stage = NULL, new_depends) {
 
   depends <- c(depends, new_depends)
 
-  if (!is.null(sub_stage)) {
-    opt$stages[[stage]][[sub_stage]]$depends <- depends
+  if (!is.null(sub_stage_type)) {
+    opt$stages[[stage_type]][[sub_stage_type]]$depends <- depends
   }
   else if (!is.null(stage)) {
-    opt$stages[[stage]]$depends <- depends
+    opt$stages[[stage_type]]$depends <- depends
   }
   else {
     opt$depends <- depends
@@ -33,6 +42,9 @@ append_depends <- function(opt, stage = NULL, sub_stage = NULL, new_depends) {
 }
 
 adaptive_restart <- function(opt, validation_type) {
+  if (!("momentum" %in% names(opt$stages))) {
+    stop("Adaptive restart is only applicable to optimizers which use momentum")
+  }
   append_depends(opt, "momentum", "direction",
                  c('adaptive_restart', paste0('validate_', validation_type)))
 }
@@ -48,11 +60,11 @@ adaptive_restart_gr <- function(opt) {
 require_adaptive_restart <- function(opt, par, fn, gr, iter, par0, update) {
   if (!opt$ok) {
     opt <- life_cycle_hook("momentum", "init", opt, par, fn, gr, iter)
-#    message("adaptive restart: restarting momentum")
+    #    message("adaptive restart: restarting momentum")
   }
   else {
     opt$cache$update_old <- update
-#    message("adaptive restart: continuing")
+    #    message("adaptive restart: continuing")
   }
   opt
 }
