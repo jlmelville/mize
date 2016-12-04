@@ -46,7 +46,7 @@ optloop <- function(opt, par, fn, gr, max_iter = 10, verbose = FALSE,
     par <- step_res$par
 
 
-    if (opt$verbose || store_progress) {
+    if (verbose || store_progress) {
       res <- opt_results(opt, par, fn, gr, iter, par0)
       if (store_progress) {
         progress <- update_progress(opt_res = res, progress = progress)
@@ -129,7 +129,7 @@ optimize_step <- function(opt, par, fn, gr, iter) {
 
 opt_init <- function(opt, par, fn, gr, iter) {
   opt <- register_hooks(opt)
-#  list_hooks(opt)
+  #  list_hooks(opt)
 
   opt <- life_cycle_hook("opt", "init", opt, par, fn, gr, iter)
 
@@ -240,7 +240,7 @@ make_stage <- function(type, direction, step_size, depends = NULL) {
     calculate = function(opt, stage, par, fn, gr, iter) {
       for (sub_stage_name in c("direction", "step_size")) {
         phase <- paste0(stage$type, " ", sub_stage_name)
-  #      message("emitting during ", phase)
+        #      message("emitting during ", phase)
 
         opt <- life_cycle_hook(phase, "during", opt, par, fn, gr, iter)
       }
@@ -250,7 +250,7 @@ make_stage <- function(type, direction, step_size, depends = NULL) {
     after_stage = function(opt, stage, par, fn, gr, iter) {
       for (sub_stage_name in c("direction", "step_size")) {
         phase <- paste0(stage$type, " ", sub_stage_name)
-  #      message("emitting after ", phase)
+        #      message("emitting after ", phase)
         opt <- life_cycle_hook(phase, "after", opt, par, fn, gr, iter)
       }
       stage$result <- stage$direction$value * stage$step_size$value
@@ -329,6 +329,10 @@ make_stages <- function(...) {
   stages
 }
 
+add_stage <- function(opt, stage) {
+  opt$stages <- c(opt$stages, stage)
+  opt
+}
 
 make_counts <- function() {
   list(
