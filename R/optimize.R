@@ -2,6 +2,7 @@
 
 optloop <- function(opt, par, fn, gr, max_iter = 10, verbose = FALSE,
                     store_progress = FALSE, invalidate_cache = FALSE,
+                    max_fn = Inf, max_gr = Inf, max_fg = Inf,
                     ret_opt = FALSE) {
 
   opt <- opt_init(opt, par, fn, gr, 0)
@@ -55,6 +56,22 @@ optloop <- function(opt, par, fn, gr, max_iter = 10, verbose = FALSE,
         opt_report(res, print_time = TRUE, print_par = TRUE)
       }
     }
+
+    # Check termination conditions
+    terminate <- NULL
+    if (opt$counts$fn > max_fn) {
+      terminate <- paste0("fn evals: ", opt$counts$fn, " >= ", max_fn)
+    }
+    else if (opt$counts$gr > max_gr) {
+      terminate <- paste0("gr evals: ", opt$counts$gr, " >= ", max_gr)
+    }
+    else if (opt$counts$fn + opt$counts$gr > max_fg) {
+      terminate <- paste0("fn + gr evals: ", opt$counts$fn + opt$counts$gr,
+                          " >= ", max_fg)
+    }
+    if (!is.null(terminate)) {
+      break
+    }
   }
 
   if (verbose) {
@@ -66,6 +83,10 @@ optloop <- function(opt, par, fn, gr, max_iter = 10, verbose = FALSE,
   if (ret_opt) {
     res$opt <- opt
   }
+  if (is.null(terminate)) {
+    terminate <- paste0("max iters: ", max_iter, " reached")
+  }
+  res$terminate <- terminate
   res
 }
 

@@ -13,6 +13,9 @@ mizer <- function(par, fn, gr,
                   restart = NULL, # one of "fn" or "gr"
                   # Termination criterion
                   max_iter = 100,
+                  max_fn = Inf,
+                  max_gr = Inf,
+                  max_fg = Inf,
                   verbose = FALSE,
                   store_progress = FALSE) {
 
@@ -26,6 +29,7 @@ mizer <- function(par, fn, gr,
 
   optloop(opt, par, fn, gr,
           max_iter = max_iter,
+          max_fn = max_fn, max_gr = max_gr, max_fg = max_fg,
           store_progress = store_progress,
           verbose = verbose)
 }
@@ -91,7 +95,7 @@ make_mizer <- function(method = "L-BFGS",
       momentum_stage(
         direction = nesterov_momentum_direction(),
         step_size = nest_step
-    ))
+      ))
   }
 
   if (!is.null(restart)) {
