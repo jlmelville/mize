@@ -107,18 +107,6 @@ line_search <- function(ls_fn,
 
       old_step_length <- sub_stage$value
 
-      if (is.numeric(initial_step_length)) {
-        sub_stage$value <- initial_step_length
-      }
-      else {
-        if (initial_step_length == "r") { # Rasmussen default from minimize.m
-          sub_stage$value <- 1 / (1 - step0$d)
-        }
-        else {
-          stop("Unknown initial step method '", initial_step_length, "'")
-        }
-      }
-
       phi_alpha <- make_phi_alpha(par, fn, gr, pm,
                                   calc_gradient_default = TRUE, debug = debug)
 
@@ -140,12 +128,18 @@ line_search <- function(ls_fn,
         #        " step0$d = ", step0$d, " s = ", s)
         sub_stage$value <- min(1, 1.01 * s)
       }
+      # sub_stage$value <- guess_first_step_length(initial_step_length, step0)
 
+      if (is.null(sub_stage$value) || sub_stage$value <= 0) {
+        sub_stage$value <- guess_first_step_length(initial_step_length, step0)
+      }
       sub_stage$alpha0 <- sub_stage$value
       ls_result <- ls_fn(phi_alpha, step0, sub_stage$value)
       sub_stage$d0 <- step0$d
       sub_stage$f0 <- step0$f
       sub_stage$value <- ls_result$step$alpha
+
+      # message("alpha0 = ", formatC(sub_stage$alpha0), " alpha = ", formatC(ls_result$step$alpha))
 
       opt$counts$fn <- opt$counts$fn + ls_result$nfn
       opt$counts$gr <- opt$counts$gr + ls_result$ngr
@@ -166,14 +160,14 @@ line_search <- function(ls_fn,
     },
     after_step = function(opt, stage, sub_stage, par, fn, gr, iter, par0,
                           update) {
-      if (is_last_stage(opt, stage) && has_fn_new(opt, iter)) {
+      if (opt$ok && is_last_stage(opt, stage) && has_fn_new(opt, iter)) {
 #        message("wolfe: setting next f_old from f for iter ", iter, " "
 #                , formatC(opt$cache$fn_new)
 #                )
         opt <- set_fn_curr(opt, opt$cache$fn_new, iter + 1)
       }
 
-      if (is_single_stage(opt)) {
+      if (opt$ok && is_single_stage(opt)) {
         opt <- set_gr_curr(opt, sub_stage$df, iter + 1)
       }
 
@@ -243,6 +237,20 @@ make_phi <- function(fn, gr, par, pv, debug = FALSE, ...) {
         " d = ", formatC(d))
     }
     list(f = f, df = df, d = d, alpha = alpha, par = xa)
+  }
+}
+
+guess_first_step_length <- function(method, step0) {
+  if (is.numeric(method)) {
+    return(method)
+  }
+  else {
+    if (method == "r") { # Rasmussen default from minimize.m
+      return(1 / (1 - step0$d))
+    }
+    else {
+      stop("Unknown initial step method '", method, "'")
+    }
   }
 }
 
