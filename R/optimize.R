@@ -415,8 +415,13 @@ make_stages <- function(...) {
   stages
 }
 
-add_stage <- function(opt, stage) {
+append_stage <- function(opt, stage) {
   opt$stages <- c(opt$stages, stage)
+  opt
+}
+
+prepend_stage <- function(opt, stage) {
+  opt$stages <- c(stage, opt$stages)
   opt
 }
 

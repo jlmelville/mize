@@ -274,7 +274,7 @@ test_that("linear weighted classical momentum with bold driver", {
         )),
       verbose = FALSE))
 
-  opt <- add_stage(opt, momentum_correction_stage())
+  opt <- append_stage(opt, momentum_correction_stage())
 
   res <- optloop(opt, out0, rosenbrock_fg$fn, rosenbrock_fg$gr, 3,
                  store_progress = TRUE, verbose = FALSE)
@@ -310,7 +310,7 @@ test_that("linear weighted eager classical momentum with bold driver", {
         )),
       verbose = FALSE))
 
-  opt <- add_stage(opt, momentum_correction_stage())
+  opt <- append_stage(opt, momentum_correction_stage())
 
   opt$eager_update <- TRUE
 

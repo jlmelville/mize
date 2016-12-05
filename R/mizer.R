@@ -1,5 +1,6 @@
 mizer <- function(par, fn, gr,
                   method = "SD",
+                  norm_direction = FALSE,
                   # L-BFGS
                   memory = 10,
                   scale_hess = TRUE,
@@ -12,7 +13,14 @@ mizer <- function(par, fn, gr,
                   line_search = "MT",
                   c1 = 1e-4,
                   c2 = 0.1,
+                  step0 = 1,
                   ls_initializer = "q",
+                  # Momentum
+                  mom_type = "classical",
+                  mom_schedule = NULL,
+                  mom_init = NULL,
+                  mom_final = NULL,
+                  mom_switch_iter = NULL,
                   # Adaptive Restart
                   restart = NULL, # one of "fn" or "gr"
                   # Termination criterion
@@ -26,12 +34,19 @@ mizer <- function(par, fn, gr,
                   store_progress = FALSE) {
 
   opt <- make_mizer(method = method,
+                    norm_direction = norm_direction,
                     scale_hess = scale_hess,
                     memory = memory,
                     cg_update = cg_update,
                     nest_q = nest_q, nest_convex_approx = nest_convex_approx,
-                    line_search = line_search, c1 = c1, c2 = c2,
+                    line_search = line_search, step0 = step0, c1 = c1, c2 = c2,
                     ls_initializer = ls_initializer,
+                    mom_type = mom_type,
+                    mom_schedule = mom_schedule,
+                    mom_init = mom_init,
+                    mom_final = mom_final,
+                    mom_switch_iter = mom_switch_iter,
+                    max_iter = max_iter,
                     restart = restart,
                     verbose = verbose)
 
@@ -45,6 +60,7 @@ mizer <- function(par, fn, gr,
 
 
 make_mizer <- function(method = "L-BFGS",
+                       norm_direction = FALSE,
                        scale_hess = TRUE,
                        memory = 10,
                        cg_update = "PR+",
@@ -52,13 +68,20 @@ make_mizer <- function(method = "L-BFGS",
                        nest_convex_approx = FALSE,
                        line_search = "MT",
                        c1 = 1e-4, c2 = 0.1,
+                       step0 = 1,
                        ls_initializer = "q",
+                       mom_type = "classical",
+                       mom_schedule = NULL,
+                       mom_init = NULL,
+                       mom_final = NULL,
+                       mom_switch_iter = NULL,
+                       max_iter = NULL,
                        restart = NULL,
                        verbose = FALSE) {
   dir_type <- NULL
   method <- toupper(method)
   if (method == "SD") {
-    dir_type <- sd_direction()
+    dir_type <- sd_direction(normalize = norm_direction)
   }
   else if (method == "CG") {
     cg_update_fn <- NULL
@@ -89,20 +112,38 @@ make_mizer <- function(method = "L-BFGS",
   else if (method == "NAG") {
     dir_type <- sd_direction()
   }
+  else if (method == "MOM") {
+    dir_type <- sd_direction(normalize = norm_direction)
+  }
+  else if (method == "DBD") {
+    dir_type <- sd_direction(normalize = norm_direction)
+  }
   else {
     stop("Unknown method: '", method, "'")
   }
 
   step_type <- NULL
   line_search <- toupper(line_search)
-  if (line_search == "MT") {
-    step_type <- more_thuente_ls(c1 = c1, c2 = c2, initializer = tolower(ls_initializer))
-  }
-  else if (line_search == "RAS") {
-    step_type <- rasmussen_ls(c1 = c1, c2 = c2, initializer = tolower(ls_initializer))
+  if (method == "DBD") {
+    eps_init <- 1
+    if (is.numeric(step0)) {
+      eps_init <- step0
+    }
+    step_type <- delta_bar_delta(epsilon = eps_init)
   }
   else {
-    stop("Unknown line search method: '", line_search, "'")
+    if (line_search == "MT") {
+      step_type <- more_thuente_ls(c1 = c1, c2 = c2, initializer = tolower(ls_initializer))
+    }
+    else if (line_search == "RAS") {
+      step_type <- rasmussen_ls(c1 = c1, c2 = c2, initializer = tolower(ls_initializer))
+    }
+    else if (line_search == "BOLD") {
+      step_type <- bold_driver()
+    }
+    else {
+      stop("Unknown line search method: '", line_search, "'")
+    }
   }
 
   opt <- make_opt(
@@ -119,13 +160,63 @@ make_mizer <- function(method = "L-BFGS",
     else {
       nest_step <- nesterov_convex_step(q = nest_q)
     }
-    opt <- add_stage(
+    opt <- append_stage(
       opt,
       momentum_stage(
         direction = nesterov_momentum_direction(),
         step_size = nest_step
       ))
   }
+  if (!is.null(mom_schedule)) {
+    if (is.numeric(mom_schedule)) {
+      mom_step <- constant_step_size(value = mom_schedule)
+    }
+    else {
+      mom_schedule <- tolower(mom_schedule)
+      if (mom_schedule == "ramp") {
+        mom_step <- make_momentum_step(
+          make_ramp(max_iter = max_iter,
+                    momentum_init = mom_init,
+                    momentum_final = mom_final))
+      }
+      else if (mom_schedule == "switch") {
+        mom_step <- make_momentum_step(
+          make_switch(
+            init_value = mom_init,
+            final_value = mom_final,
+            switch_iter = mom_switch_iter))
+      }
+      else if (mom_schedule == "nesterov") {
+        if (nest_convex_approx) {
+          mom_step <- nesterov_convex_approx_step()
+        }
+        else {
+          mom_step <- nesterov_convex_step(q = nest_q)
+        }
+      }
+    }
+
+    if (mom_type == "classical") {
+      opt <- append_stage(
+        opt,
+        momentum_stage(
+          direction = momentum_direction(),
+          step_size = mom_step
+        ))
+    }
+    else {
+      # Nesterov Momentum
+      opt <- prepend_stage(
+        opt,
+        momentum_stage(
+          direction = momentum_direction(),
+          step_size = mom_step
+        ))
+      opt$eager_update <- TRUE
+    }
+
+  }
+
 
   if (!is.null(restart)) {
     restart <- tolower(restart)
