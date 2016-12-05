@@ -1,6 +1,9 @@
 mizer <- function(par, fn, gr,
                   method = "SD",
+                  # L-BFGS
                   memory = 10,
+                  # CG
+                  cg_update = "PR+",
                   # Nesterov
                   nest_q = 0, # 1 - SD,
                   nest_convex_approx = FALSE,
@@ -23,6 +26,7 @@ mizer <- function(par, fn, gr,
 
   opt <- make_mizer(method = method,
                     memory = memory,
+                    cg_update = cg_update,
                     nest_q = nest_q, nest_convex_approx = nest_convex_approx,
                     line_search = line_search, c1 = c1, c2 = c2,
                     ls_initializer = ls_initializer,
@@ -40,6 +44,7 @@ mizer <- function(par, fn, gr,
 
 make_mizer <- function(method = "L-BFGS",
                        memory = 10,
+                       cg_update = "PR+",
                        nest_q = 0,
                        nest_convex_approx = FALSE,
                        line_search = "MT",
@@ -53,7 +58,24 @@ make_mizer <- function(method = "L-BFGS",
     dir_type <- sd_direction()
   }
   else if (method == "CG") {
-    dir_type <- cg_direction()
+    cg_update_fn <- NULL
+    cg_update <- toupper(cg_update)
+    if (cg_update == "PR+") {
+      cg_update_fn <- pr_plus_update
+    }
+    else if (cg_update == "PR") {
+      cg_update_fn <- pr_update
+    }
+    else if (cg_update == "FR") {
+      cg_update_fn <- fr_update
+    }
+    else if (cg_update == "DY") {
+      cg_update_fn <- dy_update
+    }
+    else {
+      stop("Unknown CG update method '", cg_update, "'")
+    }
+    dir_type <- cg_direction(cg_update = cg_update_fn)
   }
   else if (method == "BFGS") {
     dir_type <- bfgs_direction()
@@ -69,6 +91,7 @@ make_mizer <- function(method = "L-BFGS",
   }
 
   step_type <- NULL
+  line_search <- toupper(line_search)
   if (line_search == "MT") {
     step_type <- more_thuente_ls(c1 = c1, c2 = c2, initializer = tolower(ls_initializer))
   }
