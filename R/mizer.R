@@ -132,7 +132,8 @@ make_mizer <- function(method = "L-BFGS",
     if (is.numeric(step0)) {
       eps_init <- step0
     }
-    step_type <- delta_bar_delta(epsilon = eps_init)
+    step_type <- delta_bar_delta(epsilon = eps_init,
+                                 use_momentum = is.null(mom_schedule))
   }
   else {
     if (line_search == "MT") {
