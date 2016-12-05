@@ -2,6 +2,7 @@ mizer <- function(par, fn, gr,
                   method = "SD",
                   # L-BFGS
                   memory = 10,
+                  scale_hess = TRUE,
                   # CG
                   cg_update = "PR+",
                   # Nesterov
@@ -25,6 +26,7 @@ mizer <- function(par, fn, gr,
                   store_progress = FALSE) {
 
   opt <- make_mizer(method = method,
+                    scale_hess = scale_hess,
                     memory = memory,
                     cg_update = cg_update,
                     nest_q = nest_q, nest_convex_approx = nest_convex_approx,
@@ -43,6 +45,7 @@ mizer <- function(par, fn, gr,
 
 
 make_mizer <- function(method = "L-BFGS",
+                       scale_hess = TRUE,
                        memory = 10,
                        cg_update = "PR+",
                        nest_q = 0,
@@ -78,10 +81,10 @@ make_mizer <- function(method = "L-BFGS",
     dir_type <- cg_direction(cg_update = cg_update_fn)
   }
   else if (method == "BFGS") {
-    dir_type <- bfgs_direction()
+    dir_type <- bfgs_direction(scale_inverse = scale_hess)
   }
   else if (method == "L-BFGS") {
-    dir_type <- lbfgs_direction(memory = memory)
+    dir_type <- lbfgs_direction(memory = memory, scale_inverse = scale_hess)
   }
   else if (method == "NAG") {
     dir_type <- sd_direction()
