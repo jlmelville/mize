@@ -119,11 +119,36 @@ line_search <- function(ls_fn,
       else if (initializer == "q" && !is.null(sub_stage$f0)) {
         # quadratic interpolation
         sub_stage$value <- step_quad_interp(sub_stage$f0, step0)
-
       }
 
       if (is.null(sub_stage$value) || sub_stage$value <= 0) {
-        sub_stage$value <- guess_first_step_length(initial_step_length, step0)
+        if (is.numeric(initial_step_length)) {
+          sub_stage$value <- initial_step_length
+        }
+        else {
+          if (initial_step_length == "r") { # Rasmussen default from minimize.m
+            # Only concerned with CG so doesn't compare with alpha = 1
+            # But we might as well
+            sub_stage$value <- min(1, 1 / (1 - step0$d))
+          }
+          else if (initial_step_length == "s") { # scipy
+            # found in _minimize_bfgs in optimize.py
+            # along with comment I don't understand:
+            #     # Sets the initial step guess to dx ~ 1
+            # actually sets f_old to f0 + 0.5 * ||g||2
+            # then uses f_old in the quadratic update formula
+            # If you do the algebra, you get 1 / sqrt(-d)
+            # (2 norm of g is sqrt(d) when starting with steepest descent)
+            sub_stage$value <- min(1, 1.01 / sqrt(-step0$d))
+          }
+          else if (initial_step_length == "m") {
+            # Mark Schmidt's minFunc.m uses reciprocal of the one-norm
+            sub_stage$value <- min(1, 1 / sum(abs(step0$d)))
+          }
+          else {
+            stop("Unknown initial step method '", initial_step_length, "'")
+          }
+        }
       }
       sub_stage$alpha0 <- sub_stage$value
       ls_result <- ls_fn(phi_alpha, step0, sub_stage$value)
@@ -261,6 +286,7 @@ step_quad_interp <- function(f0, step0) {
   s <- 2  * (step0$f - f0) / step0$d
   min(1, 1.01 * s)
 }
+
 
 
 # Line Search Checks -------------------------------------------------------

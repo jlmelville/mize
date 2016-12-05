@@ -63,15 +63,20 @@ mizer <- function(par, fn, gr,
 
 make_mizer <- function(method = "L-BFGS",
                        norm_direction = FALSE,
+                       # BFGS
                        scale_hess = TRUE,
                        memory = 10,
+                       # CG
                        cg_update = "PR+",
+                       # NAG
                        nest_q = 0,
                        nest_convex_approx = FALSE,
+                       # Line Search
                        line_search = "MT",
                        c1 = 1e-4, c2 = 0.1,
                        step0 = 1,
                        ls_initializer = "q",
+                       # Momentum
                        mom_type = "classical",
                        mom_schedule = NULL,
                        mom_init = NULL,
@@ -137,10 +142,14 @@ make_mizer <- function(method = "L-BFGS",
   }
   else {
     if (line_search == "MT") {
-      step_type <- more_thuente_ls(c1 = c1, c2 = c2, initializer = tolower(ls_initializer))
+      step_type <- more_thuente_ls(c1 = c1, c2 = c2,
+                                   initializer = tolower(ls_initializer),
+                                   initial_step_length = step0)
     }
     else if (line_search == "RAS") {
-      step_type <- rasmussen_ls(c1 = c1, c2 = c2, initializer = tolower(ls_initializer))
+      step_type <- rasmussen_ls(c1 = c1, c2 = c2,
+                                initializer = tolower(ls_initializer),
+                                initial_step_length = step0)
     }
     else if (line_search == "BOLD") {
       step_type <- bold_driver()
