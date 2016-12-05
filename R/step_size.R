@@ -163,12 +163,10 @@ delta_bar_delta <- function(kappa = 1.1, kappa_fun = `*`,
       }
       # technically delta_bar_delta = delta_bar * delta
       # but only its sign matters, so just compare signs of delta_bar and delta
-      if (iter == 1) {
-        # Force step size increase on first stage to be like the t-SNE
-        # implementation
-        if (all(delta_bar_old == 0)) {
-          delta_bar_delta <- TRUE
-        }
+      # Force step size increase on first stage to be like the t-SNE
+      # implementation
+      if (all(delta_bar_old == 0)) {
+        delta_bar_delta <- TRUE
       }
       else {
         delta_bar_delta <- sign(delta_bar_old) == sign(delta)
