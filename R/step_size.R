@@ -132,10 +132,10 @@ bold_driver <- function(inc_mult = 1.1, dec_mult = 0.5,
 
 
 delta_bar_delta <- function(kappa = 1.1, kappa_fun = `*`,
-                                      phi = 0.5, epsilon = 1,
-                                min_eps = 0,
-                                theta = 0.1,
-                                use_momentum = FALSE) {
+                            phi = 0.5, epsilon = 1,
+                            min_eps = 0,
+                            theta = 0.1,
+                            use_momentum = FALSE) {
   make_step_size(list(
     name = "delta_bar_delta",
     kappa = kappa,
