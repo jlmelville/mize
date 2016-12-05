@@ -113,22 +113,14 @@ line_search <- function(ls_fn,
 
       # described on p59 of Nocedal and Wright
       if (initializer == "s" && !is.null(sub_stage$d0)) {
-        # slope ratio method
-        # NB the p vector must be a descent direction or the directional
-        # derivative will be positive => a negative initial step size!
-        slope_ratio <- sub_stage$d0 / (step0$d + eps)
-        s <- old_step_length * min(max_alpha_mult, slope_ratio)
-        sub_stage$value <- max(s, eps)
+        sub_stage$value <- step_slope_ratio(old_step_length, sub_stage$d0,
+                                            step0, eps, max_alpha_mult)
       }
       else if (initializer == "q" && !is.null(sub_stage$f0)) {
         # quadratic interpolation
+        sub_stage$value <- step_quad_interp(sub_stage$f0, step0)
 
-        s <- 2  * (step0$f - sub_stage$f0) / step0$d
-        #message("step0$f = ", step0$f, " sub_stage$f0 = ", sub_stage$f0,
-        #        " step0$d = ", step0$d, " s = ", s)
-        sub_stage$value <- min(1, 1.01 * s)
       }
-      # sub_stage$value <- guess_first_step_length(initial_step_length, step0)
 
       if (is.null(sub_stage$value) || sub_stage$value <= 0) {
         sub_stage$value <- guess_first_step_length(initial_step_length, step0)
@@ -253,6 +245,23 @@ guess_first_step_length <- function(method, step0) {
     }
   }
 }
+
+# described on p59 of Nocedal and Wright
+# slope ratio method
+step_slope_ratio <- function(old_step_length, d0, step0, eps, max_alpha_mult) {
+  # NB the p vector must be a descent direction or the directional
+  # derivative will be positive => a negative initial step size!
+  slope_ratio <- d0 / (step0$d + eps)
+  s <- old_step_length * min(max_alpha_mult, slope_ratio)
+  max(s, eps)
+}
+
+# quadratic interpolation
+step_quad_interp <- function(f0, step0) {
+  s <- 2  * (step0$f - f0) / step0$d
+  min(1, 1.01 * s)
+}
+
 
 # Line Search Checks -------------------------------------------------------
 
