@@ -89,19 +89,19 @@ optloop <- function(opt, par, fn, gr, max_iter = 10, verbose = FALSE,
 
 check_termination <- function(terminate, opt, iter, max_fn, max_gr, max_fg,
                               abs_tol, rel_tol, grad_tol) {
-  if (opt$counts$fn > max_fn) {
+  if (opt$counts$fn >= max_fn) {
     terminate <- list(
       what = "max_fn",
       val = opt$counts$fn
     )
   }
-  else if (opt$counts$gr > max_gr) {
+  else if (opt$counts$gr >= max_gr) {
     terminate <- list(
       what = "max_gr",
       val = opt$counts$gr
     )
   }
-  else if (opt$counts$fn + opt$counts$gr > max_fg) {
+  else if (opt$counts$fn + opt$counts$gr >= max_fg) {
     terminate <- list(
       what = "max_fg",
       val = opt$counts$fn + opt$counts$gr
