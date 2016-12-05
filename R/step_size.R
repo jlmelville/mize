@@ -128,6 +128,9 @@ bold_driver <- function(inc_mult = 1.1, dec_mult = 0.5,
     ))
 }
 
+# Delta-Bar-Delta ---------------------------------------------------------
+
+
 delta_bar_delta <- function(kappa = 1.1, kappa_fun = `*`,
                                       phi = 0.5, epsilon = 1,
                                 min_eps = 0,
@@ -163,7 +166,9 @@ delta_bar_delta <- function(kappa = 1.1, kappa_fun = `*`,
       if (iter == 1) {
         # Force step size increase on first stage to be like the t-SNE
         # implementation
-        delta_bar_delta <- TRUE
+        if (all(delta_bar_old == 0)) {
+          delta_bar_delta <- TRUE
+        }
       }
       else {
         delta_bar_delta <- sign(delta_bar_old) == sign(delta)
@@ -179,13 +184,11 @@ delta_bar_delta <- function(kappa = 1.1, kappa_fun = `*`,
         (gamma_old * phi) * abs(!delta_bar_delta)
 
       sub_stage$value <- clamp(epsilon * gamma, min_val = sub_stage$min_eps)
-
       if (!use_momentum || is.null(opt$cache$update_old)) {
         theta <- sub_stage$theta
         sub_stage$delta_bar_old <- ((1 - theta) * delta) + (theta * delta_bar_old)
       }
       sub_stage$gamma_old <- gamma
-
       list(opt = opt, sub_stage = sub_stage)
     },
     depends = c("gradient")
