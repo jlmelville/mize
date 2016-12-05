@@ -46,7 +46,7 @@ adaptive_restart <- function(opt, validation_type, wait = 1) {
   if (!("momentum" %in% stage_names)) {
     stop("Adaptive restart is only applicable to optimizers which use momentum")
   }
-  if (stage_names[[2]] != "momentum") {
+  if (stage_names[[2]] != "momentum" && validation_type == "gr") {
     stop("Can't use gradient-based adaptive restart with Nesterov momentum")
   }
   opt$restart_wait <- wait
