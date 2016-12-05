@@ -21,6 +21,7 @@ mizer <- function(par, fn, gr,
                   mom_init = NULL,
                   mom_final = NULL,
                   mom_switch_iter = NULL,
+                  mom_linear_weight = FALSE,
                   # Adaptive Restart
                   restart = NULL, # one of "fn" or "gr"
                   # Termination criterion
@@ -46,6 +47,7 @@ mizer <- function(par, fn, gr,
                     mom_init = mom_init,
                     mom_final = mom_final,
                     mom_switch_iter = mom_switch_iter,
+                    mom_linear_weight = mom_linear_weight,
                     max_iter = max_iter,
                     restart = restart,
                     verbose = verbose)
@@ -75,6 +77,7 @@ make_mizer <- function(method = "L-BFGS",
                        mom_init = NULL,
                        mom_final = NULL,
                        mom_switch_iter = NULL,
+                       mom_linear_weight = FALSE,
                        max_iter = NULL,
                        restart = NULL,
                        verbose = FALSE) {
@@ -213,6 +216,9 @@ make_mizer <- function(method = "L-BFGS",
           step_size = mom_step
         ))
       opt$eager_update <- TRUE
+    }
+    if (mom_linear_weight) {
+      opt <- append_stage(opt, momentum_correction_stage())
     }
 
   }
