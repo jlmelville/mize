@@ -6,9 +6,14 @@ mizer <- function(par, fn, gr,
                   scale_hess = TRUE,
                   # CG
                   cg_update = "PR+",
-                  # Nesterov
+                  # NAG
                   nest_q = 0, # 1 - SD,
                   nest_convex_approx = FALSE,
+                  # DBD
+                  kappa = 1.1,
+                  kappa_fun = "*",
+                  phi = 0.5,
+                  theta = 0.1,
                   # Line Search configuration
                   line_search = "MT",
                   c1 = 1e-4,
@@ -40,6 +45,10 @@ mizer <- function(par, fn, gr,
                     memory = memory,
                     cg_update = cg_update,
                     nest_q = nest_q, nest_convex_approx = nest_convex_approx,
+                    kappa = kappa,
+                    kappa_fun = kappa_fun,
+                    phi = phi,
+                    theta = theta,
                     line_search = line_search, step0 = step0, c1 = c1, c2 = c2,
                     ls_initializer = ls_initializer,
                     mom_type = mom_type,
@@ -71,6 +80,11 @@ make_mizer <- function(method = "L-BFGS",
                        # NAG
                        nest_q = 0,
                        nest_convex_approx = FALSE,
+                       # DBD
+                       kappa = 1.1,
+                       kappa_fun = "*",
+                       phi = 0.5,
+                       theta = 0.1,
                        # Line Search
                        line_search = "MT",
                        c1 = 1e-4, c2 = 0.1,
@@ -137,7 +151,18 @@ make_mizer <- function(method = "L-BFGS",
     if (is.numeric(step0)) {
       eps_init <- step0
     }
+    if (kappa_fun == "*") {
+      kappa_fun <- `*`
+    }
+    else if (kappa_fun == "+") {
+      kappa_fun <- `+`
+    }
+    else {
+      stop("Unknown delta-bar-delta kappa function '", kappa_fun, "'")
+    }
     step_type <- delta_bar_delta(epsilon = eps_init,
+                                 kappa = kappa, kappa_fun = kappa_fun,
+                                 phi = phi, theta = theta,
                                  use_momentum = is.null(mom_schedule))
   }
   else {
