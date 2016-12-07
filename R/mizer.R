@@ -1,4 +1,4 @@
-mizer <- function(par, fn, gr,
+mizer <- function(par, fg,
                   method = "SD",
                   norm_direction = FALSE,
                   # L-BFGS
@@ -62,7 +62,7 @@ mizer <- function(par, fn, gr,
                     restart = restart,
                     verbose = verbose)
 
-  optloop(opt, par, fn, gr,
+  optloop(opt, par, fg,
           max_iter = max_iter,
           max_fn = max_fn, max_gr = max_gr, max_fg = max_fg,
           abs_tol = abs_tol, rel_tol = rel_tol, grad_tol = grad_tol,

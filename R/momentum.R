@@ -3,7 +3,7 @@
 momentum_direction <- function(normalize = FALSE) {
   make_direction(list(
     name = "classical_momentum",
-    calculate = function(opt, stage, sub_stage, par, fn, gr, iter) {
+    calculate = function(opt, stage, sub_stage, par, fg, iter) {
       #message("Calculating momentum direction")
 
       sub_stage$value <- opt$cache$update_old
@@ -26,12 +26,12 @@ make_momentum_step <- function(mu_fn,
                                verbose = FALSE) {
   make_step_size(list(
     name = "momentum_step",
-    init = function(opt, stage, sub_stage, par, fn, gr, iter) {
+    init = function(opt, stage, sub_stage, par, fg, iter) {
       sub_stage$t <- 1
       sub_stage$value <- sub_stage$mu_fn(0)
       list(sub_stage = sub_stage)
     },
-    calculate = function(opt, stage, sub_stage, par, fn, gr, iter) {
+    calculate = function(opt, stage, sub_stage, par, fg, iter) {
       #message("calc mu step")
       sub_stage$value <-
         sclamp(sub_stage$mu_fn(sub_stage$t),
@@ -40,7 +40,7 @@ make_momentum_step <- function(mu_fn,
       #message("mu step " = formatC(sub_stage$value))
       list(sub_stage = sub_stage)
     },
-    after_step = function(opt, stage, sub_stage, par, fn, gr, iter, par0,
+    after_step = function(opt, stage, sub_stage, par, fg, iter, par0,
                           update) {
       sub_stage$t <- sub_stage$t + 1
       #message("sub_stage$t = ", formatC(sub_stage$t))
@@ -93,7 +93,7 @@ make_constant <- function(value) {
 momentum_correction_direction <- function() {
   make_direction(list(
     name = "momentum_correction_direction",
-    calculate = function(opt, stage, sub_stage, par, fn, gr, iter) {
+    calculate = function(opt, stage, sub_stage, par, fg, iter) {
       #message("Calculating momentum correction direction")
 
       grad_stage <- opt$stages[["gradient_descent"]]
@@ -107,7 +107,7 @@ momentum_correction_direction <- function() {
 momentum_correction_step <- function() {
   make_step_size(list(
     name = "momentum_correction_step",
-    calculate = function(opt, stage, sub_stage, par, fn, gr, iter) {
+    calculate = function(opt, stage, sub_stage, par, fg, iter) {
       #message("correcting momentum step")
 
       grad_stage <- opt$stages[["gradient_descent"]]
@@ -126,7 +126,7 @@ momentum_correction_step <- function() {
 # Momentum Dependencies ------------------------------------------------------------
 
 # After step
-require_update_old <- function(opt, par, fn, gr, iter, par0, update) {
+require_update_old <- function(opt, par, fg, iter, par0, update) {
   #message("update_old: saving old update")
   opt$cache$update_old <- update
   opt
@@ -135,7 +135,7 @@ attr(require_update_old, 'event') <- 'after step'
 attr(require_update_old, 'name') <- 'update_old'
 attr(require_update_old, 'depends') <- 'update_old_init'
 
-require_update_old_init <- function(opt, stage, sub_stage, par, fn, gr, iter) {
+require_update_old_init <- function(opt, stage, sub_stage, par, fg, iter) {
   # message("Initializing update_old")
   opt$cache$update_old <- rep(0, length(par))
   list(opt = opt)

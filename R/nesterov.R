@@ -9,13 +9,13 @@
 nesterov_momentum_direction <- function() {
   make_direction(list(
     name = "nesterov",
-    init = function(opt, stage, sub_stage, par, fn, gr, iter) {
+    init = function(opt, stage, sub_stage, par, fg, iter) {
       sub_stage$value <- rep(0, length(par))
       #sub_stage$grad_update_old <- rep(0, length(par))
       sub_stage$update <- rep(0, length(par))
       list(sub_stage = sub_stage)
     },
-    calculate = function(opt, stage, sub_stage, par, fn, gr, iter) {
+    calculate = function(opt, stage, sub_stage, par, fg, iter) {
       #message("Calculating nesterov momentum direction")
 
       # update_old <- opt$cache$update_old
@@ -30,7 +30,7 @@ nesterov_momentum_direction <- function() {
       list(sub_stage = sub_stage)
 
     },
-    after_step = function(opt, stage, sub_stage, par, fn, gr, iter, par0,
+    after_step = function(opt, stage, sub_stage, par, fg, iter, par0,
                           update) {
       #     sub_stage$update <- stage$result
       #     sub_stage$grad_update_old <- opt$stages[["gradient_descent"]]$result
@@ -79,12 +79,12 @@ nesterov_strong_convex_step <- function(burn_in) {
   make_step_size(list(
     burn_in = burn_in,
     name = "nesterov_convex",
-    init = function(opt, stage, sub_stage, par, fn, gr, iter) {
+    init = function(opt, stage, sub_stage, par, fg, iter) {
       #message("Nesterov convex init")
       sub_stage$a_old <- 1
       list(sub_stage = sub_stage)
     },
-    calculate = function(opt, stage, sub_stage, par, fn, gr, iter) {
+    calculate = function(opt, stage, sub_stage, par, fg, iter) {
       if (iter < burn_in) {
         sub_stage$value <- 0
         sub_stage$a <- 1
@@ -98,7 +98,7 @@ nesterov_strong_convex_step <- function(burn_in) {
       }
       list(sub_stage = sub_stage)
     },
-    after_step = function(opt, stage, sub_stage, par, fn, gr, iter, par0,
+    after_step = function(opt, stage, sub_stage, par, fg, iter, par0,
                           update) {
       #message("nesterov_convex: after step")
       if (!opt$ok) {
@@ -116,12 +116,12 @@ nesterov_convex_step_q <- function(q, burn_in = 0) {
   make_step_size(list(
     burn_in = burn_in,
     name = "nesterov_convex",
-    init = function(opt, stage, sub_stage, par, fn, gr, iter) {
+    init = function(opt, stage, sub_stage, par, fg, iter) {
       #message("Nesterov convex init")
       sub_stage$theta_old <- 1
       list(sub_stage = sub_stage)
     },
-    calculate = function(opt, stage, sub_stage, par, fn, gr, iter) {
+    calculate = function(opt, stage, sub_stage, par, fg, iter) {
       if (iter < burn_in) {
         sub_stage$value <- 0
         sub_stage$theta_old <- 1
@@ -143,7 +143,7 @@ nesterov_convex_step_q <- function(q, burn_in = 0) {
       }
       list(sub_stage = sub_stage)
     },
-    after_step = function(opt, stage, sub_stage, par, fn, gr, iter, par0,
+    after_step = function(opt, stage, sub_stage, par, fg, iter, par0,
                           update) {
       #message("nesterov_convex: after step")
       if (!opt$ok) {

@@ -67,7 +67,7 @@ rosenbrock <- wrap_fg(rosenbrock_fg)
 #
 # Given a set of start parameters and a search direction, initializes the
 # step data. Utility function for testing.
-make_step0 <- function(fn, gr, x, pv, f = fn(x), df = gr(x)) {
+make_step0 <- function(fg, x, pv, f = fg$fn(x), df = fg$gr(x)) {
   list(
     x = x,
     alpha = 0,

@@ -13,7 +13,7 @@ make_step_size <- function(sub_stage) {
 constant_step_size <- function(value = 1) {
   make_step_size(list(
       name = "constant",
-      calculate = function(opt, stage, sub_stage, par, fn, gr, iter) {
+      calculate = function(opt, stage, sub_stage, par, fg, iter) {
         #message("Constant step size: ", formatC(sub_stage$value))
         list()
       },
@@ -36,7 +36,7 @@ bold_driver <- function(inc_mult = 1.1, dec_mult = 0.5,
                 max_step_size = NULL) {
   make_step_size(list(
     name = "bold_driver",
-    init = function(opt, stage, sub_stage, par, fn, gr, iter) {
+    init = function(opt, stage, sub_stage, par, fg, iter) {
       #message("Initializing bold driver for ", stage$type)
 
       if (!is_first_stage(opt, stage)) {
@@ -49,7 +49,7 @@ bold_driver <- function(inc_mult = 1.1, dec_mult = 0.5,
       sub_stage$value <- sub_stage$init_value
       list(opt = opt, sub_stage = sub_stage)
     },
-    calculate = function(opt, stage, sub_stage, par, fn, gr, iter) {
+    calculate = function(opt, stage, sub_stage, par, fg, iter) {
       pm <- stage$direction$value
 
       # Optionally use the gradient if it's available to give up early
@@ -69,13 +69,13 @@ bold_driver <- function(inc_mult = 1.1, dec_mult = 0.5,
         }
         else {
           #message(stage$type, " ", sub_stage$name, ": calculating f0")
-          opt <- calc_fn(opt, par, fn)
+          opt <- calc_fn(opt, par, fg$fn)
           f0 <- opt$fn
         }
 
         alpha <- sub_stage$value
         para <- par + pm * alpha
-        opt <- calc_fn(opt, para, fn)
+        opt <- calc_fn(opt, para, fg$fn)
         while ((!is.finite(opt$fn) || opt$fn > f0)
                && alpha > sub_stage$min_value) {
           alpha <- sclamp(sub_stage$dec_fn(alpha),
@@ -84,7 +84,7 @@ bold_driver <- function(inc_mult = 1.1, dec_mult = 0.5,
 
           para <- par + pm * alpha
           #message(stage$type, " ", sub_stage$name, " calculating cost for candidate step size")
-          opt <- calc_fn(opt, para, fn)
+          opt <- calc_fn(opt, para, fg$fn)
         }
         sub_stage$value <- alpha
         if (!is.finite(opt$fn)) {
@@ -101,7 +101,7 @@ bold_driver <- function(inc_mult = 1.1, dec_mult = 0.5,
       }
       list(opt = opt, sub_stage = sub_stage)
     },
-    after_step = function(opt, stage, sub_stage, par, fn, gr, iter, par0,
+    after_step = function(opt, stage, sub_stage, par, fg, iter, par0,
                           update) {
       #message(stage$type, " ", sub_stage$name, " after step")
 
@@ -145,13 +145,13 @@ delta_bar_delta <- function(kappa = 1.1, kappa_fun = `*`,
     theta = theta,
     epsilon = epsilon,
     use_momentum = use_momentum,
-    init = function(opt, stage, sub_stage, par, fn, gr, iter) {
+    init = function(opt, stage, sub_stage, par, fg, iter) {
       sub_stage$delta_bar_old <- rep(0, length(par))
       sub_stage$gamma_old <- rep(1, length(par))
       sub_stage$value <- rep(sub_stage$init_eps, length(par))
       list(sub_stage = sub_stage)
     },
-    calculate = function(opt, stage, sub_stage, par, fn, gr, iter) {
+    calculate = function(opt, stage, sub_stage, par, fg, iter) {
       delta <- opt$cache$gr_curr
 
       if (use_momentum && !is.null(opt$cache$update_old)) {

@@ -1,19 +1,19 @@
 # Optimizer ---------------------------------------------------------------
 
-optloop <- function(opt, par, fn, gr, max_iter = 10, verbose = FALSE,
+optloop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
                     store_progress = FALSE, invalidate_cache = FALSE,
                     max_fn = Inf, max_gr = Inf, max_fg = Inf,
                     abs_tol = sqrt(.Machine$double.eps),
                     rel_tol = abs_tol, grad_tol = 1.e-5,
                     ret_opt = FALSE) {
 
-  opt <- opt_init(opt, par, fn, gr, 0)
+  opt <- opt_init(opt, par, fg, 0)
 
   progress <- data.frame()
   terminate <- list()
 
   if (verbose || store_progress) {
-    res <- opt_results(opt, par, fn, gr, 0)
+    res <- opt_results(opt, par, fg, 0)
     if (store_progress) {
       progress <- update_progress(opt_res = res, progress = progress)
     }
@@ -24,7 +24,7 @@ optloop <- function(opt, par, fn, gr, max_iter = 10, verbose = FALSE,
 
   if (max_iter < 1) {
     if (!verbose) {
-      res <- opt_results(opt, par, fn, gr, 0)
+      res <- opt_results(opt, par, fg, 0)
       if (store_progress) {
         res$progress <- progress
       }
@@ -45,12 +45,12 @@ optloop <- function(opt, par, fn, gr, max_iter = 10, verbose = FALSE,
 
     par0 <- par
 
-    step_res <- optimize_step(opt, par, fn, gr, iter)
+    step_res <- optimize_step(opt, par, fg, iter)
     opt <- step_res$opt
     par <- step_res$par
 
     if (verbose || store_progress) {
-      res <- opt_results(opt, par, fn, gr, iter, par0)
+      res <- opt_results(opt, par, fg, iter, par0)
       if (store_progress) {
         progress <- update_progress(opt_res = res, progress = progress)
       }
@@ -71,7 +71,7 @@ optloop <- function(opt, par, fn, gr, max_iter = 10, verbose = FALSE,
     }
   }
 
-  res <- opt_results(opt, par, fn, gr, iter)
+  res <- opt_results(opt, par, fg, iter)
   if (store_progress) {
     res$progress <- progress
   }
@@ -145,8 +145,8 @@ check_termination <- function(terminate, opt, iter, max_fn, max_gr, max_fg,
 
 # One Step of Optimization
 #
-optimize_step <- function(opt, par, fn, gr, iter) {
-  opt <- life_cycle_hook("step", "before", opt, par, fn, gr, iter)
+optimize_step <- function(opt, par, fg, iter) {
+  opt <- life_cycle_hook("step", "before", opt, par, fg, iter)
 
   par0 <- par
   step_result <- NULL
@@ -154,9 +154,9 @@ optimize_step <- function(opt, par, fn, gr, iter) {
   for (i in 1:length(opt$stages)) {
     opt$stage_i <- i
     stage <- opt$stages[[i]]
-    opt <- life_cycle_hook(stage$type, "before", opt, par, fn, gr, iter)
-    opt <- life_cycle_hook(stage$type, "during", opt, par, fn, gr, iter)
-    opt <- life_cycle_hook(stage$type, "after", opt, par, fn, gr, iter)
+    opt <- life_cycle_hook(stage$type, "before", opt, par, fg, iter)
+    opt <- life_cycle_hook(stage$type, "during", opt, par, fg, iter)
+    opt <- life_cycle_hook(stage$type, "after", opt, par, fg, iter)
 
     # should run "after stage"
     stage <- opt$stages[[i]]
@@ -173,7 +173,7 @@ optimize_step <- function(opt, par, fn, gr, iter) {
       par <- par + stage$result
     }
 
-    opt <- life_cycle_hook("stage", "after", opt, par, fn, gr, iter)
+    opt <- life_cycle_hook("stage", "after", opt, par, fg, iter)
   }
 
   # should run "after stages"
@@ -182,10 +182,10 @@ optimize_step <- function(opt, par, fn, gr, iter) {
   }
 
   # intercept whether we want to accept the new solution
-  opt <- life_cycle_hook("validation", "before", opt, par, fn, gr, iter,
+  opt <- life_cycle_hook("validation", "before", opt, par, fg, iter,
                          par0, step_result)
   opt$ok <- TRUE
-  opt <- life_cycle_hook("validation", "during", opt, par, fn, gr, iter,
+  opt <- life_cycle_hook("validation", "during", opt, par, fg, iter,
                          par0, step_result)
 
   # If the this solution was vetoed, roll back to the previous one.
@@ -193,7 +193,7 @@ optimize_step <- function(opt, par, fn, gr, iter) {
     par <- par0
   }
 
-  opt <- life_cycle_hook("step", "after", opt, par, fn, gr, iter, par0,
+  opt <- life_cycle_hook("step", "after", opt, par, fg, iter, par0,
                          step_result)
   opt$counts <- update_counts(opt$counts, counts)
 
@@ -201,24 +201,24 @@ optimize_step <- function(opt, par, fn, gr, iter) {
 }
 
 
-opt_init <- function(opt, par, fn, gr, iter) {
+opt_init <- function(opt, par, fg, iter) {
   opt <- register_hooks(opt)
   #  list_hooks(opt)
 
-  opt <- life_cycle_hook("opt", "init", opt, par, fn, gr, iter)
+  opt <- life_cycle_hook("opt", "init", opt, par, fg, iter)
 
   opt
 }
 
-opt_results <- function(opt, par, fn, gr, iter, par0 = NULL) {
+opt_results <- function(opt, par, fg, iter, par0 = NULL) {
   if (!has_fn_curr(opt, iter + 1)) {
-    f <- fn(par)
+    f <- fg$fn(par)
   }
   else {
     f <- opt$cache$fn_curr
   }
   if (!has_gr_curr(opt, iter + 1)) {
-    g <- gr(par)
+    g <- fg$gr(par)
   }
   else {
     g <- opt$cache$gr_curr
@@ -283,11 +283,11 @@ update_progress <- function(opt_res, progress) {
 make_opt <- function(stages,
                      verbose = FALSE) {
   opt <- list(
-    init = function(opt, par, fn, gr, iter) {
-      opt <- default_handler("opt", "init", opt, par, fn, gr, iter)
+    init = function(opt, par, fg, iter) {
+      opt <- default_handler("opt", "init", opt, par, fg, iter)
       for (i in 1:length(opt$stages)) {
         opt$stage_i <- i
-        opt <- life_cycle_hook(opt$stages[[i]]$type, "init", opt, par, fn, gr, iter)
+        opt <- life_cycle_hook(opt$stages[[i]]$type, "init", opt, par, fg, iter)
       }
       opt
     },
@@ -313,29 +313,29 @@ make_stage <- function(type, direction, step_size, depends = NULL) {
     type = type,
     direction = direction,
     step_size = step_size,
-    init = function(opt, stage, par, fn, gr, iter) {
+    init = function(opt, stage, par, fg, iter) {
       for (sub_stage_name in c("direction", "step_size")) {
         phase <- paste0(stage$type, " ", sub_stage_name)
-        opt <- life_cycle_hook(phase, "init", opt, par, fn, gr, iter)
+        opt <- life_cycle_hook(phase, "init", opt, par, fg, iter)
       }
 
       list(opt = opt)
     },
-    calculate = function(opt, stage, par, fn, gr, iter) {
+    calculate = function(opt, stage, par, fg, iter) {
       for (sub_stage_name in c("direction", "step_size")) {
         phase <- paste0(stage$type, " ", sub_stage_name)
         #      message("emitting during ", phase)
 
-        opt <- life_cycle_hook(phase, "during", opt, par, fn, gr, iter)
+        opt <- life_cycle_hook(phase, "during", opt, par, fg, iter)
       }
 
       list(opt = opt)
     },
-    after_stage = function(opt, stage, par, fn, gr, iter) {
+    after_stage = function(opt, stage, par, fg, iter) {
       for (sub_stage_name in c("direction", "step_size")) {
         phase <- paste0(stage$type, " ", sub_stage_name)
         #      message("emitting after ", phase)
-        opt <- life_cycle_hook(phase, "after", opt, par, fn, gr, iter)
+        opt <- life_cycle_hook(phase, "after", opt, par, fg, iter)
       }
       stage$result <- stage$direction$value * stage$step_size$value
       list(stage = stage)

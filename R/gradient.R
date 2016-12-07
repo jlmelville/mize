@@ -6,7 +6,7 @@ make_direction <- function(sub_stage) {
 sd_direction <- function(normalize = FALSE) {
 
   make_direction(list(
-    calculate = function(opt, stage, sub_stage, par, fn, gr, iter) {
+    calculate = function(opt, stage, sub_stage, par, fg, iter) {
       #message("Calculating steepest descent direction")
 
       sub_stage$value <- -opt$cache$gr_curr
@@ -35,12 +35,12 @@ cg_direction <- function(ortho_check = FALSE, nu = 0.1,
     nu = nu,
     cg_update = cg_update,
     eps = eps,
-    init = function(opt, stage, sub_stage, par, fn, gr, iter) {
+    init = function(opt, stage, sub_stage, par, fg, iter) {
       sub_stage$value <- rep(0, length(par))
       sub_stage$pm_old <- rep(0, length(par))
       list(sub_stage = sub_stage)
     },
-    calculate = function(opt, stage, sub_stage, par, fn, gr, iter) {
+    calculate = function(opt, stage, sub_stage, par, fg, iter) {
       gm <- opt$cache$gr_curr
       gm_old <- opt$cache$gr_old
       pm_old <- sub_stage$pm_old
@@ -65,7 +65,7 @@ cg_direction <- function(ortho_check = FALSE, nu = 0.1,
 
       list(sub_stage = sub_stage)
     }
-   , after_step = function(opt, stage, sub_stage, par, fn, gr, iter, par0,
+   , after_step = function(opt, stage, sub_stage, par, fg, iter, par0,
                          update) {
      sub_stage$pm_old <- sub_stage$value
      list(sub_stage = sub_stage)
@@ -119,13 +119,13 @@ bfgs_direction <- function(eps =  .Machine$double.eps,
                            scale_inverse = FALSE) {
   make_direction(list(
     eps = eps,
-    init = function(opt, stage, sub_stage, par, fn, gr, iter) {
+    init = function(opt, stage, sub_stage, par, fg, iter) {
       n <- length(par)
       sub_stage$value <- rep(0, n)
       sub_stage$hm <- diag(1, n)
       list(sub_stage = sub_stage)
     },
-    calculate = function(opt, stage, sub_stage, par, fn, gr, iter) {
+    calculate = function(opt, stage, sub_stage, par, fg, iter) {
       gm <- opt$cache$gr_curr
       gm_old <- opt$cache$gr_old
       if (is.null(gm_old)) {
@@ -178,7 +178,7 @@ lbfgs_direction <- function(memory = 100, scale_inverse = FALSE,
     memory = memory,
     k = 0,
     eps = eps,
-    init = function(opt, stage, sub_stage, par, fn, gr, iter) {
+    init = function(opt, stage, sub_stage, par, fg, iter) {
       n <- length(par)
       sub_stage$value <- rep(0, n)
 
@@ -189,7 +189,7 @@ lbfgs_direction <- function(memory = 100, scale_inverse = FALSE,
       list(sub_stage = sub_stage)
 
     },
-    calculate = function(opt, stage, sub_stage, par, fn, gr, iter) {
+    calculate = function(opt, stage, sub_stage, par, fg, iter) {
       gm <- opt$cache$gr_curr
       gm_old <- opt$cache$gr_old
 
@@ -263,10 +263,10 @@ lbfgs_direction <- function(memory = 100, scale_inverse = FALSE,
 
 # Gradient Dependencies ------------------------------------------------------------
 
-require_gradient <- function(opt, stage, par, fn, gr, iter) {
+require_gradient <- function(opt, stage, par, fg, iter) {
   if (!has_gr_curr(opt, iter)) {
     #message("require gradient: calculating gr_curr ", iter)
-    opt <- calc_gr_curr(opt, par, gr, iter)
+    opt <- calc_gr_curr(opt, par, fg$gr, iter)
 
     if (any(is.nan(opt$cache$gr_curr))) {
       stop("NaN in grad. descent at iter ", iter)
@@ -280,7 +280,7 @@ require_gradient <- function(opt, stage, par, fn, gr, iter) {
 attr(require_gradient, 'event') <- 'before gradient_descent'
 attr(require_gradient, 'name') <- 'gradient'
 
-require_gradient_old <- function(opt, par, fn, gr, iter, par0, update) {
+require_gradient_old <- function(opt, par, fg, iter, par0, update) {
   #  message("saving old gradient")
   opt$cache$gr_old <- opt$cache$gr_curr
   opt

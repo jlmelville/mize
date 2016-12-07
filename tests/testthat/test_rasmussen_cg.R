@@ -19,7 +19,7 @@ test_that("CG gives same results as minimize.m webpage", {
         step_size = rasmussen_ls(initial_step_length = "r")),
       verbose = FALSE))
 
-  res <- optloop(opt, c(0,0), rosenbrock_fg$fn, rosenbrock_fg$gr, 15,
+  res <- optloop(opt, c(0,0), rosenbrock_fg, 15,
                  store_progress = TRUE, verbose = FALSE, grad_tol = 0,
                  abs_tol = 0)
 

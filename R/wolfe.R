@@ -68,7 +68,7 @@ line_search <- function(ls_fn,
   make_step_size(list(
     name = name,
     eps = eps,
-    init = function(opt, stage, sub_stage, par, fn, gr, iter) {
+    init = function(opt, stage, sub_stage, par, fg, iter) {
       #message("Initializing Wolfe line search for ", stage$type)
 
       if (!is_first_stage(opt, stage)) {
@@ -80,7 +80,7 @@ line_search <- function(ls_fn,
       }
       list(opt = opt)
     },
-    calculate = function(opt, stage, sub_stage, par, fn, gr, iter) {
+    calculate = function(opt, stage, sub_stage, par, fg, iter) {
 
       pm <- stage$direction$value
       if (norm2(pm) < sqrt(sub_stage$eps)) {
@@ -93,7 +93,7 @@ line_search <- function(ls_fn,
         f0 <- opt$cache$fn_curr
       }
       else {
-        opt <- calc_fn(opt, par, fn)
+        opt <- calc_fn(opt, par, fg$fn)
         f0 <- opt$fn
       }
 
@@ -107,7 +107,7 @@ line_search <- function(ls_fn,
 
       old_step_length <- sub_stage$value
 
-      phi_alpha <- make_phi_alpha(par, fn, gr, pm,
+      phi_alpha <- make_phi_alpha(par, fg, pm,
                                   calc_gradient_default = TRUE, debug = debug)
 
 
@@ -175,7 +175,7 @@ line_search <- function(ls_fn,
 
       list(opt = opt, sub_stage = sub_stage)
     },
-    after_step = function(opt, stage, sub_stage, par, fn, gr, iter, par0,
+    after_step = function(opt, stage, sub_stage, par, fg, iter, par0,
                           update) {
       if (opt$ok && is_last_stage(opt, stage) && has_fn_new(opt, iter)) {
 #        message("wolfe: setting next f_old from f for iter ", iter, " "
@@ -194,20 +194,20 @@ line_search <- function(ls_fn,
   ))
 }
 
-make_phi_alpha <- function(par, fn, gr, pm,
+make_phi_alpha <- function(par, fg, pm,
                             calc_gradient_default = FALSE, debug = FALSE) {
   # LS functions are responsible for updating fn and gr count
   function(alpha, calc_gradient = calc_gradient_default) {
     y_alpha <- par + (alpha * pm)
 
-    f <- fn(y_alpha)
+    f <- fg$fn(y_alpha)
     step <- list(
       alpha = alpha,
       f = f
     )
 
     if (calc_gradient) {
-      step$df <- gr(y_alpha)
+      step$df <- fg$gr(y_alpha)
       step$d <- dot(step$df, pm)
       if (debug) {
         message("alpha = ", formatC(alpha)
@@ -239,11 +239,11 @@ make_phi_alpha <- function(par, fn, gr, pm,
 # @param debug If TRUE, log information about the line search values.
 # @param ... Other parameters to pass to fn and gr when they are invoked.
 # @return Line function.
-make_phi <- function(fn, gr, par, pv, debug = FALSE, ...) {
+make_phi <- function(fg, par, pv, debug = FALSE, ...) {
   function(alpha) {
     xa <- par + alpha * pv
-    f <- fn(xa, ...)
-    df <- gr(xa, ...)
+    f <- fg$fn(xa, ...)
+    df <- fg$gr(xa, ...)
     d <- dot(df, pv)
     if (debug) {
       message(

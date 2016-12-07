@@ -62,11 +62,11 @@ adaptive_restart_gr <- function(opt) {
   adaptive_restart(opt, "gr")
 }
 
-require_adaptive_restart <- function(opt, par, fn, gr, iter, par0, update) {
+require_adaptive_restart <- function(opt, par, fg, iter, par0, update) {
   if (!opt$ok
       && (is.null(opt$restart_at)
           || iter - opt$restart_at > opt$restart_wait)) {
-    opt <- life_cycle_hook("momentum", "init", opt, par, fn, gr, iter)
+    opt <- life_cycle_hook("momentum", "init", opt, par, fg, iter)
     #message("adaptive restart: restarting momentum")
     opt$restart_at <- iter
   }
