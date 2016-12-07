@@ -24,14 +24,14 @@ rosenbrock_fg <- list(
     yy <- 200
     matrix(c(xx, xy, xy, yy), nrow = 2)
   },
-  fg <- function(x) {
+  fg = function(x) {
     x1 <- x[1]
     x2 <- x[2]
     a <- (x2 - x1 * x1)
     b <- 1 - x1
     list(
-      f = 100 * a * a + b * b,
-      g = c(
+      fn = 100 * a * a + b * b,
+      gr = c(
         -400 * x1 * a - 2 * b,
         200 * a
       )
