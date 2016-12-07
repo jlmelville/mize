@@ -18,8 +18,11 @@ step <- function(x, f, df, alpha, nfev) {
 }
 
 mtls <- function(fg, x, pv, alpha, c1, c2) {
-  cvsrch(phi = make_phi(fg, x, pv),
-         step0 = make_step0(fg, x, pv), alpha = alpha, c1 = c1, c2 = c2)
+  res <- cvsrch(phi = make_phi_alpha(x, fg, pv, calc_gradient_default = TRUE),
+                alpha,
+                step0 = make_step0(fg, x, pv), c1 = c1, c2 = c2)
+  res$step$par <- x + res$step$alpha * pv
+  res
 }
 
 ## These tests are designed to reproduce the data in Tables 1-6

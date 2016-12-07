@@ -9,10 +9,12 @@ expect_step <- function(actual, x, f, df, alpha, nfev, tolerance = 1e-4) {
 }
 
 rls <- function(fg, x, pv, alpha, c1, c2) {
-  ras_ls(phi = make_phi(fg, x, pv),
+  res <- ras_ls(phi = make_phi_alpha(x, fg, pv, calc_gradient_default = TRUE),
          alpha,
          step0 = make_step0(fg, x, pv),
          max_fn = 10000, c1 = c1, c2 = c2)
+  res$step$par <- x + res$step$alpha * pv
+  res
 }
 
 ## Test data from the More'-Thuente paper.

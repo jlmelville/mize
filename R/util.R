@@ -47,10 +47,17 @@ vec_formatC <- function(v) {
   paste(Map(function(x) { formatC(x) }, v), collapse = ", ")
 }
 
-format_vec <- function(vec) {
-  paste(formatC(vec), collapse = ' ')
+format_list <- function(ll) {
+  Reduce(function(acc, elem) {
+    paste0(acc,
+           ifelse(nchar(acc) == 0, "", " "),
+           elem,
+           " = ",
+           ifelse(length(ll[[elem]]) == 1,
+                  formatC(ll[[elem]]), vec_formatC(ll[[elem]])))
+  },
+  names(ll), "")
 }
-
 
 # Logging Hooks -----------------------------------------------------------
 
