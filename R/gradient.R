@@ -261,6 +261,59 @@ lbfgs_direction <- function(memory = 100, scale_inverse = FALSE,
   ))
 }
 
+
+# Newton Method -----------------------------------------------------------
+
+newton_direction <- function(scale_hess = FALSE) {
+  make_direction(list(
+    calculate = function(opt, stage, sub_stage, par, fg, iter) {
+      gm <- opt$cache$gr_curr
+      hm <- fg$hs(par)
+
+      chol_result <- try({
+        # O(N^3)
+          rm <- chol(hm)
+        },
+        silent = TRUE)
+      if (class(chol_result) == "try-error") {
+        # Suggested by https://www.r-bloggers.com/fixing-non-positive-definite-correlation-matrices-using-r-2/
+        # Refs:
+        # FP Brissette, M Khalili, R Leconte, Journal of Hydrology, 2007, “Efficient stochastic generation of multi-site synthetic precipitation data”
+        # https://www.etsmtl.ca/getattachment/Unites-de-recherche/Drame/Publications/Brissette_al07---JH.pdf
+        # Rebonato, R., & Jäckel, P. (2011). The most general methodology to create a valid correlation matrix for risk management and option pricing purposes.
+        # doi 10.21314/JOR.2000.023
+        # Also O(N^3)
+        eig <- eigen(hm)
+        eig$values[eig$values < 0] <- 1e-10
+        hm <- eig$vectors %*% (eig$values * diag(nrow(hm))) %*% t(eig$vectors)
+        chol_result <- try({
+          rm <- chol(hm)
+        }, silent = TRUE)
+      }
+      if (class(chol_result) == "try-error") {
+        # we gave it a good go, but let's just do steepest descent this time
+        #message("Hessian is not positive-definite, resetting to SD")
+        pm <- -gm
+      }
+      else {
+
+        #hm <- hm + (min(hm[hm > 0]) * 0.1 * diag(ncol(hm)))
+        #rm <- chol(hm)
+        # Forward and back solving is "only" O(N^2)
+        ym <- forwardsolve(t(rm), -gm)
+        pm <- backsolve(rm, ym)
+        descent <- dot(gm, pm)
+        if (descent > 0) {
+          message("Newton direction is not a descent direction, resetting to SD")
+          pm <- -gm
+        }
+      }
+      sub_stage$value <- pm
+      list(sub_stage = sub_stage)
+    }
+  ))
+}
+
 # Gradient Dependencies ------------------------------------------------------------
 
 require_gradient <- function(opt, stage, par, fg, iter) {

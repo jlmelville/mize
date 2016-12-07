@@ -106,6 +106,9 @@ make_mizer <- function(method = "L-BFGS",
   if (method == "SD") {
     dir_type <- sd_direction(normalize = norm_direction)
   }
+  else if (method == "NEWTON") {
+    dir_type <- newton_direction()
+  }
   else if (method == "CG") {
     cg_update_fn <- NULL
     cg_update <- toupper(cg_update)
@@ -179,6 +182,9 @@ make_mizer <- function(method = "L-BFGS",
     }
     else if (line_search == "BOLD") {
       step_type <- bold_driver()
+    }
+    else if (line_search == "CONST") {
+      step_type <- constant_step_size(value = step0)
     }
     else {
       stop("Unknown line search method: '", line_search, "'")

@@ -226,6 +226,14 @@ opt_results <- function(opt, par, fg, iter, par0 = NULL) {
   g2n <- norm2(g)
   step_size <- norm2(par - par0)
 
+  alpha <- NULL
+  if (length(opt$stages) == 1 && opt$stages[[1]]$type == "gradient_descent") {
+    alpha <- norm2(opt$stages[[1]]$step_size$value)
+    if (is.null(alpha)) {
+      alpha <- 0
+    }
+  }
+
   res <- list(
     f = f,
     g2n = g2n,
@@ -233,6 +241,7 @@ opt_results <- function(opt, par, fg, iter, par0 = NULL) {
     ng = opt$counts$gr,
     par = par,
     step = step_size,
+    alpha = alpha,
     iter = iter
   )
 
@@ -267,6 +276,9 @@ opt_report <- function(opt_result, print_time = FALSE, print_par = FALSE) {
 
 update_progress <- function(opt_res, progress) {
   res_names <- c("f", "g2n", "nf", "ng", "step")
+  if (!is.null(opt_res$alpha)) {
+    res_names <- c(res_names, "alpha")
+  }
   if (!is.null(opt_res$mu)) {
     res_names <- c(res_names, "mu")
   }

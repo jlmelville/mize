@@ -40,6 +40,22 @@ rosenbrock_fg <- list(
   n = 2
 )
 
+tricky_fg <- function() {
+  res <- list(
+    fn = function(par) {
+      x1 <- par[1]
+      x2 <- par[2]
+      (1.5 - x1 + x1 * x2)^2 +
+        (2.25 - x1 + x1 * x2 * x2)^2 +
+        (2.625 - x1 + x1 * x2 * x2 * x2)^2
+    }
+  )
+  res$gr <- make_gfd(res$fn)
+  res$hs <- make_hfd(res$fn)
+
+  res
+}
+
 wrap_fg <- function(fg) {
   nc <- fg$n
   nr <- 1
