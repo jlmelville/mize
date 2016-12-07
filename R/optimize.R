@@ -71,9 +71,7 @@ optloop <- function(opt, par, fn, gr, max_iter = 10, verbose = FALSE,
     }
   }
 
-  if (verbose) {
-    res <- opt_results(opt, par, fn, gr, iter)
-  }
+  res <- opt_results(opt, par, fn, gr, iter)
   if (store_progress) {
     res$progress <- progress
   }
