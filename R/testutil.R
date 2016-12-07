@@ -225,8 +225,8 @@ f6 <- list(fn = fn6, gr = gr6)
 
 # Euro Cities -------------------------------------------------------------
 
-eurofg <- function() {
-  dxm <- as.matrix(eurodist)
+make_mmds_fg <- function(dist_mat) {
+  dxm <- as.matrix(dist_mat)
 
   par_to_ym <- function(par) {
     matrix(par, ncol = 2, byrow = TRUE)
@@ -261,16 +261,49 @@ eurofg <- function() {
        g = g)
 }
 
-ed0 <- rnorm(attr(eurodist, 'Size') * 2)
+eurodist_fg <- make_mmds_fg(eurodist)
+
+ed0 <- as.vector(t(-cmdscale(eurodist, add = TRUE)$points))
+
+us_fg <- make_mmds_fg(UScitiesD)
+us0 <- as.vector(t(-cmdscale(UScitiesD, add = TRUE)$points))
 
 
-# Finite Difference -------------------------------------------------------
+# Rotates qm onto pm
+kabsch <- function(pm, qm) {
+  # center the points
+  pm <- scale(qm, center = TRUE, scale = FALSE)
+  qm <- scale(qm, center = TRUE, scale = FALSE)
 
+  am <- t(pm) %*% qm
 
-fd <- function(i, par, fn, eps = 1.e-3) {
+  svd_res <- svd(am)
+  # use the sign of the determinant to ensure a right-hand coordinate system
+  d <- determinant(svd_res$v %*% t(svd_res$u))$sign
+  dm <- diag(c(1, d))
 
+  # rotation matrix
+  um <- svd_res$u %*% dm %*% t(svd_res$v)
+
+  t(um %*% t(qm)) + attr(pm, "scaled:center")
 }
 
+plot_mmds <- function(coords, dist, ...) {
+  if (class(coords) == "numeric") {
+    coords <- matrix(coords, ncol = 2, byrow = TRUE)
+  }
+  plot(coords, type = 'n')
+  text(coords[, 1], coords[, 2], labels = labels(dist), ...)
+}
+
+rotate_mmds_results <- function(par, dist) {
+  pm <- -cmdscale(dist, add = TRUE)$points
+  qm <- matrix(par, ncol = 2, byrow = TRUE)
+
+  kabsch(pm, qm)
+}
+
+# Finite Difference -------------------------------------------------------
 
 gfd <- function(par, fn, eps =  1.e-3) {
   g <- rep(0, length(par))
@@ -355,3 +388,6 @@ make_hfd <- function(fn, eps = 1.e-3) {
     hfd(par, fn, eps)
   }
 }
+
+
+
