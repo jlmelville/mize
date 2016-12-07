@@ -109,6 +109,9 @@ make_mizer <- function(method = "L-BFGS",
   else if (method == "NEWTON") {
     dir_type <- newton_direction()
   }
+  else if (method == "PHESS") {
+    dir_type <- partial_hessian_direction()
+  }
   else if (method == "CG") {
     cg_update_fn <- NULL
     cg_update <- toupper(cg_update)

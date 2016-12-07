@@ -264,7 +264,7 @@ lbfgs_direction <- function(memory = 100, scale_inverse = FALSE,
 
 # Newton Method -----------------------------------------------------------
 
-newton_direction <- function(scale_hess = FALSE) {
+newton_direction <- function() {
   make_direction(list(
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
       gm <- opt$cache$gr_curr
@@ -296,17 +296,38 @@ newton_direction <- function(scale_hess = FALSE) {
         pm <- -gm
       }
       else {
-
-        #hm <- hm + (min(hm[hm > 0]) * 0.1 * diag(ncol(hm)))
-        #rm <- chol(hm)
         # Forward and back solving is "only" O(N^2)
         ym <- forwardsolve(t(rm), -gm)
         pm <- backsolve(rm, ym)
         descent <- dot(gm, pm)
         if (descent > 0) {
-          message("Newton direction is not a descent direction, resetting to SD")
+          #message("Newton direction is not a descent direction, resetting to SD")
           pm <- -gm
         }
+      }
+      sub_stage$value <- pm
+      list(sub_stage = sub_stage)
+    }
+  ))
+}
+
+
+partial_hessian_direction <- function() {
+  make_direction(list(
+    init = function(opt, stage, sub_stage, par, fg, iter) {
+      hm <- fg$hs(par)
+      sub_stage$rm <- chol(hm)
+      list(sub_stage = sub_stage)
+    },
+    calculate = function(opt, stage, sub_stage, par, fg, iter) {
+      gm <- opt$cache$gr_curr
+      rm <- sub_stage$rm
+      ym <- forwardsolve(t(rm), -gm)
+      pm <- backsolve(rm, ym)
+      descent <- dot(gm, pm)
+      if (descent > 0) {
+        #message("Partial Hessian direction is not a descent direction, resetting to SD")
+        pm <- -gm
       }
       sub_stage$value <- pm
       list(sub_stage = sub_stage)

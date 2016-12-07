@@ -272,16 +272,17 @@ make_mmds_fg <- function(dist_mat) {
     - 4 * as.vector(t(gm))
   }
 
+  h <- make_hfd(f)
 
-  list(f = f,
-       g = g)
+  list(fn = f,
+       gr = g,
+       hs = h)
 }
 
-eurodist_fg <- make_mmds_fg(eurodist)
-
+eurodist_fg <- function() { make_mmds_fg(eurodist) }
 ed0 <- as.vector(t(-cmdscale(eurodist, add = TRUE)$points))
 
-us_fg <- make_mmds_fg(UScitiesD)
+us_fg <- function() { make_mmds_fg(UScitiesD)}
 us0 <- as.vector(t(-cmdscale(UScitiesD, add = TRUE)$points))
 
 
