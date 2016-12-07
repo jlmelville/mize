@@ -18,6 +18,12 @@ rosenbrock_fg <- list(
       -400 * x1 * (x2 - x1 * x1) - 2 * (1 - x1),
       200 *      (x2 - x1 * x1))
   },
+  hs = function(x) {
+    xx <- 1200 * x[1] * x[1] - 400 * x[2] + 2
+    xy <- x[1] * -400
+    yy <- 200
+    matrix(c(xx, xy, xy, yy), nrow = 2)
+  },
   fg <- function(x) {
     x1 <- x[1]
     x2 <- x[2]
@@ -216,6 +222,9 @@ f4 <- list(fn = fn4, gr = gr4)
 f5 <- list(fn = fn5, gr = gr5)
 f6 <- list(fn = fn6, gr = gr6)
 
+
+# Euro Cities -------------------------------------------------------------
+
 eurofg <- function() {
   dxm <- as.matrix(eurodist)
 
@@ -247,27 +256,102 @@ eurofg <- function() {
     - 4 * as.vector(t(gm))
   }
 
-  eps <- 1.e-3
-  gfd <- function(par) {
-    g <- rep(0, length(par))
-    for (i in 1:length(par)) {
-      oldx <- par[i]
-
-      par[i] <- oldx + eps
-      fplus <- f(par)
-
-      par[i] <- oldx - eps
-      fminus <- f(par)
-      par[i] <- oldx
-
-      g[i] <- (fplus - fminus) / (2 * eps)
-    }
-    g
-  }
 
   list(f = f,
-       g = g,
-       gfd = gfd)
+       g = g)
 }
 
 ed0 <- rnorm(attr(eurodist, 'Size') * 2)
+
+
+# Finite Difference -------------------------------------------------------
+
+
+fd <- function(i, par, fn, eps = 1.e-3) {
+
+}
+
+
+gfd <- function(par, fn, eps =  1.e-3) {
+  g <- rep(0, length(par))
+  for (i in 1:length(par)) {
+    oldx <- par[i]
+
+    par[i] <- oldx + eps
+    fplus <- fn(par)
+
+    par[i] <- oldx - eps
+    fminus <- fn(par)
+    par[i] <- oldx
+
+    g[i] <- (fplus - fminus) / (2 * eps)
+  }
+  g
+}
+
+make_gfd <- function(fn, eps = 1.e-3) {
+  function(par) {
+    gfd(par, fn, eps)
+  }
+}
+
+hfd <- function(par, fn, eps =  1.e-3) {
+  hs <- matrix(0, nrow = length(par), ncol = length(par))
+  for (i in 1:length(par)) {
+    for (j in i:length(par)) {
+      if (i != j) {
+        oldxi <- par[i]
+        oldxj <- par[j]
+
+        par[i] <- par[i] + eps
+        par[j] <- par[j] + eps
+        fpp <- fn(par)
+
+        par[j] <- oldxj - eps
+        fpm <- fn(par)
+
+        par[i] <- oldxi - eps
+        par[j] <- oldxj + eps
+        fmp <- fn(par)
+
+        par[j] <- oldxj - eps
+        fmm <- fn(par)
+
+        par[i] <- oldxi
+        par[j] <- oldxj
+
+        val <- (fpp - fpm - fmp + fmm) / (4 * eps * eps)
+
+        hs[i, j] <- val
+        hs[j, i] <- val
+      }
+      else {
+        f <- fn(par)
+        oldxi <- par[i]
+
+        par[i] <- oldxi + 2 * eps
+        fpp <- fn(par)
+
+        par[i] <- oldxi + eps
+        fp <- fn(par)
+
+        par[i] <- oldxi - 2 * eps
+        fmm <- fn(par)
+
+        par[i] <- oldxi - eps
+        fm <- fn(par)
+
+        par[i] <- oldxi
+
+        hs[i, i] <- (-fpp + 16 * fp - 30 * f + 16 * fm - fmm) / (12 * eps * eps)
+      }
+    }
+  }
+  hs
+}
+
+make_hfd <- function(fn, eps = 1.e-3) {
+  function(par) {
+    hfd(par, fn, eps)
+  }
+}
