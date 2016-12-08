@@ -48,7 +48,6 @@ optloop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
     step_res <- optimize_step(opt, par, fg, iter)
     opt <- step_res$opt
     par <- step_res$par
-
     if (verbose || store_progress) {
       res <- opt_results(opt, par, fg, iter, par0)
       if (store_progress) {
@@ -71,7 +70,7 @@ optloop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
     }
   }
 
-  res <- opt_results(opt, par, fg, iter)
+  res <- opt_results(opt, par, fg, iter, par0)
   if (store_progress) {
     res$progress <- progress
   }
@@ -224,7 +223,12 @@ opt_results <- function(opt, par, fg, iter, par0 = NULL) {
     g <- opt$cache$gr_curr
   }
   g2n <- norm2(g)
-  step_size <- norm2(par - par0)
+  if (!is.null(par0)) {
+    step_size <- norm2(par - par0)
+  }
+  else {
+    step_size <- 0
+  }
 
   alpha <- NULL
   if (length(opt$stages) == 1 && opt$stages[[1]]$type == "gradient_descent") {
