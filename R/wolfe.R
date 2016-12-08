@@ -233,20 +233,6 @@ make_phi_alpha <- function(par, fg, pm,
   }
 }
 
-guess_first_step_length <- function(method, step0) {
-  if (is.numeric(method)) {
-    return(method)
-  }
-  else {
-    if (method == "r") { # Rasmussen default from minimize.m
-      return(1 / (1 - step0$d))
-    }
-    else {
-      stop("Unknown initial step method '", method, "'")
-    }
-  }
-}
-
 # described on p59 of Nocedal and Wright
 # slope ratio method
 step_slope_ratio <- function(old_step_length, d0, step0, eps, max_alpha_mult) {
