@@ -297,8 +297,8 @@ newton_direction <- function() {
       }
       else {
         # Forward and back solving is "only" O(N^2)
-        ym <- forwardsolve(t(rm), -gm)
-        pm <- backsolve(rm, ym)
+        pm <- hessian_solve(rm, gm)
+
         descent <- dot(gm, pm)
         if (descent > 0) {
           #message("Newton direction is not a descent direction, resetting to SD")
@@ -322,8 +322,8 @@ partial_hessian_direction <- function() {
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
       gm <- opt$cache$gr_curr
       rm <- sub_stage$rm
-      ym <- forwardsolve(t(rm), -gm)
-      pm <- backsolve(rm, ym)
+      pm <- hessian_solve(rm, gm)
+
       descent <- dot(gm, pm)
       if (descent > 0) {
         #message("Partial Hessian direction is not a descent direction, resetting to SD")
@@ -333,6 +333,27 @@ partial_hessian_direction <- function() {
       list(sub_stage = sub_stage)
     }
   ))
+}
+
+# Solves U'Ux = b
+# U is upper triangular; need to solve U'(Ux) = b
+# Step 1: Solve U'y = b which is a forwardsolve
+# Step 2: Solve Ub = y which is a backsolve
+# Can avoid explicit transpose in Step 1
+# by passing the transpose argument to backsolve
+upper_solve <- function(um, bm) {
+  backsolve(um, backsolve(um, bm, transpose = TRUE))
+}
+
+# Given the upper triangular cholesky decomposition of the hessian (or an
+# approximation), U, and the gradient vector, g, solve Up = -g
+hessian_solve <- function(um, gm) {
+  nucol <- ncol(um)
+  ngcol <- length(gm) / nucol
+  dim(gm) <- c(nucol, ngcol)
+  pm <- upper_solve(um, -gm)
+  dim(pm) <- NULL
+  pm
 }
 
 # Gradient Dependencies ------------------------------------------------------------
