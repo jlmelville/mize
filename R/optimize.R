@@ -149,7 +149,6 @@ optimize_step <- function(opt, par, fg, iter) {
 
   par0 <- par
   step_result <- NULL
-  counts <- make_counts()
   for (i in 1:length(opt$stages)) {
     opt$stage_i <- i
     stage <- opt$stages[[i]]
@@ -194,8 +193,6 @@ optimize_step <- function(opt, par, fg, iter) {
 
   opt <- life_cycle_hook("step", "after", opt, par, fg, iter, par0,
                          step_result)
-  opt$counts <- update_counts(opt$counts, counts)
-
   list(opt = opt, par = par)
 }
 
@@ -444,12 +441,6 @@ make_counts <- function() {
     fn = 0,
     gr = 0
   )
-}
-
-update_counts <- function(counts, new_counts) {
-  counts$fn <- counts$fn + new_counts$fn
-  counts$gr <- counts$gr + new_counts$gr
-  counts
 }
 
 # Function / Gradient ----------------------------------------------------------------

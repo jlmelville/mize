@@ -989,7 +989,43 @@ test_that("NAG with approximate convex momentum", {
   g2ns <- c(232.87, 86.69, 1.791, 77.44)
   steps <- c(0, 0.275, 0.0926, 1.703)
   # From reading the Sutskever paper, it seems to be the case that mu = 0.4
-  # (from t = 0) is not intended to ever be used
+  # (from t = 0) is not intended to ever be used, so default is that mu = 0
+  mus <- c(0, 0.5, 0.571, 0.625)
+  par <- c(-0.09, -0.371)
+
+  expect_equal(res$progress$nf, nfs)
+  expect_equal(res$progress$ng, ngs)
+  expect_equal(res$progress$f, fs, tol = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
+  expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$progress$mu, mus, tol = 1e-3)
+  expect_equal(res$par, par, tol = 1e-3)
+})
+
+test_that("NAG with approximate convex momentum and mu = 0.4 at t = 0", {
+
+  opt <- make_opt(
+    make_stages(
+      gradient_stage(
+        direction = sd_direction(),
+        step_size = more_thuente_ls(c2 = 1.e-9)),
+      momentum_stage(
+        direction = nesterov_momentum_direction(),
+        step_size = nesterov_convex_approx_step(use_mu_zero = TRUE)
+      ),
+      verbose = FALSE))
+
+  res <- optloop(opt, out0, rosenbrock_fg, 3,
+                 store_progress = TRUE, verbose = FALSE)
+
+  nfs <- c(0, 9, 15, 26)
+  ngs <- c(0, 9, 15, 26)
+  fs <- c(24.2, 8.223, 4.097, 15.55)
+  g2ns <- c(232.87, 86.69, 1.791, 77.44)
+  steps <- c(0, 0.275, 0.0926, 1.703)
+  # Only difference from previous test is that mu = 0.4 at t = 0
+  # Can have an effect if linearly weighting momentum:
+  # only get 0.6 of grad step on first step
   mus <- c(0.4, 0.5, 0.571, 0.625)
   par <- c(-0.09, -0.371)
 

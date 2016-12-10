@@ -44,19 +44,29 @@ nesterov_momentum_direction <- function() {
 
 # Approximate Nesterov Convex Momentum Function Factory
 # Can be applied to make_momentum_step
-make_nesterov_convex_approx <- function(burn_in = 0) {
+# burn_in Lags the calculation by this number of iterations. By setting this
+#   to 2, the Nesterov Momentum approach gives the same pattern of results as
+#   NAG.
+# use_mu_zero If TRUE, then the momentum calculated on iteration zero uses
+#   the calculated non-zero value, otherwise use zero. Because velocity is
+#   normally zero initially, this rarely has an effect, unless linear weighting
+#   of the momentum is being used.
+make_nesterov_convex_approx <- function(burn_in = 0, use_mu_zero = FALSE) {
   function(iter) {
-    if (iter < burn_in) {
+
+    if (iter < burn_in || (!use_mu_zero && iter == burn_in)) {
       return(0)
     }
+
     1 - (3 / ((iter - burn_in) + 5))
   }
 }
 
 # Sutskever's approximation to Nesterov Momentum Scheme
-nesterov_convex_approx_step <- function(burn_in = 0) {
+nesterov_convex_approx_step <- function(burn_in = 0, use_mu_zero = FALSE) {
   make_momentum_step(mu_fn =
-                       make_nesterov_convex_approx(burn_in = burn_in),
+                       make_nesterov_convex_approx(burn_in = burn_in,
+                                                   use_mu_zero = use_mu_zero),
                      min_momentum = 0,
                      max_momentum = 1)
 }
