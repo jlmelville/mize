@@ -35,12 +35,7 @@ optloop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
   for (iter in 1:max_iter) {
 
     if (invalidate_cache) {
-      for (name in names(opt$cache)) {
-        iter_name <- paste0(name, "_iter")
-        if (!is.null(opt$cache[[iter_name]])) {
-          opt$cache[[iter_name]] <- "invalid"
-        }
-      }
+      opt <- opt_clear_cache(opt)
     }
 
     par0 <- par
@@ -196,6 +191,15 @@ optimize_step <- function(opt, par, fg, iter) {
   list(opt = opt, par = par)
 }
 
+opt_clear_cache <- function(opt) {
+  for (name in names(opt$cache)) {
+    iter_name <- paste0(name, "_iter")
+    if (!is.null(opt$cache[[iter_name]])) {
+      opt$cache[[iter_name]] <- "invalid"
+    }
+  }
+  opt
+}
 
 opt_init <- function(opt, par, fg, iter) {
   opt <- register_hooks(opt)
