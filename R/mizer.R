@@ -188,10 +188,10 @@ make_mizer <- function(method = "L-BFGS",
                                 initial_step_length = step0)
     }
     else if (line_search == "BOLD") {
-      step_type <- bold_driver()
+      step_type <- bold_driver(inc_mult = kappa, dec_mult = phi)
     }
     else if (line_search == "BACK") {
-      step_type <- backtracking()
+      step_type <- backtracking(rho = phi, c1 = c1)
     }
     else if (line_search == "CONST") {
       step_type <- constant_step_size(value = step0)
