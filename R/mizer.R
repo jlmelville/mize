@@ -9,7 +9,7 @@ mizer <- function(par, fg,
                   # NAG
                   nest_q = 0, # 1 - SD,
                   nest_convex_approx = FALSE,
-                  nest_burn_in = 0,
+                  nest_burn_in = 0, use_nest_mu_zero = FALSE,
                   # DBD
                   kappa = 1.1,
                   kappa_fun = "*",
@@ -48,6 +48,7 @@ mizer <- function(par, fg,
                     cg_update = cg_update,
                     nest_q = nest_q, nest_convex_approx = nest_convex_approx,
                     nest_burn_in = nest_burn_in,
+                    use_nest_mu_zero = use_nest_mu_zero,
                     kappa = kappa,
                     kappa_fun = kappa_fun,
                     phi = phi,
@@ -83,7 +84,7 @@ make_mizer <- function(method = "L-BFGS",
                        # NAG
                        nest_q = 0,
                        nest_convex_approx = FALSE,
-                       nest_burn_in = 0,
+                       nest_burn_in = 0, use_nest_mu_zero = FALSE,
                        # DBD
                        kappa = 1.1,
                        kappa_fun = "*",
@@ -209,7 +210,8 @@ make_mizer <- function(method = "L-BFGS",
 
   if (method == "NAG") {
     if (nest_convex_approx) {
-      nest_step <- nesterov_convex_approx_step(burn_in = nest_burn_in)
+      nest_step <- nesterov_convex_approx_step(burn_in = nest_burn_in,
+                                               use_mu_zero = use_nest_mu_zero)
     }
     else {
       nest_step <- nesterov_convex_step(q = nest_q, burn_in = nest_burn_in)
@@ -242,7 +244,8 @@ make_mizer <- function(method = "L-BFGS",
       }
       else if (mom_schedule == "nesterov") {
         if (nest_convex_approx) {
-          mom_step <- nesterov_convex_approx_step(burn_in = nest_burn_in)
+          mom_step <- nesterov_convex_approx_step(burn_in = nest_burn_in,
+                                                  use_mu_zero = use_nest_mu_zero)
         }
         else {
           mom_step <- nesterov_convex_step(q = nest_q, burn_in = nest_burn_in)
