@@ -1,35 +1,35 @@
-#' Rasmussen Line Search
-#'
-#' Line Search Factory Function
-#'
-#' Line search algorithm originally written by Carl Edward Rasmussen in his
-#' conjugate gradient routine. It consists of two main parts:
-#' \enumerate{
-#'  \item Using cubic extrapolation from an initial starting guess for the step
-#'    size until either the sufficient decrease condition is not met or the
-#'    strong curvature condition is met.
-#'  \item Interpolation (quadratic or cubic) between that point and the start
-#'    point of the search until either a step size is found which meets the
-#'    Strong Wolfe conditions or the maximum number of allowed function
-#'    evaluations is reached.
-#' }
-#'
-#' The extrapolation and interpolation steps are bounded at each stage to ensure
-#' they don't represent too large or small a change to the step size.
-#'
-#' @param c1 Constant used in sufficient decrease condition. Should take a value
-#'   between 0 and 1.
-#' @param c2 Constant used in curvature condition. Should take a value between
-#'   c1 and 1.
-#' @param ext Extrapolation constant. Prevents step size extrapolation being
-#'   too large.
-#' @param int Interpolation constant. Prevents step size being too small.
-#' @param max_fn Maximum number of function evaluations allowed.
-#' @return Line search function.
-#' @seealso Line search based on Matlab code by
-#'  \href{http://learning.eng.cam.ac.uk/carl/code/minimize/}{Carl Edward Rasmussen}
-#'  and also part of the Matlab
-#'  \href{(http://www.gaussianprocess.org/gpml/code/matlab/doc/)}{GPML} package.
+# Rasmussen Line Search
+#
+# Line Search Factory Function
+#
+# Line search algorithm originally written by Carl Edward Rasmussen in his
+# conjugate gradient routine. It consists of two main parts:
+# \enumerate{
+#  \item Using cubic extrapolation from an initial starting guess for the step
+#    size until either the sufficient decrease condition is not met or the
+#    strong curvature condition is met.
+#  \item Interpolation (quadratic or cubic) between that point and the start
+#    point of the search until either a step size is found which meets the
+#    Strong Wolfe conditions or the maximum number of allowed function
+#    evaluations is reached.
+# }
+#
+# The extrapolation and interpolation steps are bounded at each stage to ensure
+# they don't represent too large or small a change to the step size.
+#
+# @param c1 Constant used in sufficient decrease condition. Should take a value
+#   between 0 and 1.
+# @param c2 Constant used in curvature condition. Should take a value between
+#   c1 and 1.
+# @param ext Extrapolation constant. Prevents step size extrapolation being
+#   too large.
+# @param int Interpolation constant. Prevents step size being too small.
+# @param max_fn Maximum number of function evaluations allowed.
+# @return Line search function.
+# @seealso Line search based on Matlab code by
+#  \href{http://learning.eng.cam.ac.uk/carl/code/minimize/}{Carl Edward Rasmussen}
+#  and also part of the Matlab
+#  \href{(http://www.gaussianprocess.org/gpml/code/matlab/doc/)}{GPML} package.
 rasmussen <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
                       max_fn = 20) {
   if (c2 < c1) {

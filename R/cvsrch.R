@@ -1,25 +1,25 @@
-#' More'-Thuente Line Search
-#'
-#' Line Search Factory Function
-#'
-#' Returns a line search function using a variant of the More-Thuente
-#'  line search originally implemented in
-#'  \href{http://www.netlib.org/minpack/}{MINPACK}.
-#'
-#' @param c1 Constant used in sufficient decrease condition. Should take a value
-#'   between 0 and 1.
-#' @param c2 Constant used in curvature condition. Should take a value between
-#'   \code{c1} and 1.
-#' @param max_fn Maximum number of function evaluations allowed.
-#' @return Line search function.
-#' @references
-#' More, J. J., & Thuente, D. J. (1994).
-#' Line search algorithms with guaranteed sufficient decrease.
-#' \emph{ACM Transactions on Mathematical Software (TOMS)}, \emph{20}(3),
-#' 286-307.
-#' @seealso This code is based on a translation of the original MINPACK code
-#'  for Matlab by
-#'  \href{https://www.cs.umd.edu/users/oleary/software/}{Dianne O'Leary}.
+# More'-Thuente Line Search
+#
+# Line Search Factory Function
+#
+# Returns a line search function using a variant of the More-Thuente
+#  line search originally implemented in
+#  \href{http://www.netlib.org/minpack/}{MINPACK}.
+#
+# @param c1 Constant used in sufficient decrease condition. Should take a value
+#   between 0 and 1.
+# @param c2 Constant used in curvature condition. Should take a value between
+#   \code{c1} and 1.
+# @param max_fn Maximum number of function evaluations allowed.
+# @return Line search function.
+# @references
+# More, J. J., & Thuente, D. J. (1994).
+# Line search algorithms with guaranteed sufficient decrease.
+# \emph{ACM Transactions on Mathematical Software (TOMS)}, \emph{20}(3),
+# 286-307.
+# @seealso This code is based on a translation of the original MINPACK code
+#  for Matlab by
+#  \href{https://www.cs.umd.edu/users/oleary/software/}{Dianne O'Leary}.
 more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf) {
   function(phi, step0, alpha) {
     res <- cvsrch(phi, step0, alpha = alpha, c1 = c1, c2 = c2, maxfev = max_fn)

@@ -7,7 +7,7 @@ optloop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
                     rel_tol = abs_tol, grad_tol = 1.e-5,
                     ret_opt = FALSE) {
 
-  opt <- opt_init(opt, par, fg, 0)
+  opt <- opt_init(opt, par, fg)
 
   progress <- data.frame()
   terminate <- list()
@@ -136,61 +136,6 @@ check_termination <- function(terminate, opt, iter, max_fn, max_gr, max_fg,
   terminate
 }
 
-
-# One Step of Optimization
-#
-optimize_step <- function(opt, par, fg, iter) {
-  opt <- life_cycle_hook("step", "before", opt, par, fg, iter)
-
-  par0 <- par
-  step_result <- NULL
-  for (i in 1:length(opt$stages)) {
-    opt$stage_i <- i
-    stage <- opt$stages[[i]]
-    opt <- life_cycle_hook(stage$type, "before", opt, par, fg, iter)
-    opt <- life_cycle_hook(stage$type, "during", opt, par, fg, iter)
-    opt <- life_cycle_hook(stage$type, "after", opt, par, fg, iter)
-
-    # should run "after stage"
-    stage <- opt$stages[[i]]
-
-    if (is.null(step_result)) {
-      step_result <- stage$result
-    }
-    else {
-      step_result <- step_result + stage$result
-    }
-
-    # should run "after stage"
-    if (opt$eager_update) {
-      par <- par + stage$result
-    }
-
-    opt <- life_cycle_hook("stage", "after", opt, par, fg, iter)
-  }
-
-  # should run "after stages"
-  if (!opt$eager_update) {
-    par <- par + step_result
-  }
-
-  # intercept whether we want to accept the new solution
-  opt <- life_cycle_hook("validation", "before", opt, par, fg, iter,
-                         par0, step_result)
-  opt$ok <- TRUE
-  opt <- life_cycle_hook("validation", "during", opt, par, fg, iter,
-                         par0, step_result)
-
-  # If the this solution was vetoed, roll back to the previous one.
-  if (!opt$ok) {
-    par <- par0
-  }
-
-  opt <- life_cycle_hook("step", "after", opt, par, fg, iter, par0,
-                         step_result)
-  list(opt = opt, par = par)
-}
-
 opt_clear_cache <- function(opt) {
   for (name in names(opt$cache)) {
     iter_name <- paste0(name, "_iter")
@@ -198,15 +143,6 @@ opt_clear_cache <- function(opt) {
       opt$cache[[iter_name]] <- "invalid"
     }
   }
-  opt
-}
-
-opt_init <- function(opt, par, fg, iter) {
-  opt <- register_hooks(opt)
-  #  list_hooks(opt)
-
-  opt <- life_cycle_hook("opt", "init", opt, par, fg, iter)
-
   opt
 }
 

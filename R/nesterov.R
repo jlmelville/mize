@@ -1,52 +1,50 @@
-# Nesterov Momentum -------------------------------------------------------
+# Nesterov Accelerated Gradient ------------------------------------------------
 
-# Can be considered a momentum scheme where:
+# This is the actual Nesterov Accelerated Gradient scheme, rather than
+# the version discussed by Sutskever and popular in the deep learning community,
+# although that is also available in Mizer.
+#
+# NAG can be considered to be an optimization consisting of:
+# 1. A steepest descent step;
+# 2. A pseudo-momentum step, using a specific schedule, depending on how
+#    convex the function being optimized is.
+# The pseudo-momentum step is:
 # mu * [v + (v_grad - v_grad_old)]
 # where v is the update vector, and v_grad and v_grad_old are the
-# gradient components of the current and previous update, respectively
-# i.e. replaces the gradient component of the previous velocity with the
-# gradiemt velocity of the current iteration
+# gradient components of the current and previous update, respectively.
+# Overall, it replaces the gradient component of the previous velocity with the
+# gradient velocity of the current iteration.
 nesterov_momentum_direction <- function() {
   make_direction(list(
     name = "nesterov",
     init = function(opt, stage, sub_stage, par, fg, iter) {
       sub_stage$value <- rep(0, length(par))
-      #sub_stage$grad_update_old <- rep(0, length(par))
       sub_stage$update <- rep(0, length(par))
       list(sub_stage = sub_stage)
     },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
-      #message("Calculating nesterov momentum direction")
-
-      # update_old <- opt$cache$update_old
-      # grad_update_old <- sub_stage$grad_update_old
-      # grad_update <- opt$stages[["gradient_descent"]]$result
-      # sub_stage$value <- update_old + (grad_update - grad_update_old)
-
       grad_update <- opt$stages[["gradient_descent"]]$result
       sub_stage$value <- grad_update + sub_stage$update
-
-
       list(sub_stage = sub_stage)
-
     },
     after_step = function(opt, stage, sub_stage, par, fg, iter, par0,
                           update) {
-      #     sub_stage$update <- stage$result
-      #     sub_stage$grad_update_old <- opt$stages[["gradient_descent"]]$result
       sub_stage$update <- update - opt$stages[["gradient_descent"]]$result
       list(sub_stage = sub_stage)
     }
-    # ,
-    #    depends = c("update_old")
   ))
 }
 
 # Approximate Nesterov Convex Momentum Function Factory
-# Can be applied to make_momentum_step
+#
+# Instead of using the exact momentum schedule specified for NAG, use the
+# approximation given by Sutskever. NB: this produces much larger momentums
+# than the exact result for the first few iterations.
+#
 # burn_in Lags the calculation by this number of iterations. By setting this
-#   to 2, the Nesterov Momentum approach gives the same pattern of results as
-#   NAG.
+#  to 2, you get the same "pattern" of results as if you were using the
+#  Sutskever Nesterov Momentum approach (i.e. applying a classical momentum
+#  step before a steepest descent step).
 # use_mu_zero If TRUE, then the momentum calculated on iteration zero uses
 #   the calculated non-zero value, otherwise use zero. Because velocity is
 #   normally zero initially, this rarely has an effect, unless linear weighting
@@ -62,7 +60,19 @@ make_nesterov_convex_approx <- function(burn_in = 0, use_mu_zero = FALSE) {
   }
 }
 
-# Sutskever's approximation to Nesterov Momentum Scheme
+# Create a momentum step size sub stage using
+# Sutskever's approximation to the NAG pseudo-momentum schedule.
+# burn_in Lags the calculation by this number of iterations. By setting this
+#  to 2, you get the same "pattern" of results as if you were using the
+#  Sutskever Nesterov Momentum approach (i.e. applying a classical momentum
+#  step before a steepest descent step).
+# use_mu_zero if TRUE, then when the iteration number is zero, the momentum
+#  is also zero, rather than using the equation, which produces a momentum of
+#  0.4. From reading various papers, this is probably the intended behavior.
+#  Normally, the update step is also zero on iteration zero, so this makes
+#  no difference, but if you have linearly weighted the momentum, you will
+#  get only 60% of the gradient step you might have been expecting on the
+#  first step.
 nesterov_convex_approx_step <- function(burn_in = 0, use_mu_zero = FALSE) {
   make_momentum_step(mu_fn =
                        make_nesterov_convex_approx(burn_in = burn_in,
@@ -71,8 +81,14 @@ nesterov_convex_approx_step <- function(burn_in = 0, use_mu_zero = FALSE) {
                      max_momentum = 1)
 }
 
+# The NAG pseudo-momentum schedule.
 # q is inversely proportional to how strongly convex the function is
-# 0 gives the highest momentum, 1 gives zero momentum
+# 0 gives the highest momentum, 1 gives zero momentum. Often, q is assumed to be
+# zero.
+# burn_in Lags the calculation by this number of iterations. By setting this
+#  to 2, you get the same "pattern" of results as if you were using the
+#  Sutskever Nesterov Momentum approach (i.e. applying a classical momentum
+#  step before a steepest descent step)
 nesterov_convex_step <- function(burn_in = 0, q = 0) {
   if (q == 0) {
     # Use the expression for momentum from the Sutskever paper appendix
@@ -84,13 +100,17 @@ nesterov_convex_step <- function(burn_in = 0, q = 0) {
   }
 }
 
-
+# The NAG pseudo-momentum schedule for strongly convex functions.
+# This expression is missing the parameter "q" that measures how strongly convex
+# the function is. It is implicitly zero, which gives the largest momentum
+# values. This uses an expression in the appendix of the Sutskever paper, which
+# is a bit simpler to calculate than the version given by Candeis and
+# O'Donoghue.
 nesterov_strong_convex_step <- function(burn_in) {
   make_step_size(list(
     burn_in = burn_in,
     name = "nesterov_convex",
     init = function(opt, stage, sub_stage, par, fg, iter) {
-      #message("Nesterov convex init")
       sub_stage$a_old <- 1
       list(sub_stage = sub_stage)
     },
@@ -104,13 +124,11 @@ nesterov_strong_convex_step <- function(burn_in) {
         a <- (1 + sqrt(4 * a_old * a_old + 1)) / 2
         sub_stage$value <- (a_old - 1) / a
         sub_stage$a <- a
-        #message("Nesterov momentum = ", formatC(sub_stage$value))
       }
       list(sub_stage = sub_stage)
     },
     after_step = function(opt, stage, sub_stage, par, fg, iter, par0,
                           update) {
-      #message("nesterov_convex: after step")
       if (!opt$ok) {
         sub_stage$a_old <- 1
       }
@@ -122,12 +140,16 @@ nesterov_strong_convex_step <- function(burn_in) {
   ))
 }
 
+# The NAG pseudo-momentum schedule. This expression includes the parameter "q"
+# that measures how strongly convex This uses the algorithm given by Candeis
+# O'Donoghue, which is a bit more complex than the one in the appendix of the
+# Sutskever paper (but that one assumes q = 0).
+# See https://arxiv.org/abs/1204.3982 for more.
 nesterov_convex_step_q <- function(q, burn_in = 0) {
   make_step_size(list(
     burn_in = burn_in,
     name = "nesterov_convex",
     init = function(opt, stage, sub_stage, par, fg, iter) {
-      #message("Nesterov convex init")
       sub_stage$theta_old <- 1
       list(sub_stage = sub_stage)
     },
@@ -163,7 +185,6 @@ nesterov_convex_step_q <- function(q, burn_in = 0) {
     }
   ))
 }
-
 
 # solves quadratic equation. Returns either two roots (even if coincident)
 # or NULL if there's no solution

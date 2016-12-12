@@ -3,7 +3,7 @@
 
 # Rosenbrock ---------------------------------------------------------------
 
-out0 <- c(-1.2, 1)
+rb0 <- c(-1.2, 1)
 # taken from the optim man page
 rosenbrock_fg <- list(
   fn = function(x) {
@@ -249,7 +249,7 @@ make_mmds_fg <- function(dist_mat) {
   }
 
   par_to_dym <- function(par) {
-    as.matrix(dist(par_to_ym(par)))
+    as.matrix(stats::dist(par_to_ym(par)))
   }
 
   f <- function(par) {
@@ -279,11 +279,11 @@ make_mmds_fg <- function(dist_mat) {
        hs = h)
 }
 
-eurodist_fg <- function() { make_mmds_fg(eurodist) }
-ed0 <- as.vector(t(-cmdscale(eurodist, add = TRUE)$points))
+eurodist_fg <- function() { make_mmds_fg(datasets::eurodist) }
+ed0 <- as.vector(t(-stats::cmdscale(datasets::eurodist, add = TRUE)$points))
 
-us_fg <- function() { make_mmds_fg(UScitiesD)}
-us0 <- as.vector(t(-cmdscale(UScitiesD, add = TRUE)$points))
+us_fg <- function() { make_mmds_fg(datasets::UScitiesD)}
+us0 <- as.vector(t(-stats::cmdscale(datasets::UScitiesD, add = TRUE)$points))
 
 
 # Rotates qm onto pm
@@ -309,12 +309,12 @@ plot_mmds <- function(coords, dist, ...) {
   if (class(coords) == "numeric") {
     coords <- matrix(coords, ncol = 2, byrow = TRUE)
   }
-  plot(coords, type = 'n')
-  text(coords[, 1], coords[, 2], labels = labels(dist), ...)
+  graphics::plot(coords, type = 'n')
+  graphics::text(coords[, 1], coords[, 2], labels = labels(dist), ...)
 }
 
 rotate_mmds_results <- function(par, dist) {
-  pm <- -cmdscale(dist, add = TRUE)$points
+  pm <- -stats::cmdscale(dist, add = TRUE)$points
   qm <- matrix(par, ncol = 2, byrow = TRUE)
 
   kabsch(pm, qm)
@@ -405,6 +405,3 @@ make_hfd <- function(fn, eps = 1.e-3) {
     hfd(par, fn, eps)
   }
 }
-
-
-

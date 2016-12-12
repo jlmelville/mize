@@ -8,7 +8,7 @@ opt <- make_opt(
       step_size = backtracking(rho = 0.5, c1 = 1e-4)),
     verbose = FALSE))
 
-res <- optloop(opt, out0, rosenbrock_fg, 20, store_progress = TRUE,
+res <- optloop(opt, rb0, rosenbrock_fg, 20, store_progress = TRUE,
                verbose = FALSE)
 
 nfs <- c(0, 2, 6, 7, 8, 9, 12, 13, 14, 15, 17, 18, 19, 20, 22, 23, 24, 25, 26,

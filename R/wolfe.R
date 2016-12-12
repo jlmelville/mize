@@ -1,12 +1,12 @@
+# Functions for line searches
+
 # p62 of Nocedal & Wright defines a "loose" line search as c1 = 1.e-4, c2 = 0.9
 # But note that CG and SD methods are not considered suitable for loose line
 # search because of the search directions are not well-scaled. c2 = 0.1 is
 # suggested for CG on p34. With the Strong Wolfe conditions, reducing c2 makes
 # the line search stricter (i.e. forces it closer to a minimum).
 
-
 # More-Thuente ------------------------------------------------------------
-
 more_thuente_ls <- function(c1 = c2 / 2, c2 = 0.1,
                             max_alpha_mult = 10,
                             min_step_size = .Machine$double.eps,
@@ -156,14 +156,10 @@ line_search <- function(ls_fn,
       sub_stage$f0 <- step0$f
       sub_stage$value <- ls_result$step$alpha
 
-      # message("alpha0 = ", formatC(sub_stage$alpha0), " alpha = ", formatC(ls_result$step$alpha))
-
       opt$counts$fn <- opt$counts$fn + ls_result$nfn
       opt$counts$gr <- opt$counts$gr + ls_result$ngr
 
       if (is_last_stage(opt, stage)) {
-#        message("wolfe: setting fn_step for iter ", iter, " fn_step = "
-#                , formatC(ls_result$step$f))
          opt <- set_fn_new(opt, ls_result$step$f, iter)
         if (is.null(ls_result$step$df)) {
           sub_stage$df <- rep(sub_stage$eps, length(par))
@@ -178,9 +174,6 @@ line_search <- function(ls_fn,
     after_step = function(opt, stage, sub_stage, par, fg, iter, par0,
                           update) {
       if (opt$ok && is_last_stage(opt, stage) && has_fn_new(opt, iter)) {
-#        message("wolfe: setting next f_old from f for iter ", iter, " "
-#                , formatC(opt$cache$fn_new)
-#                )
         opt <- set_fn_curr(opt, opt$cache$fn_new, iter + 1)
       }
 

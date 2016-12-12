@@ -1,22 +1,20 @@
 # Life Cycle ------------------------------------------------------
+# Various internals for registering functions that should fire during certain
+# points of the optimization. You don't want to look to closely at any of this.
 
 # Calls all hooks registered with the phase firing this event
 life_cycle_hook <- function(phase, advice_type, opt, par, fg, iter, ...) {
-  # message("life cycle phase: '", phase, "' advice_type: '",
-  #          advice_type, "' triggered")
-
   handler <- life_cycle_handler(phase, advice_type, opt)
   if (is.null(handler)) {
-    # message("Invoking default handler for '", advice_type, " ", phase, "'")
     opt <- default_handler(phase, advice_type, opt, par, fg, iter, ...)
   }
   else {
-    # message("Invoking handler for '", advice_type, " ", phase, "'")
     opt <- handler(opt, par, fg, iter, ...)
   }
   opt
 }
 
+# Look for a handler function that will deal with this event
 life_cycle_handler <- function(phase, advice_type, opt) {
   handlers <- opt$handlers
   if (is.null(handlers)) {
@@ -29,6 +27,8 @@ life_cycle_handler <- function(phase, advice_type, opt) {
   handlers[[advice_type]]
 }
 
+# A default function to handle an event by just iterating over ever function
+# that was registered and invoke them in turn
 default_handler <- function(phase, advice_type, opt, par, fg, iter, ...) {
   hooks <- opt$hooks
   if (is.null(hooks)) {
@@ -42,77 +42,52 @@ default_handler <- function(phase, advice_type, opt, par, fg, iter, ...) {
   if (is.null(hooks)) {
     return(opt)
   }
-  # if (length(names(hooks)) > 0) {
-  #  message("life cycle phase: '", phase, "' advice_type: '",
-  #          advice_type, "' firing")
-  # }
+
   for (name in names(hooks)) {
     hook <- hooks[[name]]
-    # message("life_cycle_hook: ", name)
     opt <- hook(opt, par, fg, iter, ...)
   }
   opt
 }
 
 # registers all hook functions:
-#   functions in the phase (opt, stage, sub_stage) object itself with attribute
-#     'name'. These are intended to be private functions for housekeeping of
-#     the phase itself and any calculated values would not be shared. These
-#     stage callbacks will be passed the stage, and sub_stage callbacks the
-#     stage and the sub_stage so local data can be stored in these objects
-#   functions in the depends list. These functions are NOT passed the stage or
-#     sub_stage objects, because they are intended to be shared functionality
-#     between arbitrary parts of the optimizer tree (e.g. storing the gradient)
 register_hooks <- function(opt) {
   # Optimizer hook
 
-  #  message("Looking for hooks in opt")
   for (name in names(opt)) {
     if (!is.null(attr(opt[[name]], 'event'))) {
-      #      message("registering opt hook for event ", attr(opt[[name]], 'event'))
       opt <- register_hook(opt, opt[[name]])
     }
   }
   if (!is.null(opt$depends)) {
-    #    message("Registering depends hooks for opt")
     opt <- depends_to_hooks(opt, opt)
   }
 
-
   # Stage hook
-  #  message("Registering stage hooks")
   for (i in 1:length(opt$stages)) {
     stage <- opt$stages[[i]]
-    #    message("Looking for stage hooks for stage ", i, " '", stage$type, "'")
     for (stage_prop_name in names(stage)) {
       stage_prop <- stage[[stage_prop_name]]
       if (!is.null(attr(stage_prop, 'event'))) {
-        #        message("registering hook '", stage_prop_name, "' for event ", attr(stage_prop, 'event'))
         opt <- register_hook(opt, stage_prop, stage$type)
       }
     }
 
-    #    message("Registering depends for stage ", i, " '", stage$type, "'")
     if (!is.null(stage$depends)) {
       opt <- depends_to_hooks(opt, stage)
     }
 
     # Sub stage hooks
     for (sub_stage_type in c("direction", "step_size")) {
-      #      message("Looking for sub stage hooks for stage ", i, " '", stage$type, " ", sub_stage_type, "'")
-
       sub_stage <- stage[[sub_stage_type]]
       for (sub_stage_prop_name in names(sub_stage)) {
         sub_stage_prop <- sub_stage[[sub_stage_prop_name]]
         if (!is.null(attr(sub_stage_prop, 'event'))) {
-          #          message("registering hook '", sub_stage_prop_name, "' for event ", attr(sub_stage_prop, 'event'))
           opt <- register_hook(opt, sub_stage[[sub_stage_prop_name]],
                                stage$type, sub_stage_type)
         }
       }
 
-      # message("Registering depends for sub stage hooks for stage ", i,
-      #         " '", stage$type, " ", sub_stage_type, "'")
       if (!is.null(sub_stage$depends)) {
         opt <- depends_to_hooks(opt, sub_stage)
       }
@@ -175,14 +150,10 @@ register_hook <- function(opt, hook,
     }
     if (join_point == "direction" || join_point == "step_size") {
       join_point <- paste0(stage_type, " ", join_point)
-      #      message("wrapping sub stage hook '", name, "' for join_point '", join_point,
-      #           "' from phase: '", stage_type, "+", sub_stage_type, "'")
     }
     hook <- wrap_sub_stage_hook(hook, stage_type, sub_stage_type)
   }
   else if (!is.null(stage_type)) {
-    #    message("wrapping stage hook '", name, "' for event '", event,
-    #           "' from phase: '", stage_type, "'")
     hook <- wrap_stage_hook(hook, stage_type)
   }
 
@@ -206,6 +177,7 @@ register_hook <- function(opt, hook,
   opt
 }
 
+# Puts hook in the correct sub list
 store_hook <- function(opt, join_point, advice_type, name, hook) {
   if (is.null(opt$hooks[[join_point]])) {
     opt$hooks[[join_point]] <- list()
@@ -217,7 +189,6 @@ store_hook <- function(opt, join_point, advice_type, name, hook) {
   }
   advice <- join_point_hooks[[advice_type]]
 
-  #  message("registering hook: '", name, "' for: '", advice_type, " ", join_point, "'")
   advice[[name]] <- hook
   join_point_hooks[[advice_type]] <- advice
   opt$hooks[[join_point]] <- join_point_hooks
@@ -225,6 +196,7 @@ store_hook <- function(opt, join_point, advice_type, name, hook) {
   opt
 }
 
+# Puts the handler in the correct sub list
 store_handler <- function(opt, join_point, advice_type, handler) {
   if (is.null(opt$handlers[[join_point]])) {
     opt$handlers[[join_point]] <- list()
@@ -235,13 +207,15 @@ store_handler <- function(opt, join_point, advice_type, handler) {
     join_point_handlers[[advice_type]] <- list()
   }
 
-  #  message("registering handler for: '", advice_type, " ", join_point, "'")
   join_point_handlers[[advice_type]] <- handler
   opt$handlers[[join_point]] <- join_point_handlers
 
   opt
 }
 
+# Wraps a hook that should be fired for a specific stage
+# stage_type can be "gradient_descent", "momentum" etc., but also "stage"
+# if it should be fired for every stage.
 wrap_stage_hook <- function(stage_hook, stage_type) {
   callback <- stage_hook
   function(opt, par, fg, iter, ...) {
@@ -269,6 +243,10 @@ wrap_stage_hook <- function(stage_hook, stage_type) {
   }
 }
 
+# Wraps a hook that should be fired for a specific sub stage.
+# stage_type can be "gradient_descent", "momentum" etc., but also "stage"
+# if it should be fired for every stage.
+# sub_stage should be one of "direction" or "step_size"
 wrap_sub_stage_hook <- function(sub_stage_hook, stage_type, sub_stage_type) {
   callback <- sub_stage_hook
   function(opt, par, fg, iter, ...) {
@@ -306,6 +284,7 @@ wrap_sub_stage_hook <- function(sub_stage_hook, stage_type, sub_stage_type) {
   }
 }
 
+# Convert all functions named in the depends vector of a phase into a hook
 depends_to_hooks <- function(opt, phase, stage_type = NULL,
                              sub_stage_type = NULL) {
   if (is.null(phase$depends)) {
@@ -319,19 +298,19 @@ depends_to_hooks <- function(opt, phase, stage_type = NULL,
   opt
 }
 
+# Convert a specific named function (in depend) into a hook
 depend_to_hook <- function(opt, depend, stage_type = NULL,
                            sub_stage_type = NULL) {
   f_name <- paste0("require_", depend)
   f <- get0(f_name)
   if (!is.null(f)) {
-   # message("registering: ", f_name)
     opt <- register_hook(opt, f, stage_type, sub_stage_type)
   }
 
   opt
 }
 
-
+# Lists all functions and the phases/events they should fire for.
 list_hooks <- function(opt) {
   message("handlers")
   if (!is.null(opt$handlers)) {

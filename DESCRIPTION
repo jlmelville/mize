@@ -1,12 +1,12 @@
 Package: mizer
 Type: Package
-Title: Optimization Algorithms
+Title: Numerical Optimization Algorithms
 Version: 0.0.0.9000
 Authors@R: person("Melville", "James", email = "jlmelville@gmail.com",
     role = c("aut", "cre"))
 Description: Optimization algorithms implemented in R, including
-    conjugate gradient, Broyden-Fletcher-Goldfarb-Shanno (BFGS) and the
-    limited memory BFGS (L-BFGS).
+    conjugate gradient (CG), Broyden-Fletcher-Goldfarb-Shanno (BFGS) and the
+    limited memory BFGS (L-BFGS) methods.
 License: BSD 2-clause License + file LICENSE
 Encoding: UTF-8
 LazyData: true

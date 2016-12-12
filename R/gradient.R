@@ -1,21 +1,28 @@
+# Various Gradient-based optimization routines: steepest descent, conjugate
+# gradient, BFGS etc.
+
 # Gradient Direction -----------------------------------------------------------
+
+# Creates a direction sub stage
 make_direction <- function(sub_stage) {
   make_sub_stage(sub_stage, 'direction')
 }
 
+# Steepest Descent
+#
+# normalize - If TRUE, then the returned direction vector is normalized to unit
+# length. This can be useful for some adaptive line search methods, so that the
+# total step length is purely determined by the line search value, rather than
+# the product of the line search value and the magnitude of the direction.
 sd_direction <- function(normalize = FALSE) {
 
   make_direction(list(
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
-      #message("Calculating steepest descent direction")
-
       sub_stage$value <- -opt$cache$gr_curr
 
       if (sub_stage$normalize) {
         sub_stage$value <- normalize(sub_stage$value)
       }
-
-      #message("sd pm = ", vec_formatC(sub_stage$value))
 
       list(sub_stage = sub_stage)
     },
@@ -26,7 +33,15 @@ sd_direction <- function(normalize = FALSE) {
 
 # Conjugate Gradient ------------------------------------------------------
 
-# Wants: gradient, gradient_old, direction_old
+# Conjugate gradient
+#
+# ortho_check - If TRUE, check successive direction are sufficiently orthogonal.
+#   If the orthogonality check is failed, then the next step is steepest descent.
+# nu - the orthogonality threshold. Used only if ortho_check is TRUE. Compared
+#   with g_old . g_new / g_new . g_new
+# cg_update - Function to generate the next direction using a method of e.g.
+#   Fletcher-Reeves or Polak-Ribiere. Pass one of the cg_update functions
+#   below, e.g. pr_plus_update
 cg_direction <- function(ortho_check = FALSE, nu = 0.1,
                          cg_update = pr_plus_update,
                          eps = .Machine$double.eps) {
@@ -53,7 +68,6 @@ cg_direction <- function(ortho_check = FALSE, nu = 0.1,
               || !sub_stage$cg_restart(gm, gm_old, sub_stage$nu))) {
         beta <- sub_stage$cg_update(gm, gm_old, pm_old, sub_stage$eps)
         pm <- pm + (beta * pm_old)
-        #message("beta = ", formatC(beta), " pm = ", vec_formatC(pm))
         descent <- dot(gm, pm)
         if (descent > 0) {
           #message("Next CG direction is not a descent direction, resetting to SD")
@@ -74,30 +88,35 @@ cg_direction <- function(ortho_check = FALSE, nu = 0.1,
   ))
 }
 
+# The Polak-Ribiere method for updating the CG direction
 pr_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
   (dot(gm, gm) - dot(gm, gm_old)) / (dot(gm_old, gm_old) + eps)
 }
 
+# The "PR+" update - Polak-Ribiere, but if negative, restarts the CG from
+# steepest descent.
 pr_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
   beta <- pr_update(gm, gm_old, pm_old, eps)
-#  if (beta < 0) {
-#      message("PR+: restarting")
-#  }
   max(0, beta)
 }
 
+# The Fletcher-Reeves update.
 fr_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
   dot(gm, gm) / (dot(gm_old, gm_old) + eps)
 }
 
+# The Hestenes-Stiefel update.
 hs_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
   -(dot(gm, gm_old) - dot(gm, gm_old)) / (dot(pm_old, (gm - gm_old)) + eps)
 }
 
+# The Dai-Yuan update.
 dy_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
   -dot(gm, gm) / (dot(pm_old, (gm - gm_old)) + eps)
 }
 
+# Checks that successive gradient vectors are sufficiently orthogonal
+# g_new . g_old / g_new . g_new  must be greater than or equal to nu.
 cg_restart <- function(g_new, g_old, nu = 0.1) {
   # could only happen on first iteration
   if (is.null(g_old)) {
@@ -105,16 +124,15 @@ cg_restart <- function(g_new, g_old, nu = 0.1) {
   }
   ortho_test <- abs(dot(g_new, g_old)) / dot(g_new, g_new)
   should_restart <- ortho_test >= nu
-  #  if (should_restart) {
-  #    message("New CG direction not sufficiently orthogonal: ",
-  #            formatC(ortho_test), " >= ", formatC(nu), " restarting")
-  #  }
   should_restart
 }
 
 
 # BFGS --------------------------------------------------------------------
 
+# The Broyden Fletcher Goldfarb Shanno method
+# scale_inverse - if TRUE, scale the inverse Hessian approximation on the first
+#   step.
 bfgs_direction <- function(eps =  .Machine$double.eps,
                            scale_inverse = FALSE) {
   make_direction(list(
@@ -158,7 +176,6 @@ bfgs_direction <- function(eps =  .Machine$double.eps,
 
         descent <- dot(gm, pm)
         if (descent > 0) {
-          #message("BFGS direction is not a descent direction, resetting to SD")
           pm <- -gm
         }
       }
@@ -172,7 +189,11 @@ bfgs_direction <- function(eps =  .Machine$double.eps,
 
 # L-BFGS ------------------------------------------------------------------
 
-lbfgs_direction <- function(memory = 100, scale_inverse = FALSE,
+# The Limited Memory BFGS method
+#
+# memory - The number of previous updates to store.
+# scale_inverse - if TRUE, scale the inverse Hessian approximation at each step.
+lbfgs_direction <- function(memory = 10, scale_inverse = FALSE,
                             eps = .Machine$double.eps) {
   make_direction(list(
     memory = memory,
@@ -244,7 +265,6 @@ lbfgs_direction <- function(memory = 100, scale_inverse = FALSE,
 
         descent <- dot(gm, pm)
         if (descent > 0) {
-          #message("L-BFGS direction is not a descent direction, resetting to SD")
           pm <- -gm
         }
 
@@ -264,10 +284,14 @@ lbfgs_direction <- function(memory = 100, scale_inverse = FALSE,
 
 # Newton Method -----------------------------------------------------------
 
+# Newton method. Requires the Hessian to be calculated, via a function hs in fg.
 newton_direction <- function() {
   make_direction(list(
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
       gm <- opt$cache$gr_curr
+      if (is.null(fg$hs)) {
+        stop("No Hessian function 'hs', defined for fg")
+      }
       hm <- fg$hs(par)
 
       chol_result <- try({
@@ -278,9 +302,11 @@ newton_direction <- function() {
       if (class(chol_result) == "try-error") {
         # Suggested by https://www.r-bloggers.com/fixing-non-positive-definite-correlation-matrices-using-r-2/
         # Refs:
-        # FP Brissette, M Khalili, R Leconte, Journal of Hydrology, 2007, “Efficient stochastic generation of multi-site synthetic precipitation data”
+        # FP Brissette, M Khalili, R Leconte, Journal of Hydrology, 2007,
+        # Efficient stochastic generation of multi-site synthetic precipitation data
         # https://www.etsmtl.ca/getattachment/Unites-de-recherche/Drame/Publications/Brissette_al07---JH.pdf
-        # Rebonato, R., & Jäckel, P. (2011). The most general methodology to create a valid correlation matrix for risk management and option pricing purposes.
+        # Rebonato, R., & Jäckel, P. (2011).
+        # The most general methodology to create a valid correlation matrix for risk management and option pricing purposes.
         # doi 10.21314/JOR.2000.023
         # Also O(N^3)
         eig <- eigen(hm)
@@ -301,7 +327,6 @@ newton_direction <- function() {
 
         descent <- dot(gm, pm)
         if (descent > 0) {
-          #message("Newton direction is not a descent direction, resetting to SD")
           pm <- -gm
         }
       }
@@ -311,7 +336,9 @@ newton_direction <- function() {
   ))
 }
 
-
+# A Partial Hessian approach: calculates the Cholesky decomposition of the
+# Hessian (or some approximation) on the first iteration only. Future steps
+# solve using this Hessian and the current gradient.
 partial_hessian_direction <- function() {
   make_direction(list(
     init = function(opt, stage, sub_stage, par, fg, iter) {
@@ -326,7 +353,6 @@ partial_hessian_direction <- function() {
 
       descent <- dot(gm, pm)
       if (descent > 0) {
-        #message("Partial Hessian direction is not a descent direction, resetting to SD")
         pm <- -gm
       }
       sub_stage$value <- pm
@@ -358,25 +384,23 @@ hessian_solve <- function(um, gm) {
 
 # Gradient Dependencies ------------------------------------------------------------
 
+# Calculate the gradient at par.
 require_gradient <- function(opt, stage, par, fg, iter) {
   if (!has_gr_curr(opt, iter)) {
-    #message("require gradient: calculating gr_curr ", iter)
     opt <- calc_gr_curr(opt, par, fg$gr, iter)
 
     if (any(is.nan(opt$cache$gr_curr))) {
       stop("NaN in grad. descent at iter ", iter)
     }
   }
-  else {
-    #message("require gradient: already have gr_curr")
-  }
+
   list(opt = opt)
 }
 attr(require_gradient, 'event') <- 'before gradient_descent'
 attr(require_gradient, 'name') <- 'gradient'
 
+# Caches the gradient at the current step.
 require_gradient_old <- function(opt, par, fg, iter, par0, update) {
-  #  message("saving old gradient")
   opt$cache$gr_old <- opt$cache$gr_curr
   opt
 }

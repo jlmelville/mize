@@ -1,3 +1,4 @@
+# partial function application
 partial <- function(f, ...) {
   args <- list(...)
   function(...) {
@@ -5,10 +6,12 @@ partial <- function(f, ...) {
   }
 }
 
+# 2 norm of a vector
 norm2 <- function(v) {
   sqrt(sum(v * v))
 }
 
+# normalize a vector to length 1
 normalize <- function(v) {
   l <- norm2(v)
   if (l < .Machine$double.eps) {
@@ -19,6 +22,7 @@ normalize <- function(v) {
   }
 }
 
+# dot product of a and b
 dot <- function(a, b) {
   sum(a * b)
 }
@@ -35,18 +39,11 @@ sclamp <- function(x, min, max) {
   base::min(base::max(x, min), max)
 }
 
-lreplace <- function(l, ...) {
-  varargs <- list(...)
-  for (i in names(varargs)) {
-    l[[i]] <- varargs[[i]]
-  }
-  l
-}
-
 vec_formatC <- function(v) {
   paste(Map(function(x) { formatC(x) }, v), collapse = ", ")
 }
 
+# convert a list to a strng
 format_list <- function(ll) {
   Reduce(function(acc, elem) {
     paste0(acc,

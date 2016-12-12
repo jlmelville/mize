@@ -65,14 +65,15 @@ mizer <- function(par, fg,
                     restart = restart,
                     verbose = verbose)
 
-  optloop(opt, par, fg,
+  res <- optloop(opt, par, fg,
           max_iter = max_iter,
           max_fn = max_fn, max_gr = max_gr, max_fg = max_fg,
           abs_tol = abs_tol, rel_tol = rel_tol, grad_tol = grad_tol,
           store_progress = store_progress,
           verbose = verbose)
-}
 
+  res[c("f", "g2n", "nf", "ng", "par", "iter", "terminate")]
+}
 
 make_mizer <- function(method = "L-BFGS",
                        norm_direction = FALSE,
@@ -232,8 +233,8 @@ make_mizer <- function(method = "L-BFGS",
       if (mom_schedule == "ramp") {
         mom_step <- make_momentum_step(
           make_ramp(max_iter = max_iter,
-                    momentum_init = mom_init,
-                    momentum_final = mom_final))
+                    init_value = mom_init,
+                    final_value = mom_final))
       }
       else if (mom_schedule == "switch") {
         mom_step <- make_momentum_step(
@@ -277,7 +278,6 @@ make_mizer <- function(method = "L-BFGS",
 
   }
 
-
   if (!is.null(restart)) {
     restart <- tolower(restart)
     if (restart %in% c("fn", "gr")) {
@@ -288,5 +288,72 @@ make_mizer <- function(method = "L-BFGS",
     }
   }
 
+  opt
+}
+
+
+# One Step of Optimization
+#
+optimize_step <- function(opt, par, fg, iter) {
+  opt <- life_cycle_hook("step", "before", opt, par, fg, iter)
+
+  par0 <- par
+  step_result <- NULL
+  for (i in 1:length(opt$stages)) {
+    opt$stage_i <- i
+    stage <- opt$stages[[i]]
+    opt <- life_cycle_hook(stage$type, "before", opt, par, fg, iter)
+    opt <- life_cycle_hook(stage$type, "during", opt, par, fg, iter)
+    opt <- life_cycle_hook(stage$type, "after", opt, par, fg, iter)
+
+    stage <- opt$stages[[i]]
+
+    if (is.null(step_result)) {
+      step_result <- stage$result
+    }
+    else {
+      step_result <- step_result + stage$result
+    }
+
+    if (opt$eager_update) {
+      par <- par + stage$result
+    }
+
+    opt <- life_cycle_hook("stage", "after", opt, par, fg, iter)
+  }
+
+  if (!opt$eager_update) {
+    par <- par + step_result
+  }
+
+  # intercept whether we want to accept the new solution
+  opt <- life_cycle_hook("validation", "before", opt, par, fg, iter,
+                         par0, step_result)
+  opt$ok <- TRUE
+  opt <- life_cycle_hook("validation", "during", opt, par, fg, iter,
+                         par0, step_result)
+
+  # If the this solution was vetoed, roll back to the previous one.
+  if (!opt$ok) {
+    par <- par0
+  }
+
+  opt <- life_cycle_hook("step", "after", opt, par, fg, iter, par0,
+                         step_result)
+
+  res <- list(opt = opt, par = par, nf = opt$counts$fn, ng = opt$counts$gr)
+  if (has_fn_curr(opt, iter + 1)) {
+    res$f <- opt$cache$fn_curr
+  }
+  if (has_gr_curr(opt, iter + 1)) {
+    res$g2n <- norm2(opt$cache$gr_curr)
+  }
+
+  res
+}
+
+opt_init <- function(opt, par, fg, iter = 0) {
+  opt <- register_hooks(opt)
+  opt <- life_cycle_hook("opt", "init", opt, par, fg, iter)
   opt
 }

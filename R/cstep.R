@@ -1,5 +1,3 @@
-# Update the Bracketed Step
-#
 # Part of the More'-Thuente line search.
 #
 # Updates the interval of uncertainty of the current step size and updates the
