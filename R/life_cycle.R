@@ -245,14 +245,25 @@ store_handler <- function(opt, join_point, advice_type, handler) {
 wrap_stage_hook <- function(stage_hook, stage_type) {
   callback <- stage_hook
   function(opt, par, fg, iter, ...) {
-    stage <- opt$stages[[opt$stage_i]]
+    if (stage_type == "stage") {
+      stage <- opt$stages[[opt$stage_i]]
+    }
+    else {
+      stage <- opt$stages[[stage_type]]
+    }
+
     res <- callback(opt, stage, par, fg, iter, ...)
 
     if (!is.null(res$opt)) {
       opt <- res$opt
     }
     if (!is.null(res$stage)) {
-      opt$stages[[opt$stage_i]] <- res$stage
+      if (stage_type == "stage") {
+        opt$stages[[opt$stage_i]] <- res$stage
+      }
+      else {
+        opt$stages[[stage_type]] <- res$stage
+      }
     }
     opt
   }
@@ -261,7 +272,13 @@ wrap_stage_hook <- function(stage_hook, stage_type) {
 wrap_sub_stage_hook <- function(sub_stage_hook, stage_type, sub_stage_type) {
   callback <- sub_stage_hook
   function(opt, par, fg, iter, ...) {
-    stage <- opt$stages[[stage_type]]
+    if (stage_type == "stage") {
+      stage <- opt$stages[[opt$stage_i]]
+    }
+    else {
+      stage <- opt$stages[[stage_type]]
+    }
+
     sub_stage <- stage[[sub_stage_type]]
     res <- callback(opt, stage, sub_stage, par, fg, iter, ...)
     if (!is.null(res$opt)) {
@@ -277,7 +294,13 @@ wrap_sub_stage_hook <- function(sub_stage_hook, stage_type, sub_stage_type) {
     }
 
     stage[[sub_stage_type]] <- sub_stage
-    opt$stages[[stage_type]] <- stage
+
+    if (stage_type == "stage") {
+      opt$stages[[opt$stage_i]] <- stage
+    }
+    else {
+      opt$stages[[stage_type]] <- stage
+    }
 
     opt
   }
