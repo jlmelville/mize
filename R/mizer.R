@@ -294,7 +294,7 @@ make_mizer <- function(method = "L-BFGS",
 
 # One Step of Optimization
 #
-optimize_step <- function(opt, par, fg, iter) {
+mizer_step <- function(opt, par, fg, iter) {
   opt <- life_cycle_hook("step", "before", opt, par, fg, iter)
 
   par0 <- par
@@ -352,7 +352,7 @@ optimize_step <- function(opt, par, fg, iter) {
   res
 }
 
-opt_init <- function(opt, par, fg, iter = 0) {
+mizer_init <- function(opt, par, fg, iter = 0) {
   opt <- register_hooks(opt)
   opt <- life_cycle_hook("opt", "init", opt, par, fg, iter)
   opt

@@ -7,7 +7,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
                     rel_tol = abs_tol, grad_tol = 1.e-5,
                     ret_opt = FALSE) {
 
-  opt <- opt_init(opt, par, fg)
+  opt <- mizer_init(opt, par, fg)
 
   progress <- data.frame()
   terminate <- list()
@@ -40,7 +40,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
 
     par0 <- par
 
-    step_res <- optimize_step(opt, par, fg, iter)
+    step_res <- mizer_step(opt, par, fg, iter)
     opt <- step_res$opt
     par <- step_res$par
     if (verbose || store_progress) {

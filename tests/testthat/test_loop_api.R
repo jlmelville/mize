@@ -3,10 +3,10 @@ test_that("steepest descent with constant step size", {
 
   opt <- make_mizer(method = "sd", line_search = "const", step0 = 0.0001)
 
-  opt <- opt_init(opt, rb0, rosenbrock_fg)
+  opt <- mizer_init(opt, rb0, rosenbrock_fg)
   par <- rb0
   for (iter in 1:3) {
-    res <- optimize_step(opt, par, rosenbrock_fg, iter)
+    res <- mizer_step(opt, par, rosenbrock_fg, iter)
     par <- res$par
     opt <- res$opt
   }

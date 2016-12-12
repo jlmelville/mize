@@ -54,5 +54,3 @@ test_that("Newton method can survive non-positive definite Hessian", {
 
   expect_equal(res$par, par, tol = 1e-3)
 })
-
-
