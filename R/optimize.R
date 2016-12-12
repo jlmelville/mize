@@ -1,6 +1,6 @@
 # Optimizer ---------------------------------------------------------------
 
-optloop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
+opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
                     store_progress = FALSE, invalidate_cache = FALSE,
                     max_fn = Inf, max_gr = Inf, max_fg = Inf,
                     abs_tol = sqrt(.Machine$double.eps),

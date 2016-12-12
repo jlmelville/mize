@@ -8,7 +8,7 @@ opt <- make_opt(
       step_size = backtracking(rho = 0.5, c1 = 1e-4)),
     verbose = FALSE))
 
-res <- optloop(opt, rb0, rosenbrock_fg, 20, store_progress = TRUE,
+res <- opt_loop(opt, rb0, rosenbrock_fg, 20, store_progress = TRUE,
                verbose = FALSE)
 
 nfs <- c(0, 2, 6, 7, 8, 9, 12, 13, 14, 15, 17, 18, 19, 20, 22, 23, 24, 25, 26,
@@ -47,7 +47,7 @@ test_that("Newton method can survive non-positive definite Hessian", {
         step_size = more_thuente_ls(initial_step_length = 1)),
       verbose = FALSE))
 
-  res <- optloop(opt, c(4, 1), tricky_fg(), 9,
+  res <- opt_loop(opt, c(4, 1), tricky_fg(), 9,
                  store_progress = TRUE, verbose = FALSE)
 
   par <- c(3, 0.5)

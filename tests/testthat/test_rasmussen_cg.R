@@ -19,7 +19,7 @@ test_that("CG gives same results as minimize.m webpage", {
         step_size = rasmussen_ls(initial_step_length = "r")),
       verbose = FALSE))
 
-  res <- optloop(opt, c(0,0), rosenbrock_fg, 15,
+  res <- opt_loop(opt, c(0,0), rosenbrock_fg, 15,
                  store_progress = TRUE, verbose = FALSE, grad_tol = 0,
                  abs_tol = 0)
 
@@ -61,7 +61,7 @@ test_that("CG without fg helper function gives same results", {
   rb_no_fg <- rosenbrock_fg
   rb_no_fg$fg <- NULL
 
-  res <- optloop(opt, c(0,0), rb_no_fg, 15,
+  res <- opt_loop(opt, c(0,0), rb_no_fg, 15,
                  store_progress = TRUE, verbose = FALSE, grad_tol = 0,
                  abs_tol = 0)
 

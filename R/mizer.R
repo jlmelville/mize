@@ -65,7 +65,7 @@ mizer <- function(par, fg,
                     restart = restart,
                     verbose = verbose)
 
-  res <- optloop(opt, par, fg,
+  res <- opt_loop(opt, par, fg,
           max_iter = max_iter,
           max_fn = max_fn, max_gr = max_gr, max_fg = max_fg,
           abs_tol = abs_tol, rel_tol = rel_tol, grad_tol = grad_tol,
