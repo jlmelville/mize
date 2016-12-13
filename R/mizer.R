@@ -105,7 +105,9 @@ make_mizer <- function(method = "L-BFGS",
                        mom_linear_weight = FALSE,
                        max_iter = NULL,
                        restart = NULL,
-                       verbose = FALSE) {
+                       verbose = FALSE,
+                       par = NULL,
+                       fg = NULL) {
   dir_type <- NULL
   method <- toupper(method)
   if (method == "SD") {
@@ -288,12 +290,83 @@ make_mizer <- function(method = "L-BFGS",
     }
   }
 
+  # Initialize for specific dataset if par and fg are provided
+  if (!is.null(par) && !is.null(fg)) {
+    opt <- mizer_init(opt, par, fg)
+  }
+
   opt
 }
 
 
-# One Step of Optimization
-#
+#' One Step of Optimization
+#'
+#' Performs one iteration of optimization using a specified optimizer.
+#'
+#' This function returns both the (hopefully) optimized vector of parameters,
+#' and an updated version of the optimizer itself. This is intended to be used
+#' when you want more control over the optimization process compared to the more
+#' black box approach of the \code{\link{mizer}} function. In return for having
+#' to manually call this function every time you want the next iteration of
+#' optimization, you gain the ability to do your own checks for convergence,
+#' logging and so on, as well as take other action between iterations, e.g.
+#' visualization.
+#'
+#' Normally callng this function should return a more optimized vector of
+#' parameters than the input, or at  least leave the parameters unchanged if no
+#' improvement was found, although this is determined by how the optimizer was
+#' configured by \code{\link{make_mizer}}. It is very possible to create an
+#' optimizer that can cause a solution to diverge. It is the responsibility of
+#' the caller to check that the result of the optimization step has actually
+#' reduced the value returned from function being optimized.
+#'
+#' The function to be optimized should be passed as a list to the \code{fg}
+#' parameter. This should consist of:
+#' \itemize{
+#' \item{\code{fn}}. The function to be optimized. Takes a vector of parameters
+#'   and returns a scalar.
+#' \item{\code{gr}}. The gradient of the function. Takes a vector of parameters and
+#'   and returns a vector with the same length as the input parameter vector.
+#' \item{\code{fg}}. Optional function which calculates the function and gradient in the
+#' same routine. Takes a vector of parameters and returns a list containing
+#' the function result as \code{fn} and the gradient result as \code{gr}.
+#' }
+#'
+#' The \code{fg} function is optional, but for some methods (e.g. line search
+#' methods based on the Wolfe criteria), both the function and gradient values
+#' are needed for the same parameter value. Calculating them in the same
+#' function can save time if there is a lot of shared work.
+#'
+#' @param opt Optimizer, created by \code{\link{make_mizer}}.
+#' @param par Initial values for the function to be optimized over.
+#' @param fg Function and gradient list. See 'Details'.
+#' @param iter Current iteration number. Should increase by one each time this
+#'   function is invoked.
+#' @return Result of the current optimization step, a list with components:
+#'\itemize{
+#'  \item{\code{opt}}. Updated version of the optimizer passed to the \code{opt}
+#'    argument Should be passed as the \code{opt} argument in the next
+#'    iteration.
+#'  \item{\code{par}}. Updated version of the parameters passed to the \code{par}
+#'    argument. Should be passed as the \code{par} argument in the next
+#'    iteration.
+#'  \item{\code{nf}}. Running total number of function evaluations carried out since
+#'    iteration 1.
+#'  \item{\code{ng}}. Running total number of gradient evaluations carried out since
+#'    iteration 1.
+#'  \item{\code{f}}. Optional. The new value of the function, evaluated at the returned
+#'    value of \code{par}. Only present if calculated as part of the
+#'    optimization step (e.g. during a line search calculation).
+#'  \item{\code{g2n}}. Optional. The length (2-norm) of the gradient vector, evaluated
+#'    at the returned value of \code{par}. Only present if the gradient was
+#'    calculated as part of the optimization step (e.g. during a line search
+#'    calculation.)
+#'}
+#' @seealso \code{\link{make_mizer}} to create a value to pass to \code{opt},
+#' \code{\link{mizer_init}} to initialize \code{opt} before passing it to this
+#' function for the first time. \code{\link{mizer}} creates an optimizer and
+#' carries out a full optimization with it.
+#' @export
 mizer_step <- function(opt, par, fg, iter) {
   opt <- life_cycle_hook("step", "before", opt, par, fg, iter)
 
@@ -352,8 +425,34 @@ mizer_step <- function(opt, par, fg, iter) {
   res
 }
 
-mizer_init <- function(opt, par, fg, iter = 0) {
+#' Initialize the Optimizer.
+#'
+#' Prepares the optimizer for use with a specific function and starting point.
+#'
+#' The function to be optimized should be passed as a list to the \code{fg}
+#' parameter. This should consist of:
+#' \itemize{
+#' \item{\code{fn}}. The function to be optimized. Takes a vector of parameters
+#'   and returns a scalar.
+#' \item{\code{gr}}. The gradient of the function. Takes a vector of parameters and
+#'   and returns a vector with the same length as the input parameter vector.
+#' \item{\code{fg}}. Optional function which calculates the function and gradient in the
+#' same routine. Takes a vector of parameters and returns a list containing
+#' the function result as \code{fn} and the gradient result as \code{gr}.
+#' }
+#'
+#' The \code{fg} function is optional, but for some methods (e.g. line search
+#' methods based on the Wolfe criteria), both the function and gradient values
+#' are needed for the same parameter value. Calculating them in the same
+#' function can save time if there is a lot of shared work.
+#'
+#' @param opt Optimizer, created by \code{\link{make_mizer}}.
+#' @param par Initial values for the function to be optimized over.
+#' @param fg Function and gradient list. See 'Details'.
+#' @return Initialized optimizer.
+#' @export
+mizer_init <- function(opt, par, fg) {
   opt <- register_hooks(opt)
-  opt <- life_cycle_hook("opt", "init", opt, par, fg, iter)
+  opt <- life_cycle_hook("opt", "init", opt, par, fg, 0)
   opt
 }
