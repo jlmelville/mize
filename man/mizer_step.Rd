@@ -76,6 +76,27 @@ methods based on the Wolfe criteria), both the function and gradient values
 are needed for the same parameter value. Calculating them in the same
 function can save time if there is a lot of shared work.
 }
+\examples{
+rosenbrock_fg <- list(
+  fn = function(x) {
+    100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2
+  },
+  gr = function(x) {
+    c(
+     -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+      200 *        (x[2] - x[1] * x[1]))
+ })
+ rb0 <- c(-1.2, 1)
+
+ opt <- make_mizer(method = "sd", line_search = "const", step0 = 0.0001,
+                   par = rb0, fg = rosenbrock_fg)
+ par <- rb0
+ for (iter in 1:3) {
+   res <- mizer_step(opt, par, rosenbrock_fg, iter)
+   par <- res$par
+   opt <- res$opt
+ }
+}
 \seealso{
 \code{\link{make_mizer}} to create a value to pass to \code{opt},
 \code{\link{mizer_init}} to initialize \code{opt} before passing it to this

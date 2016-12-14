@@ -1,3 +1,26 @@
+#' Numerical Optimization
+#'
+#' Numerical optimization including conjugate gradient,
+#' Broyden-Fletcher-Goldfarb-Shanno (BFGS), and the limited memory BFGS.
+#'
+#' The function to be optimized should be passed as a list to the \code{fg}
+#' parameter. This should consist of:
+#' \itemize{
+#' \item{\code{fn}}. The function to be optimized. Takes a vector of parameters
+#'   and returns a scalar.
+#' \item{\code{gr}}. The gradient of the function. Takes a vector of parameters and
+#'   and returns a vector with the same length as the input parameter vector.
+#' \item{\code{fg}}. Optional function which calculates the function and gradient in the
+#' same routine. Takes a vector of parameters and returns a list containing
+#' the function result as \code{fn} and the gradient result as \code{gr}.
+#' }
+#'
+#' The \code{fg} function is optional, but for some methods (e.g. line search
+#' methods based on the Wolfe criteria), both the function and gradient values
+#' are needed for the same parameter value. Calculating them in the same
+#' function can save time if there is a lot of shared work.
+#'
+#' @export
 mizer <- function(par, fg,
                   method = "SD",
                   norm_direction = FALSE,
@@ -75,6 +98,48 @@ mizer <- function(par, fg,
   res[c("f", "g2n", "nf", "ng", "par", "iter", "terminate")]
 }
 
+#' Create an Optimizer
+#'
+#' Factory function for creating a (possibly uninitialized) optimizer.
+#'
+#' If the function to be optimized and starting point are not present at
+#' creation time, then the optimizer should be initialized using
+#' \code{\link{mizer_init}} before being used with \code{\link{mizer_step}}.
+#'
+#' The function to be optimized should be passed as a list to the \code{fg}
+#' parameter. This should consist of:
+#' \itemize{
+#' \item{\code{fn}}. The function to be optimized. Takes a vector of parameters
+#'   and returns a scalar.
+#' \item{\code{gr}}. The gradient of the function. Takes a vector of parameters and
+#'   and returns a vector with the same length as the input parameter vector.
+#' \item{\code{fg}}. Optional function which calculates the function and gradient in the
+#' same routine. Takes a vector of parameters and returns a list containing
+#' the function result as \code{fn} and the gradient result as \code{gr}.
+#' }
+#'
+#' The \code{fg} function is optional, but for some methods (e.g. line search
+#' methods based on the Wolfe criteria), both the function and gradient values
+#' are needed for the same parameter value. Calculating them in the same
+#' function can save time if there is a lot of shared work.
+#'
+#' @export
+#' @examples
+#' # Function to optimize and starting point
+#' rosenbrock_fg <- list(
+#'   fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
+#'   gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+#'                          200 *        (x[2] - x[1] * x[1])) })
+#' rb0 <- c(-1.2, 1)
+#'
+#' # Create an optimizer and initialize it for use with the Rosenbrock function
+#' opt <- make_mizer(method = "l-bfgs", par = rb0, fg = rosenbrock_fg)
+#'
+#' # Create optimizer without initialization
+#' opt <- make_mizer(method = "l-bfgs")
+#'
+#' # Need to call mizer_init separately:
+#' opt <- mizer_init(opt, rb0, rosenbrock_fg)
 make_mizer <- function(method = "L-BFGS",
                        norm_direction = FALSE,
                        # BFGS
@@ -366,6 +431,26 @@ make_mizer <- function(method = "L-BFGS",
 #' \code{\link{mizer_init}} to initialize \code{opt} before passing it to this
 #' function for the first time. \code{\link{mizer}} creates an optimizer and
 #' carries out a full optimization with it.
+#' @examples
+#' rosenbrock_fg <- list(
+#'   fn = function(x) {
+#'     100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2
+#'   },
+#'   gr = function(x) {
+#'     c(
+#'      -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+#'       200 *        (x[2] - x[1] * x[1]))
+#'  })
+#'  rb0 <- c(-1.2, 1)
+#'
+#'  opt <- make_mizer(method = "sd", line_search = "const", step0 = 0.0001,
+#'                    par = rb0, fg = rosenbrock_fg)
+#'  par <- rb0
+#'  for (iter in 1:3) {
+#'    res <- mizer_step(opt, par, rosenbrock_fg, iter)
+#'    par <- res$par
+#'    opt <- res$opt
+#'  }
 #' @export
 mizer_step <- function(opt, par, fg, iter) {
   opt <- life_cycle_hook("step", "before", opt, par, fg, iter)
@@ -429,6 +514,13 @@ mizer_step <- function(opt, par, fg, iter) {
 #'
 #' Prepares the optimizer for use with a specific function and starting point.
 #'
+#' Should be called after creating an optimizer with \code{\link{make_mizer}}
+#' and before beginning any optimization with \code{\link{mizer_step}}. Note
+#' that if \code{fg} and \code{par} are available at the time
+#' \code{\link{mizer_step}} is called, they can be passed to that function
+#' and initialization will be carried out automatically, avoiding the need to
+#' call \code{mizer_init}.
+#'
 #' The function to be optimized should be passed as a list to the \code{fg}
 #' parameter. This should consist of:
 #' \itemize{
@@ -451,6 +543,29 @@ mizer_step <- function(opt, par, fg, iter) {
 #' @param fg Function and gradient list. See 'Details'.
 #' @return Initialized optimizer.
 #' @export
+#' @examples
+#'
+#' # Create an optimizer
+#' opt <- make_mizer(method = "l-bfgs")
+#'
+#' # Function to optimize and starting point defined after creating optimizer
+#' rosenbrock_fg <- list(
+#'   fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
+#'   gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+#'                          200 *        (x[2] - x[1] * x[1])) })
+#' rb0 <- c(-1.2, 1)
+#'
+#' # Initialize with function and starting point before commencing optimization
+#' opt <- mizer_init(opt, rb0, rosebrock_fg)
+#'
+#' # Finally, can commence the optimization loop
+#' par <- rb0
+#' for (iter in 1:3) {
+#'   res <- mizer_step(opt, par, rosenbrock_fg, iter)
+#'   par <- res$par
+#'   opt <- res$opt
+#' }
+#'
 mizer_init <- function(opt, par, fg) {
   opt <- register_hooks(opt)
   opt <- life_cycle_hook("opt", "init", opt, par, fg, 0)
