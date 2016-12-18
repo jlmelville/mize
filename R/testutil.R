@@ -56,29 +56,6 @@ tricky_fg <- function() {
   res
 }
 
-wrap_fg <- function(fg) {
-  nc <- fg$n
-  nr <- 1
-
-  list(
-    nc = nc,
-    nr = nr,
-    method = list(
-      cost = list(
-        fn = function(inp, out, method) {
-          fg$fn(out$ym)
-        }
-      ),
-      eps = .Machine$double.eps
-    ),
-    grad_func = function(inp, out, method, mat_name) {
-      list(gm = matrix(fg$gr(out[[mat_name]]), nrow = nr, ncol = nc))
-    }
-  )
-}
-rosenbrock <- wrap_fg(rosenbrock_fg)
-
-
 # Create Initial Step Value
 #
 # Given a set of start parameters and a search direction, initializes the

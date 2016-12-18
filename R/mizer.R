@@ -43,8 +43,24 @@
 #'     \item \code{"HS"} The method of Hestenes and Stiefel.
 #'     \item \code{"DY"} The method of Dai and Yuan.
 #'   }
-#' \item \code{"NAG"} is the Nesterov Accelerated Gradient method.
+#' \item \code{"NAG"} is the Nesterov Accelerated Gradient method. The exact
+#' form of the momentum update in this method can be controlled with the
+#' following parameters:
+#'   \itemize{
+#'   \item{\code{nest_q}} Strong convexity parameter. Must take a value
+#'   between 0 (strongly convex) and 1 (zero momentum). Ignored if
+#'   \code{nest_convex_approx} is \code{TRUE}.
+#'   \item{\code{nest_convex_approx}} If \code{TRUE}, then use an approximation
+#'   due to Sutskever for calculating the momentum parameter.
+#'   \item{\code{use_nest_mu_zero}} If \code{TRUE}, then the momentum on
+#'   iteration zero is set to 0.4. Otherwise, it's zero. Ignored if
+#'   \code{nest_convex_approx} is \code{FALSE}.
+#'   \item{\code{nest_burn_in}} Number of iterations to wait before using a
+#'   non-zero momentum.
+#'   }
 #' \item \code{"DBD"} is the Delta-Bar-Delta method of Jacobs.
+#' \item \code{"MOM"} is steepest descent with momentum. See below for momentum
+#' options.
 #' }
 #'
 #' For more details on gradient-based optimization in general, and the BFGS,
@@ -100,6 +116,11 @@
 #'      \item{\code{"r"}} Slope ratio method.
 #'      \item{\code{"q"}} Quadratic interpolation method.
 #'    }
+#'    \item{\code{try_newton_step}} For quasi-Newton methods (\code{"BFGS"} and
+#'    \code{"L-BFGS"}), setting this to \code{TRUE} will try the "natural" step
+#'    size of 1, whenever the \code{ls_initializer} method suggests an initial
+#'    step size larger than that. On by default for BFGS and L-BFGS, off for
+#'    everything else.
 #' }
 #'
 #' If the \code{"DBD"} is used for the optimization \code{"method"}, then the
@@ -127,7 +148,8 @@
 #' next iteration is initialized by multiplying the previously found step size
 #' by \code{kappa}.
 #'
-#' Various momentum schemes can be accessed through the momentum arguments:
+#' For \code{method} \code{"MOM"}, momentum schemes can be accessed through the
+#' momentum arguments:
 #'
 #' \itemize{
 #' \item{\code{mom_type}} Momentum type, either \code{"classical"} or
@@ -140,7 +162,8 @@
 #'   \item{If a numerical scalar is provided, a constant momentum will be
 #'     applied throughout.}
 #'   \item{\code{"nesterov"}} Use the momentum schedule from the Nesterov
-#'   Accelerated Gradient method.
+#'   Accelerated Gradient method. Parameters which control the NAG momentum
+#'   can also be used in combination with this option.
 #'   \item{\code{"switch"}} Switch from one momentum value (specified via
 #'   \code{mom_init}) to another (\code{mom_final}) at a
 #'   a specified iteration (\code{mom_switch_iter}).
@@ -184,19 +207,21 @@
 #' \code{"PR+"} (Polak-Ribiere with a reset to steepest descent), \code{"HS"}
 #' (Hestenes-Stiefel), or \code{"DY"} (Dai-Yuan). Ignored if \code{method} is
 #' not \code{"CG"}.
-#' @param nest_q Strong convexity parameter for the \code{"NAG"} method's
-#' momentum term. Must take a value between 0 (strongly convex) and 1 (results
-#' in steepest descent).Ignored unless the \code{method} is \code{"NAG"} and
-#' \code{nest_convex_approx} is \code{FALSE}.
+#' @param nest_q Strong convexity parameter for the NAG
+#' momentum term. Must take a value between 0 (strongly convex) and 1
+#' (zero momentum). Only applies using the NAG method or a momentum method with
+#' Nesterov momentum schedule. Also does nothing if \code{nest_convex_approx}
+#' is \code{TRUE}.
 #' @param nest_convex_approx If \code{TRUE}, then use an approximation due to
 #' Sutskever for calculating the momentum parameter in the NAG method. Only
-#' applies if \code{method} is \code{"NAG"}.
+#' applies using the NAG method or a momentum method with Nesterov momentum
+#' schedule.
 #' @param nest_burn_in Number of iterations to wait before using a non-zero
-#' momentum. Only applies if using the \code{"NAG"} method or setting the
-#' \code{momentum_type} to "Nesterov".
+#' momentum. Only applies using the NAG method or a momentum method with
+#' Nesterov momentum schedule.
 #' @param use_nest_mu_zero If \code{TRUE}, then the momentum on iteration zero
-#' is set to 0.4. Otherwise, it's zero. Applies only if
-#' \code{nest_convex_approx} is \code{TRUE}.
+#' is set to 0.4. Otherwise, it's zero. Only applies using the NAG method or a
+#' momentum method with Nesterov momentum schedule.
 #' @param kappa Value by which to increase the step size for the \code{"bold"}
 #' step size method or the \code{"DBD"} method.
 #' @param kappa_fun Operator to use when combining the current step size with
@@ -216,8 +241,12 @@
 #' 'Details'.
 #' @param ls_initializer For Wolfe-type line searches only, how to initialize
 #' the line search on iterations after the first. See 'Details'.
+#' @param try_newton_step For Wolfe-type line searches only, try the
+#' line step value of 1 as the initial step size whenever \code{ls_initializer}
+#' suggests a step size > 1. Defaults to \code{TRUE} for quasi-Newton methods
+#' such as BFGS and L-BFGS, \code{FALSE} otherwise.
 #' @param mom_type Momentum type, either \code{"classical"} or
-#' \code{"nesterov"}.
+#' \code{"nesterov"}. See 'Details'.
 #' @param mom_schedule Momentum schedule. See 'Details'.
 #' @param mom_init Initial momentum value.
 #' @param mom_final Final momentum value.
@@ -226,7 +255,7 @@
 #' @param mom_linear_weight If \code{TRUE}, the gradient contribution to the
 #' update is weighted using momentum contribution.
 #' @param restart Momentum restart type. Can be one of "fn" or "gr". See
-#' 'Details'.
+#' 'Details'. Ignored if no momentum scheme is being used.
 #' @param max_iter Maximum number of iterations to optimize for. Defaults to
 #' 100.
 #' @param max_fn Maximum number of function evaluations.
@@ -308,6 +337,7 @@ mizer <- function(par, fg,
                   c2 = 0.1,
                   step0 = 1,
                   ls_initializer = "q",
+                  try_newton_step = NULL,
                   # Momentum
                   mom_type = "classical",
                   mom_schedule = NULL,
@@ -342,6 +372,7 @@ mizer <- function(par, fg,
                     theta = theta,
                     line_search = line_search, step0 = step0, c1 = c1, c2 = c2,
                     ls_initializer = ls_initializer,
+                    try_newton_step = try_newton_step,
                     mom_type = mom_type,
                     mom_schedule = mom_schedule,
                     mom_init = mom_init,
@@ -433,6 +464,10 @@ mizer <- function(par, fg,
 #' 'Details'.
 #' @param ls_initializer For Wolfe-type line searches only, how to initialize
 #' the line search on iterations after the first. See 'Details'.
+#' @param try_newton_step For Wolfe-type line searches only, try the
+#' line step value of 1 as the initial step size whenever \code{ls_initializer}
+#' suggests a step size > 1. Defaults to \code{TRUE} for quasi-Newton methods
+#' such as BFGS and L-BFGS, \code{FALSE} otherwise.
 #' @param mom_type Momentum type, either \code{"classical"} or
 #' \code{"nesterov"}.
 #' @param mom_schedule Momentum schedule. See 'Details'.
@@ -486,6 +521,7 @@ make_mizer <- function(method = "L-BFGS",
                        c1 = 1e-4, c2 = 0.1,
                        step0 = 1,
                        ls_initializer = "q",
+                       try_newton_step = NULL,
                        # Momentum
                        mom_type = "classical",
                        mom_schedule = NULL,
@@ -504,9 +540,15 @@ make_mizer <- function(method = "L-BFGS",
   }
   else if (method == "NEWTON") {
     dir_type <- newton_direction()
+    if (is.null(try_newton_step)) {
+      try_newton_step <- TRUE
+    }
   }
   else if (method == "PHESS") {
     dir_type <- partial_hessian_direction()
+    if (is.null(try_newton_step)) {
+      try_newton_step <- TRUE
+    }
   }
   else if (method == "CG") {
     cg_update_fn <- NULL
@@ -530,9 +572,15 @@ make_mizer <- function(method = "L-BFGS",
   }
   else if (method == "BFGS") {
     dir_type <- bfgs_direction(scale_inverse = scale_hess)
+    if (is.null(try_newton_step)) {
+      try_newton_step <- TRUE
+    }
   }
   else if (method == "L-BFGS") {
     dir_type <- lbfgs_direction(memory = memory, scale_inverse = scale_hess)
+    if (is.null(try_newton_step)) {
+      try_newton_step <- TRUE
+    }
   }
   else if (method == "NAG") {
     dir_type <- sd_direction()
@@ -545,6 +593,11 @@ make_mizer <- function(method = "L-BFGS",
   }
   else {
     stop("Unknown method: '", method, "'")
+  }
+
+  # If it's not already been turned on, turn off the Newton step option
+  if (is.null(try_newton_step)) {
+    try_newton_step <- FALSE
   }
 
   step_type <- NULL
@@ -572,12 +625,14 @@ make_mizer <- function(method = "L-BFGS",
     if (line_search == "MT") {
       step_type <- more_thuente_ls(c1 = c1, c2 = c2,
                                    initializer = tolower(ls_initializer),
-                                   initial_step_length = step0)
+                                   initial_step_length = step0,
+                                   try_newton_step = try_newton_step)
     }
     else if (line_search == "RAS") {
       step_type <- rasmussen_ls(c1 = c1, c2 = c2,
                                 initializer = tolower(ls_initializer),
-                                initial_step_length = step0)
+                                initial_step_length = step0,
+                                try_newton_step = try_newton_step)
     }
     else if (line_search == "BOLD") {
       step_type <- bold_driver(inc_mult = kappa, dec_mult = phi)

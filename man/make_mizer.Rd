@@ -9,10 +9,10 @@ make_mizer(method = "L-BFGS", norm_direction = FALSE, scale_hess = TRUE,
   nest_convex_approx = FALSE, nest_burn_in = 0, use_nest_mu_zero = FALSE,
   kappa = 1.1, kappa_fun = "*", phi = 0.5, theta = 0.1,
   line_search = "MT", c1 = 1e-04, c2 = 0.1, step0 = 1,
-  ls_initializer = "q", mom_type = "classical", mom_schedule = NULL,
-  mom_init = NULL, mom_final = NULL, mom_switch_iter = NULL,
-  mom_linear_weight = FALSE, max_iter = NULL, restart = NULL,
-  par = NULL, fg = NULL)
+  ls_initializer = "q", try_newton_step = NULL, mom_type = "classical",
+  mom_schedule = NULL, mom_init = NULL, mom_final = NULL,
+  mom_switch_iter = NULL, mom_linear_weight = FALSE, max_iter = NULL,
+  restart = NULL, par = NULL, fg = NULL)
 }
 \arguments{
 \item{method}{Optimization method. See 'Details'.}
@@ -80,6 +80,11 @@ searches. Should be a value between \code{c1} and 1.}
 
 \item{ls_initializer}{For Wolfe-type line searches only, how to initialize
 the line search on iterations after the first. See 'Details'.}
+
+\item{try_newton_step}{For Wolfe-type line searches only, try the
+line step value of 1 as the initial step size whenever \code{ls_initializer}
+suggests a step size > 1. Defaults to \code{TRUE} for quasi-Newton methods
+such as BFGS and L-BFGS, \code{FALSE} otherwise.}
 
 \item{mom_type}{Momentum type, either \code{"classical"} or
 \code{"nesterov"}.}

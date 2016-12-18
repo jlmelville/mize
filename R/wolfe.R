@@ -12,6 +12,7 @@ more_thuente_ls <- function(c1 = c2 / 2, c2 = 0.1,
                             min_step_size = .Machine$double.eps,
                             initializer = "s",
                             initial_step_length = 1,
+                            try_newton_step = FALSE,
                             stop_at_min = TRUE,
                             max_fn = Inf,
                             max_gr = Inf,
@@ -25,6 +26,7 @@ more_thuente_ls <- function(c1 = c2 / 2, c2 = 0.1,
               min_step_size = min_step_size, stop_at_min = stop_at_min,
               initializer = initializer,
               initial_step_length = initial_step_length,
+              try_newton_step = try_newton_step,
               debug = debug)
 }
 
@@ -36,6 +38,7 @@ rasmussen_ls <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
                          min_step_size = .Machine$double.eps,
                          initializer = "s",
                          initial_step_length = 1,
+                         try_newton_step = FALSE,
                          stop_at_min = TRUE, eps = .Machine$double.eps,
                          max_fn = Inf,
                          max_gr = Inf,
@@ -49,6 +52,7 @@ rasmussen_ls <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
               min_step_size = min_step_size, stop_at_min = stop_at_min,
               initializer = initializer,
               initial_step_length = initial_step_length,
+              try_newton_step = try_newton_step,
               eps = eps,
               debug = debug)
 }
@@ -59,6 +63,7 @@ rasmussen_ls <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
 line_search <- function(ls_fn,
                         name,
                         initializer = "s",
+                        try_newton_step = FALSE,
                         initial_step_length = 1,
                         max_alpha_mult = 10,
                         min_step_size = .Machine$double.eps,
@@ -118,7 +123,8 @@ line_search <- function(ls_fn,
       }
       else if (initializer == "q" && !is.null(sub_stage$f0)) {
         # quadratic interpolation
-        sub_stage$value <- step_quad_interp(sub_stage$f0, step0)
+        sub_stage$value <- step_quad_interp(sub_stage$f0, step0,
+                                            try_newton_step = try_newton_step)
       }
 
       if (is.null(sub_stage$value) || sub_stage$value <= 0) {
@@ -127,9 +133,8 @@ line_search <- function(ls_fn,
         }
         else {
           if (initial_step_length == "r") { # Rasmussen default from minimize.m
-            # Only concerned with CG so doesn't compare with alpha = 1
-            # But we might as well
-            sub_stage$value <- min(1, 1 / (1 - step0$d))
+            s <- 1 / (1 - step0$d)
+            sub_stage$value <- s
           }
           else if (initial_step_length == "s") { # scipy
             # found in _minimize_bfgs in optimize.py
@@ -139,15 +144,21 @@ line_search <- function(ls_fn,
             # then uses f_old in the quadratic update formula
             # If you do the algebra, you get 1 / sqrt(-d)
             # (2 norm of g is sqrt(d) when starting with steepest descent)
-            sub_stage$value <- min(1, 1.01 / sqrt(-step0$d))
+            s <- 1.01 / sqrt(-step0$d)
           }
           else if (initial_step_length == "m") {
             # Mark Schmidt's minFunc.m uses reciprocal of the one-norm
-            sub_stage$value <- min(1, 1 / sum(abs(step0$d)))
+            s <- 1 / sum(abs(step0$d))
           }
           else {
             stop("Unknown initial step method '", initial_step_length, "'")
           }
+
+          if (try_newton_step) {
+            s <- min(1, s)
+          }
+          sub_stage$value <- s
+
         }
       }
       sub_stage$alpha0 <- sub_stage$value
@@ -237,9 +248,12 @@ step_slope_ratio <- function(old_step_length, d0, step0, eps, max_alpha_mult) {
 }
 
 # quadratic interpolation
-step_quad_interp <- function(f0, step0) {
+step_quad_interp <- function(f0, step0, try_newton_step = FALSE) {
   s <- 2  * (step0$f - f0) / step0$d
-  min(1, 1.01 * s)
+  if (try_newton_step) {
+    s <- min(1, 1.01 * s)
+  }
+  s
 }
 
 

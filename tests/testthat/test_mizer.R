@@ -1076,7 +1076,8 @@ test_that("BFGS with More-Thuente LS", {
         step_size = more_thuente_ls(
           c2 = 1e-9,
           initial_step_length = "s",
-          initializer = "q")),
+          initializer = "q",
+          try_newton_step = TRUE)),
       verbose = FALSE))
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
@@ -1107,7 +1108,8 @@ test_that("L-BFGS with More-Thuente LS gives same results as BFGS with sufficien
         step_size = more_thuente_ls(
           c2 = 1e-9,
           initial_step_length = "s",
-          initializer = "q")),
+          initializer = "q",
+          try_newton_step = TRUE)),
       verbose = FALSE))
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
