@@ -239,7 +239,27 @@
 #' @param verbose If \code{TRUE}, log information about the progress of the
 #' optimization to the console.
 #' @param store_progress If \code{TRUE} store information about the progress
-#' of the optimization in a matrix, and include it as part of the return value.
+#' of the optimization in a data frame, and include it as part of the return
+#' value.
+#' @return A list with components:
+#'\itemize{
+#'  \item{\code{par}} Optimized parameters.
+#'  \item{\code{nf}} Ttotal number of function evaluations carried out .
+#'  \item{\code{ng}} Running total number of gradient evaluations carried out since
+#'    iteration 1.
+#'  \item{\code{f}} Value of the function, evaluated at the returned
+#'    value of \code{par}.
+#'  \item{\code{g2n}} The length (l2-norm) of the gradient vector, evaluated
+#'    at the returned value of \code{par}.
+#'  \item{\code{iter}} The number of iterations the optimization was carried
+#'    out for.
+#'  \item{\code{terminate}} List containing items: \code{what}, indicating what
+#'  convergence criterion was met, and \code{val} specifying the value at
+#'  convergence.
+#'  \item{\code{progress}} Optional data frame containing information on the
+#'  value of the function, gradient, momentum, and step sizes evaluated at each
+#'  iteration. Only present if \code{store_progress} is set to \code{TRUE}.
+#'}
 #' @references
 #' Jacobs, R. A. (1988).
 #' Increased rates of convergence through learning rate adaptation.
