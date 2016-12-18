@@ -2,7 +2,7 @@
 
 # Adds Adaptive Restart for optimizers which are using a momentum scheme.
 #
-# Candeis and O'Donoghue suggested a restart scheme for Nesterov Accelerated
+# Candes and O'Donoghue suggested a restart scheme for Nesterov Accelerated
 # Gradient schemes to avoid oscillatory behavior. It effectively restarts the
 # momentum part of the optimization and can hence be applied to any optimization
 # that uses momentum.

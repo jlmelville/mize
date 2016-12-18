@@ -901,7 +901,7 @@ test_that("NAG with q close to 0 is the same as == 0", {
   # This should be the same as NAG with Wolfe Line Search test
   # If is exactly zero we use the slightly simpler momentum expression
   # given by Sutskever in the appendix, otherwise use the expression
-  # in the Candeis paper which is more complex but allows q to vary from zero
+  # in the Candes paper which is more complex but allows q to vary from zero
 
   opt <- make_opt(
     make_stages(

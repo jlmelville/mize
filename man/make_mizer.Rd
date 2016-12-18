@@ -12,7 +12,99 @@ make_mizer(method = "L-BFGS", norm_direction = FALSE, scale_hess = TRUE,
   ls_initializer = "q", mom_type = "classical", mom_schedule = NULL,
   mom_init = NULL, mom_final = NULL, mom_switch_iter = NULL,
   mom_linear_weight = FALSE, max_iter = NULL, restart = NULL,
-  verbose = FALSE, par = NULL, fg = NULL)
+  par = NULL, fg = NULL)
+}
+\arguments{
+\item{method}{Optimization method. See 'Details'.}
+
+\item{norm_direction}{If \code{TRUE}, then the steepest descent direction
+is normalized to unit length. Useful for adaptive step size methods where
+the previous step size is used to initialize the next iteration.}
+
+\item{scale_hess}{if \code{TRUE}, the approximation to the inverse Hessian
+is scaled according to the method described by Nocedal and Wright
+(approximating an eigenvalue). Applies only to the methods \code{BFGS}
+(where the scaling is applied only during the first step) and \code{L-BFGS}
+(where the scaling is applied during every iteration). Ignored otherwise.}
+
+\item{memory}{The number of updates to store if using the \code{L-BFGS}
+method. Ignored otherwise. Must be a positive integer.}
+
+\item{cg_update}{Type of update to use for the \code{CG} method. Can be
+one of \code{"FR"} (Fletcher-Reeves), \code{"PR"} (Polak-Ribiere),
+\code{"PR+"} (Polak-Ribiere with a reset to steepest descent), \code{"HS"}
+(Hestenes-Stiefel), or \code{"DY"} (Dai-Yuan). Ignored if \code{method} is
+not \code{"CG"}.}
+
+\item{nest_q}{Strong convexity parameter for the \code{"NAG"} method's
+momentum term. Must take a value between 0 (strongly convex) and 1 (results
+in steepest descent).Ignored unless the \code{method} is \code{"NAG"} and
+\code{nest_convex_approx} is \code{FALSE}.}
+
+\item{nest_convex_approx}{If \code{TRUE}, then use an approximation due to
+Sutskever for calculating the momentum parameter in the NAG method. Only
+applies if \code{method} is \code{"NAG"}.}
+
+\item{nest_burn_in}{Number of iterations to wait before using a non-zero
+momentum. Only applies if using the \code{"NAG"} method or setting the
+\code{momentum_type} to "Nesterov".}
+
+\item{use_nest_mu_zero}{If \code{TRUE}, then the momentum on iteration zero
+is set to 0.4. Otherwise, it's zero. Applies only if
+\code{nest_convex_approx} is \code{TRUE}.}
+
+\item{kappa}{Value by which to increase the step size for the \code{"bold"}
+step size method or the \code{"DBD"} method.}
+
+\item{kappa_fun}{Operator to use when combining the current step size with
+\code{kappa}. Can be one of \code{"*"} (to multiply the current step size
+with \code{kappa}) or \code{"+"} (to add).}
+
+\item{phi}{Multiplier to reduce the step size by if using the \code{"DBD"}
+method or the \code{"bold"} or \code{"back"} line search method. Should be
+a positive value less than 1.}
+
+\item{theta}{Weighting parameter used by the \code{"DBD"} method only, and
+only if no momentum scheme is provided. Must be an integer between 0 and 1.}
+
+\item{line_search}{Type of line search to use. See 'Details'.}
+
+\item{c1}{Sufficient decrease parameter for Wolfe-type line searches. Should
+be a value between 0 and 1.}
+
+\item{c2}{Sufficient curvature parameter for line search for Wolfe-type line
+searches. Should be a value between \code{c1} and 1.}
+
+\item{step0}{Initial value for the line search on the first step. See
+'Details'.}
+
+\item{ls_initializer}{For Wolfe-type line searches only, how to initialize
+the line search on iterations after the first. See 'Details'.}
+
+\item{mom_type}{Momentum type, either \code{"classical"} or
+\code{"nesterov"}.}
+
+\item{mom_schedule}{Momentum schedule. See 'Details'.}
+
+\item{mom_init}{Initial momentum value.}
+
+\item{mom_final}{Final momentum value.}
+
+\item{mom_switch_iter}{For \code{mom_schedule} \code{"switch"} only, the
+iteration when \code{mom_init} is changed to \code{mom_final}.}
+
+\item{mom_linear_weight}{If \code{TRUE}, the gradient contribution to the
+update is weighted using momentum contribution.}
+
+\item{max_iter}{Maximum number of iterations the optimization will be carried
+out over. Used only if \code{mom_schedule} is set to \code{"ramp"}.}
+
+\item{restart}{Momentum restart type. Can be one of "fn" or "gr". See
+'Details'.}
+
+\item{par}{Initial values for the function to be optimized over. Optional.}
+
+\item{fg}{Function and gradient list. See 'Details'. Optional.}
 }
 \description{
 Factory function for creating a (possibly uninitialized) optimizer.

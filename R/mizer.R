@@ -20,9 +20,253 @@
 #' are needed for the same parameter value. Calculating them in the same
 #' function can save time if there is a lot of shared work.
 #'
+#' The \code{method} specifies the optimization method:
+#'
+#' \itemize{
+#' \item \code{"SD"} is plain steepest descent. Not very effective on its own,
+#' but can be combined with various momentum approaches.
+#' \item \code{"BFGS"} is the Broyden-Fletcher-Goldfarb-Shanno quasi-Newton
+#' method. This stores an approximation to the inverse of the Hessian of the
+#' function being minimized, which requires storage proportional to the
+#' square of the length of \code{par}, so is unsuitable for large problems.
+#' \item \code{"L-BFGS"} is the Limited memory Broyden-Fletcher-Goldfarb-Shanno
+#' quasi-Newton method. This does not store the inverse Hessian approximation
+#' directly and so can scale to larger-sized problems than \code{"BFGS"}. The
+#' amount of memory used can be controlled with the \code{memory} parameter.
+#' \item \code{"CG"} is the conjugate gradient method. The \code{cg_update}
+#' parameter allows for different methods for choosing the next direction:
+#'   \itemize{
+#'     \item \code{"FR"} The method of Fletcher and Reeves.
+#'     \item \code{"PR"} The method of Polak and Ribiere.
+#'     \item \code{"PR+"} The method of Polak and Ribiere with a restart to
+#'     steepest descent if conjugacy is lost. The default.
+#'     \item \code{"HS"} The method of Hestenes and Stiefel.
+#'     \item \code{"DY"} The method of Dai and Yuan.
+#'   }
+#' \item \code{"NAG"} is the Nesterov Accelerated Gradient method.
+#' \item \code{"DBD"} is the Delta-Bar-Delta method of Jacobs.
+#' }
+#'
+#' For more details on gradient-based optimization in general, and the BFGS,
+#' L-BFGS and CG methods, see Nocedal and Wright.
+#'
+#' The parameter \code{line_search} determines the line search to be carried
+#' out:
+#'
+#' \itemize{
+#'   \item If a numeric scalar is provided, then a constant value will be used
+#'   for the line search. Note that this value will be multiplied by the
+#'   magnitude of the direction vector used in the gradient descent method.
+#'   For method \code{"SD"} only, setting the \code{norm_direction} parameter to
+#'   \code{TRUE} will scale the direction vector so it has unit length.
+#'   \item \code{"RAS"} carries out a line search using the strong Wolfe
+#'   conditions and the method of Rasmussen.
+#'   \item \code{"MT"} carries out a line search using the strong Wolfe
+#'   conditions and the method of More-Thuente.
+#'   \item \code{"BOLD"} carries out a back tracking line search until a
+#'   reduction in the function value is found.
+#' }
+#'
+#' If using one of the methods: \code{"BFGS"}, \code{"L-BFGS"}, \code{"CG"} or
+#' \code{"NAG"}, one of the Wolfe line searches, \code{"RAS"} or \code{"MT"}
+#' should be used, otherwise very poor performance is likely to be encountered.
+#' The following parameters can be used to control the line search:
+#'
+#'  \itemize{
+#'    \item{\code{c1}} The sufficient decrease condition. Normally left at its default
+#'    value of 1e-4.
+#'    \item{\code{c2}} The sufficient curvature condition. Suggested settings by
+#'    Nocedal and Wright is 0.1 for methods \code{"BFGS"} and \code{"L-BFGS"}
+#'    and to 0.9 for \code{"SD"} and \code{"CG"}. The smaller the value of
+#'    \code{c2}, the stricter the line search, but it should not be set to
+#'    smaller than \code{c1}.
+#'    \item{\code{step0}} Initial value for the line search on the first step. If a
+#'    positive numeric value is passed as an argument, that value is used
+#'    as-is. Otherwise, by passing a character as an argument, a guess is made
+#'    based on the gradient at the starting point:
+#'    \itemize{
+#'      \item{\code{"r"}} As used by Rasmussen in \code{minimize.m}:
+#'      \deqn{\frac{1}{1+\left|g\right|^2}}{1 / 1 + (|g|^2)}
+#'      \item{\code{"s"}} As used in scipy's \code{opiimize.py}
+#'      \deqn{\frac{1}{\left|g\right|}}{1 / |g|}
+#'      \item{\code{"m"}} As used by Schmidt in \code{minFunc.m}
+#'      (the reciprocal of the l1 norm of g)
+#'      \deqn{\frac{1}{\left|g\right|_1}}{1 / |g|1}
+#'    }
+#'    \item{\code{ls_initializer}} How to initialize subsequent line searches
+#'    after the first, using results from the previous line search,
+#'    based on two suggestions mentioned by Nocedal and Wright:
+#'    \itemize{
+#'      \item{\code{"r"}} Slope ratio method.
+#'      \item{\code{"q"}} Quadratic interpolation method.
+#'    }
+#' }
+#'
+#' If the \code{"DBD"} is used for the optimization \code{"method"}, then the
+#' \code{line_search} parameter is ignored, because this method controls both
+#' the direction of the search and the step size simultaneously. The following
+#' parameters can be used to control the step size:
+#'
+#' \itemize{
+#'   \item{\code{kappa}} The amount by which to increase the step size in a
+#'   direction where the current step size is deemed to be too short. This
+#'   should be a positive scalar.
+#'   \item{\code{phi}} The amount by which to decrease the step size in a
+#'   direction where the currents step size is deemed to be too long. This
+#'   should be a positive scalar smaller than 1.
+#'   \item{\code{kappa_fun}} How to increase the step size: either the method of
+#'   Jacobs (addition of \code{kappa}) or Janet and co-workers (multiplication
+#'   by \code{kappa}). Note that the step size decrease \code{phi} is always
+#'   a multiplication.
+#' }
+#'
+#' The \code{"BOLD"} line search also uses the \code{kappa} and \code{phi}
+#' parameters with similar meanings to their use with the \code{"DBD"} method:
+#' the backtracking portion reduces the step size by a factor of \code{phi}.
+#' Once a satisfactory step size has been found, the line search for the
+#' next iteration is initialized by multiplying the previously found step size
+#' by \code{kappa}.
+#'
+#' Various momentum schemes can be accessed through the momentum arguments:
+#'
+#' \itemize{
+#' \item{\code{mom_type}} Momentum type, either \code{"classical"} or
+#'  \code{"nesterov"}. Using "Nesterov" applies the momentum step before the
+#'   gradient descent as suggested by Sutskever, emulating the behavior of the
+#'   Nesterov Accelerated Gradient method.
+#' \item{\code{mom_schedule}} How the momentum changes over the course of the
+#'   optimization:
+#'   \itemize{
+#'   \item{If a numerical scalar is provided, a constant momentum will be
+#'     applied throughout.}
+#'   \item{\code{"nesterov"}} Use the momentum schedule from the Nesterov
+#'   Accelerated Gradient method.
+#'   \item{\code{"switch"}} Switch from one momentum value (specified via
+#'   \code{mom_init}) to another (\code{mom_final}) at a
+#'   a specified iteration (\code{mom_switch_iter}).
+#'   \item{\code{"ramp"}} Linearly increase from one momentum value
+#'   (\code{mom_init}) to another (\code{mom_final}) over the specified
+#'   period (\code{max_iter}).
+#'   }
+#' }
+#'
+#' The \code{restart} parameter provides a way to restart the momentum if the
+#' optimization appears to be not be making progress, using the method of
+#' O'Donoghue and Candes. There are two strategies:
+#' \itemize{
+#'   \item{\code{"fn"}} A restart is applied if the function does not decrease
+#'   on consecutive iterations.
+#'   \item{\code{"gr"}} A restart is applied if the direction of the
+#'   optimization is not a descent direction.
+#' }
+#'
+#' The effect of the restart is to "forget" any previous momentum update vector,
+#' and, for those momentum schemes that change with iteration number, to
+#' effectively reset the iteration number back to zero.
+#' If the \code{mom_type} is \code{"nesterov"}, the gradient-based restart
+#' is not available.
+#'
+#' @param par Initial values for the function to be optimized over.
+#' @param fg Function and gradient list. See 'Details'.
+#' @param method Optimization method. See 'Details'.
+#' @param norm_direction If \code{TRUE}, then the steepest descent direction
+#' is normalized to unit length. Useful for adaptive step size methods where
+#' the previous step size is used to initialize the next iteration.
+#' @param scale_hess if \code{TRUE}, the approximation to the inverse Hessian
+#' is scaled according to the method described by Nocedal and Wright
+#' (approximating an eigenvalue). Applies only to the methods \code{BFGS}
+#' (where the scaling is applied only during the first step) and \code{L-BFGS}
+#' (where the scaling is applied during every iteration). Ignored otherwise.
+#' @param memory The number of updates to store if using the \code{L-BFGS}
+#' method. Ignored otherwise. Must be a positive integer.
+#' @param cg_update Type of update to use for the \code{CG} method. Can be
+#' one of \code{"FR"} (Fletcher-Reeves), \code{"PR"} (Polak-Ribiere),
+#' \code{"PR+"} (Polak-Ribiere with a reset to steepest descent), \code{"HS"}
+#' (Hestenes-Stiefel), or \code{"DY"} (Dai-Yuan). Ignored if \code{method} is
+#' not \code{"CG"}.
+#' @param nest_q Strong convexity parameter for the \code{"NAG"} method's
+#' momentum term. Must take a value between 0 (strongly convex) and 1 (results
+#' in steepest descent).Ignored unless the \code{method} is \code{"NAG"} and
+#' \code{nest_convex_approx} is \code{FALSE}.
+#' @param nest_convex_approx If \code{TRUE}, then use an approximation due to
+#' Sutskever for calculating the momentum parameter in the NAG method. Only
+#' applies if \code{method} is \code{"NAG"}.
+#' @param nest_burn_in Number of iterations to wait before using a non-zero
+#' momentum. Only applies if using the \code{"NAG"} method or setting the
+#' \code{momentum_type} to "Nesterov".
+#' @param use_nest_mu_zero If \code{TRUE}, then the momentum on iteration zero
+#' is set to 0.4. Otherwise, it's zero. Applies only if
+#' \code{nest_convex_approx} is \code{TRUE}.
+#' @param kappa Value by which to increase the step size for the \code{"bold"}
+#' step size method or the \code{"DBD"} method.
+#' @param kappa_fun Operator to use when combining the current step size with
+#' \code{kappa}. Can be one of \code{"*"} (to multiply the current step size
+#' with \code{kappa}) or \code{"+"} (to add).
+#' @param phi Multiplier to reduce the step size by if using the \code{"DBD"}
+#' method or the \code{"bold"} or \code{"back"} line search method. Should be
+#' a positive value less than 1.
+#' @param theta Weighting parameter used by the \code{"DBD"} method only, and
+#' only if no momentum scheme is provided. Must be an integer between 0 and 1.
+#' @param line_search Type of line search to use. See 'Details'.
+#' @param c1 Sufficient decrease parameter for Wolfe-type line searches. Should
+#' be a value between 0 and 1.
+#' @param c2 Sufficient curvature parameter for line search for Wolfe-type line
+#' searches. Should be a value between \code{c1} and 1.
+#' @param step0 Initial value for the line search on the first step. See
+#' 'Details'.
+#' @param ls_initializer For Wolfe-type line searches only, how to initialize
+#' the line search on iterations after the first. See 'Details'.
+#' @param mom_type Momentum type, either \code{"classical"} or
+#' \code{"nesterov"}.
+#' @param mom_schedule Momentum schedule. See 'Details'.
+#' @param mom_init Initial momentum value.
+#' @param mom_final Final momentum value.
+#' @param mom_switch_iter For \code{mom_schedule} \code{"switch"} only, the
+#' iteration when \code{mom_init} is changed to \code{mom_final}.
+#' @param mom_linear_weight If \code{TRUE}, the gradient contribution to the
+#' update is weighted using momentum contribution.
+#' @param restart Momentum restart type. Can be one of "fn" or "gr". See
+#' 'Details'.
+#' @param max_iter Maximum number of iterations to optimize for. Defaults to
+#' 100.
+#' @param max_fn Maximum number of function evaluations.
+#' @param max_gr Maximum number of gradient evaluations.
+#' @param max_fg Maximum number of function or gradient evaluations.
+#' @param abs_tol Absolute tolerance for comparing two function evaluations.
+#' @param rel_tol Relative tolerance for comparing two function evaluations.
+#' @param grad_tol Absolute tolerance for the length (l2-norm) of the gradient
+#' vector.
+#' @param verbose If \code{TRUE}, log information about the progress of the
+#' optimization to the console.
+#' @param store_progress If \code{TRUE} store information about the progress
+#' of the optimization in a matrix, and include it as part of the return value.
+#' @references
+#' Jacobs, R. A. (1988).
+#' Increased rates of convergence through learning rate adaptation.
+#' \emph{Neural networks}, \emph{1}(4), 295-307.
+#'
+#' Janet, J. A., Scoggins, S. M., Schultz, S. M., Snyder, W. E., White, M. W.,
+#' & Sutton, J. C. (1998, May).
+#' Shocking: An approach to stabilize backprop training with greedy adaptive
+#' learning rates.
+#' In \emph{1998 IEEE International Joint Conference on Neural Networks Proceedings.}
+#' (Vol. 3, pp. 2218-2223). IEEE.
+#'
+#' Nocedal, J., & Wright, S. (2006).
+#' Numerical optimization.
+#' Springer Science & Business Media.
+#'
+#' Sutskever, I., Martens, J., Dahl, G., & Hinton, G. (2013).
+#' On the importance of initialization and momentum in deep learning.
+#' In \emph{Proceedings of the 30th international conference on machine learning (ICML-13)}
+#' (pp. 1139-1147).
+#'
+#' O'Donoghue, B., & Candes, E. (2013).
+#' Adaptive restart for accelerated gradient schemes.
+#' \emph{Foundations of computational mathematics}, \emph{15}(3), 715-732.
 #' @export
 mizer <- function(par, fg,
-                  method = "SD",
+                  method = "L-BFGS",
                   norm_direction = FALSE,
                   # L-BFGS
                   memory = 10,
@@ -85,8 +329,7 @@ mizer <- function(par, fg,
                     mom_switch_iter = mom_switch_iter,
                     mom_linear_weight = mom_linear_weight,
                     max_iter = max_iter,
-                    restart = restart,
-                    verbose = verbose)
+                    restart = restart)
 
   res <- opt_loop(opt, par, fg,
           max_iter = max_iter,
@@ -122,7 +365,69 @@ mizer <- function(par, fg,
 #' methods based on the Wolfe criteria), both the function and gradient values
 #' are needed for the same parameter value. Calculating them in the same
 #' function can save time if there is a lot of shared work.
-#'
+#' @param method Optimization method. See 'Details'.
+#' @param norm_direction If \code{TRUE}, then the steepest descent direction
+#' is normalized to unit length. Useful for adaptive step size methods where
+#' the previous step size is used to initialize the next iteration.
+#' @param scale_hess if \code{TRUE}, the approximation to the inverse Hessian
+#' is scaled according to the method described by Nocedal and Wright
+#' (approximating an eigenvalue). Applies only to the methods \code{BFGS}
+#' (where the scaling is applied only during the first step) and \code{L-BFGS}
+#' (where the scaling is applied during every iteration). Ignored otherwise.
+#' @param memory The number of updates to store if using the \code{L-BFGS}
+#' method. Ignored otherwise. Must be a positive integer.
+#' @param cg_update Type of update to use for the \code{CG} method. Can be
+#' one of \code{"FR"} (Fletcher-Reeves), \code{"PR"} (Polak-Ribiere),
+#' \code{"PR+"} (Polak-Ribiere with a reset to steepest descent), \code{"HS"}
+#' (Hestenes-Stiefel), or \code{"DY"} (Dai-Yuan). Ignored if \code{method} is
+#' not \code{"CG"}.
+#' @param nest_q Strong convexity parameter for the \code{"NAG"} method's
+#' momentum term. Must take a value between 0 (strongly convex) and 1 (results
+#' in steepest descent).Ignored unless the \code{method} is \code{"NAG"} and
+#' \code{nest_convex_approx} is \code{FALSE}.
+#' @param nest_convex_approx If \code{TRUE}, then use an approximation due to
+#' Sutskever for calculating the momentum parameter in the NAG method. Only
+#' applies if \code{method} is \code{"NAG"}.
+#' @param nest_burn_in Number of iterations to wait before using a non-zero
+#' momentum. Only applies if using the \code{"NAG"} method or setting the
+#' \code{momentum_type} to "Nesterov".
+#' @param use_nest_mu_zero If \code{TRUE}, then the momentum on iteration zero
+#' is set to 0.4. Otherwise, it's zero. Applies only if
+#' \code{nest_convex_approx} is \code{TRUE}.
+#' @param kappa Value by which to increase the step size for the \code{"bold"}
+#' step size method or the \code{"DBD"} method.
+#' @param kappa_fun Operator to use when combining the current step size with
+#' \code{kappa}. Can be one of \code{"*"} (to multiply the current step size
+#' with \code{kappa}) or \code{"+"} (to add).
+#' @param phi Multiplier to reduce the step size by if using the \code{"DBD"}
+#' method or the \code{"bold"} or \code{"back"} line search method. Should be
+#' a positive value less than 1.
+#' @param theta Weighting parameter used by the \code{"DBD"} method only, and
+#' only if no momentum scheme is provided. Must be an integer between 0 and 1.
+#' @param line_search Type of line search to use. See 'Details'.
+#' @param c1 Sufficient decrease parameter for Wolfe-type line searches. Should
+#' be a value between 0 and 1.
+#' @param c2 Sufficient curvature parameter for line search for Wolfe-type line
+#' searches. Should be a value between \code{c1} and 1.
+#' @param step0 Initial value for the line search on the first step. See
+#' 'Details'.
+#' @param ls_initializer For Wolfe-type line searches only, how to initialize
+#' the line search on iterations after the first. See 'Details'.
+#' @param mom_type Momentum type, either \code{"classical"} or
+#' \code{"nesterov"}.
+#' @param mom_schedule Momentum schedule. See 'Details'.
+#' @param mom_init Initial momentum value.
+#' @param mom_final Final momentum value.
+#' @param mom_switch_iter For \code{mom_schedule} \code{"switch"} only, the
+#' iteration when \code{mom_init} is changed to \code{mom_final}.
+#' @param mom_linear_weight If \code{TRUE}, the gradient contribution to the
+#' update is weighted using momentum contribution.
+#' @param max_iter Maximum number of iterations the optimization will be carried
+#' out over. Used only if \code{mom_schedule} is set to \code{"ramp"}.
+#' @param restart Momentum restart type. Can be one of "fn" or "gr". See
+#' 'Details'.
+#' @param par Initial values for the function to be optimized over. Optional.
+#' @param fg Function and gradient list. See 'Details'. Optional.
 #' @export
 #' @examples
 #' # Function to optimize and starting point
@@ -170,7 +475,6 @@ make_mizer <- function(method = "L-BFGS",
                        mom_linear_weight = FALSE,
                        max_iter = NULL,
                        restart = NULL,
-                       verbose = FALSE,
                        par = NULL,
                        fg = NULL) {
   dir_type <- NULL
@@ -273,8 +577,7 @@ make_mizer <- function(method = "L-BFGS",
     make_stages(
       gradient_stage(
         direction = dir_type,
-        step_size = step_type),
-      verbose = FALSE))
+        step_size = step_type)))
 
   if (method == "NAG") {
     if (nest_convex_approx) {

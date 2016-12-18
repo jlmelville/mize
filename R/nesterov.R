@@ -95,7 +95,7 @@ nesterov_convex_step <- function(burn_in = 0, q = 0) {
     nesterov_strong_convex_step(burn_in = burn_in)
   }
   else {
-    # Use the expression for momentum from Candeis paper which includes q term
+    # Use the expression for momentum from Candes paper which includes q term
     nesterov_convex_step_q(q = q, burn_in = burn_in)
   }
 }
@@ -104,8 +104,7 @@ nesterov_convex_step <- function(burn_in = 0, q = 0) {
 # This expression is missing the parameter "q" that measures how strongly convex
 # the function is. It is implicitly zero, which gives the largest momentum
 # values. This uses an expression in the appendix of the Sutskever paper, which
-# is a bit simpler to calculate than the version given by Candeis and
-# O'Donoghue.
+# is a bit simpler to calculate than the version given by O'Donoghue and Candes.
 nesterov_strong_convex_step <- function(burn_in) {
   make_step_size(list(
     burn_in = burn_in,
@@ -141,9 +140,9 @@ nesterov_strong_convex_step <- function(burn_in) {
 }
 
 # The NAG pseudo-momentum schedule. This expression includes the parameter "q"
-# that measures how strongly convex This uses the algorithm given by Candeis
-# O'Donoghue, which is a bit more complex than the one in the appendix of the
-# Sutskever paper (but that one assumes q = 0).
+# that measures how strongly convex This uses the algorithm given by
+# O'Donoghue and Candes, which is a bit more complex than the one in the
+# appendix of the Sutskever paper (but that one assumes q = 0).
 # See https://arxiv.org/abs/1204.3982 for more.
 nesterov_convex_step_q <- function(q, burn_in = 0) {
   make_step_size(list(
