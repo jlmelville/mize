@@ -101,14 +101,17 @@ cstep <-  function(stepx, stepy, step, brackt, stpmin, stpmax) {
   stx <- stepx$alpha
   fx <- stepx$f
   dx <- stepx$d
+  dfx <- stepx$df
 
   sty <- stepy$alpha
   fy <- stepy$f
   dy <- stepy$d
+  dfy <- stepy$df
 
   stp <- step$alpha
   fp <- step$f
   dp <- step$d
+  dfp <- step$df
 
   delta <- 0.66
   info <- 0
@@ -134,15 +137,19 @@ cstep <-  function(stepx, stepy, step, brackt, stpmin, stpmax) {
     info <- 1
     bound <- TRUE
 
-    stpc <- cubic_interpolate(stx, fx, dx, stp, fp, dp)
+    stpc <- cubic_interpolate(stx, fx, dx, stp, fp, dp, ignoreWarnings = TRUE)
     stpq <- quadratic_interpolate(stx, fx, dx, stp, fp)
 
-    if (abs(stpc - stx) < abs(stpq - stx)) {
-      stpf <- stpc
-    } else {
-      stpf <- stpc + (stpq - stpc) / 2
+    if (is.nan(stpc)) {
+      stpf <- stpq
     }
-
+    else {
+      if (abs(stpc - stx) < abs(stpq - stx)) {
+        stpf <- stpc
+      } else {
+        stpf <- stpc + (stpq - stpc) / 2
+      }
+    }
     brackt <- TRUE
 
     # Second case. A lower function value and derivatives of
@@ -153,13 +160,17 @@ cstep <-  function(stepx, stepy, step, brackt, stpmin, stpmax) {
     info <- 2
     bound <- FALSE
 
-    stpc <- cubic_interpolate(stx, fx, dx, stp, fp, dp)
+    stpc <- cubic_interpolate(stx, fx, dx, stp, fp, dp, ignoreWarnings = TRUE)
     stpq <- quadratic_interpolateg(stp, dp, stx, dx)
-
-    if (abs(stpc - stp) > abs(stpq - stp)) {
-      stpf <- stpc
-    } else {
+    if (is.nan(stpc)) {
       stpf <- stpq
+    }
+    else {
+      if (abs(stpc - stp) > abs(stpq - stp)) {
+        stpf <- stpc
+      } else {
+        stpf <- stpq
+      }
     }
 
     brackt <- TRUE
@@ -221,7 +232,10 @@ cstep <-  function(stepx, stepy, step, brackt, stpmin, stpmax) {
     info <- 4
     bound <- FALSE
     if (brackt) {
-      stpc <- cubic_interpolate(sty, fy, dy, stp, fp, dp)
+      stpc <- cubic_interpolate(sty, fy, dy, stp, fp, dp, ignoreWarnings = TRUE)
+      if (is.nan(stpc)) {
+        stpf <- (sty + stp) / 2
+      }
       stpf <- stpc
     } else if (stp > stx) {
       stpf <- stpmax
@@ -236,15 +250,18 @@ cstep <-  function(stepx, stepy, step, brackt, stpmin, stpmax) {
     sty <- stp
     fy <- fp
     dy <- dp
+    dfy <- dfp
   } else {
     if (sgnd < 0.0) {
       sty <- stx
       fy <- fx
       dy <- dx
+      dfy <- dfx
     }
     stx <- stp
     fx <- fp
     dx <- dp
+    dfx <- dfp
   }
 
   # Compute the new step and safeguard it.
@@ -262,8 +279,8 @@ cstep <-  function(stepx, stepy, step, brackt, stpmin, stpmax) {
     }
   }
   list(
-       stepx = list(alpha = stx, f = fx, d = dx),
-       stepy = list(alpha = sty, f = fy, d = dy),
-       step = list(alpha = stp, f = fp, d = dp),
+       stepx = list(alpha = stx, f = fx, d = dx, df = dfx),
+       stepy = list(alpha = sty, f = fy, d = dy, df = dfy),
+       step = list(alpha = stp, f = fp, d = dp, df = dfp),
        brackt = brackt, info = info)
 }
