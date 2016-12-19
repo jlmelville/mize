@@ -9,9 +9,10 @@ mizer_init(opt, par, fg)
 \arguments{
 \item{opt}{Optimizer, created by \code{\link{make_mizer}}.}
 
-\item{par}{Initial values for the function to be optimized over.}
+\item{par}{Vector of initial values for the function to be optimized over.}
 
-\item{fg}{Function and gradient list. See 'Details'.}
+\item{fg}{Function and gradient list. See the documentaion of
+\code{\link{mizer}}.}
 }
 \value{
 Initialized optimizer.
@@ -27,22 +28,8 @@ that if \code{fg} and \code{par} are available at the time
 and initialization will be carried out automatically, avoiding the need to
 call \code{mizer_init}.
 
-The function to be optimized should be passed as a list to the \code{fg}
-parameter. This should consist of:
-\itemize{
-\item{\code{fn}}. The function to be optimized. Takes a vector of parameters
-  and returns a scalar.
-\item{\code{gr}}. The gradient of the function. Takes a vector of parameters and
-  and returns a vector with the same length as the input parameter vector.
-\item{\code{fg}}. Optional function which calculates the function and gradient in the
-same routine. Takes a vector of parameters and returns a list containing
-the function result as \code{fn} and the gradient result as \code{gr}.
-}
-
-The \code{fg} function is optional, but for some methods (e.g. line search
-methods based on the Wolfe criteria), both the function and gradient values
-are needed for the same parameter value. Calculating them in the same
-function can save time if there is a lot of shared work.
+Details of the \code{fg} list can be found in the 'Details' section of
+\code{\link{mizer}}.
 }
 \examples{
 

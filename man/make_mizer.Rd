@@ -122,10 +122,12 @@ creation time, then the optimizer should be initialized using
 See the documentation to \code{\link{mizer}} for an explanation of all
 the parameters.
 
-The \code{fg} function is optional, but for some methods (e.g. line search
-methods based on the Wolfe criteria), both the function and gradient values
-are needed for the same parameter value. Calculating them in the same
-function can save time if there is a lot of shared work.
+Details of the \code{fg} list containing the function to be optimized and
+its gradient can be found in the 'Details' section of \code{\link{mizer}}.
+It is optional for this function, but if it is passed to this function,
+along with the vector of initial values, \code{par}, the optimizer will be
+returned already initialized for this function. Otherwise,
+\code{\link{mizer_init}} must be called before optimization begins.
 }
 \examples{
 # Function to optimize and starting point
