@@ -1,5 +1,7 @@
 # Optimizer ---------------------------------------------------------------
 
+# Repeatedly minimizes par using opt until one of the termination conditions
+# is met
 opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
                     store_progress = FALSE, invalidate_cache = FALSE,
                     max_fn = Inf, max_gr = Inf, max_fg = Inf,
@@ -79,6 +81,13 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
   res
 }
 
+
+# if any of the termination criteria are fulfilled, a list is returned
+# saying which one and what the value was that triggered the termination.
+# Otherwise, an empty list is returned
+# Gradient and Function-based termination (abs_tol, rel_tol and grad_tol)
+# are checked only if the function and gradient values were calculated
+# in the optimization step.
 check_termination <- function(terminate, opt, iter, max_fn, max_gr, max_fg,
                               abs_tol, rel_tol, grad_tol) {
   if (opt$counts$fn >= max_fn) {
@@ -136,6 +145,7 @@ check_termination <- function(terminate, opt, iter, max_fn, max_gr, max_fg,
   terminate
 }
 
+# Clears the cache. Results should be identical whether a cache is used or not.
 opt_clear_cache <- function(opt) {
   for (name in names(opt$cache)) {
     iter_name <- paste0(name, "_iter")
@@ -146,6 +156,14 @@ opt_clear_cache <- function(opt) {
   opt
 }
 
+# Creates a result object.
+# If the function and gradient were not calculated as part of the optimization
+# step, they WILL be calculated here, but do not contribute to the total
+# fn or gr count reported.
+# Other reported results: alpha is the step size portion of the gradient
+# descent stage (i.e. the result of the line search). Step is the total step
+# size taken during the optimization step, including momentum.
+# If a momentum stage is present, the value of the momentum is stored as 'mu'.
 opt_results <- function(opt, par, fg, iter, par0 = NULL) {
   if (!has_fn_curr(opt, iter + 1)) {
     f <- fg$fn(par)
@@ -196,6 +214,7 @@ opt_results <- function(opt, par, fg, iter, par0 = NULL) {
   res
 }
 
+# Prints information about the current optimization result
 opt_report <- function(opt_result, print_time = FALSE, print_par = FALSE) {
   msg <- paste0("iter ", opt_result$iter
                 , " f = ", formatC(opt_result$f)
@@ -216,6 +235,7 @@ opt_report <- function(opt_result, print_time = FALSE, print_par = FALSE) {
   message(msg)
 }
 
+# Transfers data from the result object to the progress data frame
 update_progress <- function(opt_res, progress) {
   res_names <- c("f", "g2n", "nf", "ng", "step")
   if (!is.null(opt_res$alpha)) {
@@ -234,6 +254,7 @@ update_progress <- function(opt_res, progress) {
 
 # Constructor -------------------------------------------------------------
 
+# Creates an optimizer
 make_opt <- function(stages,
                      verbose = FALSE) {
   opt <- list(
@@ -261,6 +282,8 @@ make_opt <- function(stages,
   opt
 }
 
+# Creates a stage of the optimizer: a gradient_descent or momentum stage
+# normally
 make_stage <- function(type, direction, step_size, depends = NULL) {
 
   stage <- list(
@@ -278,8 +301,6 @@ make_stage <- function(type, direction, step_size, depends = NULL) {
     calculate = function(opt, stage, par, fg, iter) {
       for (sub_stage_name in c("direction", "step_size")) {
         phase <- paste0(stage$type, " ", sub_stage_name)
-        #      message("emitting during ", phase)
-
         opt <- life_cycle_hook(phase, "during", opt, par, fg, iter)
       }
 
@@ -288,7 +309,6 @@ make_stage <- function(type, direction, step_size, depends = NULL) {
     after_stage = function(opt, stage, par, fg, iter) {
       for (sub_stage_name in c("direction", "step_size")) {
         phase <- paste0(stage$type, " ", sub_stage_name)
-        #      message("emitting after ", phase)
         opt <- life_cycle_hook(phase, "after", opt, par, fg, iter)
       }
       stage$result <- stage$direction$value * stage$step_size$value
@@ -323,6 +343,7 @@ make_stage <- function(type, direction, step_size, depends = NULL) {
   res
 }
 
+# Creates a sub stage: a direction or a step size
 make_sub_stage <- function(sub_stage, type) {
   sub_stage$type <- type
   if (!is.null(sub_stage$init)) {
@@ -340,22 +361,28 @@ make_sub_stage <- function(sub_stage, type) {
   sub_stage
 }
 
+# Creates a gradient_descent stage
 gradient_stage <- function(direction, step_size) {
   make_stage(type = "gradient_descent", direction, step_size,
              depends = c('gradient'))
 }
 
+# Creates a momentum stage
 momentum_stage <- function(direction = momentum_direction(normalize = FALSE),
                            step_size) {
   make_stage(type = "momentum", direction, step_size)
 }
 
+# Creates a momentum "correction" stage. If linear weighting is asked for, then
+# mu * the gradient direction is substracted from the result.
 momentum_correction_stage <- function(
   direction = momentum_correction_direction(),
   step_size = momentum_correction_step()) {
   make_stage(type = "momentum_correction", direction, step_size)
 }
 
+# Creates stages from a passed list. Should contain lists created from calling
+# a specific stage function like momentum_stage or gradient_stage
 make_stages <- function(...) {
   stages <- list()
   varargs <- list(...)
@@ -367,16 +394,20 @@ make_stages <- function(...) {
   stages
 }
 
+# Add a stage to the end of an optimizer stage list
 append_stage <- function(opt, stage) {
   opt$stages <- c(opt$stages, stage)
   opt
 }
 
+# Add a stage to the beginning of an optimizer stage list
 prepend_stage <- function(opt, stage) {
   opt$stages <- c(stage, opt$stages)
   opt
 }
 
+# Initialize a list to store the number of times the function and gradient
+# is called.
 make_counts <- function() {
   list(
     fn = 0,
@@ -403,6 +434,7 @@ calc_fn_new <- function(opt, par, fn, iter) {
   opt
 }
 
+# Store val as fn_new for the specified iteration
 set_fn_new <- function(opt, val, iter) {
   opt$cache$fn_new <- val
   opt$cache$fn_new_iter <- iter
@@ -415,11 +447,11 @@ calc_fn_curr <- function(opt, par, fn, iter) {
   if (is.null(opt$cache$fn_curr_iter) || opt$cache$fn_curr_iter != iter) {
     opt <- set_fn_curr(opt, fn(par), iter)
     opt$counts$fn <- opt$counts$fn + 1
-    #message("Calculated and cached fn = ", formatC(opt$cache$fn_curr))
   }
   opt
 }
 
+# Store val as fn_curr for the specified iteration
 set_fn_curr <- function(opt, val, iter) {
   opt$cache$fn_curr <- val
   opt$cache$fn_curr_iter <- iter
@@ -436,6 +468,7 @@ calc_gr_curr <- function(opt, par, gr, iter) {
   opt
 }
 
+# Store val as gr_curr for the specified iteration
 set_gr_curr <- function(opt, val, iter) {
   opt$cache$gr_curr <- val
   opt$cache$gr_curr_iter <- iter
@@ -451,31 +484,37 @@ calc_gr <- function(opt, par, gr) {
 
 # Predicates --------------------------------------------------------------
 
+# Does the optimizer only have one stage (e.g. a gradient-only approach like
+# BFGS)
 is_single_stage <- function(opt) {
   length(opt$stages) == 1
 }
 
+# Is stage the first stage in the optimizers list of stages
 is_first_stage <- function(opt, stage) {
   stage$type == opt$stages[[1]]$type
 }
 
+# Is stage the last stage in the optimizers list of stages
 is_last_stage <- function(opt, stage) {
   stage$type == opt$stages[[length(opt$stages)]]$type
 }
 
+# Has fn_new already been calculated for the specified iteration
 has_fn_new <- function(opt, iter) {
   (!is.null(opt$cache$fn_new)
    && !is.null(opt$cache$fn_new_iter)
    && opt$cache$fn_new_iter == iter)
 }
 
-# Predicate for whether fn is already cached
+# Has fn_curr already been calculated for the specified iteration
 has_fn_curr <- function(opt, iter) {
   (!is.null(opt$cache$fn_curr)
    && !is.null(opt$cache$fn_curr_iter)
    && opt$cache$fn_curr_iter == iter)
 }
 
+# Has gr_curr already been calculated for the specified iteration
 has_gr_curr <- function(opt, iter) {
   (!is.null(opt$cache$gr_curr)
    && !is.null(opt$cache$gr_curr_iter)

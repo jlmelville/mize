@@ -8,11 +8,12 @@
 #' \itemize{
 #' \item{\code{fn}}. The function to be optimized. Takes a vector of parameters
 #'   and returns a scalar.
-#' \item{\code{gr}}. The gradient of the function. Takes a vector of parameters and
-#'   and returns a vector with the same length as the input parameter vector.
-#' \item{\code{fg}}. Optional function which calculates the function and gradient in the
-#' same routine. Takes a vector of parameters and returns a list containing
-#' the function result as \code{fn} and the gradient result as \code{gr}.
+#' \item{\code{gr}}. The gradient of the function. Takes a vector of parameters
+#' and returns a vector with the same length as the input parameter vector.
+#' \item{\code{fg}}. Optional function which calculates the function and
+#' gradient in thesame routine. Takes a vector of parameters and returns a list
+#' containing the function result as \code{fn} and the gradient result as
+#' \code{gr}.
 #' }
 #'
 #' The \code{fg} function is optional, but for some methods (e.g. line search
@@ -89,21 +90,21 @@
 #' The following parameters can be used to control the line search:
 #'
 #'  \itemize{
-#'    \item{\code{c1}} The sufficient decrease condition. Normally left at its default
-#'    value of 1e-4.
-#'    \item{\code{c2}} The sufficient curvature condition. Suggested settings by
-#'    Nocedal and Wright is 0.1 for methods \code{"BFGS"} and \code{"L-BFGS"}
-#'    and to 0.9 for \code{"SD"} and \code{"CG"}. The smaller the value of
-#'    \code{c2}, the stricter the line search, but it should not be set to
-#'    smaller than \code{c1}.
-#'    \item{\code{step0}} Initial value for the line search on the first step. If a
-#'    positive numeric value is passed as an argument, that value is used
+#'    \item{\code{c1}} The sufficient decrease condition. Normally left at its
+#'    default value of 1e-4.
+#'    \item{\code{c2}} The sufficient curvature condition. Defaults to 0.9 if
+#'    using the methods \code{"BFGS"} and \code{"L-BFGS"}, and to 0.1 for
+#'    every other method, more or less in line with the recommendations given
+#'    by Nocedal and Wright. The smaller the value of \code{c2}, the stricter
+#'    the line search, but it should not be set to smaller than \code{c1}.
+#'    \item{\code{step0}} Initial value for the line search on the first step.
+#'    If a positive numeric value is passed as an argument, that value is used
 #'    as-is. Otherwise, by passing a character as an argument, a guess is made
 #'    based on the gradient at the starting point:
 #'    \itemize{
 #'      \item{\code{"r"}} As used by Rasmussen in \code{minimize.m}:
 #'      \deqn{\frac{1}{1+\left|g\right|^2}}{1 / 1 + (|g|^2)}
-#'      \item{\code{"s"}} As used in scipy's \code{opiimize.py}
+#'      \item{\code{"s"}} As used in scipy's \code{optimize.py}
 #'      \deqn{\frac{1}{\left|g\right|}}{1 / |g|}
 #'      \item{\code{"m"}} As used by Schmidt in \code{minFunc.m}
 #'      (the reciprocal of the l1 norm of g)
@@ -185,9 +186,12 @@
 #'
 #' The effect of the restart is to "forget" any previous momentum update vector,
 #' and, for those momentum schemes that change with iteration number, to
-#' effectively reset the iteration number back to zero.
-#' If the \code{mom_type} is \code{"nesterov"}, the gradient-based restart
-#' is not available.
+#' effectively reset the iteration number back to zero. If the \code{mom_type}
+#' is \code{"nesterov"}, the gradient-based restart is not available.
+#'
+#' If \code{method} type \code{"MOM"} is specified with no other values, the
+#' momentum scheme will default to a constant value of \code{0.9}, with a
+#' function-based restart.
 #'
 #' @param par Initial values for the function to be optimized over.
 #' @param fg Function and gradient list. See 'Details'.
@@ -305,14 +309,40 @@
 #' Numerical optimization.
 #' Springer Science & Business Media.
 #'
+#' O'Donoghue, B., & Candes, E. (2013).
+#' Adaptive restart for accelerated gradient schemes.
+#' \emph{Foundations of computational mathematics}, \emph{15}(3), 715-732.
+#'
 #' Sutskever, I., Martens, J., Dahl, G., & Hinton, G. (2013).
 #' On the importance of initialization and momentum in deep learning.
 #' In \emph{Proceedings of the 30th international conference on machine learning (ICML-13)}
 #' (pp. 1139-1147).
+#' @examples
+#' # Function to optimize and starting point defined after creating optimizer
+#' rosenbrock_fg <- list(
+#'   fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
+#'   gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+#'                          200 *        (x[2] - x[1] * x[1])) })
+#' rb0 <- c(-1.2, 1)
 #'
-#' O'Donoghue, B., & Candes, E. (2013).
-#' Adaptive restart for accelerated gradient schemes.
-#' \emph{Foundations of computational mathematics}, \emph{15}(3), 715-732.
+#' # Minimize using L-BFGS
+#' res <- mizer(rb0, rosenbrock_fg, method = "L-BFGS")
+#'
+#' # Conjugate gradient with Fletcher-Reeves update, tight Wolfe line search
+#' res <- mizer(rb0, rosenbrock_fg, method = "CG", cg_update = "FR", c2 = 0.1)
+#'
+#' # Steepest decent with constant momentum = 0.9
+#' res <- mizer(rb0, rosenbrock_fg, method = "SD", mom_type = "classical",
+#'              mom_schedule = 0.9)
+#'
+#' # Steepest descent with constant momentum in the Nesterov style as described
+#' # by Sutskever and co-workers
+#' res <- mizer(rb0, rosenbrock_fg, method = "SD", mom_type = "nesterov",
+#'              mom_schedule = 0.9)
+#'
+#' # Nesterov momentum with adaptive restart comparing function values
+#' res <- mizer(rb0, rosenbrock_fg, method = "SD", mom_type = "nesterov",
+#'              mom_schedule = 0.9, restart = "fn")
 #' @export
 mizer <- function(par, fg,
                   method = "L-BFGS",
@@ -334,12 +364,12 @@ mizer <- function(par, fg,
                   # Line Search configuration
                   line_search = "MT",
                   c1 = 1e-4,
-                  c2 = 0.1,
+                  c2 = NULL,
                   step0 = 1,
                   ls_initializer = "q",
                   try_newton_step = NULL,
                   # Momentum
-                  mom_type = "classical",
+                  mom_type = NULL,
                   mom_schedule = NULL,
                   mom_init = NULL,
                   mom_final = NULL,
@@ -400,17 +430,8 @@ mizer <- function(par, fg,
 #' creation time, then the optimizer should be initialized using
 #' \code{\link{mizer_init}} before being used with \code{\link{mizer_step}}.
 #'
-#' The function to be optimized should be passed as a list to the \code{fg}
-#' parameter. This should consist of:
-#' \itemize{
-#' \item{\code{fn}}. The function to be optimized. Takes a vector of parameters
-#'   and returns a scalar.
-#' \item{\code{gr}}. The gradient of the function. Takes a vector of parameters and
-#'   and returns a vector with the same length as the input parameter vector.
-#' \item{\code{fg}}. Optional function which calculates the function and gradient in the
-#' same routine. Takes a vector of parameters and returns a list containing
-#' the function result as \code{fn} and the gradient result as \code{gr}.
-#' }
+#' See the documentation to \code{\link{mizer}} for an explanation of all
+#' the parameters.
 #'
 #' The \code{fg} function is optional, but for some methods (e.g. line search
 #' methods based on the Wolfe criteria), both the function and gradient values
@@ -518,12 +539,12 @@ make_mizer <- function(method = "L-BFGS",
                        theta = 0.1,
                        # Line Search
                        line_search = "MT",
-                       c1 = 1e-4, c2 = 0.1,
+                       c1 = 1e-4, c2 = NULL,
                        step0 = 1,
                        ls_initializer = "q",
                        try_newton_step = NULL,
                        # Momentum
-                       mom_type = "classical",
+                       mom_type = NULL,
                        mom_schedule = NULL,
                        mom_init = NULL,
                        mom_final = NULL,
@@ -622,6 +643,16 @@ make_mizer <- function(method = "L-BFGS",
                                  use_momentum = is.null(mom_schedule))
   }
   else {
+
+    if (is.null(c2)) {
+      if (method %in% c("NEWTON", "PHESS", "BFGS", "L-BFGS")) {
+        c2 <- 0.9
+      }
+      else {
+        c2 <- 0.1
+      }
+    }
+
     if (line_search == "MT") {
       step_type <- more_thuente_ls(c1 = c1, c2 = c2,
                                    initializer = tolower(ls_initializer),
@@ -669,6 +700,19 @@ make_mizer <- function(method = "L-BFGS",
         step_size = nest_step
       ))
   }
+
+  if (method == "MOM") {
+    if (is.null(mom_type)) {
+      mom_type <- "classical"
+    }
+    if (is.null(mom_schedule)) {
+      mom_schedule <- 0.9
+    }
+    if (is.null(restart)) {
+      restart <- "fn"
+    }
+  }
+
   if (!is.null(mom_schedule)) {
     if (is.numeric(mom_schedule)) {
       mom_step <- constant_step_size(value = mom_schedule)

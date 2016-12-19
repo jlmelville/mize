@@ -8,8 +8,8 @@ make_mizer(method = "L-BFGS", norm_direction = FALSE, scale_hess = TRUE,
   memory = 10, cg_update = "PR+", nest_q = 0,
   nest_convex_approx = FALSE, nest_burn_in = 0, use_nest_mu_zero = FALSE,
   kappa = 1.1, kappa_fun = "*", phi = 0.5, theta = 0.1,
-  line_search = "MT", c1 = 1e-04, c2 = 0.1, step0 = 1,
-  ls_initializer = "q", try_newton_step = NULL, mom_type = "classical",
+  line_search = "MT", c1 = 1e-04, c2 = NULL, step0 = 1,
+  ls_initializer = "q", try_newton_step = NULL, mom_type = NULL,
   mom_schedule = NULL, mom_init = NULL, mom_final = NULL,
   mom_switch_iter = NULL, mom_linear_weight = FALSE, max_iter = NULL,
   restart = NULL, par = NULL, fg = NULL)
@@ -119,17 +119,8 @@ If the function to be optimized and starting point are not present at
 creation time, then the optimizer should be initialized using
 \code{\link{mizer_init}} before being used with \code{\link{mizer_step}}.
 
-The function to be optimized should be passed as a list to the \code{fg}
-parameter. This should consist of:
-\itemize{
-\item{\code{fn}}. The function to be optimized. Takes a vector of parameters
-  and returns a scalar.
-\item{\code{gr}}. The gradient of the function. Takes a vector of parameters and
-  and returns a vector with the same length as the input parameter vector.
-\item{\code{fg}}. Optional function which calculates the function and gradient in the
-same routine. Takes a vector of parameters and returns a list containing
-the function result as \code{fn} and the gradient result as \code{gr}.
-}
+See the documentation to \code{\link{mizer}} for an explanation of all
+the parameters.
 
 The \code{fg} function is optional, but for some methods (e.g. line search
 methods based on the Wolfe criteria), both the function and gradient values
