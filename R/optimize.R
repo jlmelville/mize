@@ -202,6 +202,7 @@ opt_report <- function(opt_result, print_time = FALSE, print_par = FALSE) {
                 , " |g| = ", formatC(opt_result$g2n)
                 , " nf = ", opt_result$nf
                 , " ng = ", opt_result$ng
+                , " step = ", formatC(opt_result$step)
   )
 
   if (print_time) {
