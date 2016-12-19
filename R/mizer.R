@@ -366,7 +366,7 @@ mizer <- function(par, fg,
                   c1 = 1e-4,
                   c2 = NULL,
                   step0 = NULL,
-                  ls_initializer = "q",
+                  ls_initializer = NULL,
                   try_newton_step = NULL,
                   # Momentum
                   mom_type = NULL,
@@ -544,7 +544,7 @@ make_mizer <- function(method = "L-BFGS",
                        line_search = "MT",
                        c1 = 1e-4, c2 = NULL,
                        step0 = NULL,
-                       ls_initializer = "q",
+                       ls_initializer = NULL,
                        try_newton_step = NULL,
                        # Momentum
                        mom_type = NULL,
@@ -648,21 +648,32 @@ make_mizer <- function(method = "L-BFGS",
                                  use_momentum = is.null(mom_schedule))
   }
   else {
-    if (is.null(c2)) {
-      if (method %in% c("NEWTON", "PHESS", "BFGS", "L-BFGS")) {
+    if (method %in% c("NEWTON", "PHESS", "BFGS", "L-BFGS")) {
+      if (is.null(c2)) {
         c2 <- 0.9
       }
-      else {
-        c2 <- 0.1
-      }
-    }
-
-    if (is.null(step0)) {
-      if (method %in% c("NEWTON", "PHESS", "BFGS", "L-BFGS")) {
+      if (is.null(step0)) {
         step0 <- 1
       }
-      else {
+      if (is.null(ls_initializer)) {
+        ls_initializer <- "q"
+      }
+      if (is.null(try_newton_step)) {
+        try_newton_step <- TRUE
+      }
+    }
+    else {
+      if (is.null(c2)) {
+        c2 <- 0.1
+      }
+      if (is.null(step0)) {
         step0 <- "r"
+      }
+      if (is.null(ls_initializer)) {
+        ls_initializer <- "s"
+      }
+      if (is.null(try_newton_step)) {
+        try_newton_step <- FALSE
       }
     }
 
