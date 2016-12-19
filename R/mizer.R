@@ -365,7 +365,7 @@ mizer <- function(par, fg,
                   line_search = "MT",
                   c1 = 1e-4,
                   c2 = NULL,
-                  step0 = 1,
+                  step0 = NULL,
                   ls_initializer = "q",
                   try_newton_step = NULL,
                   # Momentum
@@ -543,7 +543,7 @@ make_mizer <- function(method = "L-BFGS",
                        # Line Search
                        line_search = "MT",
                        c1 = 1e-4, c2 = NULL,
-                       step0 = 1,
+                       step0 = NULL,
                        ls_initializer = "q",
                        try_newton_step = NULL,
                        # Momentum
@@ -627,9 +627,11 @@ make_mizer <- function(method = "L-BFGS",
   step_type <- NULL
   line_search <- toupper(line_search)
   if (method == "DBD") {
-    eps_init <- 1
-    if (is.numeric(step0)) {
+    if (is.character(step0) || is.numeric(step0)) {
       eps_init <- step0
+    }
+    else {
+      eps_init <- "r"
     }
     if (kappa_fun == "*") {
       kappa_fun <- `*`
@@ -646,13 +648,21 @@ make_mizer <- function(method = "L-BFGS",
                                  use_momentum = is.null(mom_schedule))
   }
   else {
-
     if (is.null(c2)) {
       if (method %in% c("NEWTON", "PHESS", "BFGS", "L-BFGS")) {
         c2 <- 0.9
       }
       else {
         c2 <- 0.1
+      }
+    }
+
+    if (is.null(step0)) {
+      if (method %in% c("NEWTON", "PHESS", "BFGS", "L-BFGS")) {
+        step0 <- 1
+      }
+      else {
+        step0 <- "r"
       }
     }
 

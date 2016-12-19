@@ -128,39 +128,10 @@ line_search <- function(ls_fn,
       }
 
       if (is.null(sub_stage$value) || sub_stage$value <= 0) {
-        if (is.numeric(initial_step_length)) {
-          sub_stage$value <- initial_step_length
-        }
-        else {
-          if (initial_step_length == "r") { # Rasmussen default from minimize.m
-            s <- 1 / (1 - step0$d)
-            sub_stage$value <- s
-          }
-          else if (initial_step_length == "s") { # scipy
-            # found in _minimize_bfgs in optimize.py
-            # along with comment I don't understand:
-            #     # Sets the initial step guess to dx ~ 1
-            # actually sets f_old to f0 + 0.5 * ||g||2
-            # then uses f_old in the quadratic update formula
-            # If you do the algebra, you get 1 / sqrt(-d)
-            # (2 norm of g is sqrt(d) when starting with steepest descent)
-            s <- 1.01 / sqrt(-step0$d)
-          }
-          else if (initial_step_length == "m") {
-            # Mark Schmidt's minFunc.m uses reciprocal of the one-norm
-            s <- 1 / sum(abs(step0$d))
-          }
-          else {
-            stop("Unknown initial step method '", initial_step_length, "'")
-          }
-
-          if (try_newton_step) {
-            s <- min(1, s)
-          }
-          sub_stage$value <- s
-
-        }
+        sub_stage$value <- make_step_zero(initial_step_length, step0$d,
+                                          try_newton_step)
       }
+
       sub_stage$alpha0 <- sub_stage$value
       ls_result <- ls_fn(phi_alpha, step0, sub_stage$value)
       sub_stage$d0 <- step0$d
@@ -197,6 +168,41 @@ line_search <- function(ls_fn,
     depends = c("gradient")
   ))
 }
+
+# Set the initial step length. If initial_step_length is a numeric scalar,
+# then use that as-is. Otherwise, use one of several variations based around
+# the only thing we know (the directional derivative)
+make_step_zero <- function(initial_step_length, d0,
+                           try_newton_step = FALSE) {
+  if (is.numeric(initial_step_length)) {
+    return(initial_step_length)
+  }
+
+  if (initial_step_length == "r") { # Rasmussen default from minimize.m
+    s <- 1 / (1 - d0)
+  }
+  else if (initial_step_length == "s") { # scipy
+    # found in _minimize_bfgs in optimize.py with this comment:
+    # # Sets the initial step guess to dx ~ 1
+    # actually sets f_old to f0 + 0.5 * ||g||2 then uses f_old in the quadratic
+    # update formula. If you do the algebra, you get 1 / sqrt(-d)
+    # (2 norm of g is sqrt(d) when starting with steepest descent)
+    s <- 1 / sqrt(-d0)
+  }
+  else if (initial_step_length == "m") {
+    # Mark Schmidt's minFunc.m uses reciprocal of the one-norm
+    s <- 1 / sum(abs(d0))
+  }
+  else {
+    stop("Unknown initial step method '", initial_step_length, "'")
+  }
+
+  if (try_newton_step) {
+    s <- min(1, 1.01 * s)
+  }
+  s
+}
+
 
 make_phi_alpha <- function(par, fg, pm,
                             calc_gradient_default = FALSE, debug = FALSE) {

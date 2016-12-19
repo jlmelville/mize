@@ -51,6 +51,12 @@ delta_bar_delta <- function(kappa = 1.1, kappa_fun = `*`,
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
       delta <- opt$cache$gr_curr
 
+      if (!is.numeric(sub_stage$epsilon)) {
+        d0 <- dot(delta, stage$direction$value)
+        sub_stage$epsilon <- make_step_zero(sub_stage$epsilon, d0,
+                                            try_newton_step = FALSE)
+      }
+
       if (use_momentum && !is.null(opt$cache$update_old)) {
         # previous update includes -eps*grad_old, so reverse sign
         delta_bar_old <- -opt$cache$update_old
@@ -78,7 +84,8 @@ delta_bar_delta <- function(kappa = 1.1, kappa_fun = `*`,
         (kappa_fun(gamma_old,kappa)) * abs(delta_bar_delta) +
         (gamma_old * phi) * abs(!delta_bar_delta)
 
-      sub_stage$value <- clamp(epsilon * gamma, min_val = sub_stage$min_eps)
+      sub_stage$value <- clamp(sub_stage$epsilon * gamma,
+                               min_val = sub_stage$min_eps)
       if (!use_momentum || is.null(opt$cache$update_old)) {
         theta <- sub_stage$theta
         sub_stage$delta_bar_old <- ((1 - theta) * delta) + (theta * delta_bar_old)
