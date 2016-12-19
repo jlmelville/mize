@@ -248,7 +248,7 @@ lbfgs_direction <- function(memory = 10, scale_inverse = FALSE,
         }
 
         if (scale_inverse) {
-          gamma <- dot(sm, ym) / dot(ym, ym)
+          gamma <- dot(sm, ym) / (dot(ym, ym) + sub_stage$eps)
         }
         else {
           gamma <- 1
