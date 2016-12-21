@@ -419,7 +419,8 @@ mizer <- function(par, fg,
           store_progress = store_progress,
           verbose = verbose)
 
-  res[c("f", "g2n", "nf", "ng", "par", "iter", "terminate")]
+  Filter(Negate(is.null),
+         res[c("f", "g2n", "nf", "ng", "par", "iter", "terminate")])
 }
 
 #' Create an Optimizer

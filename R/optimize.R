@@ -6,17 +6,20 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
                     store_progress = FALSE, invalidate_cache = FALSE,
                     max_fn = Inf, max_gr = Inf, max_fg = Inf,
                     abs_tol = sqrt(.Machine$double.eps),
-                    rel_tol = abs_tol, grad_tol = 1.e-5,
+                    rel_tol = abs_tol, grad_tol = 1e-5,
                     ret_opt = FALSE, count_res_fg = TRUE) {
 
   opt <- mizer_init(opt, par, fg)
 
+
   progress <- data.frame()
   terminate <- list()
+  calc_gr <- is.numeric(grad_tol) && is.finite(grad_tol)
   res <- NULL
 
   if (verbose || store_progress) {
-    res <- opt_results(opt, par, fg, 0, count_fg = count_res_fg)
+    res <- opt_results(opt, par, fg, 0, count_fg = count_res_fg,
+                       calc_gr = calc_gr)
     opt <- res$opt
     if (store_progress) {
       progress <- update_progress(opt_res = res, progress = progress)
@@ -35,7 +38,8 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
 
   if (max_iter < 1) {
     if (!verbose) {
-      res <- opt_results(opt, par, fg, 0, count_fg = count_res_fg)
+      res <- opt_results(opt, par, fg, 0, count_fg = count_res_fg,
+                         calc_gr = calc_gr)
       opt <- res$opt
 
       if (store_progress) {
@@ -57,7 +61,8 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
     opt <- step_res$opt
     par <- step_res$par
     if (verbose || store_progress) {
-      res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg)
+      res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg,
+                         calc_gr = calc_gr)
       opt <- res$opt
 
       if (store_progress) {
@@ -97,7 +102,8 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
   }
 
   if (is.null(res) || res$iter != iter) {
-    res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg)
+    res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg,
+                       calc_gr = calc_gr)
     opt <- res$opt
   }
 
@@ -111,7 +117,6 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
     terminate <- list(what = "max_iter", val = max_iter)
   }
   res$terminate <- terminate[c("what", "val")]
-
   res
 }
 
@@ -199,7 +204,7 @@ opt_clear_cache <- function(opt) {
 # size taken during the optimization step, including momentum.
 # If a momentum stage is present, the value of the momentum is stored as 'mu'.
 opt_results <- function(opt, par, fg, iter, par0 = NULL, count_fg = TRUE,
-                        calc_gr = TRUE) {
+                        calc_gr = FALSE) {
 
   if (!has_fn_curr(opt, iter + 1)) {
     f <- fg$fn(par)
