@@ -376,7 +376,7 @@ mizer <- function(par, fg,
                   mom_switch_iter = NULL,
                   mom_linear_weight = FALSE,
                   # Adaptive Restart
-                  restart = NULL, # one of "fn" or "gr"
+                  restart = NULL,
                   # Termination criterion
                   max_iter = 100,
                   max_fn = Inf,
@@ -384,7 +384,7 @@ mizer <- function(par, fg,
                   max_fg = Inf,
                   abs_tol = sqrt(.Machine$double.eps),
                   rel_tol = abs_tol,
-                  grad_tol = 1e-5,
+                  grad_tol = NULL,
                   verbose = FALSE,
                   store_progress = FALSE) {
 

@@ -3,7 +3,7 @@ context("API tests")
 # Repeat some of the basic tests, using the consumer API
 test_that("steepest descent with constant step size", {
   res <- mizer(rb0, rosenbrock_fg, method = "sd", max_iter = 3,
-               line_search = "const", step0 = 0.0001)
+               line_search = "const", step0 = 0.0001, grad_tol = 1e-5)
 
   expect_equal(res$nf, 1)
   expect_equal(res$ng, 4)
@@ -15,7 +15,7 @@ test_that("steepest descent with constant step size", {
 test_that("L-BFGS with More-Thuente LS", {
   res <- mizer(rb0, rosenbrock_fg, method = "l-bfgs", max_iter = 3,
                line_search = "mt", c1 = 5e-10, c2 = 1e-9, step0 = "s",
-               ls_initializer = "q", scale_hess = FALSE)
+               ls_initializer = "q", scale_hess = FALSE, grad_tol = 1e-5)
 
   expect_equal(res$nf, 17)
   expect_equal(res$ng, 17)
@@ -27,7 +27,7 @@ test_that("L-BFGS with More-Thuente LS", {
 test_that("BFGS with More-Thuente LS", {
   res <- mizer(rb0, rosenbrock_fg, method = "bfgs", max_iter = 3,
                line_search = "mt", c1 = 5e-10, c2 = 1e-9, step0 = "s",
-               ls_initializer = "q", scale_hess = FALSE)
+               ls_initializer = "q", scale_hess = FALSE, grad_tol = 1e-5)
 
   expect_equal(res$nf, 17)
   expect_equal(res$ng, 17)
@@ -41,7 +41,7 @@ test_that("CG with Rasmussen LS", {
                cg_update = "pr+",
                max_iter = 3,
                line_search = "ras", c1 = 5e-10, c2 = 1e-9, step0 = "r",
-               ls_initializer = "r")
+               ls_initializer = "r", grad_tol = 1e-5)
 
   expect_equal(res$nf, 31)
   expect_equal(res$ng, 31)
@@ -55,7 +55,7 @@ test_that("NAG with Rasmussen LS", {
                nest_convex_approx = FALSE, nest_q = 0, nest_burn_in = 0,
                max_iter = 3,
                line_search = "ras", c1 = 5e-10, c2 = 1e-9, step0 = "r",
-               ls_initializer = "r")
+               ls_initializer = "r", grad_tol = 1e-5)
 
   expect_equal(res$nf, 34)
   expect_equal(res$ng, 34)
@@ -70,7 +70,7 @@ test_that("bold driver SD and classical momentum", {
                line_search = "bold",
                mom_type = "classical",
                mom_schedule = "ramp", mom_init = 0.1, mom_final = 0.3,
-               max_iter = 3)
+               max_iter = 3, grad_tol = 1e-5)
 
   expect_equal(res$nf, 11)
   expect_equal(res$ng, 4)
@@ -85,7 +85,7 @@ test_that("bold driver SD and nesterov momentum", {
                line_search = "bold",
                mom_type = "nesterov",
                mom_schedule = "ramp", mom_init = 0.1, mom_final = 0.3,
-               max_iter = 3)
+               max_iter = 3, grad_tol = 1e-5)
 
   expect_equal(res$nf, 11)
   expect_equal(res$ng, 3)
@@ -100,7 +100,7 @@ test_that("Delta bar delta adaptive learning rate and momentum", {
                step0 = 0.1,
                mom_type = "constant",
                mom_schedule = 0.2,
-               max_iter = 3)
+               max_iter = 3, grad_tol = 1e-5)
 
   expect_equal(res$nf, 1)
   expect_equal(res$ng, 3)
