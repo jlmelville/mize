@@ -198,7 +198,9 @@ opt_clear_cache <- function(opt) {
 # descent stage (i.e. the result of the line search). Step is the total step
 # size taken during the optimization step, including momentum.
 # If a momentum stage is present, the value of the momentum is stored as 'mu'.
-opt_results <- function(opt, par, fg, iter, par0 = NULL, count_fg = TRUE) {
+opt_results <- function(opt, par, fg, iter, par0 = NULL, count_fg = TRUE,
+                        calc_gr = TRUE) {
+
   if (!has_fn_curr(opt, iter + 1)) {
     f <- fg$fn(par)
     if (count_fg) {
@@ -209,17 +211,22 @@ opt_results <- function(opt, par, fg, iter, par0 = NULL, count_fg = TRUE) {
   else {
     f <- opt$cache$fn_curr
   }
-  if (!has_gr_curr(opt, iter + 1)) {
-    g <- fg$gr(par)
-    if (grad_is_first_stage(opt) && count_fg) {
-      opt <- set_gr_curr(opt, g, iter + 1)
-      opt$counts$gr <- opt$counts$gr + 1
+
+  g2n <- NULL
+  if (calc_gr) {
+    if (!has_gr_curr(opt, iter + 1)) {
+      g <- fg$gr(par)
+      if (grad_is_first_stage(opt) && count_fg) {
+        opt <- set_gr_curr(opt, g, iter + 1)
+        opt$counts$gr <- opt$counts$gr + 1
+      }
     }
+    else {
+      g <- opt$cache$gr_curr
+    }
+    g2n <- norm2(g)
   }
-  else {
-    g <- opt$cache$gr_curr
-  }
-  g2n <- norm2(g)
+
   if (!is.null(par0)) {
     step_size <- norm2(par - par0)
   }
@@ -247,6 +254,8 @@ opt_results <- function(opt, par, fg, iter, par0 = NULL, count_fg = TRUE) {
     iter = iter
   )
 
+  res["g2n"] <- g2n
+
   if ("momentum" %in% names(opt$stages)) {
     res$mu <- opt$stages[["momentum"]]$step_size$value
     if (is.null(res$mu)) {
@@ -259,9 +268,15 @@ opt_results <- function(opt, par, fg, iter, par0 = NULL, count_fg = TRUE) {
 
 # Prints information about the current optimization result
 opt_report <- function(opt_result, print_time = FALSE, print_par = FALSE) {
+
+  fmsg <- formatC(opt_result$f)
+  if (!is.null(opt_result$g2n)) {
+    fmsg <- paste0(fmsg, " |g| = ", formatC(opt_result$g2n))
+  }
+
   msg <- paste0("iter ", opt_result$iter
-                , " f = ", formatC(opt_result$f)
-                , " |g| = ", formatC(opt_result$g2n)
+                , " f = ", fmsg
+
                 , " nf = ", opt_result$nf
                 , " ng = ", opt_result$ng
                 , " step = ", formatC(opt_result$step)
