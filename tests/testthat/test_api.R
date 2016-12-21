@@ -12,6 +12,18 @@ test_that("steepest descent with constant step size", {
   expect_equal(res$par, c(-1.144, 1.023), tol = 1e-3)
 })
 
+test_that("grad norm not returned (or calculated) if grad tol is NULL", {
+  res <- mizer(rb0, rosenbrock_fg, method = "sd", max_iter = 3,
+               line_search = "const", step0 = 0.0001, grad_tol = NULL)
+
+  expect_equal(res$nf, 1)
+  expect_equal(res$ng, 3)
+  expect_equal(res$f, 12.81, tol = 1e-3)
+  expect_true(is.null(res$g2n))
+  expect_equal(res$par, c(-1.144, 1.023), tol = 1e-3)
+})
+
+
 test_that("L-BFGS with More-Thuente LS", {
   res <- mizer(rb0, rosenbrock_fg, method = "l-bfgs", max_iter = 3,
                line_search = "mt", c1 = 5e-10, c2 = 1e-9, step0 = "s",
