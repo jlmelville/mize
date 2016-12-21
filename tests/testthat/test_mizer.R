@@ -10,7 +10,9 @@ test_that("steepest descent with constant step size", {
     verbose = FALSE))
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE,
+                 verbose = FALSE,
+                 count_res_fg = FALSE)
 
   nfs <- c(0, 0, 0, 0)
   ngs <- c(0, 1, 2, 3)
@@ -38,7 +40,7 @@ test_that("steepest descent with constant step size and normalized direction", {
       verbose = FALSE))
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 0, 0, 0)
   ngs <- c(0, 1, 2, 3)
@@ -66,7 +68,7 @@ test_that("steepest descent with bold driver", {
       verbose = FALSE))
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 4, 7, 12)
   ngs <- c(0, 1, 2, 3)
@@ -100,7 +102,7 @@ test_that("classical momentum with 0 step size should be like using no momentum"
       verbose = FALSE))
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 0, 0, 0)
   ngs <- c(0, 1, 2, 3)
@@ -135,7 +137,7 @@ test_that("classical momentum with constant step size", {
       verbose = FALSE))
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 0, 0, 0)
   ngs <- c(0, 1, 2, 3)
@@ -171,7 +173,7 @@ test_that("eager classical momentum with constant step size should give same res
 
   opt$eager_update <- TRUE
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 0, 0, 0)
   ngs <- c(0, 1, 2, 3)
@@ -206,7 +208,7 @@ test_that("classical momentum with bold driver", {
       verbose = FALSE))
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 4, 8, 10)
   ngs <- c(0, 1, 2, 3)
@@ -241,7 +243,7 @@ test_that("eager classical momentum with bold driver same as 'lazy' result", {
 
   opt$eager_update <- TRUE
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 4, 8, 10)
   ngs <- c(0, 1, 2, 3)
@@ -277,7 +279,7 @@ test_that("linear weighted classical momentum with bold driver", {
   opt <- append_stage(opt, momentum_correction_stage())
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 4, 10, 12)
   ngs <- c(0, 1, 2, 3)
@@ -315,7 +317,7 @@ test_that("linear weighted eager classical momentum with bold driver", {
   opt$eager_update <- TRUE
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 4, 10, 12)
   ngs <- c(0, 1, 2, 3)
@@ -350,7 +352,7 @@ test_that("bold classical momentum with bold driver", {
       verbose = FALSE))
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 6, 19, 45)
   ngs <- c(0, 1, 2, 3)
@@ -383,7 +385,7 @@ test_that("bold classical momentum with bold driver without cache gives same res
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
                  store_progress = TRUE, verbose = FALSE,
-                 invalidate_cache = TRUE)
+                 invalidate_cache = TRUE, count_res_fg = FALSE)
 
   nfs <- c(0, 6, 20, 47) # extra function evaluations
   ngs <- c(0, 1, 2, 3)
@@ -419,7 +421,7 @@ test_that("classical momentum with bold driver and fn adaptive restart, same res
   opt <- adaptive_restart(opt, "fn")
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   # Have to carry out one extra fn evaluation when doing the first validation
   # After that, bold driver doesn't need to do a calculation for f0 on the
@@ -458,7 +460,7 @@ test_that("classical momentum with bold driver and gr adaptive restart, same res
   opt <- adaptive_restart(opt, "gr")
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   # Get adaptive update check for free if using gradient!
   nfs <- c(0, 4, 8, 10)
@@ -493,7 +495,7 @@ test_that("classical momentum with bold driver aggressive momentum can cause cos
       verbose = FALSE))
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 4, 8, 10)
   ngs <- c(0, 1, 2, 3)
@@ -529,7 +531,7 @@ test_that("classical momentum with bold driver adaptive gr momentum prevents cos
   opt <- adaptive_restart(opt, "gr")
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 4, 8, 10)
   ngs <- c(0, 1, 2, 2) # no grad calc needed on repeated step
@@ -565,7 +567,7 @@ test_that("classical momentum with bold driver adaptive fn momentum prevents cos
   opt <- adaptive_restart(opt, "fn")
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 5, 9, 11)
   ngs <- c(0, 1, 2, 2) # no grad calc needed on repeated step
@@ -604,7 +606,7 @@ test_that("classical momentum with constant function factory", {
       verbose = FALSE))
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 0, 0, 0)
   ngs <- c(0, 1, 2, 3)
@@ -643,7 +645,7 @@ test_that("classical momentum with ramp function", {
       verbose = FALSE))
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 0, 0, 0)
   ngs <- c(0, 1, 2, 3)
@@ -682,7 +684,7 @@ test_that("classical momentum with switch function", {
       verbose = FALSE))
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 0, 0, 0)
   ngs <- c(0, 1, 2, 3)
@@ -718,7 +720,7 @@ test_that("sutskever nesterov momentum with bold driver", {
   opt$eager_update <- TRUE
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 4, 7, 10)
   ngs <- c(0, 1, 2, 3)
@@ -726,7 +728,7 @@ test_that("sutskever nesterov momentum with bold driver", {
   g2ns <- c(232.87, 64.72, 22.22, 36.89)
   steps <- c(0, 0.25, 0.088, 0.0584)
   mus <- c(0.2, 0.2, 0.2, 0.2)
-  par <- c(-0.987, 1.065)
+  par <- c(-1.042, 1.046) # best par, not last par!
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
@@ -735,6 +737,8 @@ test_that("sutskever nesterov momentum with bold driver", {
   expect_equal(res$progress$step, steps, tol = 1e-3)
   expect_equal(res$progress$mu, mus, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
+
+  expect_equal(res$f, min(fs), tol = 1e-3)
 })
 
 test_that("nesterov momentum with bold driver and adaptive fn", {
@@ -755,7 +759,7 @@ test_that("nesterov momentum with bold driver and adaptive fn", {
   opt <- adaptive_restart(opt, "fn")
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 5, 8, 11)
   ngs <- c(0, 1, 2, 3)
@@ -792,7 +796,8 @@ test_that("nesterov accelerated gradient with wolfe line search", {
   opt$depends <- c(opt$depends, 'keep_stage_fs')
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE, ret_opt = TRUE)
+                 store_progress = TRUE, verbose = FALSE, ret_opt = TRUE,
+                 count_res_fg = FALSE)
 
 
   nfs <- c(0, 9, 17, 22)
@@ -839,7 +844,9 @@ test_that("nesterov momentum with wolfe line search is like NAG", {
   opt$depends <- c(opt$depends, 'keep_stage_fs')
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE, ret_opt = TRUE)
+                 store_progress = TRUE, verbose = FALSE, ret_opt = TRUE
+                 , count_res_fg = FALSE
+                 )
 
   nfs <- c(0, 9, 17, 22)
   ngs <- c(0, 9, 17, 22)
@@ -876,7 +883,7 @@ test_that("NAG with q = 1 is steepest descent", {
       verbose = FALSE))
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
 
   nfs <- c(0, 9, 17, 22)
@@ -915,7 +922,7 @@ test_that("NAG with q close to 0 is the same as == 0", {
       verbose = FALSE))
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 9, 17, 22)
   ngs <- c(0, 9, 17, 22)
@@ -948,7 +955,7 @@ test_that("NAG with q = 0.5 between full NAG and SD", {
       verbose = FALSE))
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 9, 17, 21)
   ngs <- c(0, 9, 17, 21)
@@ -981,7 +988,7 @@ test_that("NAG with approximate convex momentum", {
       verbose = FALSE))
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 9, 15, 26)
   ngs <- c(0, 9, 15, 26)
@@ -1016,7 +1023,7 @@ test_that("NAG with approximate convex momentum and mu = 0.4 at t = 0", {
       verbose = FALSE))
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 9, 15, 26)
   ngs <- c(0, 9, 15, 26)
@@ -1050,7 +1057,7 @@ test_that("Polak Ribiere CG with Rasmussen LS", {
       verbose = FALSE))
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 6, 10, 12)
   ngs <- c(0, 6, 10, 12)
@@ -1081,7 +1088,7 @@ test_that("BFGS with More-Thuente LS", {
       verbose = FALSE))
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 6, 11, 17)
   ngs <- c(0, 6, 11, 17)
@@ -1113,7 +1120,7 @@ test_that("L-BFGS with More-Thuente LS gives same results as BFGS with sufficien
       verbose = FALSE))
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 6, 11, 17)
   ngs <- c(0, 6, 11, 17)
@@ -1145,7 +1152,7 @@ test_that("delta bar delta adaptive learning rate", {
       verbose = FALSE)
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 0, 0, 0)
   ngs <- c(0, 1, 2, 3)
@@ -1183,7 +1190,7 @@ test_that("delta bar delta adaptive learning rate using momentum", {
       verbose = FALSE))
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 0, 0, 0)
   ngs <- c(0, 1, 2, 3)
@@ -1225,7 +1232,7 @@ test_that("delta bar delta adaptive learning rate using momentum and additive in
       verbose = FALSE))
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
-                 store_progress = TRUE, verbose = FALSE)
+                 store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE)
 
   nfs <- c(0, 0, 0, 0)
   ngs <- c(0, 1, 2, 3)

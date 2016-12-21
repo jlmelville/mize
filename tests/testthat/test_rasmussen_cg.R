@@ -21,7 +21,7 @@ test_that("CG gives same results as minimize.m webpage", {
 
   res <- opt_loop(opt, c(0,0), rosenbrock_fg, 15,
                  store_progress = TRUE, verbose = FALSE, grad_tol = 0,
-                 abs_tol = 0)
+                 abs_tol = 0, count_res_fg = FALSE)
 
   # function evaluations and g2norms calculated from running minimize.m
   # in Octave
@@ -63,7 +63,7 @@ test_that("CG without fg helper function gives same results", {
 
   res <- opt_loop(opt, c(0,0), rb_no_fg, 15,
                  store_progress = TRUE, verbose = FALSE, grad_tol = 0,
-                 abs_tol = 0)
+                 abs_tol = 0, count_res_fg = FALSE)
 
   # function evaluations and g2norms calculated from running minimize.m
   # in Octave

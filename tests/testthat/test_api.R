@@ -5,8 +5,8 @@ test_that("steepest descent with constant step size", {
   res <- mizer(rb0, rosenbrock_fg, method = "sd", max_iter = 3,
                line_search = "const", step0 = 0.0001)
 
-  expect_equal(res$nf, 0)
-  expect_equal(res$ng, 3)
+  expect_equal(res$nf, 1)
+  expect_equal(res$ng, 4)
   expect_equal(res$f, 12.81, tol = 1e-3)
   expect_equal(res$g2n, 147.11, tol = 1e-3)
   expect_equal(res$par, c(-1.144, 1.023), tol = 1e-3)
@@ -57,8 +57,8 @@ test_that("NAG with Rasmussen LS", {
                line_search = "ras", c1 = 5e-10, c2 = 1e-9, step0 = "r",
                ls_initializer = "r")
 
-  expect_equal(res$nf, 33)
-  expect_equal(res$ng, 33)
+  expect_equal(res$nf, 34)
+  expect_equal(res$ng, 34)
   expect_equal(res$f, 3.56, tol = 1e-3)
   expect_equal(res$g2n, 7.2, tol = 1e-3)
   expect_equal(res$par, c(-0.869, 0.781), tol = 1e-3)
@@ -72,8 +72,8 @@ test_that("bold driver SD and classical momentum", {
                mom_schedule = "ramp", mom_init = 0.1, mom_final = 0.3,
                max_iter = 3)
 
-  expect_equal(res$nf, 10)
-  expect_equal(res$ng, 3)
+  expect_equal(res$nf, 11)
+  expect_equal(res$ng, 4)
   expect_equal(res$f, 4.37, tol = 1e-3)
   expect_equal(res$g2n, 24.09, tol = 1e-3)
   expect_equal(res$par, c(-1.043, 1.043), tol = 1e-3)
@@ -102,7 +102,7 @@ test_that("Delta bar delta adaptive learning rate and momentum", {
                mom_schedule = 0.2,
                max_iter = 3)
 
-  expect_equal(res$nf, 0)
+  expect_equal(res$nf, 1)
   expect_equal(res$ng, 3)
   expect_equal(res$f, 4.84, tol = 1e-3)
   expect_equal(res$g2n, 37.85, tol = 1e-3)

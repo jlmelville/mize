@@ -7,15 +7,17 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
                     max_fn = Inf, max_gr = Inf, max_fg = Inf,
                     abs_tol = sqrt(.Machine$double.eps),
                     rel_tol = abs_tol, grad_tol = 1.e-5,
-                    ret_opt = FALSE) {
+                    ret_opt = FALSE, count_res_fg = TRUE) {
 
   opt <- mizer_init(opt, par, fg)
 
   progress <- data.frame()
   terminate <- list()
+  res <- NULL
 
   if (verbose || store_progress) {
-    res <- opt_results(opt, par, fg, 0)
+    res <- opt_results(opt, par, fg, 0, count_fg = count_res_fg)
+    opt <- res$opt
     if (store_progress) {
       progress <- update_progress(opt_res = res, progress = progress)
     }
@@ -24,9 +26,18 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
     }
   }
 
+  best_fn <- Inf
+  best_par <- NULL
+  if (!is.null(opt$cache$fn_curr)) {
+    best_fn <- opt$cache$fn_curr
+    best_par <- par
+  }
+
   if (max_iter < 1) {
     if (!verbose) {
-      res <- opt_results(opt, par, fg, 0)
+      res <- opt_results(opt, par, fg, 0, count_fg = count_res_fg)
+      opt <- res$opt
+
       if (store_progress) {
         res$progress <- progress
       }
@@ -46,7 +57,9 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
     opt <- step_res$opt
     par <- step_res$par
     if (verbose || store_progress) {
-      res <- opt_results(opt, par, fg, iter, par0)
+      res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg)
+      opt <- res$opt
+
       if (store_progress) {
         progress <- update_progress(opt_res = res, progress = progress)
       }
@@ -62,22 +75,43 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
                                    abs_tol = abs_tol, rel_tol = rel_tol,
                                    grad_tol = grad_tol)
 
+    if (has_fn_curr(opt, iter + 1)) {
+      if (opt$cache$fn_curr < best_fn) {
+        best_fn <- opt$cache$fn_curr
+        best_par <- par
+      }
+    }
+
     if (!is.null(terminate$what)) {
       break
     }
   }
 
-  res <- opt_results(opt, par, fg, iter, par0)
+  # If we were keeping track of the best result and that's not currently par:
+  if (!is.null(best_par) && best_fn != opt$cache$fn_curr) {
+    # Force recalculation of f (and optionally g) by clearing the cache
+    par <- best_par
+    opt <- opt_clear_cache(opt)
+    # recalculate result for this iteration
+    res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg)
+  }
+
+  if (is.null(res) || res$iter != iter) {
+    res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg)
+    opt <- res$opt
+  }
+
   if (store_progress) {
     res$progress <- progress
   }
-  if (ret_opt) {
-    res$opt <- opt
+  if (!ret_opt) {
+    res["opt"] <- NULL
   }
   if (is.null(terminate$what)) {
     terminate <- list(what = "max_iter", val = max_iter)
   }
   res$terminate <- terminate[c("what", "val")]
+
   res
 }
 
@@ -164,15 +198,23 @@ opt_clear_cache <- function(opt) {
 # descent stage (i.e. the result of the line search). Step is the total step
 # size taken during the optimization step, including momentum.
 # If a momentum stage is present, the value of the momentum is stored as 'mu'.
-opt_results <- function(opt, par, fg, iter, par0 = NULL) {
+opt_results <- function(opt, par, fg, iter, par0 = NULL, count_fg = TRUE) {
   if (!has_fn_curr(opt, iter + 1)) {
     f <- fg$fn(par)
+    if (count_fg) {
+      opt <- set_fn_curr(opt, f, iter + 1)
+      opt$counts$fn <- opt$counts$fn + 1
+    }
   }
   else {
     f <- opt$cache$fn_curr
   }
   if (!has_gr_curr(opt, iter + 1)) {
     g <- fg$gr(par)
+    if (grad_is_first_stage(opt) && count_fg) {
+      opt <- set_gr_curr(opt, g, iter + 1)
+      opt$counts$gr <- opt$counts$gr + 1
+    }
   }
   else {
     g <- opt$cache$gr_curr
@@ -194,6 +236,7 @@ opt_results <- function(opt, par, fg, iter, par0 = NULL) {
   }
 
   res <- list(
+    opt = opt,
     f = f,
     g2n = g2n,
     nf = opt$counts$fn,
@@ -498,6 +541,12 @@ is_first_stage <- function(opt, stage) {
 # Is stage the last stage in the optimizers list of stages
 is_last_stage <- function(opt, stage) {
   stage$type == opt$stages[[length(opt$stages)]]$type
+}
+
+# Is the first stage of optimization gradient descent
+# (i.e. not nesterov momentum)
+grad_is_first_stage <- function(opt) {
+  is_first_stage(opt, opt$stages[["gradient_descent"]])
 }
 
 # Has fn_new already been calculated for the specified iteration
