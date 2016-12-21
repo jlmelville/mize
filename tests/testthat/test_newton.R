@@ -9,7 +9,7 @@ opt <- make_opt(
     verbose = FALSE))
 
 res <- opt_loop(opt, rb0, rosenbrock_fg, 20, store_progress = TRUE,
-               verbose = FALSE, count_res_fg = FALSE)
+               verbose = FALSE, count_res_fg = FALSE, grad_tol = 1e-5)
 
 nfs <- c(0, 2, 6, 7, 8, 9, 12, 13, 14, 15, 17, 18, 19, 20, 22, 23, 24, 25, 26,
          27, 28)

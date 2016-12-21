@@ -6,7 +6,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
                     store_progress = FALSE, invalidate_cache = FALSE,
                     max_fn = Inf, max_gr = Inf, max_fg = Inf,
                     abs_tol = sqrt(.Machine$double.eps),
-                    rel_tol = abs_tol, grad_tol = 1e-5,
+                    rel_tol = abs_tol, grad_tol = NULL,
                     ret_opt = FALSE, count_res_fg = TRUE) {
 
   opt <- mizer_init(opt, par, fg)
@@ -300,7 +300,12 @@ opt_report <- function(opt_result, print_time = FALSE, print_par = FALSE) {
 
 # Transfers data from the result object to the progress data frame
 update_progress <- function(opt_res, progress) {
-  res_names <- c("f", "g2n", "nf", "ng", "step")
+  if (!is.null(opt_res$g2n)) {
+    res_names <- c("f", "g2n", "nf", "ng", "step")
+  }
+  else {
+    res_names <- c("f", "nf", "ng", "step")
+  }
   if (!is.null(opt_res$alpha)) {
     res_names <- c(res_names, "alpha")
   }
