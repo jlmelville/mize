@@ -36,71 +36,56 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
     best_par <- par
   }
 
-  if (max_iter < 1) {
-    if (!verbose) {
-      res <- opt_results(opt, par, fg, 0, count_fg = count_res_fg,
-                         calc_gr = calc_gr)
-      opt <- res$opt
+  iter <- 0
+  par0 <- par
+  if (max_iter > 0) {
+    for (iter in 1:max_iter) {
 
-      if (store_progress) {
-        progress <- update_progress(opt_res = res, progress = progress)
-        res$progress <- progress
-      }
-    }
-    else {
-      if (store_progress) {
-        res$progress <- progress
-      }
-    }
-    return(res)
-  }
-
-  for (iter in 1:max_iter) {
-
-    if (invalidate_cache) {
-      opt <- opt_clear_cache(opt)
-    }
-
-    par0 <- par
-
-    step_res <- mizer_step(opt, par, fg, iter)
-    opt <- step_res$opt
-    par <- step_res$par
-    if (!is.null(opt$error)) {
-      terminate$what <- opt$error
-      terminate$val <- "Error"
-      break
-    }
-
-    # Check termination conditions
-    if (!is.null(check_conv_every) && iter %% check_conv_every == 0) {
-      res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg,
-                         calc_gr = calc_gr)
-      opt <- res$opt
-
-      if (store_progress) {
-        progress <- update_progress(opt_res = res, progress = progress)
-      }
-      if (verbose) {
-        opt_report(res, print_time = TRUE, print_par = FALSE)
+      if (invalidate_cache) {
+        opt <- opt_clear_cache(opt)
       }
 
-      terminate <- check_termination(terminate, opt, iter = iter,
-                                     max_fn = max_fn, max_gr = max_gr,
-                                     max_fg = max_fg,
-                                     abs_tol = abs_tol, rel_tol = rel_tol,
-                                     grad_tol = grad_tol)
-    }
+      par0 <- par
 
-    if (has_fn_curr(opt, iter + 1)) {
-      if (opt$cache$fn_curr < best_fn) {
-        best_fn <- opt$cache$fn_curr
-        best_par <- par
+      step_res <- mizer_step(opt, par, fg, iter)
+      opt <- step_res$opt
+      par <- step_res$par
+      if (!is.null(opt$error)) {
+        terminate$what <- opt$error
+        terminate$val <- "Error"
+        break
       }
-    }
 
-    if (!is.null(terminate$what)) {
-      break
+      # Check termination conditions
+      if (!is.null(check_conv_every) && iter %% check_conv_every == 0) {
+        res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg,
+                           calc_gr = calc_gr)
+        opt <- res$opt
+
+        if (store_progress) {
+          progress <- update_progress(opt_res = res, progress = progress)
+        }
+        if (verbose) {
+          opt_report(res, print_time = TRUE, print_par = FALSE)
+        }
+
+        terminate <- check_termination(terminate, opt, iter = iter,
+                                       max_fn = max_fn, max_gr = max_gr,
+                                       max_fg = max_fg,
+                                       abs_tol = abs_tol, rel_tol = rel_tol,
+                                       grad_tol = grad_tol)
+      }
+
+      if (has_fn_curr(opt, iter + 1)) {
+        if (opt$cache$fn_curr < best_fn) {
+          best_fn <- opt$cache$fn_curr
+          best_par <- par
+        }
+      }
+
+      if (!is.null(terminate$what)) {
+        break
+      }
     }
   }
 
