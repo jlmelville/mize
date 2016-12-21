@@ -72,6 +72,46 @@ test_that("counting result fun grad calls increases counts", {
   expect_equal(res$ng, ngs[length(ngs)])
 })
 
+test_that("can check convergence less often and get fewer fn/gr calls", {
+
+  opt <- make_opt(
+    make_stages(
+      gradient_stage(
+        direction = sd_direction(),
+        step_size = constant_step_size(
+          value = 0.0001)),
+      verbose = FALSE))
+
+  res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
+                  store_progress = TRUE,
+                  verbose = FALSE,
+                  count_res_fg = TRUE, grad_tol = 1e-5, check_conv_every = 1000)
+
+  # fewer stored progress values first and last iter only
+  # same number of gradient evaluations, but fewer total function evaluations
+  progress_iters <- c("0", "3")
+  nfs <- c(1, 2)
+  ngs <- c(1, 4)
+
+  fs <- c(24.2, 12.81)
+  g2ns <- c(232.87, 147.11)
+  steps <- c(0, 0.017)
+  par <- c(-1.144, 1.023)
+
+  expect_equal(rownames(res$progress), progress_iters)
+  expect_equal(res$progress$nf, nfs)
+  expect_equal(res$progress$ng, ngs)
+  expect_equal(res$progress$f, fs, tol = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
+  expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$par, par, tol = 1e-3)
+
+  expect_equal(res$f, min(res$progress$f))
+  expect_equal(res$g2n, min(res$progress$g2n))
+  expect_equal(res$nf, nfs[length(nfs)])
+  expect_equal(res$ng, ngs[length(ngs)])
+})
+
 test_that("no grad norm returned or stored in progress when grad_tol is NULL", {
 
   opt <- make_opt(

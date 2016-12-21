@@ -7,10 +7,10 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
                     max_fn = Inf, max_gr = Inf, max_fg = Inf,
                     abs_tol = sqrt(.Machine$double.eps),
                     rel_tol = abs_tol, grad_tol = NULL,
+                    check_conv_every = 1,
                     ret_opt = FALSE, count_res_fg = TRUE) {
 
   opt <- mizer_init(opt, par, fg)
-
 
   progress <- data.frame()
   terminate <- list()
@@ -60,7 +60,14 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
     step_res <- mizer_step(opt, par, fg, iter)
     opt <- step_res$opt
     par <- step_res$par
-    if (verbose || store_progress) {
+    if (!is.null(opt$error)) {
+      terminate$what <- opt$error
+      terminate$val <- "Error"
+      break
+    }
+
+    # Check termination conditions
+    if (!is.null(check_conv_every) && iter %% check_conv_every == 0) {
       res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg,
                          calc_gr = calc_gr)
       opt <- res$opt
@@ -71,14 +78,13 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
       if (verbose) {
         opt_report(res, print_time = TRUE, print_par = FALSE)
       }
-    }
 
-    # Check termination conditions
-    terminate <- check_termination(terminate, opt, iter = iter,
-                                   max_fn = max_fn, max_gr = max_gr,
-                                   max_fg = max_fg,
-                                   abs_tol = abs_tol, rel_tol = rel_tol,
-                                   grad_tol = grad_tol)
+      terminate <- check_termination(terminate, opt, iter = iter,
+                                     max_fn = max_fn, max_gr = max_gr,
+                                     max_fg = max_fg,
+                                     abs_tol = abs_tol, rel_tol = rel_tol,
+                                     grad_tol = grad_tol)
+    }
 
     if (has_fn_curr(opt, iter + 1)) {
       if (opt$cache$fn_curr < best_fn) {
@@ -98,13 +104,24 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
     par <- best_par
     opt <- opt_clear_cache(opt)
     # recalculate result for this iteration
-    res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg)
+    res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg,
+                       calc_gr = calc_gr)
+    if (verbose) {
+      message("Returning best result found")
+      opt_report(res, print_time = TRUE, print_par = FALSE)
+    }
   }
 
   if (is.null(res) || res$iter != iter) {
     res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg,
                        calc_gr = calc_gr)
+    if (store_progress) {
+      progress <- update_progress(opt_res = res, progress = progress)
+    }
     opt <- res$opt
+    if (verbose) {
+      opt_report(res, print_time = TRUE, print_par = FALSE)
+    }
   }
 
   if (store_progress) {
@@ -159,6 +176,11 @@ check_termination <- function(terminate, opt, iter, max_fn, max_gr, max_fg,
   if (!is.null(rel_tol) || !is.null(abs_tol)) {
     if (!is.null(opt$cache$fn_curr)) {
       fn_new <- opt$cache$fn_curr
+      if (!is.finite(fn_new)) {
+        terminate$what <- "fn_inf"
+        terminate$val <- fn_new
+        return(terminate)
+      }
 
       if (!is.null(terminate$fn_new)) {
         fn_old <- terminate$fn_new
@@ -281,7 +303,6 @@ opt_report <- function(opt_result, print_time = FALSE, print_par = FALSE) {
 
   msg <- paste0("iter ", opt_result$iter
                 , " f = ", fmsg
-
                 , " nf = ", opt_result$nf
                 , " ng = ", opt_result$ng
                 , " step = ", formatC(opt_result$step)

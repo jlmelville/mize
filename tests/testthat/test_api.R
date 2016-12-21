@@ -3,7 +3,8 @@ context("API tests")
 # Repeat some of the basic tests, using the consumer API
 test_that("steepest descent with constant step size", {
   res <- mizer(rb0, rosenbrock_fg, method = "sd", max_iter = 3,
-               line_search = "const", step0 = 0.0001, grad_tol = 1e-5)
+               line_search = "const", step0 = 0.0001, grad_tol = 1e-5,
+               check_conv_every = NULL)
 
   expect_equal(res$nf, 1)
   expect_equal(res$ng, 4)
@@ -14,7 +15,8 @@ test_that("steepest descent with constant step size", {
 
 test_that("grad norm not returned (or calculated) if grad tol is NULL", {
   res <- mizer(rb0, rosenbrock_fg, method = "sd", max_iter = 3,
-               line_search = "const", step0 = 0.0001, grad_tol = NULL)
+               line_search = "const", step0 = 0.0001, grad_tol = NULL,
+               check_conv_every = NULL)
 
   expect_equal(res$nf, 1)
   expect_equal(res$ng, 3)
@@ -112,7 +114,7 @@ test_that("Delta bar delta adaptive learning rate and momentum", {
                step0 = 0.1,
                mom_type = "constant",
                mom_schedule = 0.2,
-               max_iter = 3, grad_tol = 1e-5)
+               max_iter = 3, grad_tol = 1e-5, check_conv_every = NULL)
 
   expect_equal(res$nf, 1)
   expect_equal(res$ng, 3)
@@ -120,4 +122,20 @@ test_that("Delta bar delta adaptive learning rate and momentum", {
   expect_equal(res$g2n, 37.85, tol = 1e-3)
   expect_equal(res$par, c(-0.993, 1.079), tol = 1e-3)
 })
+
+test_that("Terminates semi-gracefully if function value is non-finite", {
+  res <- mizer(rb0, rosenbrock_fg, "DBD", step0 = 1, check_conv_every = 1)
+  expect_equal(res$terminate$what, "fn_inf")
+  expect_equal(res$iter, 4)
+})
+
+test_that("Terminates semi-gracefully if gradient is non-finite", {
+  # If we don't check convergence often enough, solution can diverge
+  # in between checks. If NaN is detected in a gradient calculation, we
+  # terminate early even if not on a convergence check iteration
+  res <- mizer(rb0, rosenbrock_fg, "DBD", step0 = 1, check_conv_every = 10)
+  expect_equal(res$terminate$what, "gr_inf")
+  expect_equal(res$iter, 6)
+})
+
 

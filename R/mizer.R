@@ -385,6 +385,7 @@ mizer <- function(par, fg,
                   abs_tol = sqrt(.Machine$double.eps),
                   rel_tol = abs_tol,
                   grad_tol = NULL,
+                  check_conv_every = 1,
                   verbose = FALSE,
                   store_progress = FALSE) {
 
@@ -416,6 +417,7 @@ mizer <- function(par, fg,
           max_iter = max_iter,
           max_fn = max_fn, max_gr = max_gr, max_fg = max_fg,
           abs_tol = abs_tol, rel_tol = rel_tol, grad_tol = grad_tol,
+          check_conv_every = check_conv_every,
           store_progress = store_progress,
           verbose = verbose)
 
@@ -890,12 +892,27 @@ mizer_step <- function(opt, par, fg, iter) {
 
   par0 <- par
   step_result <- NULL
+
+  # In the main part of the step, opt$error is used to indicate
+  # something catastrophic has occurred (most likely non-finite gradient value)
+  # not to be confused with opt$ok which is used to indicate whether the
+  # solution is valid
+  opt$error <- NULL
   for (i in 1:length(opt$stages)) {
     opt$stage_i <- i
     stage <- opt$stages[[i]]
     opt <- life_cycle_hook(stage$type, "before", opt, par, fg, iter)
+    if (!is.null(opt$error)) {
+      break
+    }
     opt <- life_cycle_hook(stage$type, "during", opt, par, fg, iter)
+    if (!is.null(opt$error)) {
+      break
+    }
     opt <- life_cycle_hook(stage$type, "after", opt, par, fg, iter)
+    if (!is.null(opt$error)) {
+      break
+    }
 
     stage <- opt$stages[[i]]
 
@@ -911,26 +928,33 @@ mizer_step <- function(opt, par, fg, iter) {
     }
 
     opt <- life_cycle_hook("stage", "after", opt, par, fg, iter)
+    if (!is.null(opt$error)) {
+      break
+    }
   }
 
-  if (!opt$eager_update) {
-    par <- par + step_result
+  if (is.null(opt$error)) {
+    opt$ok <- TRUE
+    if (!opt$eager_update) {
+      par <- par + step_result
+    }
+
+    # intercept whether we want to accept the new solution
+    opt <- life_cycle_hook("validation", "before", opt, par, fg, iter,
+                           par0, step_result)
+    opt <- life_cycle_hook("validation", "during", opt, par, fg, iter,
+                           par0, step_result)
   }
-
-  # intercept whether we want to accept the new solution
-  opt <- life_cycle_hook("validation", "before", opt, par, fg, iter,
-                         par0, step_result)
-  opt$ok <- TRUE
-  opt <- life_cycle_hook("validation", "during", opt, par, fg, iter,
-                         par0, step_result)
-
-  # If the this solution was vetoed, roll back to the previous one.
-  if (!opt$ok) {
+  # If the this solution was vetoed or something catastrophic happened,
+  # roll back to the previous one.
+  if (!is.null(opt$error) || !opt$ok) {
     par <- par0
   }
 
-  opt <- life_cycle_hook("step", "after", opt, par, fg, iter, par0,
+  if (is.null(opt$error)) {
+    opt <- life_cycle_hook("step", "after", opt, par, fg, iter, par0,
                          step_result)
+  }
 
   res <- list(opt = opt, par = par, nf = opt$counts$fn, ng = opt$counts$gr)
   if (has_fn_curr(opt, iter + 1)) {

@@ -389,8 +389,8 @@ require_gradient <- function(opt, stage, par, fg, iter) {
   if (!has_gr_curr(opt, iter)) {
     opt <- calc_gr_curr(opt, par, fg$gr, iter)
 
-    if (any(is.nan(opt$cache$gr_curr))) {
-      stop("NaN in grad. descent at iter ", iter)
+    if (any(!is.finite(opt$cache$gr_curr))) {
+      opt$error <- "gr_inf"
     }
   }
 
