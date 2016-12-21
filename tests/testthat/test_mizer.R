@@ -27,6 +27,79 @@ test_that("steepest descent with constant step size", {
   expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
   expect_equal(res$progress$step, steps, tol = 1e-3)
   expect_equal(res$par, par, tol = 1e-3)
+
+  expect_equal(res$f, min(res$progress$f))
+  expect_equal(res$g2n, min(res$progress$g2n))
+  expect_equal(res$nf, nfs[length(nfs)])
+  expect_equal(res$ng, ngs[length(ngs)])
+})
+
+test_that("counting result fun grad calls increases counts", {
+
+  opt <- make_opt(
+    make_stages(
+      gradient_stage(
+        direction = sd_direction(),
+        step_size = constant_step_size(
+          value = 0.0001)),
+      verbose = FALSE))
+
+  res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
+                  store_progress = TRUE,
+                  verbose = FALSE,
+                  count_res_fg = TRUE, grad_tol = 1e-5)
+
+  # extra f and g calls are recorded corresponding to generating progress
+  # data (including during iteration 0)
+  nfs <- c(1, 2, 3, 4)
+  ngs <- c(1, 2, 3, 4)
+
+  fs <- c(24.2, 19.18, 15.52, 12.81)
+  g2ns <- c(232.87, 198.56, 170.43, 147.11)
+  steps <- c(0, 0.0233, 0.0199, 0.017)
+  par <- c(-1.144, 1.023)
+
+  expect_equal(res$progress$nf, nfs)
+  expect_equal(res$progress$ng, ngs)
+  expect_equal(res$progress$f, fs, tol = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
+  expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$par, par, tol = 1e-3)
+
+  expect_equal(res$f, min(res$progress$f))
+  expect_equal(res$g2n, min(res$progress$g2n))
+  expect_equal(res$nf, nfs[length(nfs)])
+  expect_equal(res$ng, ngs[length(ngs)])
+})
+
+test_that("no grad norm returned or stored in progress when grad_tol is NULL", {
+
+  opt <- make_opt(
+    make_stages(
+      gradient_stage(
+        direction = sd_direction(),
+        step_size = constant_step_size(
+          value = 0.0001)),
+      verbose = FALSE))
+
+  res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
+                  store_progress = TRUE,
+                  verbose = FALSE,
+                  count_res_fg = FALSE, grad_tol = NULL)
+
+  nfs <- c(0, 0, 0, 0)
+  ngs <- c(0, 1, 2, 3)
+  fs <- c(24.2, 19.18, 15.52, 12.81)
+  steps <- c(0, 0.0233, 0.0199, 0.017)
+  par <- c(-1.144, 1.023)
+
+  expect_equal(res$progress$nf, nfs)
+  expect_equal(res$progress$ng, ngs)
+  expect_equal(res$progress$f, fs, tol = 1e-3)
+  expect_true(is.null(res$progress$g2n))
+  expect_true(is.null(res$g2n))
+  expect_equal(res$progress$step, steps, tol = 1e-3)
+  expect_equal(res$par, par, tol = 1e-3)
 })
 
 test_that("steepest descent with constant step size and normalized direction", {
