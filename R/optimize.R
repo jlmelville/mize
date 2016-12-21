@@ -43,6 +43,12 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
       opt <- res$opt
 
       if (store_progress) {
+        progress <- update_progress(opt_res = res, progress = progress)
+        res$progress <- progress
+      }
+    }
+    else {
+      if (store_progress) {
         res$progress <- progress
       }
     }
