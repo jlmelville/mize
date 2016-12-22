@@ -15,7 +15,7 @@ make_mizer(method = "L-BFGS", norm_direction = FALSE, scale_hess = TRUE,
   restart = NULL, par = NULL, fg = NULL)
 }
 \arguments{
-\item{method}{Optimization method. See 'Details'.}
+\item{method}{Optimization method. See 'Details' of \code{\link{mizer}}.}
 
 \item{norm_direction}{If \code{TRUE}, then the steepest descent direction
 is normalized to unit length. Useful for adaptive step size methods where
@@ -67,7 +67,8 @@ a positive value less than 1.}
 \item{theta}{Weighting parameter used by the \code{"DBD"} method only, and
 only if no momentum scheme is provided. Must be an integer between 0 and 1.}
 
-\item{line_search}{Type of line search to use. See 'Details'.}
+\item{line_search}{Type of line search to use. See 'Details' of
+\code{\link{mizer}}.}
 
 \item{c1}{Sufficient decrease parameter for Wolfe-type line searches. Should
 be a value between 0 and 1.}
@@ -76,10 +77,11 @@ be a value between 0 and 1.}
 searches. Should be a value between \code{c1} and 1.}
 
 \item{step0}{Initial value for the line search on the first step. See
-'Details'.}
+'Details' of \code{\link{mizer}}.}
 
 \item{ls_initializer}{For Wolfe-type line searches only, how to initialize
-the line search on iterations after the first. See 'Details'.}
+the line search on iterations after the first. See 'Details' of
+\code{\link{mizer}}.}
 
 \item{try_newton_step}{For Wolfe-type line searches only, try the
 line step value of 1 as the initial step size whenever \code{ls_initializer}
@@ -89,7 +91,7 @@ such as BFGS and L-BFGS, \code{FALSE} otherwise.}
 \item{mom_type}{Momentum type, either \code{"classical"} or
 \code{"nesterov"}.}
 
-\item{mom_schedule}{Momentum schedule. See 'Details'.}
+\item{mom_schedule}{Momentum schedule. See 'Details' of \code{\link{mizer}}.}
 
 \item{mom_init}{Initial momentum value.}
 
@@ -105,11 +107,12 @@ update is weighted using momentum contribution.}
 out over. Used only if \code{mom_schedule} is set to \code{"ramp"}.}
 
 \item{restart}{Momentum restart type. Can be one of "fn" or "gr". See
-'Details'.}
+'Details' of \code{\link{mizer}}.}
 
 \item{par}{Initial values for the function to be optimized over. Optional.}
 
-\item{fg}{Function and gradient list. See 'Details'. Optional.}
+\item{fg}{Function and gradient list. See 'Details' of \code{\link{mizer}}.
+Optional.}
 }
 \description{
 Factory function for creating a (possibly uninitialized) optimizer.

@@ -13,8 +13,8 @@ mizer(par, fg, method = "L-BFGS", norm_direction = FALSE, memory = 10,
   mom_schedule = NULL, mom_init = NULL, mom_final = NULL,
   mom_switch_iter = NULL, mom_linear_weight = FALSE, restart = NULL,
   max_iter = 100, max_fn = Inf, max_gr = Inf, max_fg = Inf,
-  abs_tol = sqrt(.Machine$double.eps), rel_tol = abs_tol,
-  grad_tol = 1e-05, verbose = FALSE, store_progress = FALSE)
+  abs_tol = sqrt(.Machine$double.eps), rel_tol = abs_tol, grad_tol = NULL,
+  check_conv_every = 1, verbose = FALSE, store_progress = FALSE)
 }
 \arguments{
 \item{par}{Initial values for the function to be optimized over.}
@@ -113,20 +113,29 @@ update is weighted using momentum contribution.}
 'Details'. Ignored if no momentum scheme is being used.}
 
 \item{max_iter}{Maximum number of iterations to optimize for. Defaults to
-100.}
+100. See the 'Convergence' section for details.}
 
-\item{max_fn}{Maximum number of function evaluations.}
+\item{max_fn}{Maximum number of function evaluations. See the 'Convergence'
+section for details.}
 
-\item{max_gr}{Maximum number of gradient evaluations.}
+\item{max_gr}{Maximum number of gradient evaluations. See the 'Convergence'
+section for details.}
 
-\item{max_fg}{Maximum number of function or gradient evaluations.}
+\item{max_fg}{Maximum number of function or gradient evaluations. See the
+'Convergence' section for details.}
 
-\item{abs_tol}{Absolute tolerance for comparing two function evaluations.}
+\item{abs_tol}{Absolute tolerance for comparing two function evaluations.
+See the 'Convergence' section for details.}
 
-\item{rel_tol}{Relative tolerance for comparing two function evaluations.}
+\item{rel_tol}{Relative tolerance for comparing two function evaluations.
+See the 'Convergence' section for details.}
 
 \item{grad_tol}{Absolute tolerance for the length (l2-norm) of the gradient
-vector.}
+vector. See the 'Convergence' section for details.}
+
+\item{check_conv_every}{Positive integer indicating how often to check
+convergence. Default is 1, i.e. every iteration. See the 'Convergence'
+section for details.}
 
 \item{verbose}{If \code{TRUE}, log information about the progress of the
 optimization to the console.}
@@ -138,22 +147,38 @@ value.}
 \value{
 A list with components:
 \itemize{
- \item{\code{par}} Optimized parameters.
- \item{\code{nf}} Ttotal number of function evaluations carried out .
- \item{\code{ng}} Running total number of gradient evaluations carried out since
-   iteration 1.
+ \item{\code{par}} Optimized parameters. Normally, this is the best set of
+ parameters seen during optimization, i.e. the set that produced the minimum
+ function value. This requires that convergence checking with is carried out,
+ including function evaluation where necessary. See the 'Convergence'
+ section for details.
+ \item{\code{nf}} Total number of function evaluations carried out. This
+ includes any extra evaluations required for convergence calculations. Also,
+ a function evaluation may be required to calculate the value of \code{f}
+ returned in this list (see below). Additionally, if the \code{verbose}
+ parameter is \code{TRUE}, then function and gradient information for the
+ initial value of \code{par} will be logged to the console. These values
+ are cached for subsequent use by the optimizer.
+ \item{\code{ng}} Total number of gradient evaluations carried out. This
+ includes any extra evaluations required for convergence calculations using
+ \code{grad_tol}. As with \code{nf}, additional gradient calculations beyond
+ what you're expecting may have been needed for logging, convergence and
+ calculating the value of \code{g2n} (see below).
  \item{\code{f}} Value of the function, evaluated at the returned
-   value of \code{par}.
- \item{\code{g2n}} The length (l2-norm) of the gradient vector, evaluated
-   at the returned value of \code{par}.
+ value of \code{par}.
+ \item{\code{g2n}} Optional: the length (Euclidean or l2-norm) of the
+ gradient vector, evaluated at the returned value of \code{par}. Calculated
+ only if \code{grad_tol} is non-null.
  \item{\code{iter}} The number of iterations the optimization was carried
-   out for.
+ out for.
  \item{\code{terminate}} List containing items: \code{what}, indicating what
  convergence criterion was met, and \code{val} specifying the value at
- convergence.
+ convergence. See the 'Convergence' section for more details.
  \item{\code{progress}} Optional data frame containing information on the
  value of the function, gradient, momentum, and step sizes evaluated at each
- iteration. Only present if \code{store_progress} is set to \code{TRUE}.
+ iteration where convergence is checked. Only present if
+ \code{store_progress} is set to \code{TRUE}. Could get quite large if the
+ optimization is long and the convergence is checked regularly.
 }
 }
 \description{
@@ -178,6 +203,8 @@ The \code{fg} function is optional, but for some methods (e.g. line search
 methods based on the Wolfe criteria), both the function and gradient values
 are needed for the same parameter value. Calculating them in the same
 function can save time if there is a lot of shared work.
+}
+\section{Optimization Methods}{
 
 The \code{method} specifies the optimization method:
 
@@ -224,6 +251,9 @@ options.
 
 For more details on gradient-based optimization in general, and the BFGS,
 L-BFGS and CG methods, see Nocedal and Wright.
+}
+
+\section{Line Search}{
 
 The parameter \code{line_search} determines the line search to be carried
 out:
@@ -247,7 +277,7 @@ If using one of the methods: \code{"BFGS"}, \code{"L-BFGS"}, \code{"CG"} or
 should be used, otherwise very poor performance is likely to be encountered.
 The following parameters can be used to control the line search:
 
-\itemize{
+ \itemize{
    \item{\code{c1}} The sufficient decrease condition. Normally left at its
    default value of 1e-4.
    \item{\code{c2}} The sufficient curvature condition. Defaults to 0.9 if
@@ -306,6 +336,9 @@ the backtracking portion reduces the step size by a factor of \code{phi}.
 Once a satisfactory step size has been found, the line search for the
 next iteration is initialized by multiplying the previously found step size
 by \code{kappa}.
+}
+
+\section{Momentum}{
 
 For \code{method} \code{"MOM"}, momentum schemes can be accessed through the
 momentum arguments:
@@ -351,6 +384,93 @@ If \code{method} type \code{"MOM"} is specified with no other values, the
 momentum scheme will default to a constant value of \code{0.9}, with a
 function-based restart.
 }
+
+\section{Convergence}{
+
+
+There are several ways for the optimization to terminate. The type of
+termination is communicated by a two-item list \code{terminate} in the return
+value, consisting of \code{what}, a short string describing what caused the
+termination, and \code{val}, the value of the termination criterion that
+causes termination.
+
+The following parameters control various stopping criteria:
+
+\itemize{
+  \item{\code{max_iter}} Maximum number of iterations to calculate. Reaching
+  this limit is indicated by \code{terminate$what} being \code{"max_iter"}.
+  \item{\code{max_fn}} Maximum number of function evaluations allowed.
+  Indicated by \code{terminate$what} being \code{"max_fn"}.
+  \item{\code{max_gr}} Maximum number of gradient evaluations allowed.
+  Indicated by \code{terminate$what} being \code{"max_gr"}.
+  \item{\code{max_fg}} Maximum number of gradient evaluations allowed.
+  Indicated by \code{terminate$what} being \code{"max_fg"}.
+  \item{\code{abs_tol}} Absolute tolerance of the function value. If the
+  absolute value of the function falls below this threshold,
+  \code{terminate$what} will be \code{"abs_tol"}. Will only be triggered if
+  the objective function has a minimum value of zero.
+  \item{\code{rel_tol}} Relative tolerance of the function value, comparing
+  consecutive function evaluation results. Indicated by \code{terminate$what}
+  being \code{"rel_tol"}.
+  \item{\code{grad_tol}} Absolute tolerance of the l2 (Euclidean) norm of
+  the gradient. Indicated by \code{terminate$what} being \code{"grad_tol"}.
+  Note that the gradient norm is not a very reliable stopping criterion
+  (see Nocedal and co-workers 2002), but is quite  commonly used, so this
+  might be useful for comparison with results from other optimizers.
+}
+
+Convergence is checked between specific interations. How often is determined
+by the \code{check_conv_every} parameter, which specifies the number of
+iterations between each check. By default, this is set for every iteration.
+
+Be aware that if \code{abs_tol} or \code{rel_tol} are non-\code{NULL}, this
+requires the function to have been evaluated at the current position at the
+end of each iteration. If the function at that  position hasn't been
+calculated, it will be calculated and will contribute to the total reported
+in the \code{counts} list in the return value. The calculated function value
+is cached for use by the optimizer in the next iteration, so if the optimizer
+would have needed to calculate the function anyway (e.g. use of the strong
+Wolfe line search methods), there is no significant cost accrued by
+calculating it earlier for convergence calculations. However, for methods
+that don't use the function value at that location, this could represent a
+lot of extra function evaluations. On the other hand, not checking
+convergence could result in a lot of extra unnecessary iterations.
+Similarly, if \code{grad_tol} is non-\code{NULL}, then the gradient will
+be calculated if needed.
+
+If extra function or gradient evaluations is an issue, set
+\code{check_conv_every} to a higher value, but be aware that this can cause
+convergence limits to be exceeded by a greater amount.
+
+Note also that if the \code{verbose} parameter is \code{TRUE}, then a summary
+of the results so far will be logged to the console whenever a convergence
+check is carried out. If the \code{store_progress} parameter is \code{TRUE},
+then the same information will be returned as a data frame in the return
+value. For a long optimization this could be a lot of data, so by default it
+is not stored.
+
+Other ways for the optimization to terminate is if an iteration generates a
+non-finite (i.e. \code{Inf} or \code{NaN}) gradient or function value.
+Some, but not all, line-searches will try to recover from the latter, by
+reducing the step size, but a non-finite gradient calculation during the
+gradient descent portion of opimization is considered catastrophic by mizer,
+and it will give up. Termination under non-finite gradient or function
+conditions will result in \code{terminate$what} being \code{"gr_inf"} or
+\code{"fn_inf"} respectively. Unlike the convergence criteria, the
+optimization will detect these error conditions and terminate even if a
+convergence check would not be carried out for this iteration.
+
+The value of \code{par} in the return value should be the parameters which
+correspond to the lowest value of the function that has been calculated
+during the optimization. As discussed above however, determining which set
+of parameters requires a function evaluation at the end of each iteration,
+which only happens if either the optimization method calculates it as part
+of its own operation or if a convergence check is being carried out during
+this iteration. Therefore, if your method doesn't carry out function
+evaluations and \code{check_conv_every} is set to be so large that no
+convergence calculation is carried out before \code{max_iter} is reached,
+then the returned value of \code{par} is the last value encountered.
+}
 \examples{
 # Function to optimize and starting point defined after creating optimizer
 rosenbrock_fg <- list(
@@ -389,6 +509,10 @@ Shocking: An approach to stabilize backprop training with greedy adaptive
 learning rates.
 In \emph{1998 IEEE International Joint Conference on Neural Networks Proceedings.}
 (Vol. 3, pp. 2218-2223). IEEE.
+
+Nocedal, J., Sartenaer, A., & Zhu, C. (2002).
+On the behavior of the gradient norm in the steepest descent method.
+\emph{Computational Optimization and Applications}, \emph{22}(1), 5-35.
 
 Nocedal, J., & Wright, S. (2006).
 Numerical optimization.
