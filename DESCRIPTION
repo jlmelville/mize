@@ -1,6 +1,6 @@
 Package: mizer
 Type: Package
-Title: Numerical Optimization Algorithms
+Title: Unconstrained Numerical Optimization Algorithms
 Version: 0.0.0.9000
 Authors@R: person("Melville", "James", email = "jlmelville@gmail.com",
     role = c("aut", "cre"))
