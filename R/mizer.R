@@ -646,7 +646,8 @@ mizer <- function(par, fg,
 #'
 #' # Need to call mizer_init separately:
 #' opt <- mizer_init(opt, rb0, rosenbrock_fg)
-make_mizer <- function(method = "L-BFGS",
+make_mizer <- function(method = c("SD", "Newton", "PHess", "CG", "BFGS",
+                                  "L-BFGS", "NAG", "Momentum", "DBD"),
                        norm_direction = FALSE,
                        # BFGS
                        scale_hess = TRUE,
@@ -680,66 +681,65 @@ make_mizer <- function(method = "L-BFGS",
                        par = NULL,
                        fg = NULL) {
   dir_type <- NULL
-  method <- toupper(method)
-  if (method == "SD") {
-    dir_type <- sd_direction(normalize = norm_direction)
-  }
-  else if (method == "NEWTON") {
-    dir_type <- newton_direction()
-    if (is.null(try_newton_step)) {
-      try_newton_step <- TRUE
+  method <- match.arg(method)
+  switch(method,
+    SD = {
+      dir_type <- sd_direction(normalize = norm_direction)
+    },
+    Newton = {
+      dir_type <- newton_direction()
+      if (is.null(try_newton_step)) {
+        try_newton_step <- TRUE
+      }
+    },
+    PHESS = {
+      dir_type <- partial_hessian_direction()
+      if (is.null(try_newton_step)) {
+        try_newton_step <- TRUE
+      }
+    },
+    CG = {
+      cg_update_fn <- NULL
+      cg_update <- toupper(cg_update)
+      if (cg_update == "PR+") {
+        cg_update_fn <- pr_plus_update
+      }
+      else if (cg_update == "PR") {
+        cg_update_fn <- pr_update
+      }
+      else if (cg_update == "FR") {
+        cg_update_fn <- fr_update
+      }
+      else if (cg_update == "DY") {
+        cg_update_fn <- dy_update
+      }
+      else {
+        stop("Unknown CG update method '", cg_update, "'")
+      }
+      dir_type <- cg_direction(cg_update = cg_update_fn)
+    },
+    BFGS = {
+      dir_type <- bfgs_direction(scale_inverse = scale_hess)
+      if (is.null(try_newton_step)) {
+        try_newton_step <- TRUE
+      }
+    },
+    "L-BFGS" = {
+      dir_type <- lbfgs_direction(memory = memory, scale_inverse = scale_hess)
+      if (is.null(try_newton_step)) {
+        try_newton_step <- TRUE
+      }
+    },
+    NAG = {
+      dir_type <- sd_direction()
+    },
+    Momentum = {
+      dir_type <- sd_direction(normalize = norm_direction)
+    },
+    DBD = {
+      dir_type <- sd_direction(normalize = norm_direction)
     }
-  }
-  else if (method == "PHESS") {
-    dir_type <- partial_hessian_direction()
-    if (is.null(try_newton_step)) {
-      try_newton_step <- TRUE
-    }
-  }
-  else if (method == "CG") {
-    cg_update_fn <- NULL
-    cg_update <- toupper(cg_update)
-    if (cg_update == "PR+") {
-      cg_update_fn <- pr_plus_update
-    }
-    else if (cg_update == "PR") {
-      cg_update_fn <- pr_update
-    }
-    else if (cg_update == "FR") {
-      cg_update_fn <- fr_update
-    }
-    else if (cg_update == "DY") {
-      cg_update_fn <- dy_update
-    }
-    else {
-      stop("Unknown CG update method '", cg_update, "'")
-    }
-    dir_type <- cg_direction(cg_update = cg_update_fn)
-  }
-  else if (method == "BFGS") {
-    dir_type <- bfgs_direction(scale_inverse = scale_hess)
-    if (is.null(try_newton_step)) {
-      try_newton_step <- TRUE
-    }
-  }
-  else if (method == "L-BFGS") {
-    dir_type <- lbfgs_direction(memory = memory, scale_inverse = scale_hess)
-    if (is.null(try_newton_step)) {
-      try_newton_step <- TRUE
-    }
-  }
-  else if (method == "NAG") {
-    dir_type <- sd_direction()
-  }
-  else if (method == "MOM") {
-    dir_type <- sd_direction(normalize = norm_direction)
-  }
-  else if (method == "DBD") {
-    dir_type <- sd_direction(normalize = norm_direction)
-  }
-  else {
-    stop("Unknown method: '", method, "'")
-  }
+  )
 
   # If it's not already been turned on, turn off the Newton step option
   if (is.null(try_newton_step)) {
