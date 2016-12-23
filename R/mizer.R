@@ -103,17 +103,18 @@
 #'    the line search, but it should not be set to smaller than \code{c1}.
 #'    \item{\code{step0}} Initial value for the line search on the first step.
 #'    If a positive numeric value is passed as an argument, that value is used
-#'    as-is. Otherwise, by passing a character as an argument, a guess is made
+#'    as-is. Otherwise, by passing a string as an argument, a guess is made
 #'    based on the gradient at the starting point:
 #'    \itemize{
-#'      \item{\code{"r"}} As used by Rasmussen in \code{minimize.m}:
+#'      \item{\code{"rasmussen"}} As used by Rasmussen in \code{minimize.m}:
 #'      \deqn{\frac{1}{1+\left|g\right|^2}}{1 / 1 + (|g|^2)}
-#'      \item{\code{"s"}} As used in scipy's \code{optimize.py}
+#'      \item{\code{"scipy"}} As used in scipy's \code{optimize.py}
 #'      \deqn{\frac{1}{\left|g\right|}}{1 / |g|}
-#'      \item{\code{"m"}} As used by Schmidt in \code{minFunc.m}
+#'      \item{\code{"minfunc"}} As used by Schmidt in \code{minFunc.m}
 #'      (the reciprocal of the l1 norm of g)
 #'      \deqn{\frac{1}{\left|g\right|_1}}{1 / |g|1}
 #'    }
+#'    These arguments can be abbreviated.
 #'    \item{\code{ls_initializer}} How to initialize subsequent line searches
 #'    after the first, using results from the previous line search,
 #'    based on two suggestions mentioned by Nocedal and Wright:
@@ -121,6 +122,7 @@
 #'      \item{\code{"slope ratio"}} Slope ratio method.
 #'      \item{\code{"quadratic"}} Quadratic interpolation method.
 #'    }
+#'    These arguments can be abbreviated.
 #'    \item{\code{try_newton_step}} For quasi-Newton methods (\code{"BFGS"} and
 #'    \code{"L-BFGS"}), setting this to \code{TRUE} will try the "natural" step
 #'    size of 1, whenever the \code{ls_initializer} method suggests an initial
@@ -740,13 +742,13 @@ make_mizer <- function(method = c("SD", "Newton", "PHess", "CG", "BFGS",
   }
 
   step_type <- NULL
-  line_search <- toupper(line_search)
+  line_search <- tolower(line_search)
   if (method == "DBD") {
     if (is.character(step0) || is.numeric(step0)) {
       eps_init <- step0
     }
     else {
-      eps_init <- "r"
+      eps_init <- "rasmussen"
     }
     if (kappa_fun == "*") {
       kappa_fun <- `*`
@@ -763,7 +765,7 @@ make_mizer <- function(method = c("SD", "Newton", "PHess", "CG", "BFGS",
                                  use_momentum = is.null(mom_schedule))
   }
   else {
-    if (method %in% c("NEWTON", "PHESS", "BFGS", "L-BFGS")) {
+    if (method %in% c("Newton", "PHess", "BFGS", "L-BFGS")) {
       if (is.null(c2)) {
         c2 <- 0.9
       }
@@ -782,7 +784,7 @@ make_mizer <- function(method = c("SD", "Newton", "PHess", "CG", "BFGS",
         c2 <- 0.1
       }
       if (is.null(step0)) {
-        step0 <- "r"
+        step0 <- "rasmussen"
       }
       if (is.null(ls_initializer)) {
         ls_initializer <- "slope"
@@ -833,7 +835,7 @@ make_mizer <- function(method = c("SD", "Newton", "PHess", "CG", "BFGS",
       ))
   }
 
-  if (method == "MOM") {
+  if (method == "Momentum") {
     if (is.null(mom_type)) {
       mom_type <- "classical"
     }

@@ -69,7 +69,8 @@ test_that("NAG with Rasmussen LS", {
   res <- mizer(rb0, rosenbrock_fg, method = "NAG",
                nest_convex_approx = FALSE, nest_q = 0, nest_burn_in = 0,
                max_iter = 3,
-               line_search = "ras", c1 = 5e-10, c2 = 1e-9, step0 = "r",
+               line_search = "rasmussen", c1 = 5e-10, c2 = 1e-9,
+               step0 = "rasmussen",
                ls_initializer = "slope", grad_tol = 1e-5)
 
   expect_equal(res$nf, 29)

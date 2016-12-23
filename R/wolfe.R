@@ -72,6 +72,10 @@ line_search <- function(ls_fn,
                         eps = .Machine$double.eps) {
 
   initializer <- match.arg(initializer)
+  if (!is.numeric(initial_step_length)) {
+    initial_step_length <- match.arg(tolower(initial_step_length),
+                                     c("rasmussen", "scipy", "minfunc"))
+  }
 
   make_step_size(list(
     name = name,
@@ -181,10 +185,10 @@ make_step_zero <- function(initial_step_length, d0,
     return(initial_step_length)
   }
 
-  if (initial_step_length == "r") { # Rasmussen default from minimize.m
+  if (initial_step_length == "rasmussen") { # Rasmussen default from minimize.m
     s <- 1 / (1 - d0)
   }
-  else if (initial_step_length == "s") { # scipy
+  else if (initial_step_length == "scipy") { # scipy
     # found in _minimize_bfgs in optimize.py with this comment:
     # # Sets the initial step guess to dx ~ 1
     # actually sets f_old to f0 + 0.5 * ||g||2 then uses f_old in the quadratic
@@ -192,7 +196,7 @@ make_step_zero <- function(initial_step_length, d0,
     # (2 norm of g is sqrt(d) when starting with steepest descent)
     s <- 1 / sqrt(-d0)
   }
-  else if (initial_step_length == "m") {
+  else if (initial_step_length == "minfunc") {
     # Mark Schmidt's minFunc.m uses reciprocal of the one-norm
     s <- 1 / sum(abs(d0))
   }

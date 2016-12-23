@@ -289,24 +289,26 @@ the line search:
    the line search, but it should not be set to smaller than \code{c1}.
    \item{\code{step0}} Initial value for the line search on the first step.
    If a positive numeric value is passed as an argument, that value is used
-   as-is. Otherwise, by passing a character as an argument, a guess is made
+   as-is. Otherwise, by passing a string as an argument, a guess is made
    based on the gradient at the starting point:
    \itemize{
-     \item{\code{"r"}} As used by Rasmussen in \code{minimize.m}:
+     \item{\code{"rasmussen"}} As used by Rasmussen in \code{minimize.m}:
      \deqn{\frac{1}{1+\left|g\right|^2}}{1 / 1 + (|g|^2)}
-     \item{\code{"s"}} As used in scipy's \code{optimize.py}
+     \item{\code{"scipy"}} As used in scipy's \code{optimize.py}
      \deqn{\frac{1}{\left|g\right|}}{1 / |g|}
-     \item{\code{"m"}} As used by Schmidt in \code{minFunc.m}
+     \item{\code{"minfunc"}} As used by Schmidt in \code{minFunc.m}
      (the reciprocal of the l1 norm of g)
      \deqn{\frac{1}{\left|g\right|_1}}{1 / |g|1}
    }
+   These arguments can be abbreviated.
    \item{\code{ls_initializer}} How to initialize subsequent line searches
    after the first, using results from the previous line search,
    based on two suggestions mentioned by Nocedal and Wright:
    \itemize{
-     \item{\code{"r"}} Slope ratio method.
-     \item{\code{"q"}} Quadratic interpolation method.
+     \item{\code{"slope ratio"}} Slope ratio method.
+     \item{\code{"quadratic"}} Quadratic interpolation method.
    }
+   These arguments can be abbreviated.
    \item{\code{try_newton_step}} For quasi-Newton methods (\code{"BFGS"} and
    \code{"L-BFGS"}), setting this to \code{TRUE} will try the "natural" step
    size of 1, whenever the \code{ls_initializer} method suggests an initial
@@ -332,7 +334,7 @@ parameters can be used to control the step size:
   a multiplication.
 }
 
-The \code{"BOLD"} line search also uses the \code{kappa} and \code{phi}
+The \code{"bold driver"} line search also uses the \code{kappa} and \code{phi}
 parameters with similar meanings to their use with the \code{"DBD"} method:
 the backtracking portion reduces the step size by a factor of \code{phi}.
 Once a satisfactory step size has been found, the line search for the
