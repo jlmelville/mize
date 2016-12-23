@@ -4,9 +4,8 @@
 \alias{make_mizer}
 \title{Create an Optimizer}
 \usage{
-make_mizer(method = c("SD", "Newton", "PHess", "CG", "BFGS", "L-BFGS", "NAG",
-  "Momentum", "DBD"), norm_direction = FALSE, scale_hess = TRUE,
-  memory = 10, cg_update = c("FR", "PR", "PR+", "HS", "DY"), nest_q = 0,
+make_mizer(method = "L-BFGS", norm_direction = FALSE, scale_hess = TRUE,
+  memory = 10, cg_update = "PR+", nest_q = 0,
   nest_convex_approx = FALSE, nest_burn_in = 0, use_nest_mu_zero = FALSE,
   kappa = 1.1, kappa_fun = "*", phi = 0.5, theta = 0.1,
   line_search = "More-Thuente", c1 = 1e-04, c2 = NULL, step0 = NULL,

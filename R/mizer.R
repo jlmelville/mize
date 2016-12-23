@@ -650,14 +650,13 @@ mizer <- function(par, fg,
 #'
 #' # Need to call mizer_init separately:
 #' opt <- mizer_init(opt, rb0, rosenbrock_fg)
-make_mizer <- function(method = c("SD", "Newton", "PHess", "CG", "BFGS",
-                                  "L-BFGS", "NAG", "Momentum", "DBD"),
+make_mizer <- function(method = "L-BFGS",
                        norm_direction = FALSE,
                        # BFGS
                        scale_hess = TRUE,
                        memory = 10,
                        # CG
-                       cg_update = c("FR", "PR", "PR+", "HS", "DY"),
+                       cg_update = "PR+",
                        # NAG
                        nest_q = 0,
                        nest_convex_approx = FALSE,
@@ -685,53 +684,55 @@ make_mizer <- function(method = c("SD", "Newton", "PHess", "CG", "BFGS",
                        par = NULL,
                        fg = NULL) {
   dir_type <- NULL
-  method <- match.arg(method)
+  method <- match.arg(tolower(method), c("sd", "newton", "phess", "cg", "bfgs",
+                                "l-bfgs", "nag", "momentum", "dbd"))
   switch(method,
-    SD = {
+    sd = {
       dir_type <- sd_direction(normalize = norm_direction)
     },
-    Newton = {
+    newton = {
       dir_type <- newton_direction()
       if (is.null(try_newton_step)) {
         try_newton_step <- TRUE
       }
     },
-    PHESS = {
+    phess = {
       dir_type <- partial_hessian_direction()
       if (is.null(try_newton_step)) {
         try_newton_step <- TRUE
       }
     },
-    CG = {
-      cg_update <- match.arg(cg_update)
+    cg = {
+      cg_update <- match.arg(tolower(cg_update),
+                             c("fr", "pr", "pr+", "hs", "dy"))
       cg_update_fn <- switch(cg_update,
-        PR = pr_update,
-        "PR+" = pr_plus_update,
-        FR = fr_update,
-        DY = dy_update,
-        HS = hs_update
+        pr = pr_update,
+        "pr+" = pr_plus_update,
+        fr = fr_update,
+        dy = dy_update,
+        hs = hs_update
       )
       dir_type <- cg_direction(cg_update = cg_update_fn)
     },
-    BFGS = {
+    bfgs = {
       dir_type <- bfgs_direction(scale_inverse = scale_hess)
       if (is.null(try_newton_step)) {
         try_newton_step <- TRUE
       }
     },
-    "L-BFGS" = {
+    "l-bfgs" = {
       dir_type <- lbfgs_direction(memory = memory, scale_inverse = scale_hess)
       if (is.null(try_newton_step)) {
         try_newton_step <- TRUE
       }
     },
-    NAG = {
+    nag = {
       dir_type <- sd_direction()
     },
-    Momentum = {
+    momentum = {
       dir_type <- sd_direction(normalize = norm_direction)
     },
-    DBD = {
+    dbd = {
       dir_type <- sd_direction(normalize = norm_direction)
     }
   )
@@ -743,7 +744,7 @@ make_mizer <- function(method = c("SD", "Newton", "PHess", "CG", "BFGS",
 
   step_type <- NULL
   line_search <- tolower(line_search)
-  if (method == "DBD") {
+  if (method == "dbd") {
     if (is.character(step0) || is.numeric(step0)) {
       eps_init <- step0
     }
@@ -765,7 +766,7 @@ make_mizer <- function(method = c("SD", "Newton", "PHess", "CG", "BFGS",
                                  use_momentum = is.null(mom_schedule))
   }
   else {
-    if (method %in% c("Newton", "PHess", "BFGS", "L-BFGS")) {
+    if (method %in% c("newton", "phess", "bfgs", "l-bfgs")) {
       if (is.null(c2)) {
         c2 <- 0.9
       }
@@ -819,7 +820,7 @@ make_mizer <- function(method = c("SD", "Newton", "PHess", "CG", "BFGS",
         direction = dir_type,
         step_size = step_type)))
 
-  if (method == "NAG") {
+  if (method == "nag") {
     if (nest_convex_approx) {
       nest_step <- nesterov_convex_approx_step(burn_in = nest_burn_in,
                                                use_mu_zero = use_nest_mu_zero)
@@ -835,7 +836,7 @@ make_mizer <- function(method = c("SD", "Newton", "PHess", "CG", "BFGS",
       ))
   }
 
-  if (method == "Momentum") {
+  if (method == "momentum") {
     if (is.null(mom_type)) {
       mom_type <- "classical"
     }

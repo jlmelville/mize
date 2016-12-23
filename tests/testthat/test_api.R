@@ -52,10 +52,11 @@ test_that("BFGS with More-Thuente LS", {
 })
 
 test_that("CG with Rasmussen LS", {
-  res <- mizer(rb0, rosenbrock_fg, method = "CG",
-               cg_update = "PR+",
+  # lower case names should be ok for method, cg_update, step0 etc.
+  res <- mizer(rb0, rosenbrock_fg, method = "cg",
+               cg_update = "pr+",
                max_iter = 3,
-               line_search = "ras", c1 = 5e-10, c2 = 1e-9, step0 = "r",
+               line_search = "ras", c1 = 5e-10, c2 = 1e-9, step0 = "ras",
                ls_initializer = "slope", grad_tol = 1e-5)
 
   expect_equal(res$nf, 27)
