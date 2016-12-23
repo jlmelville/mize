@@ -156,12 +156,13 @@
 #' by \code{kappa}.
 #'
 #' @section Momentum:
-#' For \code{method} \code{"MOM"}, momentum schemes can be accessed through the
-#' momentum arguments:
+#' For \code{method} \code{"Momentum"}, momentum schemes can be accessed
+#' through the momentum arguments:
 #'
 #' \itemize{
 #' \item{\code{mom_type}} Momentum type, either \code{"classical"} or
-#'  \code{"nesterov"}. Using "Nesterov" applies the momentum step before the
+#'   \code{"nesterov"} (case insensitive, can be abbreviated). Using
+#'   \code{"nesterov"} applies the momentum step before the
 #'   gradient descent as suggested by Sutskever, emulating the behavior of the
 #'   Nesterov Accelerated Gradient method.
 #' \item{\code{mom_schedule}} How the momentum changes over the course of the
@@ -179,6 +180,7 @@
 #'   (\code{mom_init}) to another (\code{mom_final}) over the specified
 #'   period (\code{max_iter}).
 #'   }
+#'   String arguments are case insensitive and can be abbreviated.
 #' }
 #'
 #' The \code{restart} parameter provides a way to restart the momentum if the
@@ -196,8 +198,8 @@
 #' effectively reset the iteration number back to zero. If the \code{mom_type}
 #' is \code{"nesterov"}, the gradient-based restart is not available.
 #'
-#' If \code{method} type \code{"MOM"} is specified with no other values, the
-#' momentum scheme will default to a constant value of \code{0.9}, with a
+#' If \code{method} type \code{"momentum"} is specified with no other values,
+#' the momentum scheme will default to a constant value of \code{0.9}, with a
 #' function-based restart.
 #'
 #' @section Convergence:
@@ -683,6 +685,8 @@ make_mizer <- function(method = "L-BFGS",
                        restart = NULL,
                        par = NULL,
                        fg = NULL) {
+
+  # Gradient Descent Direction configuration
   dir_type <- NULL
   method <- match.arg(tolower(method), c("sd", "newton", "phess", "cg", "bfgs",
                                 "l-bfgs", "nag", "momentum", "dbd"))
@@ -742,6 +746,7 @@ make_mizer <- function(method = "L-BFGS",
     try_newton_step <- FALSE
   }
 
+  # Line Search configuration
   step_type <- NULL
   line_search <- tolower(line_search)
   if (method == "dbd") {
@@ -814,29 +819,24 @@ make_mizer <- function(method = "L-BFGS",
     )
   }
 
+  # Create Gradient Descent stage
   opt <- make_opt(
     make_stages(
       gradient_stage(
         direction = dir_type,
         step_size = step_type)))
 
-  if (method == "nag") {
-    if (nest_convex_approx) {
-      nest_step <- nesterov_convex_approx_step(burn_in = nest_burn_in,
-                                               use_mu_zero = use_nest_mu_zero)
-    }
-    else {
-      nest_step <- nesterov_convex_step(q = nest_q, burn_in = nest_burn_in)
-    }
-    opt <- append_stage(
-      opt,
-      momentum_stage(
-        direction = nesterov_momentum_direction(),
-        step_size = nest_step
-      ))
-  }
+  # Momentum Configuration
+  mom_direction <- momentum_direction()
 
-  if (method == "momentum") {
+  if (method == "nag") {
+    # Nesterov Accelerated Gradient
+    mom_type <- "classical"
+    mom_schedule <- "nesterov"
+    mom_direction <- nesterov_momentum_direction()
+  }
+  else if (method == "momentum") {
+    # Default momentum values
     if (is.null(mom_type)) {
       mom_type <- "classical"
     }
@@ -848,68 +848,55 @@ make_mizer <- function(method = "L-BFGS",
     }
   }
 
+  # Momentum configuration
   if (!is.null(mom_schedule)) {
     if (is.numeric(mom_schedule)) {
       mom_step <- constant_step_size(value = mom_schedule)
     }
     else {
-      mom_schedule <- tolower(mom_schedule)
-      if (mom_schedule == "ramp") {
-        mom_step <- make_momentum_step(
+      mom_schedule <- match.arg(tolower(mom_schedule),
+                                c("ramp", "switch", "nesterov"))
+
+      mom_step <- switch(mom_schedule,
+        ramp = make_momentum_step(
           make_ramp(max_iter = max_iter,
                     init_value = mom_init,
-                    final_value = mom_final))
-      }
-      else if (mom_schedule == "switch") {
-        mom_step <- make_momentum_step(
+                    final_value = mom_final)),
+        "switch" = make_momentum_step(
           make_switch(
             init_value = mom_init,
             final_value = mom_final,
-            switch_iter = mom_switch_iter))
-      }
-      else if (mom_schedule == "nesterov") {
-        if (nest_convex_approx) {
-          mom_step <- nesterov_convex_approx_step(burn_in = nest_burn_in,
-                                                  use_mu_zero = use_nest_mu_zero)
-        }
-        else {
-          mom_step <- nesterov_convex_step(q = nest_q, burn_in = nest_burn_in)
-        }
-      }
+            switch_iter = mom_switch_iter)),
+        nesterov = nesterov_step(burn_in = nest_burn_in, q = nest_q,
+                                 use_approx = nest_convex_approx,
+                                 use_mu_zero = use_nest_mu_zero)
+        )
     }
 
-    if (mom_type == "classical") {
-      opt <- append_stage(
-        opt,
-        momentum_stage(
-          direction = momentum_direction(),
-          step_size = mom_step
-        ))
-    }
-    else {
-      # Nesterov Momentum
-      opt <- prepend_stage(
-        opt,
-        momentum_stage(
-          direction = momentum_direction(),
-          step_size = mom_step
-        ))
-      opt$eager_update <- TRUE
-    }
+    mom_stage <- momentum_stage(
+      direction = mom_direction,
+      step_size = mom_step)
+
+    mom_type <- match.arg(tolower(mom_type), c("classical", "nesterov"))
+    switch(mom_type,
+      classical = {
+        opt <- append_stage(opt, mom_stage)
+      },
+      nesterov = {
+        opt <- prepend_stage(opt, mom_stage)
+        opt$eager_update <- TRUE
+      }
+    )
+
     if (mom_linear_weight) {
       opt <- append_stage(opt, momentum_correction_stage())
     }
-
   }
 
+  # Adaptive Restart
   if (!is.null(restart)) {
-    restart <- tolower(restart)
-    if (restart %in% c("fn", "gr")) {
-      opt <- adaptive_restart(opt, restart)
-    }
-    else {
-      stop("Unknown adaptive restart type: '", restart, "'")
-    }
+    restart <- match.arg(tolower(restart), c("fn", "gr"))
+    opt <- adaptive_restart(opt, restart)
   }
 
   # Initialize for specific dataset if par and fg are provided

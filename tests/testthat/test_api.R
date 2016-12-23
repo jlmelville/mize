@@ -111,11 +111,11 @@ test_that("bold driver SD and nesterov momentum", {
   expect_equal(res$par, c(-1.019, 1.050), tol = 1e-3)
 })
 
-test_that("Delta bar delta adaptive learning rate and momentum", {
+test_that("Delta bar delta adaptive learning rate and nesterov momentum", {
   res <- mizer(rb0, rosenbrock_fg,
                method = "DBD", norm_direction = TRUE,
                step0 = 0.1,
-               mom_type = "constant",
+               mom_type = "nesterov",
                mom_schedule = 0.2,
                max_iter = 3, grad_tol = 1e-5, check_conv_every = NULL)
 

@@ -35,6 +35,31 @@ nesterov_momentum_direction <- function() {
   ))
 }
 
+# Encapsulates all ways to create a Nesterov schedule
+# burn_in Lags the calculation by this number of iterations. By setting this
+#   to 2, you get the same "pattern" of results as if you were using the
+#   Sutskever Nesterov Momentum approach (i.e. applying a classical momentum
+#   step before a steepest descent step)
+# q is inversely proportional to how strongly convex the function is
+#   0 gives the highest momentum, 1 gives zero momentum. Often, q is assumed to
+#   be zero. Ignored if use_approx is TRUE.
+# use_approx Use the approximation to the momentum schedule given by
+#   Sutskever and co-workers.
+# use_mu_zero If TRUE, then the momentum calculated on iteration zero uses
+#   the calculated non-zero value, otherwise use zero. Because velocity is
+#   normally zero initially, this rarely has an effect, unless linear weighting
+#   of the momentum is being used. Ignored if use_approx is FALSE.
+nesterov_step <- function(burn_in = 0, q = 0, use_approx = FALSE,
+                          use_mu_zero = FALSE) {
+  if (use_approx) {
+    nesterov_convex_approx_step(burn_in = burn_in,
+                                use_mu_zero = use_mu_zero)
+  }
+  else {
+    nesterov_convex_step(q = q, burn_in = burn_in)
+  }
+}
+
 # Approximate Nesterov Convex Momentum Function Factory
 #
 # Instead of using the exact momentum schedule specified for NAG, use the

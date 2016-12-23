@@ -344,12 +344,13 @@ by \code{kappa}.
 
 \section{Momentum}{
 
-For \code{method} \code{"MOM"}, momentum schemes can be accessed through the
-momentum arguments:
+For \code{method} \code{"Momentum"}, momentum schemes can be accessed
+through the momentum arguments:
 
 \itemize{
 \item{\code{mom_type}} Momentum type, either \code{"classical"} or
- \code{"nesterov"}. Using "Nesterov" applies the momentum step before the
+  \code{"nesterov"} (case insensitive, can be abbreviated). Using
+  \code{"nesterov"} applies the momentum step before the
   gradient descent as suggested by Sutskever, emulating the behavior of the
   Nesterov Accelerated Gradient method.
 \item{\code{mom_schedule}} How the momentum changes over the course of the
@@ -367,6 +368,7 @@ momentum arguments:
   (\code{mom_init}) to another (\code{mom_final}) over the specified
   period (\code{max_iter}).
   }
+  String arguments are case insensitive and can be abbreviated.
 }
 
 The \code{restart} parameter provides a way to restart the momentum if the
@@ -384,8 +386,8 @@ and, for those momentum schemes that change with iteration number, to
 effectively reset the iteration number back to zero. If the \code{mom_type}
 is \code{"nesterov"}, the gradient-based restart is not available.
 
-If \code{method} type \code{"MOM"} is specified with no other values, the
-momentum scheme will default to a constant value of \code{0.9}, with a
+If \code{method} type \code{"momentum"} is specified with no other values,
+the momentum scheme will default to a constant value of \code{0.9}, with a
 function-based restart.
 }
 
