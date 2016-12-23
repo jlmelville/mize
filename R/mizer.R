@@ -653,7 +653,7 @@ make_mizer <- function(method = c("SD", "Newton", "PHess", "CG", "BFGS",
                        scale_hess = TRUE,
                        memory = 10,
                        # CG
-                       cg_update = "PR+",
+                       cg_update = c("FR", "PR", "PR+", "HS", "DY"),
                        # NAG
                        nest_q = 0,
                        nest_convex_approx = FALSE,
@@ -699,23 +699,14 @@ make_mizer <- function(method = c("SD", "Newton", "PHess", "CG", "BFGS",
       }
     },
     CG = {
-      cg_update_fn <- NULL
-      cg_update <- toupper(cg_update)
-      if (cg_update == "PR+") {
-        cg_update_fn <- pr_plus_update
-      }
-      else if (cg_update == "PR") {
-        cg_update_fn <- pr_update
-      }
-      else if (cg_update == "FR") {
-        cg_update_fn <- fr_update
-      }
-      else if (cg_update == "DY") {
-        cg_update_fn <- dy_update
-      }
-      else {
-        stop("Unknown CG update method '", cg_update, "'")
-      }
+      cg_update <- match.arg(cg_update)
+      cg_update_fn <- switch(cg_update,
+        PR = pr_update,
+        "PR+" = pr_plus_update,
+        FR = fr_update,
+        DY = dy_update,
+        HS = hs_update
+      )
       dir_type <- cg_direction(cg_update = cg_update_fn)
     },
     BFGS = {

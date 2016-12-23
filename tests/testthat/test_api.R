@@ -52,7 +52,7 @@ test_that("BFGS with More-Thuente LS", {
 
 test_that("CG with Rasmussen LS", {
   res <- mizer(rb0, rosenbrock_fg, method = "CG",
-               cg_update = "pr+",
+               cg_update = "PR+",
                max_iter = 3,
                line_search = "ras", c1 = 5e-10, c2 = 1e-9, step0 = "r",
                ls_initializer = "r", grad_tol = 1e-5)
