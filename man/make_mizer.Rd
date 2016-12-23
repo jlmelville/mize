@@ -7,12 +7,12 @@
 make_mizer(method = "L-BFGS", norm_direction = FALSE, scale_hess = TRUE,
   memory = 10, cg_update = "PR+", nest_q = 0,
   nest_convex_approx = FALSE, nest_burn_in = 0, use_nest_mu_zero = FALSE,
-  kappa = 1.1, kappa_fun = c("*", "+"), phi = 0.5, theta = 0.1,
-  line_search = "More-Thuente", c1 = 1e-04, c2 = NULL, step0 = NULL,
-  ls_initializer = NULL, try_newton_step = NULL, mom_type = NULL,
-  mom_schedule = NULL, mom_init = NULL, mom_final = NULL,
-  mom_switch_iter = NULL, mom_linear_weight = FALSE, max_iter = NULL,
-  restart = NULL, par = NULL, fg = NULL)
+  step_up = 1.1, step_up_fun = c("*", "+"), step_down = 0.5,
+  dbd_weight = 0.1, line_search = "More-Thuente", c1 = 1e-04, c2 = NULL,
+  step0 = NULL, step_next_init = NULL, try_newton_step = NULL,
+  mom_type = NULL, mom_schedule = NULL, mom_init = NULL,
+  mom_final = NULL, mom_switch_iter = NULL, mom_linear_weight = FALSE,
+  max_iter = NULL, restart = NULL, par = NULL, fg = NULL)
 }
 \arguments{
 \item{method}{Optimization method. See 'Details' of \code{\link{mizer}}.}
@@ -53,18 +53,18 @@ momentum. Only applies if using the \code{"NAG"} method or setting the
 is set to 0.4. Otherwise, it's zero. Applies only if
 \code{nest_convex_approx} is \code{TRUE}.}
 
-\item{kappa}{Value by which to increase the step size for the \code{"bold"}
+\item{step_up}{Value by which to increase the step size for the \code{"bold"}
 step size method or the \code{"DBD"} method.}
 
-\item{kappa_fun}{Operator to use when combining the current step size with
-\code{kappa}. Can be one of \code{"*"} (to multiply the current step size
-with \code{kappa}) or \code{"+"} (to add).}
+\item{step_up_fun}{Operator to use when combining the current step size with
+\code{step_up}. Can be one of \code{"*"} (to multiply the current step size
+with \code{step_up}) or \code{"+"} (to add).}
 
-\item{phi}{Multiplier to reduce the step size by if using the \code{"DBD"}
+\item{step_down}{Multiplier to reduce the step size by if using the \code{"DBD"}
 method or the \code{"bold"} or \code{"back"} line search method. Should be
 a positive value less than 1.}
 
-\item{theta}{Weighting parameter used by the \code{"DBD"} method only, and
+\item{dbd_weight}{Weighting parameter used by the \code{"DBD"} method only, and
 only if no momentum scheme is provided. Must be an integer between 0 and 1.}
 
 \item{line_search}{Type of line search to use. See 'Details' of
@@ -79,12 +79,12 @@ searches. Should be a value between \code{c1} and 1.}
 \item{step0}{Initial value for the line search on the first step. See
 'Details' of \code{\link{mizer}}.}
 
-\item{ls_initializer}{For Wolfe-type line searches only, how to initialize
+\item{step_next_init}{For Wolfe-type line searches only, how to initialize
 the line search on iterations after the first. See 'Details' of
 \code{\link{mizer}}.}
 
 \item{try_newton_step}{For Wolfe-type line searches only, try the
-line step value of 1 as the initial step size whenever \code{ls_initializer}
+line step value of 1 as the initial step size whenever \code{step_next_init}
 suggests a step size > 1. Defaults to \code{TRUE} for quasi-Newton methods
 such as BFGS and L-BFGS, \code{FALSE} otherwise.}
 

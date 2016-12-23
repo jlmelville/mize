@@ -115,7 +115,7 @@
 #'      \deqn{\frac{1}{\left|g\right|_1}}{1 / |g|1}
 #'    }
 #'    These arguments can be abbreviated.
-#'    \item{\code{ls_initializer}} How to initialize subsequent line searches
+#'    \item{\code{step_next_init}} How to initialize subsequent line searches
 #'    after the first, using results from the previous line search,
 #'    based on two suggestions mentioned by Nocedal and Wright:
 #'    \itemize{
@@ -125,7 +125,7 @@
 #'    These arguments can be abbreviated.
 #'    \item{\code{try_newton_step}} For quasi-Newton methods (\code{"BFGS"} and
 #'    \code{"L-BFGS"}), setting this to \code{TRUE} will try the "natural" step
-#'    size of 1, whenever the \code{ls_initializer} method suggests an initial
+#'    size of 1, whenever the \code{step_next_init} method suggests an initial
 #'    step size larger than that. On by default for BFGS and L-BFGS, off for
 #'    everything else.
 #' }
@@ -136,24 +136,24 @@
 #' parameters can be used to control the step size:
 #'
 #' \itemize{
-#'   \item{\code{kappa}} The amount by which to increase the step size in a
+#'   \item{\code{step_up}} The amount by which to increase the step size in a
 #'   direction where the current step size is deemed to be too short. This
 #'   should be a positive scalar.
-#'   \item{\code{phi}} The amount by which to decrease the step size in a
+#'   \item{\code{step_down}} The amount by which to decrease the step size in a
 #'   direction where the currents step size is deemed to be too long. This
 #'   should be a positive scalar smaller than 1.
-#'   \item{\code{kappa_fun}} How to increase the step size: either the method of
-#'   Jacobs (addition of \code{kappa}) or Janet and co-workers (multiplication
-#'   by \code{kappa}). Note that the step size decrease \code{phi} is always
+#'   \item{\code{step_up_fun}} How to increase the step size: either the method of
+#'   Jacobs (addition of \code{step_up}) or Janet and co-workers (multiplication
+#'   by \code{step_up}). Note that the step size decrease \code{step_down} is always
 #'   a multiplication.
 #' }
 #'
-#' The \code{"bold driver"} line search also uses the \code{kappa} and \code{phi}
+#' The \code{"bold driver"} line search also uses the \code{step_up} and \code{step_down}
 #' parameters with similar meanings to their use with the \code{"DBD"} method:
-#' the backtracking portion reduces the step size by a factor of \code{phi}.
+#' the backtracking portion reduces the step size by a factor of \code{step_down}.
 #' Once a satisfactory step size has been found, the line search for the
 #' next iteration is initialized by multiplying the previously found step size
-#' by \code{kappa}.
+#' by \code{step_up}.
 #'
 #' @section Momentum:
 #' For \code{method} \code{"Momentum"}, momentum schemes can be accessed
@@ -269,7 +269,7 @@
 #' non-finite (i.e. \code{Inf} or \code{NaN}) gradient or function value.
 #' Some, but not all, line-searches will try to recover from the latter, by
 #' reducing the step size, but a non-finite gradient calculation during the
-#' gradient descent portion of opimization is considered catastrophic by mizer,
+#' gradient descent portion of opimization is considered catastrostep_downc by mizer,
 #' and it will give up. Termination under non-finite gradient or function
 #' conditions will result in \code{terminate$what} being \code{"gr_inf"} or
 #' \code{"fn_inf"} respectively. Unlike the convergence criteria, the
@@ -320,15 +320,15 @@
 #' @param use_nest_mu_zero If \code{TRUE}, then the momentum on iteration zero
 #' is set to 0.4. Otherwise, it's zero. Only applies using the NAG method or a
 #' momentum method with Nesterov momentum schedule.
-#' @param kappa Value by which to increase the step size for the \code{"bold"}
+#' @param step_up Value by which to increase the step size for the \code{"bold"}
 #' step size method or the \code{"DBD"} method.
-#' @param kappa_fun Operator to use when combining the current step size with
-#' \code{kappa}. Can be one of \code{"*"} (to multiply the current step size
-#' with \code{kappa}) or \code{"+"} (to add).
-#' @param phi Multiplier to reduce the step size by if using the \code{"DBD"}
+#' @param step_up_fun Operator to use when combining the current step size with
+#' \code{step_up}. Can be one of \code{"*"} (to multiply the current step size
+#' with \code{step_up}) or \code{"+"} (to add).
+#' @param step_down Multiplier to reduce the step size by if using the \code{"DBD"}
 #' method or the \code{"bold"} or \code{"back"} line search method. Should be
 #' a positive value less than 1.
-#' @param theta Weighting parameter used by the \code{"DBD"} method only, and
+#' @param dbd_weight Weighting parameter used by the \code{"DBD"} method only, and
 #' only if no momentum scheme is provided. Must be an integer between 0 and 1.
 #' @param line_search Type of line search to use. See 'Details'.
 #' @param c1 Sufficient decrease parameter for Wolfe-type line searches. Should
@@ -337,10 +337,10 @@
 #' searches. Should be a value between \code{c1} and 1.
 #' @param step0 Initial value for the line search on the first step. See
 #' 'Details'.
-#' @param ls_initializer For Wolfe-type line searches only, how to initialize
+#' @param step_next_init For Wolfe-type line searches only, how to initialize
 #' the line search on iterations after the first. See 'Details'.
 #' @param try_newton_step For Wolfe-type line searches only, try the
-#' line step value of 1 as the initial step size whenever \code{ls_initializer}
+#' line step value of 1 as the initial step size whenever \code{step_next_init}
 #' suggests a step size > 1. Defaults to \code{TRUE} for quasi-Newton methods
 #' such as BFGS and L-BFGS, \code{FALSE} otherwise.
 #' @param mom_type Momentum type, either \code{"classical"} or
@@ -479,16 +479,16 @@ mizer <- function(par, fg,
                   nest_convex_approx = FALSE,
                   nest_burn_in = 0, use_nest_mu_zero = FALSE,
                   # DBD
-                  kappa = 1.1,
-                  kappa_fun = "*",
-                  phi = 0.5,
-                  theta = 0.1,
+                  step_up = 1.1,
+                  step_up_fun = "*",
+                  step_down = 0.5,
+                  dbd_weight = 0.1,
                   # Line Search configuration
                   line_search = "More-Thuente",
                   c1 = 1e-4,
                   c2 = NULL,
                   step0 = NULL,
-                  ls_initializer = NULL,
+                  step_next_init = NULL,
                   try_newton_step = NULL,
                   # Momentum
                   mom_type = NULL,
@@ -519,12 +519,12 @@ mizer <- function(par, fg,
                     nest_q = nest_q, nest_convex_approx = nest_convex_approx,
                     nest_burn_in = nest_burn_in,
                     use_nest_mu_zero = use_nest_mu_zero,
-                    kappa = kappa,
-                    kappa_fun = kappa_fun,
-                    phi = phi,
-                    theta = theta,
+                    step_up = step_up,
+                    step_up_fun = step_up_fun,
+                    step_down = step_down,
+                    dbd_weight = dbd_weight,
                     line_search = line_search, step0 = step0, c1 = c1, c2 = c2,
-                    ls_initializer = ls_initializer,
+                    step_next_init = step_next_init,
                     try_newton_step = try_newton_step,
                     mom_type = mom_type,
                     mom_schedule = mom_schedule,
@@ -594,15 +594,15 @@ mizer <- function(par, fg,
 #' @param use_nest_mu_zero If \code{TRUE}, then the momentum on iteration zero
 #' is set to 0.4. Otherwise, it's zero. Applies only if
 #' \code{nest_convex_approx} is \code{TRUE}.
-#' @param kappa Value by which to increase the step size for the \code{"bold"}
+#' @param step_up Value by which to increase the step size for the \code{"bold"}
 #' step size method or the \code{"DBD"} method.
-#' @param kappa_fun Operator to use when combining the current step size with
-#' \code{kappa}. Can be one of \code{"*"} (to multiply the current step size
-#' with \code{kappa}) or \code{"+"} (to add).
-#' @param phi Multiplier to reduce the step size by if using the \code{"DBD"}
+#' @param step_up_fun Operator to use when combining the current step size with
+#' \code{step_up}. Can be one of \code{"*"} (to multiply the current step size
+#' with \code{step_up}) or \code{"+"} (to add).
+#' @param step_down Multiplier to reduce the step size by if using the \code{"DBD"}
 #' method or the \code{"bold"} or \code{"back"} line search method. Should be
 #' a positive value less than 1.
-#' @param theta Weighting parameter used by the \code{"DBD"} method only, and
+#' @param dbd_weight Weighting parameter used by the \code{"DBD"} method only, and
 #' only if no momentum scheme is provided. Must be an integer between 0 and 1.
 #' @param line_search Type of line search to use. See 'Details' of
 #' \code{\link{mizer}}.
@@ -612,11 +612,11 @@ mizer <- function(par, fg,
 #' searches. Should be a value between \code{c1} and 1.
 #' @param step0 Initial value for the line search on the first step. See
 #' 'Details' of \code{\link{mizer}}.
-#' @param ls_initializer For Wolfe-type line searches only, how to initialize
+#' @param step_next_init For Wolfe-type line searches only, how to initialize
 #' the line search on iterations after the first. See 'Details' of
 #' \code{\link{mizer}}.
 #' @param try_newton_step For Wolfe-type line searches only, try the
-#' line step value of 1 as the initial step size whenever \code{ls_initializer}
+#' line step value of 1 as the initial step size whenever \code{step_next_init}
 #' suggests a step size > 1. Defaults to \code{TRUE} for quasi-Newton methods
 #' such as BFGS and L-BFGS, \code{FALSE} otherwise.
 #' @param mom_type Momentum type, either \code{"classical"} or
@@ -664,15 +664,15 @@ make_mizer <- function(method = "L-BFGS",
                        nest_convex_approx = FALSE,
                        nest_burn_in = 0, use_nest_mu_zero = FALSE,
                        # DBD
-                       kappa = 1.1,
-                       kappa_fun = c("*", "+"),
-                       phi = 0.5,
-                       theta = 0.1,
+                       step_up = 1.1,
+                       step_up_fun = c("*", "+"),
+                       step_down = 0.5,
+                       dbd_weight = 0.1,
                        # Line Search
                        line_search = "More-Thuente",
                        c1 = 1e-4, c2 = NULL,
                        step0 = NULL,
-                       ls_initializer = NULL,
+                       step_next_init = NULL,
                        try_newton_step = NULL,
                        # Momentum
                        mom_type = NULL,
@@ -685,6 +685,7 @@ make_mizer <- function(method = "L-BFGS",
                        restart = NULL,
                        par = NULL,
                        fg = NULL) {
+
   if (memory < 1) {
     stop("memory must be > 0")
   }
@@ -694,15 +695,15 @@ make_mizer <- function(method = "L-BFGS",
   if (nest_burn_in < 0) {
     stop("nest_burn_in must be non-negative")
   }
-  if (kappa <= 0) {
-    stop("kappa must be positive")
+  if (step_up <= 0) {
+    stop("step_up must be positive")
   }
-  kappa_fun <- match.arg(kappa_fun)
-  if (!is_in_range(phi, 0, 1)) {
-    stop("phi must be between 0 and 1")
+  step_up_fun <- match.arg(step_up_fun)
+  if (!is_in_range(step_down, 0, 1)) {
+    stop("step_down must be between 0 and 1")
   }
-  if (!is_in_range(theta, 0, 1)) {
-    stop("theta must be between 0 and 1")
+  if (!is_in_range(dbd_weight, 0, 1)) {
+    stop("dbd_weight must be between 0 and 1")
   }
   if (!is_in_range(c1, 0, 1, lopen = FALSE, ropen = FALSE)) {
     stop("c1 must be between 0 and 1")
@@ -781,18 +782,18 @@ make_mizer <- function(method = "L-BFGS",
     else {
       eps_init <- "rasmussen"
     }
-    if (kappa_fun == "*") {
-      kappa_fun <- `*`
+    if (step_up_fun == "*") {
+      step_up_fun <- `*`
     }
-    else if (kappa_fun == "+") {
-      kappa_fun <- `+`
+    else if (step_up_fun == "+") {
+      step_up_fun <- `+`
     }
     else {
-      stop("Unknown delta-bar-delta kappa function '", kappa_fun, "'")
+      stop("Unknown delta-bar-delta step_up function '", step_up_fun, "'")
     }
     step_type <- delta_bar_delta(epsilon = eps_init,
-                                 kappa = kappa, kappa_fun = kappa_fun,
-                                 phi = phi, theta = theta,
+                                 kappa = step_up, kappa_fun = step_up_fun,
+                                 phi = step_down, theta = dbd_weight,
                                  use_momentum = is.null(mom_schedule))
   }
   else {
@@ -803,8 +804,8 @@ make_mizer <- function(method = "L-BFGS",
       if (is.null(step0)) {
         step0 <- 1
       }
-      if (is.null(ls_initializer)) {
-        ls_initializer <- "quad"
+      if (is.null(step_next_init)) {
+        step_next_init <- "quad"
       }
       if (is.null(try_newton_step)) {
         try_newton_step <- TRUE
@@ -817,8 +818,8 @@ make_mizer <- function(method = "L-BFGS",
       if (is.null(step0)) {
         step0 <- "rasmussen"
       }
-      if (is.null(ls_initializer)) {
-        ls_initializer <- "slope"
+      if (is.null(step_next_init)) {
+        step_next_init <- "slope"
       }
       if (is.null(try_newton_step)) {
         try_newton_step <- FALSE
@@ -831,15 +832,15 @@ make_mizer <- function(method = "L-BFGS",
 
     step_type <- switch(line_search,
       "more-thuente" = more_thuente_ls(c1 = c1, c2 = c2,
-                                       initializer = tolower(ls_initializer),
+                                       initializer = tolower(step_next_init),
                                        initial_step_length = step0,
                                        try_newton_step = try_newton_step),
       rasmussen = rasmussen_ls(c1 = c1, c2 = c2,
-                              initializer = tolower(ls_initializer),
+                              initializer = tolower(step_next_init),
                               initial_step_length = step0,
                               try_newton_step = try_newton_step),
-      "bold driver" = bold_driver(inc_mult = kappa, dec_mult = phi),
-      backtracking = backtracking(rho = phi, c1 = c1),
+      "bold driver" = bold_driver(inc_mult = step_up, dec_mult = step_down),
+      backtracking = backtracking(rho = step_down, c1 = c1),
       constant = constant_step_size(value = step0)
     )
   }
@@ -1014,7 +1015,7 @@ mizer_step <- function(opt, par, fg, iter) {
   step_result <- NULL
 
   # In the main part of the step, opt$error is used to indicate
-  # something catastrophic has occurred (most likely non-finite gradient value)
+  # something catastrostep_downc has occurred (most likely non-finite gradient value)
   # not to be confused with opt$ok which is used to indicate whether the
   # solution is valid
   opt$error <- NULL
@@ -1065,7 +1066,7 @@ mizer_step <- function(opt, par, fg, iter) {
     opt <- life_cycle_hook("validation", "during", opt, par, fg, iter,
                            par0, step_result)
   }
-  # If the this solution was vetoed or something catastrophic happened,
+  # If the this solution was vetoed or something catastrostep_downc happened,
   # roll back to the previous one.
   if (!is.null(opt$error) || !opt$ok) {
     par <- par0

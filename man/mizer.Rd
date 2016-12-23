@@ -7,9 +7,9 @@
 mizer(par, fg, method = "L-BFGS", norm_direction = FALSE, memory = 10,
   scale_hess = TRUE, cg_update = "PR+", nest_q = 0,
   nest_convex_approx = FALSE, nest_burn_in = 0, use_nest_mu_zero = FALSE,
-  kappa = 1.1, kappa_fun = "*", phi = 0.5, theta = 0.1,
+  step_up = 1.1, step_up_fun = "*", step_down = 0.5, dbd_weight = 0.1,
   line_search = "More-Thuente", c1 = 1e-04, c2 = NULL, step0 = NULL,
-  ls_initializer = NULL, try_newton_step = NULL, mom_type = NULL,
+  step_next_init = NULL, try_newton_step = NULL, mom_type = NULL,
   mom_schedule = NULL, mom_init = NULL, mom_final = NULL,
   mom_switch_iter = NULL, mom_linear_weight = FALSE, restart = NULL,
   max_iter = 100, max_fn = Inf, max_gr = Inf, max_fg = Inf,
@@ -61,18 +61,18 @@ Nesterov momentum schedule.}
 is set to 0.4. Otherwise, it's zero. Only applies using the NAG method or a
 momentum method with Nesterov momentum schedule.}
 
-\item{kappa}{Value by which to increase the step size for the \code{"bold"}
+\item{step_up}{Value by which to increase the step size for the \code{"bold"}
 step size method or the \code{"DBD"} method.}
 
-\item{kappa_fun}{Operator to use when combining the current step size with
-\code{kappa}. Can be one of \code{"*"} (to multiply the current step size
-with \code{kappa}) or \code{"+"} (to add).}
+\item{step_up_fun}{Operator to use when combining the current step size with
+\code{step_up}. Can be one of \code{"*"} (to multiply the current step size
+with \code{step_up}) or \code{"+"} (to add).}
 
-\item{phi}{Multiplier to reduce the step size by if using the \code{"DBD"}
+\item{step_down}{Multiplier to reduce the step size by if using the \code{"DBD"}
 method or the \code{"bold"} or \code{"back"} line search method. Should be
 a positive value less than 1.}
 
-\item{theta}{Weighting parameter used by the \code{"DBD"} method only, and
+\item{dbd_weight}{Weighting parameter used by the \code{"DBD"} method only, and
 only if no momentum scheme is provided. Must be an integer between 0 and 1.}
 
 \item{line_search}{Type of line search to use. See 'Details'.}
@@ -86,11 +86,11 @@ searches. Should be a value between \code{c1} and 1.}
 \item{step0}{Initial value for the line search on the first step. See
 'Details'.}
 
-\item{ls_initializer}{For Wolfe-type line searches only, how to initialize
+\item{step_next_init}{For Wolfe-type line searches only, how to initialize
 the line search on iterations after the first. See 'Details'.}
 
 \item{try_newton_step}{For Wolfe-type line searches only, try the
-line step value of 1 as the initial step size whenever \code{ls_initializer}
+line step value of 1 as the initial step size whenever \code{step_next_init}
 suggests a step size > 1. Defaults to \code{TRUE} for quasi-Newton methods
 such as BFGS and L-BFGS, \code{FALSE} otherwise.}
 
@@ -301,7 +301,7 @@ the line search:
      \deqn{\frac{1}{\left|g\right|_1}}{1 / |g|1}
    }
    These arguments can be abbreviated.
-   \item{\code{ls_initializer}} How to initialize subsequent line searches
+   \item{\code{step_next_init}} How to initialize subsequent line searches
    after the first, using results from the previous line search,
    based on two suggestions mentioned by Nocedal and Wright:
    \itemize{
@@ -311,7 +311,7 @@ the line search:
    These arguments can be abbreviated.
    \item{\code{try_newton_step}} For quasi-Newton methods (\code{"BFGS"} and
    \code{"L-BFGS"}), setting this to \code{TRUE} will try the "natural" step
-   size of 1, whenever the \code{ls_initializer} method suggests an initial
+   size of 1, whenever the \code{step_next_init} method suggests an initial
    step size larger than that. On by default for BFGS and L-BFGS, off for
    everything else.
 }
@@ -322,24 +322,24 @@ the direction of the search and the step size simultaneously. The following
 parameters can be used to control the step size:
 
 \itemize{
-  \item{\code{kappa}} The amount by which to increase the step size in a
+  \item{\code{step_up}} The amount by which to increase the step size in a
   direction where the current step size is deemed to be too short. This
   should be a positive scalar.
-  \item{\code{phi}} The amount by which to decrease the step size in a
+  \item{\code{step_down}} The amount by which to decrease the step size in a
   direction where the currents step size is deemed to be too long. This
   should be a positive scalar smaller than 1.
-  \item{\code{kappa_fun}} How to increase the step size: either the method of
-  Jacobs (addition of \code{kappa}) or Janet and co-workers (multiplication
-  by \code{kappa}). Note that the step size decrease \code{phi} is always
+  \item{\code{step_up_fun}} How to increase the step size: either the method of
+  Jacobs (addition of \code{step_up}) or Janet and co-workers (multiplication
+  by \code{step_up}). Note that the step size decrease \code{step_down} is always
   a multiplication.
 }
 
-The \code{"bold driver"} line search also uses the \code{kappa} and \code{phi}
+The \code{"bold driver"} line search also uses the \code{step_up} and \code{step_down}
 parameters with similar meanings to their use with the \code{"DBD"} method:
-the backtracking portion reduces the step size by a factor of \code{phi}.
+the backtracking portion reduces the step size by a factor of \code{step_down}.
 Once a satisfactory step size has been found, the line search for the
 next iteration is initialized by multiplying the previously found step size
-by \code{kappa}.
+by \code{step_up}.
 }
 
 \section{Momentum}{
@@ -459,7 +459,7 @@ Other ways for the optimization to terminate is if an iteration generates a
 non-finite (i.e. \code{Inf} or \code{NaN}) gradient or function value.
 Some, but not all, line-searches will try to recover from the latter, by
 reducing the step size, but a non-finite gradient calculation during the
-gradient descent portion of opimization is considered catastrophic by mizer,
+gradient descent portion of opimization is considered catastrostep_downc by mizer,
 and it will give up. Termination under non-finite gradient or function
 conditions will result in \code{terminate$what} being \code{"gr_inf"} or
 \code{"fn_inf"} respectively. Unlike the convergence criteria, the

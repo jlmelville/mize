@@ -30,7 +30,7 @@ test_that("L-BFGS with More-Thuente LS", {
   # can abbreviate line search name and initializer
   res <- mizer(rb0, rosenbrock_fg, method = "L-BFGS", max_iter = 3,
                line_search = "mo", c1 = 5e-10, c2 = 1e-9, step0 = "s",
-               ls_initializer = "q", scale_hess = FALSE, grad_tol = 1e-5)
+               step_next_init = "q", scale_hess = FALSE, grad_tol = 1e-5)
 
   expect_equal(res$nf, 17)
   expect_equal(res$ng, 17)
@@ -42,7 +42,7 @@ test_that("L-BFGS with More-Thuente LS", {
 test_that("BFGS with More-Thuente LS", {
   res <- mizer(rb0, rosenbrock_fg, method = "BFGS", max_iter = 3,
                line_search = "more-thuente", c1 = 5e-10, c2 = 1e-9, step0 = "s",
-               ls_initializer = "quad", scale_hess = FALSE, grad_tol = 1e-5)
+               step_next_init = "quad", scale_hess = FALSE, grad_tol = 1e-5)
 
   expect_equal(res$nf, 17)
   expect_equal(res$ng, 17)
@@ -57,7 +57,7 @@ test_that("CG with Rasmussen LS", {
                cg_update = "pr+",
                max_iter = 3,
                line_search = "ras", c1 = 5e-10, c2 = 1e-9, step0 = "ras",
-               ls_initializer = "slope", grad_tol = 1e-5)
+               step_next_init = "slope", grad_tol = 1e-5)
 
   expect_equal(res$nf, 27)
   expect_equal(res$ng, 27)
@@ -72,7 +72,7 @@ test_that("NAG with Rasmussen LS", {
                max_iter = 3,
                line_search = "rasmussen", c1 = 5e-10, c2 = 1e-9,
                step0 = "rasmussen",
-               ls_initializer = "slope", grad_tol = 1e-5)
+               step_next_init = "slope", grad_tol = 1e-5)
 
   expect_equal(res$nf, 29)
   expect_equal(res$ng, 29)
