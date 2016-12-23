@@ -4,8 +4,9 @@
 \alias{make_mizer}
 \title{Create an Optimizer}
 \usage{
-make_mizer(method = "L-BFGS", norm_direction = FALSE, scale_hess = TRUE,
-  memory = 10, cg_update = "PR+", nest_q = 0,
+make_mizer(method = c("SD", "Newton", "PHess", "CG", "BFGS", "L-BFGS", "NAG",
+  "Momentum", "DBD"), norm_direction = FALSE, scale_hess = TRUE,
+  memory = 10, cg_update = c("FR", "PR", "PR+", "HS", "DY"), nest_q = 0,
   nest_convex_approx = FALSE, nest_burn_in = 0, use_nest_mu_zero = FALSE,
   kappa = 1.1, kappa_fun = "*", phi = 0.5, theta = 0.1,
   line_search = "MT", c1 = 1e-04, c2 = NULL, step0 = NULL,
@@ -141,10 +142,10 @@ rosenbrock_fg <- list(
 rb0 <- c(-1.2, 1)
 
 # Create an optimizer and initialize it for use with the Rosenbrock function
-opt <- make_mizer(method = "l-bfgs", par = rb0, fg = rosenbrock_fg)
+opt <- make_mizer(method = "L-BFGS", par = rb0, fg = rosenbrock_fg)
 
 # Create optimizer without initialization
-opt <- make_mizer(method = "l-bfgs")
+opt <- make_mizer(method = "L-BFGS")
 
 # Need to call mizer_init separately:
 opt <- mizer_init(opt, rb0, rosenbrock_fg)

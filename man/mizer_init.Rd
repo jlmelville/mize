@@ -34,7 +34,7 @@ Details of the \code{fg} list can be found in the 'Details' section of
 \examples{
 
 # Create an optimizer
-opt <- make_mizer(method = "l-bfgs")
+opt <- make_mizer(method = "L-BFGS")
 
 # Function to optimize and starting point defined after creating optimizer
 rosenbrock_fg <- list(

@@ -61,8 +61,8 @@
 #'   non-zero momentum.
 #'   }
 #' \item \code{"DBD"} is the Delta-Bar-Delta method of Jacobs.
-#' \item \code{"MOM"} is steepest descent with momentum. See below for momentum
-#' options.
+#' \item \code{"Momentum"} is steepest descent with momentum. See below for
+#' momentum options.
 #' }
 #'
 #' For more details on gradient-based optimization in general, and the BFGS,
@@ -639,10 +639,10 @@ mizer <- function(par, fg,
 #' rb0 <- c(-1.2, 1)
 #'
 #' # Create an optimizer and initialize it for use with the Rosenbrock function
-#' opt <- make_mizer(method = "l-bfgs", par = rb0, fg = rosenbrock_fg)
+#' opt <- make_mizer(method = "L-BFGS", par = rb0, fg = rosenbrock_fg)
 #'
 #' # Create optimizer without initialization
-#' opt <- make_mizer(method = "l-bfgs")
+#' opt <- make_mizer(method = "L-BFGS")
 #'
 #' # Need to call mizer_init separately:
 #' opt <- mizer_init(opt, rb0, rosenbrock_fg)
@@ -988,7 +988,7 @@ make_mizer <- function(method = c("SD", "Newton", "PHess", "CG", "BFGS",
 #'  })
 #'  rb0 <- c(-1.2, 1)
 #'
-#'  opt <- make_mizer(method = "sd", line_search = "const", step0 = 0.0001,
+#'  opt <- make_mizer(method = "SD", line_search = "const", step0 = 0.0001,
 #'                    par = rb0, fg = rosenbrock_fg)
 #'  par <- rb0
 #'  for (iter in 1:3) {
@@ -1100,7 +1100,7 @@ mizer_step <- function(opt, par, fg, iter) {
 #' @examples
 #'
 #' # Create an optimizer
-#' opt <- make_mizer(method = "l-bfgs")
+#' opt <- make_mizer(method = "L-BFGS")
 #'
 #' # Function to optimize and starting point defined after creating optimizer
 #' rosenbrock_fg <- list(

@@ -245,8 +245,8 @@ following parameters:
   non-zero momentum.
   }
 \item \code{"DBD"} is the Delta-Bar-Delta method of Jacobs.
-\item \code{"MOM"} is steepest descent with momentum. See below for momentum
-options.
+\item \code{"Momentum"} is steepest descent with momentum. See below for
+momentum options.
 }
 
 For more details on gradient-based optimization in general, and the BFGS,
