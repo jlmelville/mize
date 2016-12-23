@@ -13,3 +13,5 @@ LazyData: true
 Suggests:
     testthat
 RoxygenNote: 5.0.1
+URL: http://github.com/jlmelville/mizer
+BugReports: http://github.com/jlmelville/mizer/issues
