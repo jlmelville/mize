@@ -56,6 +56,18 @@ format_list <- function(ll) {
   names(ll), "")
 }
 
+# returns TRUE if x is in the range (left, right). By default, this is
+# an open range, i.e. x == left and x == right is in the range.
+# lopen if FALSE then range is [left, right) i.e. x = left is not in the range
+# ropen if FALSE then range is (left, right] i.e. x = right is not in the range
+is_in_range <- function(x, left, right, lopen = TRUE, ropen = TRUE) {
+  `%lop%` <- ifelse(lopen, `<=`, `<`)
+  `%rop%` <- ifelse(ropen, `<=`, `<`)
+
+  left %lop% x && x %rop% right
+}
+
+
 # Logging Hooks -----------------------------------------------------------
 
 

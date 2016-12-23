@@ -7,7 +7,7 @@
 make_mizer(method = "L-BFGS", norm_direction = FALSE, scale_hess = TRUE,
   memory = 10, cg_update = "PR+", nest_q = 0,
   nest_convex_approx = FALSE, nest_burn_in = 0, use_nest_mu_zero = FALSE,
-  kappa = 1.1, kappa_fun = "*", phi = 0.5, theta = 0.1,
+  kappa = 1.1, kappa_fun = c("*", "+"), phi = 0.5, theta = 0.1,
   line_search = "More-Thuente", c1 = 1e-04, c2 = NULL, step0 = NULL,
   ls_initializer = NULL, try_newton_step = NULL, mom_type = NULL,
   mom_schedule = NULL, mom_init = NULL, mom_final = NULL,

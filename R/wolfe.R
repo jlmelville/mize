@@ -18,6 +18,12 @@ more_thuente_ls <- function(c1 = c2 / 2, c2 = 0.1,
                             max_gr = Inf,
                             max_fg = Inf,
                             debug = FALSE) {
+  if (!is_in_range(c1, 0, 1, lopen = FALSE, ropen = FALSE)) {
+    stop("c1 must be between 0 and 1")
+  }
+  if (!is.null(c2) && !is_in_range(c2, c1, 1, lopen = FALSE, ropen = FALSE)) {
+    stop("c2 must be between c1 and 1")
+  }
 
   line_search(more_thuente(c1 = c1, c2 = c2,
                            max_fn = min(max_fn, max_gr, max_fg)),
@@ -44,6 +50,12 @@ rasmussen_ls <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
                          max_gr = Inf,
                          max_fg = Inf,
                          debug = FALSE) {
+  if (!is_in_range(c1, 0, 1, lopen = FALSE, ropen = FALSE)) {
+    stop("c1 must be between 0 and 1")
+  }
+  if (!is.null(c2) && !is_in_range(c2, c1, 1, lopen = FALSE, ropen = FALSE)) {
+    stop("c2 must be between c1 and 1")
+  }
 
   line_search(rasmussen(c1 = c1, c2 = c2, int = int, ext = ext,
                         max_fn = min(max_fn, max_gr, max_fg)),

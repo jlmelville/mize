@@ -195,6 +195,9 @@ bfgs_direction <- function(eps =  .Machine$double.eps,
 # scale_inverse - if TRUE, scale the inverse Hessian approximation at each step.
 lbfgs_direction <- function(memory = 10, scale_inverse = FALSE,
                             eps = .Machine$double.eps) {
+  if (memory < 1) {
+    stop("memory must be > 0")
+  }
   make_direction(list(
     memory = memory,
     k = 0,

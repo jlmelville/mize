@@ -51,6 +51,13 @@ nesterov_momentum_direction <- function() {
 #   of the momentum is being used. Ignored if use_approx is FALSE.
 nesterov_step <- function(burn_in = 0, q = 0, use_approx = FALSE,
                           use_mu_zero = FALSE) {
+  if (!is_in_range(q, 0, 1)) {
+    stop("q must be between 0 and 1")
+  }
+  if (burn_in < 0) {
+    stop("burn_in must be non-negative")
+  }
+
   if (use_approx) {
     nesterov_convex_approx_step(burn_in = burn_in,
                                 use_mu_zero = use_mu_zero)

@@ -33,6 +33,17 @@ delta_bar_delta <- function(kappa = 1.1, kappa_fun = `*`,
                             min_eps = 0,
                             theta = 0.1,
                             use_momentum = FALSE) {
+
+  if (kappa <= 0) {
+    stop("kappa must be positive")
+  }
+  if (!is_in_range(phi, 0, 1)) {
+    stop("phi must be between 0 and 1")
+  }
+  if (!is_in_range(theta, 0, 1)) {
+    stop("theta must be between 0 and 1")
+  }
+
   make_step_size(list(
     name = "delta_bar_delta",
     kappa = kappa,

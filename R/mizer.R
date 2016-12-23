@@ -665,7 +665,7 @@ make_mizer <- function(method = "L-BFGS",
                        nest_burn_in = 0, use_nest_mu_zero = FALSE,
                        # DBD
                        kappa = 1.1,
-                       kappa_fun = "*",
+                       kappa_fun = c("*", "+"),
                        phi = 0.5,
                        theta = 0.1,
                        # Line Search
@@ -685,6 +685,31 @@ make_mizer <- function(method = "L-BFGS",
                        restart = NULL,
                        par = NULL,
                        fg = NULL) {
+  if (memory < 1) {
+    stop("memory must be > 0")
+  }
+  if (!is_in_range(nest_q, 0, 1)) {
+    stop("nest_q must be between 0 and 1")
+  }
+  if (nest_burn_in < 0) {
+    stop("nest_burn_in must be non-negative")
+  }
+  if (kappa <= 0) {
+    stop("kappa must be positive")
+  }
+  kappa_fun <- match.arg(kappa_fun)
+  if (!is_in_range(phi, 0, 1)) {
+    stop("phi must be between 0 and 1")
+  }
+  if (!is_in_range(theta, 0, 1)) {
+    stop("theta must be between 0 and 1")
+  }
+  if (!is_in_range(c1, 0, 1, lopen = FALSE, ropen = FALSE)) {
+    stop("c1 must be between 0 and 1")
+  }
+  if (!is.null(c2) && !is_in_range(c2, c1, 1, lopen = FALSE, ropen = FALSE)) {
+    stop("c2 must be between c1 and 1")
+  }
 
   # Gradient Descent Direction configuration
   dir_type <- NULL
