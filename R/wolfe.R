@@ -62,7 +62,7 @@ rasmussen_ls <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
 
 line_search <- function(ls_fn,
                         name,
-                        initializer = "s",
+                        initializer = c("slope ratio", "quadratic"),
                         try_newton_step = FALSE,
                         initial_step_length = 1,
                         max_alpha_mult = 10,
@@ -70,6 +70,9 @@ line_search <- function(ls_fn,
                         stop_at_min = TRUE,
                         debug = FALSE,
                         eps = .Machine$double.eps) {
+
+  initializer <- match.arg(initializer)
+
   make_step_size(list(
     name = name,
     eps = eps,
@@ -117,11 +120,11 @@ line_search <- function(ls_fn,
 
 
       # described on p59 of Nocedal and Wright
-      if (initializer == "s" && !is.null(sub_stage$d0)) {
+      if (initializer == "slope ratio" && !is.null(sub_stage$d0)) {
         sub_stage$value <- step_slope_ratio(old_step_length, sub_stage$d0,
                                             step0, eps, max_alpha_mult)
       }
-      else if (initializer == "q" && !is.null(sub_stage$f0)) {
+      else if (initializer == "quadratic" && !is.null(sub_stage$f0)) {
         # quadratic interpolation
         sub_stage$value <- step_quad_interp(sub_stage$f0, step0,
                                             try_newton_step = try_newton_step)

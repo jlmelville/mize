@@ -8,7 +8,7 @@ mizer(par, fg, method = "L-BFGS", norm_direction = FALSE, memory = 10,
   scale_hess = TRUE, cg_update = "PR+", nest_q = 0,
   nest_convex_approx = FALSE, nest_burn_in = 0, use_nest_mu_zero = FALSE,
   kappa = 1.1, kappa_fun = "*", phi = 0.5, theta = 0.1,
-  line_search = "MT", c1 = 1e-04, c2 = NULL, step0 = NULL,
+  line_search = "More-Thuente", c1 = 1e-04, c2 = NULL, step0 = NULL,
   ls_initializer = NULL, try_newton_step = NULL, mom_type = NULL,
   mom_schedule = NULL, mom_init = NULL, mom_final = NULL,
   mom_switch_iter = NULL, mom_linear_weight = FALSE, restart = NULL,
@@ -259,23 +259,25 @@ The parameter \code{line_search} determines the line search to be carried
 out:
 
 \itemize{
-  \item If a numeric scalar is provided, then a constant value will be used
-  for the line search. Note that this value will be multiplied by the
-  magnitude of the direction vector used in the gradient descent method.
-  For method \code{"SD"} only, setting the \code{norm_direction} parameter to
-  \code{TRUE} will scale the direction vector so it has unit length.
-  \item \code{"RAS"} carries out a line search using the strong Wolfe
+  \item \code{"Rasmussen"} carries out a line search using the strong Wolfe
   conditions and the method of Rasmussen.
-  \item \code{"MT"} carries out a line search using the strong Wolfe
+  \item \code{"More-Thuente"} carries out a line search using the strong Wolfe
   conditions and the method of More-Thuente.
-  \item \code{"BOLD"} carries out a back tracking line search until a
+  \item \code{"Bold Driver"} carries out a back tracking line search until a
   reduction in the function value is found.
+  \item \code{"Constant"} uses a constant line search, the value of which
+  should be provided with \code{step0}. Note that this value will be
+  multiplied by the magnitude of the direction vector used in the gradient
+  descent method. For method \code{"SD"} only, setting the
+  \code{norm_direction} parameter to \code{TRUE} will scale the direction
+  vector so it has unit length.
 }
 
 If using one of the methods: \code{"BFGS"}, \code{"L-BFGS"}, \code{"CG"} or
-\code{"NAG"}, one of the Wolfe line searches, \code{"RAS"} or \code{"MT"}
-should be used, otherwise very poor performance is likely to be encountered.
-The following parameters can be used to control the line search:
+\code{"NAG"}, one of the Wolfe line searches, \code{"Rasmussen"} or
+\code{"More-Thuente"} should be used, otherwise very poor performance is
+likely to be encountered. The following parameters can be used to control
+the line search:
 
  \itemize{
    \item{\code{c1}} The sufficient decrease condition. Normally left at its

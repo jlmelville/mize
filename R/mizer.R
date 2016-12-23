@@ -73,23 +73,25 @@
 #' out:
 #'
 #' \itemize{
-#'   \item If a numeric scalar is provided, then a constant value will be used
-#'   for the line search. Note that this value will be multiplied by the
-#'   magnitude of the direction vector used in the gradient descent method.
-#'   For method \code{"SD"} only, setting the \code{norm_direction} parameter to
-#'   \code{TRUE} will scale the direction vector so it has unit length.
-#'   \item \code{"RAS"} carries out a line search using the strong Wolfe
+#'   \item \code{"Rasmussen"} carries out a line search using the strong Wolfe
 #'   conditions and the method of Rasmussen.
-#'   \item \code{"MT"} carries out a line search using the strong Wolfe
+#'   \item \code{"More-Thuente"} carries out a line search using the strong Wolfe
 #'   conditions and the method of More-Thuente.
-#'   \item \code{"BOLD"} carries out a back tracking line search until a
+#'   \item \code{"Bold Driver"} carries out a back tracking line search until a
 #'   reduction in the function value is found.
+#'   \item \code{"Constant"} uses a constant line search, the value of which
+#'   should be provided with \code{step0}. Note that this value will be
+#'   multiplied by the magnitude of the direction vector used in the gradient
+#'   descent method. For method \code{"SD"} only, setting the
+#'   \code{norm_direction} parameter to \code{TRUE} will scale the direction
+#'   vector so it has unit length.
 #' }
 #'
 #' If using one of the methods: \code{"BFGS"}, \code{"L-BFGS"}, \code{"CG"} or
-#' \code{"NAG"}, one of the Wolfe line searches, \code{"RAS"} or \code{"MT"}
-#' should be used, otherwise very poor performance is likely to be encountered.
-#' The following parameters can be used to control the line search:
+#' \code{"NAG"}, one of the Wolfe line searches, \code{"Rasmussen"} or
+#' \code{"More-Thuente"} should be used, otherwise very poor performance is
+#' likely to be encountered. The following parameters can be used to control
+#' the line search:
 #'
 #'  \itemize{
 #'    \item{\code{c1}} The sufficient decrease condition. Normally left at its
@@ -116,8 +118,8 @@
 #'    after the first, using results from the previous line search,
 #'    based on two suggestions mentioned by Nocedal and Wright:
 #'    \itemize{
-#'      \item{\code{"r"}} Slope ratio method.
-#'      \item{\code{"q"}} Quadratic interpolation method.
+#'      \item{\code{"slope ratio"}} Slope ratio method.
+#'      \item{\code{"quadratic"}} Quadratic interpolation method.
 #'    }
 #'    \item{\code{try_newton_step}} For quasi-Newton methods (\code{"BFGS"} and
 #'    \code{"L-BFGS"}), setting this to \code{TRUE} will try the "natural" step
@@ -144,7 +146,7 @@
 #'   a multiplication.
 #' }
 #'
-#' The \code{"BOLD"} line search also uses the \code{kappa} and \code{phi}
+#' The \code{"bold driver"} line search also uses the \code{kappa} and \code{phi}
 #' parameters with similar meanings to their use with the \code{"DBD"} method:
 #' the backtracking portion reduces the step size by a factor of \code{phi}.
 #' Once a satisfactory step size has been found, the line search for the
@@ -478,7 +480,7 @@ mizer <- function(par, fg,
                   phi = 0.5,
                   theta = 0.1,
                   # Line Search configuration
-                  line_search = "MT",
+                  line_search = "More-Thuente",
                   c1 = 1e-4,
                   c2 = NULL,
                   step0 = NULL,
@@ -664,7 +666,7 @@ make_mizer <- function(method = c("SD", "Newton", "PHess", "CG", "BFGS",
                        phi = 0.5,
                        theta = 0.1,
                        # Line Search
-                       line_search = "MT",
+                       line_search = "More-Thuente",
                        c1 = 1e-4, c2 = NULL,
                        step0 = NULL,
                        ls_initializer = NULL,
@@ -769,7 +771,7 @@ make_mizer <- function(method = c("SD", "Newton", "PHess", "CG", "BFGS",
         step0 <- 1
       }
       if (is.null(ls_initializer)) {
-        ls_initializer <- "q"
+        ls_initializer <- "quad"
       }
       if (is.null(try_newton_step)) {
         try_newton_step <- TRUE
@@ -783,37 +785,30 @@ make_mizer <- function(method = c("SD", "Newton", "PHess", "CG", "BFGS",
         step0 <- "r"
       }
       if (is.null(ls_initializer)) {
-        ls_initializer <- "s"
+        ls_initializer <- "slope"
       }
       if (is.null(try_newton_step)) {
         try_newton_step <- FALSE
       }
     }
 
-    if (line_search == "MT") {
-      step_type <- more_thuente_ls(c1 = c1, c2 = c2,
-                                   initializer = tolower(ls_initializer),
-                                   initial_step_length = step0,
-                                   try_newton_step = try_newton_step)
-    }
-    else if (line_search == "RAS") {
-      step_type <- rasmussen_ls(c1 = c1, c2 = c2,
-                                initializer = tolower(ls_initializer),
-                                initial_step_length = step0,
-                                try_newton_step = try_newton_step)
-    }
-    else if (line_search == "BOLD") {
-      step_type <- bold_driver(inc_mult = kappa, dec_mult = phi)
-    }
-    else if (line_search == "BACK") {
-      step_type <- backtracking(rho = phi, c1 = c1)
-    }
-    else if (line_search == "CONST") {
-      step_type <- constant_step_size(value = step0)
-    }
-    else {
-      stop("Unknown line search method: '", line_search, "'")
-    }
+    line_search <- match.arg(tolower(line_search),
+                             c("more-thuente", "rasmussen", "bold driver",
+                               "backtracking", "constant"))
+
+    step_type <- switch(line_search,
+      "more-thuente" = more_thuente_ls(c1 = c1, c2 = c2,
+                                       initializer = tolower(ls_initializer),
+                                       initial_step_length = step0,
+                                       try_newton_step = try_newton_step),
+      rasmussen = rasmussen_ls(c1 = c1, c2 = c2,
+                              initializer = tolower(ls_initializer),
+                              initial_step_length = step0,
+                              try_newton_step = try_newton_step),
+      "bold driver" = bold_driver(inc_mult = kappa, dec_mult = phi),
+      backtracking = backtracking(rho = phi, c1 = c1),
+      constant = constant_step_size(value = step0)
+    )
   }
 
   opt <- make_opt(

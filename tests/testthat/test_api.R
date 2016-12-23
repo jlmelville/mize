@@ -27,8 +27,9 @@ test_that("grad norm not returned (or calculated) if grad tol is NULL", {
 
 
 test_that("L-BFGS with More-Thuente LS", {
+  # can abbreviate line search name and initializer
   res <- mizer(rb0, rosenbrock_fg, method = "L-BFGS", max_iter = 3,
-               line_search = "mt", c1 = 5e-10, c2 = 1e-9, step0 = "s",
+               line_search = "mo", c1 = 5e-10, c2 = 1e-9, step0 = "s",
                ls_initializer = "q", scale_hess = FALSE, grad_tol = 1e-5)
 
   expect_equal(res$nf, 17)
@@ -40,8 +41,8 @@ test_that("L-BFGS with More-Thuente LS", {
 
 test_that("BFGS with More-Thuente LS", {
   res <- mizer(rb0, rosenbrock_fg, method = "BFGS", max_iter = 3,
-               line_search = "mt", c1 = 5e-10, c2 = 1e-9, step0 = "s",
-               ls_initializer = "q", scale_hess = FALSE, grad_tol = 1e-5)
+               line_search = "more-thuente", c1 = 5e-10, c2 = 1e-9, step0 = "s",
+               ls_initializer = "quad", scale_hess = FALSE, grad_tol = 1e-5)
 
   expect_equal(res$nf, 17)
   expect_equal(res$ng, 17)
@@ -55,10 +56,10 @@ test_that("CG with Rasmussen LS", {
                cg_update = "PR+",
                max_iter = 3,
                line_search = "ras", c1 = 5e-10, c2 = 1e-9, step0 = "r",
-               ls_initializer = "r", grad_tol = 1e-5)
+               ls_initializer = "slope", grad_tol = 1e-5)
 
-  expect_equal(res$nf, 31)
-  expect_equal(res$ng, 31)
+  expect_equal(res$nf, 27)
+  expect_equal(res$ng, 27)
   expect_equal(res$f, 3.53, tol = 1e-3)
   expect_equal(res$g2n, 24.98, tol = 1e-3)
   expect_equal(res$par, c(-0.785, 0.558), tol = 1e-3)
@@ -69,10 +70,10 @@ test_that("NAG with Rasmussen LS", {
                nest_convex_approx = FALSE, nest_q = 0, nest_burn_in = 0,
                max_iter = 3,
                line_search = "ras", c1 = 5e-10, c2 = 1e-9, step0 = "r",
-               ls_initializer = "r", grad_tol = 1e-5)
+               ls_initializer = "slope", grad_tol = 1e-5)
 
-  expect_equal(res$nf, 34)
-  expect_equal(res$ng, 34)
+  expect_equal(res$nf, 29)
+  expect_equal(res$ng, 29)
   expect_equal(res$f, 3.56, tol = 1e-3)
   expect_equal(res$g2n, 7.2, tol = 1e-3)
   expect_equal(res$par, c(-0.869, 0.781), tol = 1e-3)
