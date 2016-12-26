@@ -10,7 +10,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
                     check_conv_every = 1,
                     ret_opt = FALSE, count_res_fg = TRUE) {
 
-  opt <- mizer_init(opt, par, fg)
+  opt <- mize_init(opt, par, fg)
 
   progress <- data.frame()
   terminate <- list()
@@ -47,7 +47,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
 
       par0 <- par
 
-      step_res <- mizer_step(opt, par, fg, iter)
+      step_res <- mize_step(opt, par, fg, iter)
       opt <- step_res$opt
       par <- step_res$par
       if (!is.null(opt$error)) {

@@ -2,7 +2,7 @@ context("API tests")
 
 # Repeat some of the basic tests, using the consumer API
 test_that("steepest descent with constant step size", {
-  res <- mizer(rb0, rosenbrock_fg, method = "SD", max_iter = 3,
+  res <- mize(rb0, rosenbrock_fg, method = "SD", max_iter = 3,
                line_search = "const", step0 = 0.0001, grad_tol = 1e-5,
                check_conv_every = NULL)
 
@@ -14,7 +14,7 @@ test_that("steepest descent with constant step size", {
 })
 
 test_that("grad norm not returned (or calculated) if grad tol is NULL", {
-  res <- mizer(rb0, rosenbrock_fg, method = "SD", max_iter = 3,
+  res <- mize(rb0, rosenbrock_fg, method = "SD", max_iter = 3,
                line_search = "const", step0 = 0.0001, grad_tol = NULL,
                check_conv_every = NULL)
 
@@ -28,7 +28,7 @@ test_that("grad norm not returned (or calculated) if grad tol is NULL", {
 
 test_that("L-BFGS with More-Thuente LS", {
   # can abbreviate line search name and initializer
-  res <- mizer(rb0, rosenbrock_fg, method = "L-BFGS", max_iter = 3,
+  res <- mize(rb0, rosenbrock_fg, method = "L-BFGS", max_iter = 3,
                line_search = "mo", c1 = 5e-10, c2 = 1e-9, step0 = "s",
                step_next_init = "q", scale_hess = FALSE, grad_tol = 1e-5)
 
@@ -40,7 +40,7 @@ test_that("L-BFGS with More-Thuente LS", {
 })
 
 test_that("BFGS with More-Thuente LS", {
-  res <- mizer(rb0, rosenbrock_fg, method = "BFGS", max_iter = 3,
+  res <- mize(rb0, rosenbrock_fg, method = "BFGS", max_iter = 3,
                line_search = "more-thuente", c1 = 5e-10, c2 = 1e-9, step0 = "s",
                step_next_init = "quad", scale_hess = FALSE, grad_tol = 1e-5)
 
@@ -53,7 +53,7 @@ test_that("BFGS with More-Thuente LS", {
 
 test_that("CG with Rasmussen LS", {
   # lower case names should be ok for method, cg_update, step0 etc.
-  res <- mizer(rb0, rosenbrock_fg, method = "cg",
+  res <- mize(rb0, rosenbrock_fg, method = "cg",
                cg_update = "pr+",
                max_iter = 3,
                line_search = "ras", c1 = 5e-10, c2 = 1e-9, step0 = "ras",
@@ -67,7 +67,7 @@ test_that("CG with Rasmussen LS", {
 })
 
 test_that("NAG with Rasmussen LS", {
-  res <- mizer(rb0, rosenbrock_fg, method = "NAG",
+  res <- mize(rb0, rosenbrock_fg, method = "NAG",
                nest_convex_approx = FALSE, nest_q = 0, nest_burn_in = 0,
                max_iter = 3,
                line_search = "rasmussen", c1 = 5e-10, c2 = 1e-9,
@@ -82,7 +82,7 @@ test_that("NAG with Rasmussen LS", {
 })
 
 test_that("bold driver SD and classical momentum", {
-  res <- mizer(rb0, rosenbrock_fg,
+  res <- mize(rb0, rosenbrock_fg,
                method = "SD", norm_direction = TRUE,
                line_search = "bold",
                mom_type = "classical",
@@ -97,7 +97,7 @@ test_that("bold driver SD and classical momentum", {
 })
 
 test_that("bold driver SD and nesterov momentum", {
-  res <- mizer(rb0, rosenbrock_fg,
+  res <- mize(rb0, rosenbrock_fg,
                method = "SD", norm_direction = TRUE,
                line_search = "bold",
                mom_type = "nesterov",
@@ -112,7 +112,7 @@ test_that("bold driver SD and nesterov momentum", {
 })
 
 test_that("Delta bar delta adaptive learning rate and nesterov momentum", {
-  res <- mizer(rb0, rosenbrock_fg,
+  res <- mize(rb0, rosenbrock_fg,
                method = "DBD", norm_direction = TRUE,
                step0 = 0.1,
                mom_type = "nesterov",
@@ -127,7 +127,7 @@ test_that("Delta bar delta adaptive learning rate and nesterov momentum", {
 })
 
 test_that("Terminates semi-gracefully if function value is non-finite", {
-  res <- mizer(rb0, rosenbrock_fg, "DBD", step0 = 1, check_conv_every = 1)
+  res <- mize(rb0, rosenbrock_fg, "DBD", step0 = 1, check_conv_every = 1)
   expect_equal(res$terminate$what, "fn_inf")
   expect_equal(res$iter, 4)
 })
@@ -136,7 +136,7 @@ test_that("Terminates semi-gracefully if gradient is non-finite", {
   # If we don't check convergence often enough, solution can diverge
   # in between checks. If NaN is detected in a gradient calculation, we
   # terminate early even if not on a convergence check iteration
-  res <- mizer(rb0, rosenbrock_fg, "DBD", step0 = 1, check_conv_every = 10)
+  res <- mize(rb0, rosenbrock_fg, "DBD", step0 = 1, check_conv_every = 10)
   expect_equal(res$terminate$what, "gr_inf")
   expect_equal(res$iter, 6)
 })

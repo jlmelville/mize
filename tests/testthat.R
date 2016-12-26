@@ -1,4 +1,4 @@
 library(testthat)
-library(mizer)
+library(mize)
 
-test_check("mizer")
+test_check("mize")

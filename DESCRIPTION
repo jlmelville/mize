@@ -1,4 +1,4 @@
-Package: mizer
+Package: mize
 Type: Package
 Title: Unconstrained Numerical Optimization Algorithms
 Version: 0.0.0.9000
@@ -11,7 +11,10 @@ License: BSD 2-clause License + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Suggests:
-    testthat
+    testthat,
+    knitr,
+    rmarkdown
 RoxygenNote: 5.0.1
-URL: http://github.com/jlmelville/mizer
-BugReports: http://github.com/jlmelville/mizer/issues
+URL: http://github.com/jlmelville/mize
+BugReports: http://github.com/jlmelville/mize/issues
+VignetteBuilder: knitr
