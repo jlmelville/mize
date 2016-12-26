@@ -1,12 +1,12 @@
-# mizer
+# mize
 
 Unconstrained Numerical Optimization Algorithms.
 
-`mizer` can be used as a standalone function like the `stats::optim` function, 
+`mize` can be used as a standalone function like the `stats::optim` function, 
 or can be integrated into other packages by creating a stateful optimizer and 
 handling the iterations, convergence, logging and so on externally. 
 
-`mizer` knows how to do Broyden-Fletcher-Goldfarb-Shanno (BFGS), 
+`mize` knows how to do Broyden-Fletcher-Goldfarb-Shanno (BFGS), 
 the limited-memory BFGS (L-BFGS), various flavors of Conjugate Gradient (CG), 
 Nesterov Accelerated Gradient (NAG) and momentum-based methods, among others.
 
@@ -14,13 +14,13 @@ Nesterov Accelerated Gradient (NAG) and momentum-based methods, among others.
 
 ```R
 # install.packages("devtools")
-devtools::install_github("jlmelville/mizer")
+devtools::install_github("jlmelville/mize")
 ```
 
 ## Documentation
 
 ```R
-?mizer
+?mize
 ```
 
 A vignette is on its way.
@@ -37,19 +37,19 @@ rosenbrock_fg <- list(
 rb0 <- c(-1.2, 1)
 
 # Minimize using L-BFGS
-res <- mizer(rb0, rosenbrock_fg, method = "L-BFGS")
+res <- mize(rb0, rosenbrock_fg, method = "L-BFGS")
 # Optimized parameters are in res$par
 
 # Or create an optimizer and then loop manually
-opt <- make_mizer(method = "L-BFGS")
-opt <- mizer_init(opt, rb0, rosebrock_fg)
+opt <- make_mize(method = "L-BFGS")
+opt <- mize_init(opt, rb0, rosebrock_fg)
 
 par <- rb0
 done <- FALSE
 iter <- 0
 while (!done) {
   iter <- iter + 1
-  res <- mizer_step(opt, par, rosenbrock_fg, iter)
+  res <- mize_step(opt, par, rosenbrock_fg, iter)
   par <- res$par
   opt <- res$opt
   # Look at res$f for current function value
