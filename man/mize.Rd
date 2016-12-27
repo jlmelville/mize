@@ -14,8 +14,8 @@ mize(par, fg, method = "L-BFGS", norm_direction = FALSE, memory = 10,
   mom_switch_iter = NULL, mom_linear_weight = FALSE, restart = NULL,
   max_iter = 100, max_fn = Inf, max_gr = Inf, max_fg = Inf,
   abs_tol = sqrt(.Machine$double.eps), rel_tol = abs_tol, grad_tol = NULL,
-  check_conv_every = 1, log_every = check_conv_every, verbose = FALSE,
-  store_progress = FALSE)
+  step_tol = .Machine$double.eps, check_conv_every = 1,
+  log_every = check_conv_every, verbose = FALSE, store_progress = FALSE)
 }
 \arguments{
 \item{par}{Initial values for the function to be optimized over.}
@@ -133,6 +133,9 @@ See the 'Convergence' section for details.}
 
 \item{grad_tol}{Absolute tolerance for the length (l2-norm) of the gradient
 vector. See the 'Convergence' section for details.}
+
+\item{step_tol}{Absolute tolerance for the size of the parameter update.
+See the 'Convergence' section for details.}
 
 \item{check_conv_every}{Positive integer indicating how often to check
 convergence. Default is 1, i.e. every iteration. See the 'Convergence'
@@ -427,8 +430,14 @@ The following parameters control various stopping criteria:
   \item{\code{grad_tol}} Absolute tolerance of the l2 (Euclidean) norm of
   the gradient. Indicated by \code{terminate$what} being \code{"grad_tol"}.
   Note that the gradient norm is not a very reliable stopping criterion
-  (see Nocedal and co-workers 2002), but is quite  commonly used, so this
+  (see Nocedal and co-workers 2002), but is quite commonly used, so this
   might be useful for comparison with results from other optimizers.
+  \item{\code{step_tol}} Absolute tolerance of the step size, i.e. the
+  Euclidean distance between values of \code{par} fell below the specified
+  value. Indicated by \code{terminate$what} being \code{"step_tol"}.
+  For those optimization methods which allow for abandoning the result of an
+  iteration and restarting using the previous iteration's value of
+  \code{par} an iteration, \code{step_tol} will not be triggered.
 }
 
 Convergence is checked between specific interations. How often is determined

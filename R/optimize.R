@@ -7,6 +7,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
                     max_fn = Inf, max_gr = Inf, max_fg = Inf,
                     abs_tol = sqrt(.Machine$double.eps),
                     rel_tol = abs_tol, grad_tol = NULL,
+                    step_tol = .Machine$double.eps,
                     check_conv_every = 1, log_every = check_conv_every,
                     ret_opt = FALSE, count_res_fg = TRUE) {
 
@@ -75,10 +76,11 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
         }
 
         terminate <- check_termination(terminate, opt, iter = iter,
+                                       step = res$step,
                                        max_fn = max_fn, max_gr = max_gr,
                                        max_fg = max_fg,
                                        abs_tol = abs_tol, rel_tol = rel_tol,
-                                       grad_tol = grad_tol)
+                                       grad_tol = grad_tol, step_tol = step_tol)
       }
 
       if (has_fn_curr(opt, iter + 1)) {
@@ -139,8 +141,18 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
 # Gradient and Function-based termination (abs_tol, rel_tol and grad_tol)
 # are checked only if the function and gradient values were calculated
 # in the optimization step.
-check_termination <- function(terminate, opt, iter, max_fn, max_gr, max_fg,
-                              abs_tol, rel_tol, grad_tol) {
+check_termination <- function(terminate, opt, iter, step = NULL,
+                              max_fn, max_gr, max_fg,
+                              abs_tol, rel_tol, grad_tol, step_tol) {
+  if (!is.null(step) && step < step_tol
+      && !is.null(opt$restart_at) && opt$restart_at != iter) {
+    terminate <- list(
+      what = "step_tol",
+      val = step
+    )
+    return(terminate)
+  }
+
   if (opt$counts$fn >= max_fn) {
     terminate <- list(
       what = "max_fn",
