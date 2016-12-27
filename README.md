@@ -23,7 +23,7 @@ devtools::install_github("jlmelville/mize")
 ?mize
 ```
 
-A vignette is on its way.
+A vignette applying `mize` to a non-trivial optimization problem is available.
 
 ## Examples
 
