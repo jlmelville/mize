@@ -1014,7 +1014,7 @@ mize_step <- function(opt, par, fg, iter) {
   step_result <- NULL
 
   # In the main part of the step, opt$error is used to indicate
-  # something catastrostep_downc has occurred (most likely non-finite gradient value)
+  # something catastrophic has occurred (most likely non-finite gradient value)
   # not to be confused with opt$ok which is used to indicate whether the
   # solution is valid
   opt$error <- NULL
