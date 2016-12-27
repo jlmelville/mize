@@ -67,7 +67,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
                            calc_gr = calc_gr)
         opt <- res$opt
 
-        if (store_progress) {
+        if (store_progress && iter %% log_every == 0) {
           progress <- update_progress(opt_res = res, progress = progress)
         }
         if (verbose && iter %% log_every == 0) {
@@ -110,15 +110,14 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
   if (is.null(res) || res$iter != iter) {
     res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg,
                        calc_gr = calc_gr)
-    if (store_progress) {
-      progress <- update_progress(opt_res = res, progress = progress)
-    }
     opt <- res$opt
   }
   if (verbose && iter %% log_every != 0) {
     opt_report(res, print_time = TRUE, print_par = FALSE)
   }
-
+  if (store_progress && iter %% log_every != 0) {
+    progress <- update_progress(opt_res = res, progress = progress)
+  }
 
   if (store_progress) {
     res$progress <- progress
