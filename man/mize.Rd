@@ -14,7 +14,8 @@ mize(par, fg, method = "L-BFGS", norm_direction = FALSE, memory = 10,
   mom_switch_iter = NULL, mom_linear_weight = FALSE, restart = NULL,
   max_iter = 100, max_fn = Inf, max_gr = Inf, max_fg = Inf,
   abs_tol = sqrt(.Machine$double.eps), rel_tol = abs_tol, grad_tol = NULL,
-  check_conv_every = 1, verbose = FALSE, store_progress = FALSE)
+  check_conv_every = 1, log_every = check_conv_every, verbose = FALSE,
+  store_progress = FALSE)
 }
 \arguments{
 \item{par}{Initial values for the function to be optimized over.}
@@ -136,6 +137,11 @@ vector. See the 'Convergence' section for details.}
 \item{check_conv_every}{Positive integer indicating how often to check
 convergence. Default is 1, i.e. every iteration. See the 'Convergence'
 section for details.}
+
+\item{log_every}{Positive integer indicating how often to log convergence
+results to the console. Ignored if \code{verbose} is \code{FALSE}.
+If not an integer multiple of \code{check_conv_every}, it will be set to
+\code{check_conv_every}.}
 
 \item{verbose}{If \code{TRUE}, log information about the progress of the
 optimization to the console.}

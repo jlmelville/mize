@@ -7,8 +7,13 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
                     max_fn = Inf, max_gr = Inf, max_fg = Inf,
                     abs_tol = sqrt(.Machine$double.eps),
                     rel_tol = abs_tol, grad_tol = NULL,
-                    check_conv_every = 1,
+                    check_conv_every = 1, log_every = check_conv_every,
                     ret_opt = FALSE, count_res_fg = TRUE) {
+
+  # log_every must be an integer multiple of check_conv_every
+  if (!is.null(check_conv_every) && log_every %% check_conv_every != 0) {
+    log_every <- check_conv_every
+  }
 
   opt <- mize_init(opt, par, fg)
 
@@ -65,7 +70,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
         if (store_progress) {
           progress <- update_progress(opt_res = res, progress = progress)
         }
-        if (verbose) {
+        if (verbose && iter %% log_every == 0) {
           opt_report(res, print_time = TRUE, print_par = FALSE)
         }
 
@@ -99,7 +104,6 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
                        calc_gr = calc_gr)
     if (verbose) {
       message("Returning best result found")
-      opt_report(res, print_time = TRUE, print_par = FALSE)
     }
   }
 
@@ -110,10 +114,11 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
       progress <- update_progress(opt_res = res, progress = progress)
     }
     opt <- res$opt
-    if (verbose) {
-      opt_report(res, print_time = TRUE, print_par = FALSE)
-    }
   }
+  if (verbose && iter %% log_every != 0) {
+    opt_report(res, print_time = TRUE, print_par = FALSE)
+  }
+
 
   if (store_progress) {
     res$progress <- progress

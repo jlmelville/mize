@@ -371,6 +371,10 @@
 #' @param check_conv_every Positive integer indicating how often to check
 #' convergence. Default is 1, i.e. every iteration. See the 'Convergence'
 #' section for details.
+#' @param log_every Positive integer indicating how often to log convergence
+#' results to the console. Ignored if \code{verbose} is \code{FALSE}.
+#' If not an integer multiple of \code{check_conv_every}, it will be set to
+#' \code{check_conv_every}.
 #' @param verbose If \code{TRUE}, log information about the progress of the
 #' optimization to the console.
 #' @param store_progress If \code{TRUE} store information about the progress
@@ -508,6 +512,7 @@ mize <- function(par, fg,
                  rel_tol = abs_tol,
                  grad_tol = NULL,
                  check_conv_every = 1,
+                 log_every = check_conv_every,
                  verbose = FALSE,
                  store_progress = FALSE) {
 
@@ -539,6 +544,7 @@ mize <- function(par, fg,
           max_fn = max_fn, max_gr = max_gr, max_fg = max_fg,
           abs_tol = abs_tol, rel_tol = rel_tol, grad_tol = grad_tol,
           check_conv_every = check_conv_every,
+          log_every = log_every,
           store_progress = store_progress,
           verbose = verbose)
 
