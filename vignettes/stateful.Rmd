@@ -1,0 +1,199 @@
+---
+title: "Stateful Optimization"
+author: "James Melville"
+date: "December 26, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo = FALSE, message = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(mize)
+```
+
+By "Stateful" I mean what if we could create an optimizer indepedently of
+the function it was operating on and be able to pass it around, store it, and
+get full control over when we pass it data to continue the optimization.
+
+This vignette is about using `mize` to manually control an optimization 
+externally. Instead of passing `mize` a function to be optimized from a 
+starting point, then waiting for `mize` to finish and get back the finished
+results, you might want to tell `mize` to optimize for a few steps, then do
+something with the intermediate results: log the cost, update some parameters,
+test for some specific convergence criterion, checkpoint the current results,
+or plot the current state of the result in some custom way. Then, if there's
+still more optimization to be done, pass the results back off to `mize` and
+get it to crank away for a few more iterations.
+
+This was in fact the inspiration for creating `mize` in the first place: I
+wanted access to the sort of optimization routines that the `stats::optim`
+function provided, but the lack of control was a deal breaker. One way to
+try and get around the problem is to only optimize for a few iterations at a 
+time:
+
+```{r}
+rb_fg <- list(
+   fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
+   gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+                          200 *        (x[2] - x[1] * x[1])) })
+rb0 <- c(-1.2, 1)
+
+par <- rb0
+for (batch in 1:3) {
+  optim_res <- stats::optim(par = par, fn = rb_fg$fn, gr = rb_fg$gr, 
+                            method = "BFGS", control = list(maxit = 10))
+  par <- optim_res$par
+  message("batch ", batch, " f = ", formatC(optim_res$value))
+}
+```
+
+but even this unsatisfactory work-around causes problems, because you are
+reinitializing the optimization for with each batch, and losing all the 
+information the optimizer has. In the case of methods like BFGS and CG, this
+is important for their efficient use. The more control you want, the fewer 
+iterations per batch, but that leads to behavior that approaches steepest
+descent.
+
+Instead, `mize` lets you create a stateful optimizer, that you pass to a
+function, and an updated version of which is returned as part of the return 
+value of the function. This gives you complete control over what to do in
+between iterations, without sacrificing any of the information the optimizer
+is using.
+
+## Creating an Optimizer
+
+To create an optimizer, use the `make_mize` function:
+
+```{r}
+opt <- make_mize(method = "BFGS")
+```
+
+## Initialize the Optimizer
+
+Before starting the optimization, the optimizer needs to be initialized using
+the function and starting point. Mainly this is to allow the various methods
+to preallocate whatever storage they make use of (matrices and vectors) 
+according to the size of the data, as specified by the starting location.
+
+To continue the rosenbrock example from above:
+
+```{r}
+opt <- mize_init(opt = opt, par = rb0, fg = rb_fg)
+```
+
+### A potential simplification
+
+If you have both the starting point and the function to optimize to hand at
+the point when the optimizer is created, you can provide that to `make_mize`
+and it will do the initialization for you:
+
+```{r}
+opt <- make_mize(method = "BFGS", par = rb0, fg = rb_fg)
+```
+
+And there is no need to make a separate call to ```mize_init```. However, 
+normally it's more convenient to handle configuring the optimizer earlier
+than when the data shows up.
+
+## Start optimizing
+
+Using the batch of ten iteration approach we used with `optim` is very similar
+with `mize`:
+
+```{r}
+par <- rb0
+iter <- 0
+for (batch in 1:3) {
+  for (i in 1:10) {
+    iter <- iter + 1
+    mize_res <- mize_step(opt = opt, par = par, fg = rb_fg, iter = iter)
+    par <- mize_res$par
+    opt <- mize_res$opt
+  }
+  message("batch ", batch, " f = ", formatC(mize_res$f))
+}
+```
+
+The difference here is that you have to do the iterating in batches of 10 
+manualy yourself, remembering to increment the iteration counter and pass it
+to `mize_step`. Plus, the optimizer needs to be updated with the version that
+was returned from the function.
+
+### Return value of `mize_step`
+
+As you can see, with the greater power of `mize_step` to control the iteration,
+comes greater responsibility. You also need to decide when to stop iterating.
+Apart from `par` and `opt`, there are some other components to the 
+returned result list which might help:
+
+* `f` - The function value, if it was calculated at `par`. For the few methods
+which don't do this, you can of course generate it yourself via `rb_fg$fn(par)`.
+* `g2n` - The 2-norm (aka Euclidean norm) of the gradient vector, if it was
+calculated at `par`. If it's not present, then obviously there's nothing to stop
+you calculating `rb_fg$gr(par)` yourself.
+* `nf` - The number of function evaluations carried out so far (i.e. since 
+initialization). `opt` is also keeping track of this, and coordinates with 
+`mize_step`, so you don't need to manually update this yourself between steps.
+* `ng` - The number of gradient evaluations carried out so far.
+
+You should treat the optimizer, `opt`, as a black box and not examine its 
+horrific innards, except to check whether `opt$error` is non-`NULL`. If it's
+anything other than `NULL`, then this means something really bad has happened
+during the optimization, most likely a `NaN` or `Inf` was calculated in
+the gradient. This can happen with a very poorly chosen starting point, and
+a combination of descent method and line search which doesn't guarantee descent,
+such as a very aggressive momentum scheme or more likely an adaptive learning
+rate technique like delta-bar-delta. Monitoring the function value or the 
+size of the change in `par` between iterations can help spot an imminent 
+divergence.
+
+
+Taking all that into account, here's a self-contained example, that removes the 
+now un-necessary batching, does some minor error checking, and keeps track of
+the best parameters seen so far (although with this combination of optimizer
+and problem, you don't have to worry about it):
+
+```{r}
+# Create the optimizer
+opt <- make_mize(method = "BFGS")
+
+# Pretend we don't have access to the function or starting point until later
+rb_fg <- list(
+   fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
+   gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+                          200 *        (x[2] - x[1] * x[1])) })
+rb0 <- c(-1.2, 1)
+
+# Initialize
+opt <- mize_init(opt = opt, par = rb0, fg = rb_fg)
+
+# Store the best seen parameters in case something goes wrong
+par <- rb0
+par_best <- par
+f_best <- rb_fg$fn(par_best)
+
+iter <- 0
+for (i in 1:30) {
+  iter <- iter + 1
+  mize_res <- mize_step(opt = opt, par = par, fg = rb_fg, iter = iter)
+  par <- mize_res$par
+  opt <- mize_res$opt
+  
+  # Do whatever you want with the data at each iteration
+  
+  if (!is.null(opt$error)) {
+    break
+  }
+  if (mize_res$f < f_best) {
+    f_best <- mize_res$f
+    par_best <- par
+  }
+}
+
+# optimized result is in par_best
+```
+
+
