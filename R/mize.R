@@ -814,7 +814,7 @@ make_mize <- function(method = "L-BFGS",
       }
     },
     nag = {
-      dir_type <- sd_direction()
+      dir_type <- sd_direction(normalize = norm_direction)
     },
     momentum = {
       dir_type <- sd_direction(normalize = norm_direction)
@@ -902,8 +902,9 @@ make_mize <- function(method = "L-BFGS",
                               max_fn = ls_max_fn,
                               max_gr = ls_max_gr,
                               max_fg = ls_max_fg),
-      "bold driver" = bold_driver(inc_mult = step_up, dec_mult = step_down),
-      backtracking = backtracking(rho = step_down, c1 = c1),
+      "bold driver" = bold_driver(inc_mult = step_up, dec_mult = step_down,
+                                  max_fn = ls_max_fn),
+      backtracking = backtracking(rho = step_down, c1 = c1, max_fn = ls_max_fn),
       constant = constant_step_size(value = step0)
     )
   }

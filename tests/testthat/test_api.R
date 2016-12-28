@@ -231,3 +231,8 @@ test_that("max functions per line search", {
   expect_equal(res$f, 0, tol = 1e-3)
 })
 
+test_that("exploding backtracking line search returns normally", {
+  res <- mize(rb0, rosenbrock_fg, method = "NAG", line_search = "BACK",
+              ls_max_fn = 5)
+  expect_equal(res$terminate$what, "fn_inf")
+})

@@ -662,11 +662,11 @@ test_that("classical momentum with bold driver adaptive gr momentum prevents cos
 
   nfs <- c(0, 4, 8, 10)
   ngs <- c(0, 1, 2, 2) # no grad calc needed on repeated step
-  fs <- c(24.2, 6.32, 6.32, 4.16)
-  g2ns <- c(232.87, 64.72, 64.72, 9.70)
-  steps <- c(0, 0.25, 0, 0.076)
+  fs <- c(24.2, 6.32, 6.32, 4.12)
+  g2ns <- c(232.87, 64.72, 64.72, 2.90)
+  steps <- c(0, 0.25, 0, 0.069)
   mus <- c(0.4, 0.4, 0.4, 0.4)
-  par <- c(-1.035, 1.058)
+  par <- c(-1.029, 1.061)
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
@@ -699,11 +699,11 @@ test_that("classical momentum with bold driver adaptive fn momentum prevents cos
 
   nfs <- c(0, 5, 9, 11)
   ngs <- c(0, 1, 2, 2) # no grad calc needed on repeated step
-  fs <- c(24.2, 6.32, 6.32, 4.16)
-  g2ns <- c(232.87, 64.72, 64.72, 9.70)
-  steps <- c(0, 0.25, 0, 0.076)
+  fs <- c(24.2, 6.32, 6.32, 4.12)
+  g2ns <- c(232.87, 64.72, 64.72, 2.90)
+  steps <- c(0, 0.25, 0, 0.069)
   mus <- c(0.4, 0.4, 0.4, 0.4)
-  par <- c(-1.035, 1.058)
+  par <- c(-1.029, 1.061)
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
