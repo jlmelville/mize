@@ -24,20 +24,22 @@
 # @param ext Extrapolation constant. Prevents step size extrapolation being
 #   too large.
 # @param int Interpolation constant. Prevents step size being too small.
-# @param max_fn Maximum number of function evaluations allowed.
+# @param max_fn Maximum number of function evaluations allowed per line search.
 # @return Line search function.
 # @seealso Line search based on Matlab code by
 #  \href{http://learning.eng.cam.ac.uk/carl/code/minimize/}{Carl Edward Rasmussen}
 #  and also part of the Matlab
 #  \href{(http://www.gaussianprocess.org/gpml/code/matlab/doc/)}{GPML} package.
 rasmussen <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
-                      max_fn = 20) {
+                      max_fn = Inf) {
   if (c2 < c1) {
     stop("rasmussen line search: c2 < c1")
   }
-  function(phi, step0, alpha) {
+  function(phi, step0, alpha,
+           total_max_fn = Inf, total_max_gr = Inf, total_max_fg = Inf) {
     res <- ras_ls(phi, alpha, step0, c1 = c1, c2 = c2, ext = ext, int = int,
-                  max_fn = max_fn)
+                  max_fn = min(max_fn, total_max_fn, total_max_gr,
+                               max(1, ceiling(total_max_fg / 2))))
     list(step = res$step, nfn = res$nfn, ngr = res$nfn)
   }
 }

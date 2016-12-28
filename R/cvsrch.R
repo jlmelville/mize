@@ -21,8 +21,11 @@
 #  for Matlab by
 #  \href{https://www.cs.umd.edu/users/oleary/software/}{Dianne O'Leary}.
 more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf) {
-  function(phi, step0, alpha) {
-    res <- cvsrch(phi, step0, alpha = alpha, c1 = c1, c2 = c2, maxfev = max_fn)
+  function(phi, step0, alpha,
+           total_max_fn = Inf, total_max_gr = Inf, total_max_fg = Inf) {
+    res <- cvsrch(phi, step0, alpha = alpha, c1 = c1, c2 = c2,
+                  maxfev = min(max_fn, total_max_fn, total_max_gr,
+                               max(1, ceiling(total_max_fg / 2))))
     list(step = res$step, nfn = res$nfn, ngr = res$nfn)
   }
 }

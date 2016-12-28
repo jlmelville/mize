@@ -152,7 +152,22 @@ line_search <- function(ls_fn,
       }
 
       sub_stage$alpha0 <- sub_stage$value
-      ls_result <- ls_fn(phi_alpha, step0, sub_stage$value)
+
+      max_fn <- Inf
+      max_gr <- Inf
+      max_fg <- Inf
+      if (!is.null(opt$counts$max_fn) && is.finite(opt$counts$max_fn)) {
+        max_fn <- opt$counts$max_fn - opt$counts$fn
+      }
+      if (!is.null(opt$counts$max_gr) && is.finite(opt$counts$max_gr)) {
+        max_gr <- opt$counts$max_gr - opt$counts$gr
+      }
+      if (!is.null(opt$counts$max_fg) && is.finite(opt$counts$max_fg)) {
+        max_fg <- opt$counts$max_fg - (opt$counts$fn + opt$counts$gr)
+      }
+      ls_result <- ls_fn(phi_alpha, step0, sub_stage$value,
+                         total_max_fn = max_fn, total_max_gr = max_gr,
+                         total_max_fg = max_fg)
       sub_stage$d0 <- step0$d
       sub_stage$f0 <- step0$f
       sub_stage$value <- ls_result$step$alpha

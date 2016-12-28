@@ -17,6 +17,9 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
   }
 
   opt <- mize_init(opt, par, fg)
+  opt$counts$max_fn <- max_fn
+  opt$counts$max_gr <- max_gr
+  opt$counts$max_fg <- max_fg
 
   progress <- data.frame()
   terminate <- list()

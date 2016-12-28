@@ -66,6 +66,21 @@ test_that("CG with Rasmussen LS", {
   expect_equal(res$par, c(-0.785, 0.558), tol = 1e-3)
 })
 
+test_that("CG with Rasmussen LS and max_fn termination", {
+  res <- mize(rb0, rosenbrock_fg, method = "cg",
+              cg_update = "pr+",
+              max_iter = 3, max_fn = 20,
+              line_search = "ras", c1 = 5e-10, c2 = 1e-9, step0 = "ras",
+              step_next_init = "slope", grad_tol = 1e-5)
+
+  expect_equal(res$nf, 20)
+  expect_equal(res$ng, 20)
+  expect_equal(res$f, 3.54, tol = 1e-3)
+  expect_equal(res$g2n, 23.23, tol = 1e-3)
+  expect_equal(res$par, c(-0.806, 0.596), tol = 1e-3)
+})
+
+
 test_that("NAG with Rasmussen LS", {
   res <- mize(rb0, rosenbrock_fg, method = "NAG",
                nest_convex_approx = FALSE, nest_q = 0, nest_burn_in = 0,
