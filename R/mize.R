@@ -488,7 +488,7 @@ mize <- function(par, fg,
                  method = "L-BFGS",
                  norm_direction = FALSE,
                  # L-BFGS
-                 memory = 10,
+                 memory = 5,
                  scale_hess = TRUE,
                  # CG
                  cg_update = "PR+",
@@ -701,7 +701,7 @@ make_mize <- function(method = "L-BFGS",
                       norm_direction = FALSE,
                       # BFGS
                       scale_hess = TRUE,
-                      memory = 10,
+                      memory = 5,
                       # CG
                       cg_update = "PR+",
                       # NAG

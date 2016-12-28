@@ -4,7 +4,7 @@
 \alias{mize}
 \title{Numerical Optimization}
 \usage{
-mize(par, fg, method = "L-BFGS", norm_direction = FALSE, memory = 10,
+mize(par, fg, method = "L-BFGS", norm_direction = FALSE, memory = 5,
   scale_hess = TRUE, cg_update = "PR+", nest_q = 0,
   nest_convex_approx = FALSE, nest_burn_in = 0, use_nest_mu_zero = FALSE,
   step_up = 1.1, step_up_fun = "*", step_down = 0.5, dbd_weight = 0.1,

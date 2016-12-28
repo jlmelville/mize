@@ -5,12 +5,12 @@
 \title{Create an Optimizer}
 \usage{
 make_mize(method = "L-BFGS", norm_direction = FALSE, scale_hess = TRUE,
-  memory = 10, cg_update = "PR+", nest_q = 0,
-  nest_convex_approx = FALSE, nest_burn_in = 0, use_nest_mu_zero = FALSE,
-  step_up = 1.1, step_up_fun = c("*", "+"), step_down = 0.5,
-  dbd_weight = 0.1, line_search = "More-Thuente", c1 = 1e-04, c2 = NULL,
-  step0 = NULL, step_next_init = NULL, try_newton_step = NULL,
-  ls_max_fn = Inf, ls_max_gr = Inf, ls_max_fg = Inf, mom_type = NULL,
+  memory = 5, cg_update = "PR+", nest_q = 0, nest_convex_approx = FALSE,
+  nest_burn_in = 0, use_nest_mu_zero = FALSE, step_up = 1.1,
+  step_up_fun = c("*", "+"), step_down = 0.5, dbd_weight = 0.1,
+  line_search = "More-Thuente", c1 = 1e-04, c2 = NULL, step0 = NULL,
+  step_next_init = NULL, try_newton_step = NULL, ls_max_fn = Inf,
+  ls_max_gr = Inf, ls_max_fg = Inf, mom_type = NULL,
   mom_schedule = NULL, mom_init = NULL, mom_final = NULL,
   mom_switch_iter = NULL, mom_linear_weight = FALSE, max_iter = NULL,
   restart = NULL, par = NULL, fg = NULL)

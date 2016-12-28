@@ -193,7 +193,7 @@ bfgs_direction <- function(eps =  .Machine$double.eps,
 #
 # memory - The number of previous updates to store.
 # scale_inverse - if TRUE, scale the inverse Hessian approximation at each step.
-lbfgs_direction <- function(memory = 10, scale_inverse = FALSE,
+lbfgs_direction <- function(memory = 5, scale_inverse = FALSE,
                             eps = .Machine$double.eps) {
   if (memory < 1) {
     stop("memory must be > 0")
