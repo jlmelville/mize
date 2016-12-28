@@ -37,9 +37,12 @@ rasmussen <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
   }
   function(phi, step0, alpha,
            total_max_fn = Inf, total_max_gr = Inf, total_max_fg = Inf) {
+    maxfev <- min(max_fn, total_max_fn, total_max_gr, floor(total_max_fg / 2))
+    if (maxfev <= 0) {
+      return(list(step = step0, nfn = 0, ngr = 0))
+    }
     res <- ras_ls(phi, alpha, step0, c1 = c1, c2 = c2, ext = ext, int = int,
-                  max_fn = min(max_fn, total_max_fn, total_max_gr,
-                               max(1, ceiling(total_max_fg / 2))))
+                  max_fn = maxfev)
     list(step = res$step, nfn = res$nfn, ngr = res$nfn)
   }
 }
