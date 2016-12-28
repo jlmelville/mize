@@ -72,11 +72,14 @@ bold_driver <- function(inc_mult = 1.1, dec_mult = 0.5,
           f0 <- opt$fn
         }
 
+        max_fn <- max_fn_per_ls(opt)
+
         alpha <- sub_stage$value
         para <- par + pm * alpha
         opt <- calc_fn(opt, para, fg$fn)
         while ((!is.finite(opt$fn) || opt$fn > f0)
-               && alpha > sub_stage$min_value) {
+               && alpha > sub_stage$min_value
+               && opt$count$fn < max_fn) {
           alpha <- sclamp(sub_stage$dec_fn(alpha),
                           min = sub_stage$min_value,
                           max = sub_stage$max_value)
@@ -172,8 +175,11 @@ backtracking <- function(rho = 0.5,
         para <- par + pm * alpha
         opt <- calc_fn(opt, para, fg$fn)
 
+        max_fn <- max_fn_per_ls(opt)
+
         while ((!is.finite(opt$fn) || !armijo_ok(f0, d0, alpha, opt$fn, c1))
-               && alpha > sub_stage$min_value) {
+               && alpha > sub_stage$min_value
+               && opt$count$fn < max_fn) {
           alpha <- sclamp(alpha * rho,
                           min = sub_stage$min_value,
                           max = sub_stage$max_value)
@@ -208,4 +214,16 @@ backtracking <- function(rho = 0.5,
     min_value = min_step_size,
     max_value = max_step_size
   ))
+}
+
+max_fn_per_ls <- function(opt) {
+  max_fn <- Inf
+  if (!is.null(opt$counts$max_fn)) {
+    max_fn <- min(max_fn, opt$counts$max_fn - opt$counts$fn)
+  }
+  if (!is.null(opt$counts$max_fg)) {
+    max_fn <- min(max_fn,
+                  opt$counts$max_fg - (opt$counts$fn + opt$counts$gr))
+  }
+  max_fn
 }
