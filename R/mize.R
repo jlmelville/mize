@@ -204,8 +204,7 @@
 #' is \code{"nesterov"}, the gradient-based restart is not available.
 #'
 #' If \code{method} type \code{"momentum"} is specified with no other values,
-#' the momentum scheme will default to a constant value of \code{0.9}, with a
-#' function-based restart.
+#' the momentum scheme will default to a constant value of \code{0.9}.
 #'
 #' @section Convergence:
 #'
@@ -963,9 +962,6 @@ make_mize <- function(method = "L-BFGS",
     if (is.null(mom_schedule)) {
       mom_schedule <- 0.9
     }
-    if (is.null(restart)) {
-      restart <- "fn"
-    }
   }
 
   # Momentum configuration
@@ -1015,8 +1011,10 @@ make_mize <- function(method = "L-BFGS",
 
   # Adaptive Restart
   if (!is.null(restart)) {
-    restart <- match.arg(tolower(restart), c("fn", "gr"))
-    opt <- adaptive_restart(opt, restart)
+    restart <- match.arg(tolower(restart), c("none", "fn", "gr"))
+    if (restart != "none") {
+      opt <- adaptive_restart(opt, restart)
+    }
   }
 
   # Initialize for specific dataset if par and fg are provided

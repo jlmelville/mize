@@ -415,8 +415,7 @@ effectively reset the iteration number back to zero. If the \code{mom_type}
 is \code{"nesterov"}, the gradient-based restart is not available.
 
 If \code{method} type \code{"momentum"} is specified with no other values,
-the momentum scheme will default to a constant value of \code{0.9}, with a
-function-based restart.
+the momentum scheme will default to a constant value of \code{0.9}.
 }
 
 \section{Convergence}{
