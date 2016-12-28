@@ -145,7 +145,7 @@ check_termination <- function(terminate, opt, iter, step = NULL,
                               max_fn, max_gr, max_fg,
                               abs_tol, rel_tol, grad_tol, step_tol) {
   if (!is.null(step) && step < step_tol
-      && !is.null(opt$restart_at) && opt$restart_at != iter) {
+      && (is.null(opt$restart_at) || opt$restart_at != iter)) {
     terminate <- list(
       what = "step_tol",
       val = step

@@ -141,4 +141,22 @@ test_that("Terminates semi-gracefully if gradient is non-finite", {
   expect_equal(res$iter, 6)
 })
 
+test_that("Step tolerance is triggered when progress stalls", {
+  # set abs_tol to stop it from triggering before step_tol
+  res <- mize(rb0, rosenbrock_fg, "L-BFGS", abs_tol = 0,
+              step_tol = .Machine$double.eps)
+  expect_equal(res$nf, 55)
+  expect_equal(res$ng, 54)
+  expect_equal(res$f, 7.212e-18, tol = 1e-3)
+  expect_equal(res$par, c(1, 1))
+  expect_equal(res$iter, 39)
+  expect_equal(res$terminate$what, "step_tol")
+})
 
+test_that("Step tolerance is not triggered when restarting", {
+  res <- mize(rb0, rosenbrock_fg, method = "NAG", max_iter = 55, restart = "fn",
+              store_progress = TRUE)
+  expect_equal(res$iter, 55)
+  expect_equal(res$progress["52", "step"], 0)
+  expect_equal(res$terminate$what, "max_iter")
+})
