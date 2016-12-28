@@ -10,9 +10,10 @@ make_mize(method = "L-BFGS", norm_direction = FALSE, scale_hess = TRUE,
   step_up = 1.1, step_up_fun = c("*", "+"), step_down = 0.5,
   dbd_weight = 0.1, line_search = "More-Thuente", c1 = 1e-04, c2 = NULL,
   step0 = NULL, step_next_init = NULL, try_newton_step = NULL,
-  mom_type = NULL, mom_schedule = NULL, mom_init = NULL,
-  mom_final = NULL, mom_switch_iter = NULL, mom_linear_weight = FALSE,
-  max_iter = NULL, restart = NULL, par = NULL, fg = NULL)
+  ls_max_fn = Inf, ls_max_gr = Inf, ls_max_fg = Inf, mom_type = NULL,
+  mom_schedule = NULL, mom_init = NULL, mom_final = NULL,
+  mom_switch_iter = NULL, mom_linear_weight = FALSE, max_iter = NULL,
+  restart = NULL, par = NULL, fg = NULL)
 }
 \arguments{
 \item{method}{Optimization method. See 'Details' of \code{\link{mize}}.}
@@ -87,6 +88,15 @@ the line search on iterations after the first. See 'Details' of
 line step value of 1 as the initial step size whenever \code{step_next_init}
 suggests a step size > 1. Defaults to \code{TRUE} for quasi-Newton methods
 such as BFGS and L-BFGS, \code{FALSE} otherwise.}
+
+\item{ls_max_fn}{Maximum number of function evaluations allowed during a
+line search.}
+
+\item{ls_max_gr}{Maximum number of gradient evaluations allowed during a
+line search.}
+
+\item{ls_max_fg}{Maximum number of function or gradient evaluations allowed
+during a line search.}
 
 \item{mom_type}{Momentum type, either \code{"classical"} or
 \code{"nesterov"}.}

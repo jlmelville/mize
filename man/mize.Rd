@@ -9,12 +9,13 @@ mize(par, fg, method = "L-BFGS", norm_direction = FALSE, memory = 10,
   nest_convex_approx = FALSE, nest_burn_in = 0, use_nest_mu_zero = FALSE,
   step_up = 1.1, step_up_fun = "*", step_down = 0.5, dbd_weight = 0.1,
   line_search = "More-Thuente", c1 = 1e-04, c2 = NULL, step0 = NULL,
-  step_next_init = NULL, try_newton_step = NULL, mom_type = NULL,
+  step_next_init = NULL, try_newton_step = NULL, ls_max_fn = 20,
+  ls_max_gr = Inf, ls_max_fg = Inf, mom_type = NULL,
   mom_schedule = NULL, mom_init = NULL, mom_final = NULL,
   mom_switch_iter = NULL, mom_linear_weight = FALSE, restart = NULL,
   max_iter = 100, max_fn = Inf, max_gr = Inf, max_fg = Inf,
   abs_tol = sqrt(.Machine$double.eps), rel_tol = abs_tol, grad_tol = NULL,
-  step_tol = .Machine$double.eps, check_conv_every = 1,
+  step_tol = sqrt(.Machine$double.eps), check_conv_every = 1,
   log_every = check_conv_every, verbose = FALSE, store_progress = FALSE)
 }
 \arguments{
@@ -94,6 +95,15 @@ the line search on iterations after the first. See 'Details'.}
 line step value of 1 as the initial step size whenever \code{step_next_init}
 suggests a step size > 1. Defaults to \code{TRUE} for quasi-Newton methods
 such as BFGS and L-BFGS, \code{FALSE} otherwise.}
+
+\item{ls_max_fn}{Maximum number of function evaluations allowed during a
+line search.}
+
+\item{ls_max_gr}{Maximum number of gradient evaluations allowed during a
+line search.}
+
+\item{ls_max_fg}{Maximum number of function or gradient evaluations allowed
+during a line search.}
 
 \item{mom_type}{Momentum type, either \code{"classical"} or
 \code{"nesterov"}. See 'Details'.}
