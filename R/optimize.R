@@ -147,15 +147,6 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
 check_termination <- function(terminate, opt, iter, step = NULL,
                               max_fn, max_gr, max_fg,
                               abs_tol, rel_tol, grad_tol, step_tol) {
-  if (!is.null(step) && step < step_tol
-      && (is.null(opt$restart_at) || opt$restart_at != iter)) {
-    terminate <- list(
-      what = "step_tol",
-      val = step
-    )
-    return(terminate)
-  }
-
   if (opt$counts$fn >= max_fn) {
     terminate <- list(
       what = "max_fn",
@@ -172,6 +163,13 @@ check_termination <- function(terminate, opt, iter, step = NULL,
     terminate <- list(
       what = "max_fg",
       val = opt$counts$fn + opt$counts$gr
+    )
+  }
+  else if (!is.null(step) && step < step_tol
+            && (is.null(opt$restart_at) || opt$restart_at != iter)) {
+    terminate <- list(
+      what = "step_tol",
+      val = step
     )
   }
   if (!is.null(grad_tol) && !is.null(opt$cache$gr_curr)) {
