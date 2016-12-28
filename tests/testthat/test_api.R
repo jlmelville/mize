@@ -175,3 +175,45 @@ test_that("Step tolerance is not triggered when restarting", {
   expect_equal(res$progress["52", "step"], 0)
   expect_equal(res$terminate$what, "max_iter")
 })
+
+test_that("max_fn errs on the side of caution", {
+  # In this test we ask for 15 function evaluations, but only get 14
+  # this is because we need one function evaluation spare to calculate
+  # f for the return value and mize has determined it isn't available
+  # for "free" by being calculated during the iteration
+  res <- mize(rb0, rosenbrock_fg, method = "NAG", max_fn = 15)
+  expect_equal(res$terminate$what, "max_fn")
+  expect_equal(res$terminate$val, 14)
+  expect_equal(res$nf, 14)
+  expect_equal(res$f, 4.08, tol = 1e-3)
+})
+
+test_that("max_fg also errs on the side of caution", {
+  res <- mize(rb0, rosenbrock_fg, method = "NAG", max_fg = 30)
+  expect_equal(res$terminate$what, "max_fg")
+  expect_equal(res$terminate$val, 29)
+  expect_equal(res$nf, 15)
+  expect_equal(res$ng, 14)
+  expect_equal(res$f, 4.08, tol = 1e-3)
+})
+
+test_that("max_fn with DBD", {
+  # Don't leave one function evaluation spare with DBD because it
+  # doesn't use them during its iteration
+  res <- mize(rb0, rosenbrock_fg, method = "DBD", max_fn = 30)
+  expect_equal(res$terminate$what, "max_fn")
+  expect_equal(res$terminate$val, 30)
+  expect_equal(res$nf, 30)
+  expect_equal(res$ng, 30)
+  expect_equal(res$f, 4.133, tol = 1e-3)
+})
+
+test_that("max_fg with DBD", {
+  res <- mize(rb0, rosenbrock_fg, method = "DBD", max_fg = 30)
+  expect_equal(res$terminate$what, "max_fg")
+  expect_equal(res$terminate$val, 30)
+  expect_equal(res$nf, 15)
+  expect_equal(res$ng, 15)
+  expect_equal(res$f, 7.914, tol = 1e-3)
+})
+

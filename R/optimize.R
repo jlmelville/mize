@@ -56,6 +56,12 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
 
       par0 <- par
 
+      # We're going to use this below to guess whether our optimization
+      # requires function evaluations (this is only useful if max_fn or max_fg
+      # is specified, but not really time consuming)
+      if (iter == 1) {
+        fn_count_before <- opt$counts$fn
+      }
       step_res <- mize_step(opt, par, fg, iter)
       opt <- step_res$opt
       par <- step_res$par
@@ -63,6 +69,21 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
         terminate$what <- opt$error
         terminate$val <- "Error"
         break
+      }
+
+      # After the first iteration, if we don't have the function available for
+      # the current value of par, we probably won't have it at future iterations
+      # So if we are limiting the number of function evaluations, we need to keep
+      # one spare to evaluate fn after the loop finishes for when we return par
+      if (iter == 1) {
+        # message("has fn curr? ", has_fn_curr(opt, iter + 1))
+        # message("counts before = ", fn_count_before, " counts after = ", opt$counts$fn)
+        if (!has_fn_curr(opt, iter + 1)) {
+          if (fn_count_before != opt$counts$fn) {
+            opt$counts$max_fn <- opt$counts$max_fn - 1
+          }
+          opt$counts$max_fg <- opt$counts$max_fg - 1
+        }
       }
 
       # Check termination conditions
@@ -80,8 +101,9 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
 
         terminate <- check_termination(terminate, opt, iter = iter,
                                        step = res$step,
-                                       max_fn = max_fn, max_gr = max_gr,
-                                       max_fg = max_fg,
+                                       max_fn = opt$counts$max_fn,
+                                       max_gr = opt$counts$max_gr,
+                                       max_fg = opt$counts$max_fg,
                                        abs_tol = abs_tol, rel_tol = rel_tol,
                                        grad_tol = grad_tol, step_tol = step_tol)
       }
@@ -104,6 +126,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
     # Force recalculation of f (and optionally g) by clearing the cache
     par <- best_par
     opt <- opt_clear_cache(opt)
+    opt <- set_fn_curr(opt, best_fn, iter + 1)
     # recalculate result for this iteration
     res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg,
                        calc_gr = calc_gr)
@@ -227,7 +250,7 @@ opt_clear_cache <- function(opt) {
 
 # Creates a result object.
 # If the function and gradient were not calculated as part of the optimization
-# step, they WILL be calculated here, but do not contribute to the total
+# step, they WILL be calculated here, and do contribute to the total
 # fn or gr count reported.
 # Other reported results: alpha is the step size portion of the gradient
 # descent stage (i.e. the result of the line search). Step is the total step
