@@ -88,33 +88,85 @@ cg_direction <- function(ortho_check = FALSE, nu = 0.1,
   ))
 }
 
-# The Polak-Ribiere method for updating the CG direction
-pr_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
-  (dot(gm, gm) - dot(gm, gm_old)) / (dot(gm_old, gm_old) + eps)
-}
 
-# The "PR+" update - Polak-Ribiere, but if negative, restarts the CG from
-# steepest descent.
-pr_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
-  beta <- pr_update(gm, gm_old, pm_old, eps)
-  max(0, beta)
-}
-
+# CG update formulae, grouped according to their numerators similar to the
+# discussion in Hager and Zhang's survey paper
+# The FR, CD and DY updates are all susceptible to "jamming": they can end up
+# with very small step sizes and make little progress.
 # The Fletcher-Reeves update.
 fr_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
   dot(gm, gm) / (dot(gm_old, gm_old) + eps)
 }
+
+# Conjugate Descent update due to Fletcher
+cd_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
+  dot(gm, gm) / (dot(pm_old, (gm - gm_old)) + eps)
+}
+
+# The Dai-Yuan update.
+dy_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
+  -cd_update(gm, gm_old, pm_old, eps)
+}
+
+# HS, PR and LS share a numerator. According to Hager and Zhang, they
+# perform better in practice than the FR, CD and DY updates, despite less
+# being known about their provable global convergence properties.
 
 # The Hestenes-Stiefel update.
 hs_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
   -(dot(gm, gm_old) - dot(gm, gm_old)) / (dot(pm_old, (gm - gm_old)) + eps)
 }
 
-# The Dai-Yuan update.
-dy_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
-  -dot(gm, gm) / (dot(pm_old, (gm - gm_old)) + eps)
+# An "HS+" modification of Hestenes-Stiefel, in analogy to the "PR+" variant of
+# Polak-Ribiere suggested by Powell. As far as I can tell, Hager and Zhang
+# suggested this modification.
+# Hager, W. W., & Zhang, H. (2006).
+# A survey of nonlinear conjugate gradient methods.
+# \emph{Pacific journal of Optimization}, \emph{2}(1), 35-58.
+hs_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
+  beta <- hs_update(gm, gm_old, pm_old, eps)
+  max(0, beta)
 }
 
+# The Polak-Ribiere method for updating the CG direction. Also known as
+# Polak-Ribiere-Polyak (PRP)
+pr_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
+  dot(gm, gm - gm_old) / (dot(gm_old, gm_old) + eps)
+}
+
+# The "PR+" update due to Powell. Polak-Ribiere update, but if negative,
+# restarts the CG from steepest descent. Prevents a possible lack of
+# convergence when using a Wolfe line search.
+pr_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
+  beta <- pr_update(gm, gm_old, pm_old, eps)
+  max(0, beta)
+}
+
+# Liu-Storey update
+ls_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
+  -hs_update(gm, gm_old, pm_old, eps)
+}
+
+# Hager-Zhang update as used in CG_DESCENT
+hz_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
+  ym <- gm - gm_old
+  py <- dot(pm_old, ym)
+  dot(ym - 2 * pm_old * (dot(ym, ym) / (py + eps)), (gm / (py + eps)))
+}
+
+# "Restricted" Hager-Zhang update as used in CG_DESCENT to ensure
+# convergence. Analogous to the PR+ and HS+ updates, but dynamically adjusts
+# the lower bound as convergence occurs. Choice of eta is from the CG_DESCENT
+# paper
+hz_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
+  beta <- hz_update(gm, gm_old, pm_old, eps)
+  eta <- 0.01
+  eta_k <- -1 / (dot(pm_old, pm_old) * min(eta, dot(gm_old, gm_old)))
+  max(eta_k, beta)
+}
+
+
+# Restart criteria due to Powell
 # Checks that successive gradient vectors are sufficiently orthogonal
 # g_new . g_old / g_new . g_new  must be greater than or equal to nu.
 cg_restart <- function(g_new, g_old, nu = 0.1) {

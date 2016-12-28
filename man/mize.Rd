@@ -251,7 +251,12 @@ parameter allows for different methods for choosing the next direction:
     steepest descent if conjugacy is lost. The default.
     \item \code{"HS"} The method of Hestenes and Stiefel.
     \item \code{"DY"} The method of Dai and Yuan.
+    \item \code{"HZ"} The method of Hager and Zhang.
+    \item \code{"HZ+"} The method of Hager and Zhang with restart, as used
+    in CG_DESCENT.
   }
+The \code{"PR+"} and \code{"HZ+"} are likely to be most robust in practice.
+Other updates are available more for curiosity purposes.
 \item \code{"NAG"} is the Nesterov Accelerated Gradient method. The exact
 form of the momentum update in this method can be controlled with the
 following parameters:
@@ -537,6 +542,14 @@ res <- mize(rb0, rosenbrock_fg, method = "SD", mom_type = "nesterov",
              mom_schedule = 0.9, restart = "fn")
 }
 \references{
+Hager, W. W., & Zhang, H. (2005).
+A new conjugate gradient method with guaranteed descent and an efficient line search.
+\emph{SIAM Journal on Optimization}, \emph{16}(1), 170-192.
+
+Hager, W. W., & Zhang, H. (2006).
+Algorithm 851: CG_DESCENT, a conjugate gradient method with guaranteed descent.
+\emph{ACM Transactions on Mathematical Software (TOMS)}, \emph{32}(1), 113-137.
+
 Jacobs, R. A. (1988).
 Increased rates of convergence through learning rate adaptation.
 \emph{Neural networks}, \emph{1}(4), 295-307.
@@ -547,6 +560,10 @@ Shocking: An approach to stabilize backprop training with greedy adaptive
 learning rates.
 In \emph{1998 IEEE International Joint Conference on Neural Networks Proceedings.}
 (Vol. 3, pp. 2218-2223). IEEE.
+
+More', J. J., & Thuente, D. J. (1994).
+Line search algorithms with guaranteed sufficient decrease.
+\emph{ACM Transactions on Mathematical Software (TOMS)}, \emph{20}(3), 286-307.
 
 Nocedal, J., Sartenaer, A., & Zhu, C. (2002).
 On the behavior of the gradient norm in the steepest descent method.

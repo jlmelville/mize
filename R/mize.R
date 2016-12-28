@@ -44,7 +44,12 @@
 #'     steepest descent if conjugacy is lost. The default.
 #'     \item \code{"HS"} The method of Hestenes and Stiefel.
 #'     \item \code{"DY"} The method of Dai and Yuan.
+#'     \item \code{"HZ"} The method of Hager and Zhang.
+#'     \item \code{"HZ+"} The method of Hager and Zhang with restart, as used
+#'     in CG_DESCENT.
 #'   }
+#' The \code{"PR+"} and \code{"HZ+"} are likely to be most robust in practice.
+#' Other updates are available more for curiosity purposes.
 #' \item \code{"NAG"} is the Nesterov Accelerated Gradient method. The exact
 #' form of the momentum update in this method can be controlled with the
 #' following parameters:
@@ -435,6 +440,14 @@
 #'  optimization is long and the convergence is checked regularly.
 #'}
 #' @references
+#' Hager, W. W., & Zhang, H. (2005).
+#' A new conjugate gradient method with guaranteed descent and an efficient line search.
+#' \emph{SIAM Journal on Optimization}, \emph{16}(1), 170-192.
+#'
+#' Hager, W. W., & Zhang, H. (2006).
+#' Algorithm 851: CG_DESCENT, a conjugate gradient method with guaranteed descent.
+#' \emph{ACM Transactions on Mathematical Software (TOMS)}, \emph{32}(1), 113-137.
+#'
 #' Jacobs, R. A. (1988).
 #' Increased rates of convergence through learning rate adaptation.
 #' \emph{Neural networks}, \emph{1}(4), 295-307.
@@ -445,6 +458,10 @@
 #' learning rates.
 #' In \emph{1998 IEEE International Joint Conference on Neural Networks Proceedings.}
 #' (Vol. 3, pp. 2218-2223). IEEE.
+#'
+#' More', J. J., & Thuente, D. J. (1994).
+#' Line search algorithms with guaranteed sufficient decrease.
+#' \emph{ACM Transactions on Mathematical Software (TOMS)}, \emph{20}(3), 286-307.
 #'
 #' Nocedal, J., Sartenaer, A., & Zhu, C. (2002).
 #' On the behavior of the gradient norm in the steepest descent method.
@@ -798,13 +815,19 @@ make_mize <- function(method = "L-BFGS",
     },
     cg = {
       cg_update <- match.arg(tolower(cg_update),
-                             c("fr", "pr", "pr+", "hs", "dy"))
+                             c("fr", "cd", "dy",
+                               "hs", "hs+", "pr", "pr+", "ls", "hz", "hz+"))
       cg_update_fn <- switch(cg_update,
+        fr = fr_update,
+        cd = cd_update,
+        dy = dy_update,
+        hs = hs_update,
+        "hs+" = hs_plus_update,
         pr = pr_update,
         "pr+" = pr_plus_update,
-        fr = fr_update,
-        dy = dy_update,
-        hs = hs_update
+        ls = ls_update,
+        hz = hz_update,
+        "hz+" = hz_plus_update
       )
       dir_type <- cg_direction(cg_update = cg_update_fn)
     },
