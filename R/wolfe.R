@@ -152,6 +152,8 @@ line_search <- function(ls_fn,
       }
 
       sub_stage$alpha0 <- sub_stage$value
+      sub_stage$d0 <- step0$d
+      sub_stage$f0 <- step0$f
 
       max_fn <- Inf
       max_gr <- Inf
@@ -165,23 +167,30 @@ line_search <- function(ls_fn,
       if (!is.null(opt$counts$max_fg) && is.finite(opt$counts$max_fg)) {
         max_fg <- opt$counts$max_fg - (opt$counts$fn + opt$counts$gr)
       }
-      ls_result <- ls_fn(phi_alpha, step0, sub_stage$value,
-                         total_max_fn = max_fn, total_max_gr = max_gr,
-                         total_max_fg = max_fg)
-      sub_stage$d0 <- step0$d
-      sub_stage$f0 <- step0$f
-      sub_stage$value <- ls_result$step$alpha
-
-      opt$counts$fn <- opt$counts$fn + ls_result$nfn
-      opt$counts$gr <- opt$counts$gr + ls_result$ngr
-
-      if (is_last_stage(opt, stage)) {
-         opt <- set_fn_new(opt, ls_result$step$f, iter)
-        if (is.null(ls_result$step$df)) {
-          sub_stage$df <- rep(sub_stage$eps, length(par))
+      if (max_fn <= 0 || max_gr <= 0 || max_fg <= 0) {
+        sub_stage$value <- 0
+        if (is_last_stage(opt, stage)) {
+          opt <- set_fn_new(opt, step0$f, iter)
+          sub_stage$df <- step0$df
         }
-        else {
-          sub_stage$df <- ls_result$step$df
+      }
+      else {
+        ls_result <- ls_fn(phi_alpha, step0, sub_stage$value,
+                           total_max_fn = max_fn, total_max_gr = max_gr,
+                           total_max_fg = max_fg)
+        sub_stage$value <- ls_result$step$alpha
+
+        opt$counts$fn <- opt$counts$fn + ls_result$nfn
+        opt$counts$gr <- opt$counts$gr + ls_result$ngr
+
+        if (is_last_stage(opt, stage)) {
+          opt <- set_fn_new(opt, ls_result$step$f, iter)
+          if (is.null(ls_result$step$df)) {
+            sub_stage$df <- rep(sub_stage$eps, length(par))
+          }
+          else {
+            sub_stage$df <- ls_result$step$df
+          }
         }
       }
 
