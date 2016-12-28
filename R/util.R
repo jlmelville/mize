@@ -6,9 +6,14 @@ partial <- function(f, ...) {
   }
 }
 
-# 2 norm of a vector
+# l2 (Euclidean) norm of a vector
 norm2 <- function(v) {
-  sqrt(sum(v * v))
+  sqrt(dot(v, v))
+}
+
+# Infinity norm of a vector
+norm_inf <- function(v) {
+  max(abs(v))
 }
 
 # normalize a vector to length 1

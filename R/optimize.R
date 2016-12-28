@@ -6,7 +6,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
                     store_progress = FALSE, invalidate_cache = FALSE,
                     max_fn = Inf, max_gr = Inf, max_fg = Inf,
                     abs_tol = sqrt(.Machine$double.eps),
-                    rel_tol = abs_tol, grad_tol = NULL,
+                    rel_tol = abs_tol, grad_tol = NULL, ginf_tol = NULL,
                     step_tol = .Machine$double.eps,
                     check_conv_every = 1, log_every = check_conv_every,
                     ret_opt = FALSE, count_res_fg = TRUE) {
@@ -23,12 +23,20 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
 
   progress <- data.frame()
   terminate <- list()
-  calc_gr <- is.numeric(grad_tol) && is.finite(grad_tol)
+  calc_gr <- (is.numeric(grad_tol) && is.finite(grad_tol)) ||
+             (is.numeric(ginf_tol) && is.finite(ginf_tol))
+  gr_norms <- c()
+  if (is.numeric(grad_tol) && is.finite(grad_tol)) {
+    gr_norms <- c(gr_norms, 2)
+  }
+  if (is.numeric(ginf_tol) && is.finite(ginf_tol)) {
+    gr_norms <- c(gr_norms, Inf)
+  }
   res <- NULL
 
   if (verbose || store_progress) {
     res <- opt_results(opt, par, fg, 0, count_fg = count_res_fg,
-                       calc_gr = calc_gr)
+                       calc_gr = calc_gr, gr_norms = gr_norms)
     opt <- res$opt
     if (store_progress) {
       progress <- update_progress(opt_res = res, progress = progress)
@@ -89,7 +97,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
       # Check termination conditions
       if (!is.null(check_conv_every) && iter %% check_conv_every == 0) {
         res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg,
-                           calc_gr = calc_gr)
+                           calc_gr = calc_gr, gr_norms = gr_norms)
         opt <- res$opt
 
         if (store_progress && iter %% log_every == 0) {
@@ -105,7 +113,8 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
                                        max_gr = opt$counts$max_gr,
                                        max_fg = opt$counts$max_fg,
                                        abs_tol = abs_tol, rel_tol = rel_tol,
-                                       grad_tol = grad_tol, step_tol = step_tol)
+                                       grad_tol = grad_tol, ginf_tol = ginf_tol,
+                                       step_tol = step_tol)
       }
 
       if (has_fn_curr(opt, iter + 1)) {
@@ -129,7 +138,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
     opt <- set_fn_curr(opt, best_fn, iter + 1)
     # recalculate result for this iteration
     res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg,
-                       calc_gr = calc_gr)
+                       calc_gr = calc_gr, gr_norms = gr_norms)
     if (verbose) {
       message("Returning best result found")
     }
@@ -137,7 +146,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
 
   if (is.null(res) || res$iter != iter) {
     res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg,
-                       calc_gr = calc_gr)
+                       calc_gr = calc_gr, gr_norms = gr_norms)
     opt <- res$opt
   }
   if (verbose && iter %% log_every != 0) {
@@ -169,7 +178,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
 # in the optimization step.
 check_termination <- function(terminate, opt, iter, step = NULL,
                               max_fn, max_gr, max_fg,
-                              abs_tol, rel_tol, grad_tol, step_tol) {
+                              abs_tol, rel_tol, grad_tol, ginf_tol, step_tol) {
   if (opt$counts$fn >= max_fn) {
     terminate <- list(
       what = "max_fn",
@@ -201,6 +210,15 @@ check_termination <- function(terminate, opt, iter, step = NULL,
       terminate <- list(
         what = "grad_tol",
         val = gtol
+      )
+    }
+  }
+  if (!is.null(ginf_tol) && !is.null(opt$cache$gr_curr)) {
+    gitol <- norm_inf(opt$cache$gr_curr)
+    if (gitol <= ginf_tol) {
+      terminate <- list(
+        what = "ginf_tol",
+        val = gitol
       )
     }
   }
@@ -252,12 +270,17 @@ opt_clear_cache <- function(opt) {
 # If the function and gradient were not calculated as part of the optimization
 # step, they WILL be calculated here, and do contribute to the total
 # fn or gr count reported.
+# if calc_gr is TRUE then the gradient will be calculated if it isn't
+# available.
+# gr_norms is a vector containing zero or more of the norms to be calculated:
+#   2 for the l2 (Euclidean) norm
+#   Inf for the infinity norm (max absolute component)
 # Other reported results: alpha is the step size portion of the gradient
 # descent stage (i.e. the result of the line search). Step is the total step
 # size taken during the optimization step, including momentum.
 # If a momentum stage is present, the value of the momentum is stored as 'mu'.
 opt_results <- function(opt, par, fg, iter, par0 = NULL, count_fg = TRUE,
-                        calc_gr = FALSE) {
+                        calc_gr = FALSE, gr_norms = c()) {
 
   if (!has_fn_curr(opt, iter + 1)) {
     f <- fg$fn(par)
@@ -271,7 +294,8 @@ opt_results <- function(opt, par, fg, iter, par0 = NULL, count_fg = TRUE,
   }
 
   g2n <- NULL
-  if (calc_gr) {
+  ginfn <- NULL
+  if (calc_gr || has_gr_curr(opt, iter + 1)) {
     if (!has_gr_curr(opt, iter + 1)) {
       g <- fg$gr(par)
       if (grad_is_first_stage(opt) && count_fg) {
@@ -282,7 +306,12 @@ opt_results <- function(opt, par, fg, iter, par0 = NULL, count_fg = TRUE,
     else {
       g <- opt$cache$gr_curr
     }
-    g2n <- norm2(g)
+    if (2 %in% gr_norms) {
+     g2n <- norm2(g)
+    }
+    if (Inf %in% gr_norms) {
+      ginfn <- norm_inf(g)
+    }
   }
 
   if (!is.null(par0)) {
@@ -304,6 +333,7 @@ opt_results <- function(opt, par, fg, iter, par0 = NULL, count_fg = TRUE,
     opt = opt,
     f = f,
     g2n = g2n,
+    ginfn = ginfn,
     nf = opt$counts$fn,
     ng = opt$counts$gr,
     par = par,
@@ -311,8 +341,6 @@ opt_results <- function(opt, par, fg, iter, par0 = NULL, count_fg = TRUE,
     alpha = alpha,
     iter = iter
   )
-
-  res["g2n"] <- g2n
 
   if ("momentum" %in% names(opt$stages)) {
     res$mu <- opt$stages[["momentum"]]$step_size$value
@@ -329,7 +357,10 @@ opt_report <- function(opt_result, print_time = FALSE, print_par = FALSE) {
 
   fmsg <- formatC(opt_result$f)
   if (!is.null(opt_result$g2n)) {
-    fmsg <- paste0(fmsg, " |g| = ", formatC(opt_result$g2n))
+    fmsg <- paste0(fmsg, " g2 = ", formatC(opt_result$g2n))
+  }
+  if (!is.null(opt_result$ginfn)) {
+    fmsg <- paste0(fmsg, " ginf = ", formatC(opt_result$ginfn))
   }
 
   msg <- paste0("iter ", opt_result$iter

@@ -233,6 +233,9 @@
 #'   Note that the gradient norm is not a very reliable stopping criterion
 #'   (see Nocedal and co-workers 2002), but is quite commonly used, so this
 #'   might be useful for comparison with results from other optimizers.
+#'   \item{\code{ginf_tol}} Absolute tolerance of the infinity norm (maximum
+#'   absolute component) of the gradient. Indicated by \code{terminate$what}
+#'   being \code{"ginf_tol"}.
 #'   \item{\code{step_tol}} Absolute tolerance of the step size, i.e. the
 #'   Euclidean distance between values of \code{par} fell below the specified
 #'   value. Indicated by \code{terminate$what} being \code{"step_tol"}.
@@ -257,8 +260,8 @@
 #' that don't use the function value at that location, this could represent a
 #' lot of extra function evaluations. On the other hand, not checking
 #' convergence could result in a lot of extra unnecessary iterations.
-#' Similarly, if \code{grad_tol} is non-\code{NULL}, then the gradient will
-#' be calculated if needed.
+#' Similarly, if \code{grad_tol} or \code{ginf_tol} is non-\code{NULL}, then
+#' the gradient will be calculated if needed.
 #'
 #' If extra function or gradient evaluations is an issue, set
 #' \code{check_conv_every} to a higher value, but be aware that this can cause
@@ -380,6 +383,8 @@
 #' See the 'Convergence' section for details.
 #' @param grad_tol Absolute tolerance for the length (l2-norm) of the gradient
 #' vector. See the 'Convergence' section for details.
+#' @param ginf_tol Absolute tolerance for the infinity norm (maximum absolute
+#' component) of the gradient vector. See the 'Convergence' section for details.
 #' @param step_tol Absolute tolerance for the size of the parameter update.
 #' See the 'Convergence' section for details.
 #' @param check_conv_every Positive integer indicating how often to check
@@ -528,6 +533,7 @@ mize <- function(par, fg,
                  abs_tol = sqrt(.Machine$double.eps),
                  rel_tol = abs_tol,
                  grad_tol = NULL,
+                 ginf_tol = NULL,
                  step_tol = sqrt(.Machine$double.eps),
                  check_conv_every = 1,
                  log_every = check_conv_every,
@@ -571,11 +577,11 @@ mize <- function(par, fg,
   if (max_fg < 0) {
     stop("max_fg must be non-negative")
   }
-
   res <- opt_loop(opt, par, fg,
           max_iter = max_iter,
           max_fn = max_fn, max_gr = max_gr, max_fg = max_fg,
-          abs_tol = abs_tol, rel_tol = rel_tol, grad_tol = grad_tol,
+          abs_tol = abs_tol, rel_tol = rel_tol,
+          grad_tol = grad_tol, ginf_tol = ginf_tol,
           step_tol = step_tol,
           check_conv_every = check_conv_every,
           log_every = log_every,
@@ -583,7 +589,8 @@ mize <- function(par, fg,
           verbose = verbose)
 
   Filter(Negate(is.null),
-         res[c("f", "g2n", "nf", "ng", "par", "iter", "terminate", "progress")])
+         res[c("f", "g2n", "ginfn", "nf", "ng", "par", "iter", "terminate",
+               "progress")])
 }
 
 #' Create an Optimizer
