@@ -229,7 +229,7 @@ check_termination <- function(terminate, opt, iter, step = NULL,
       val = opt$counts$fn + opt$counts$gr
     )
   }
-  else if (!is.null(step) && step < step_tol
+  else if (!is.null(step) && !is.null(step_tol) && step < step_tol
             && (is.null(opt$restart_at) || opt$restart_at != iter)) {
     terminate <- list(
       what = "step_tol",
