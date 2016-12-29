@@ -1,0 +1,907 @@
+---
+title: "mize"
+author: "James Melville"
+date: "December 27, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r, echo = FALSE, message = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(mize)
+```
+
+`mize` is a package for doing unconstrained numerical optimization. This 
+vignette describes the use of the `mize` function, which takes as input
+a function to optimize, its gradient and a starting point and returns the 
+optimized parameters.
+
+First, I'll describe the required structure of the function and gradient
+to optimize, then the various convergence options that apply no matter what
+optimization methods are being used.
+
+In the last section, I'll describe the methods which are available and any
+options that apply to them specifically.
+
+## The `fg` list
+
+If you look at `stats::optim`, you'll see you pass the function to be optimized
+and its gradient separately. By contrast, `mize` asks you to bundle them up
+in a list, which I lazily refer to as an `fg` list. Here, for example, is the 
+venerable Rosenbrock function:
+
+```{r Definining a function and gradient to optimize}
+rb_fg <- list(
+   fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
+   gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+                          200 *        (x[2] - x[1] * x[1])) })
+```
+
+For minimizing a simple function, there's not a lot of advantage to this. But
+for more complex optimizations, there are some advantages:
+
+* If `fn` and `gr` require extra parameterization, you can store the extra
+state in a function that creates and returns the `fg` list, and then `fn`
+and `gr` can access that state via the created closure. `stats::optim` takes
+an alternative approach where extra data is passed as `...` to the `optim` 
+function and then internally this is passed to `fn` and `gr` when needed.
+* For some optimization methods (e.g. those using a strong Wolfe line search),
+both `fn` and `gr` need to be evaluated for the same value of `par`. If there's
+a lot of shared work between `fn` and `gr`, this can be quite inefficient.
+If you provide an optional routine called `fg`, which calculates the function
+and gradient simultaneously, this will be used by some parts of `mize` in 
+preference to calling `fn` and `gr` separately, which can save a bit of time.
+
+A version of `rb_fg` with an optional `fg` function could look like:
+
+```{r A function list with an optional fg item}
+rb_fg <- list(
+   fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
+   gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+                          200 *        (x[2] - x[1] * x[1])) },
+   fg = function(x) {   
+     a <- x[2] - x[1] * x[1]
+     b <- 1 - x[1]
+     list( 
+       fn = 100 * a ^ 2 + b ^ 2,
+       gr = c( -400 * x[1] * a - 2 * b,
+                200 * a)
+     )
+   }
+)
+```
+
+In the case of the Rosenbrock function, I'm not suggesting you should actually
+do this. See the vignette on 'Metric Multi-Dimensional Scaling' for the sort of
+scenario where it could make a difference.
+
+For the rest of this vignette, we'll just assume you're only providing `fn`
+and `gr`.
+
+## The parameters to optimize
+
+The parameters to optimize as passed as a numeric vector, `par`.
+
+As well as using the `rb_fg` list we defined above to describe the Rosenbrock
+function, we'll also start from the following starting point:
+
+```{r Defining a starting point}
+rb0 <- c(-1.2, 1)
+```
+
+## Basic options
+
+If you don't particularly care about how your function gets optimized, the
+default setting is to use the limited-memory Broyden-Fletcher-Goldfarb-Shanno
+(L-BFGS) optimizer, which is a good choice for pretty much anything.
+
+You may still need to tweak some options that are independent of the method,
+like the maximum number of iterations to use, or other convergence criteria.
+
+### Defaults
+
+By default, `mize` will grind away on the function you give it for up to 100
+iterations. But it will give up early if it senses that no further progress
+is being made.
+
+The return value provides both the optimized parameter as well as some 
+information about how much work was done to get there.
+
+```{r Defaults}
+res <- mize(rb0, rb_fg)
+# What were the final parameter values? (should be close to c(1, 1))
+res$par
+
+# What was the function value at that point (should be close to 0)
+res$f
+
+# How many iterations did it take?
+res$iter
+
+# How many function evaluations?
+res$nf
+
+# How many gradient evaluations?
+res$ng
+
+# Why did the optimization terminate?
+res$terminate
+```
+
+As you can see from looking at `res$iter`, the L-BFGS didn't use all 100 
+iterations it had available. The difference between consecutive function values,
+`res$f` got sufficiently low, that the absolute tolerance criterion was passed: 
+`res$terminate$what` will contain a string code that communicates what happened,
+while `res$terminate$val` provides the specific value that causes the 
+termination, although it's rarely interesting.
+
+### Termination criteria
+
+The absolute tolerance criterion simply compares the values of consecutive 
+values: if that gets small, then we stop optimizing. However, relative tolerance
+is often preferred, because it measures the change in value relative to the size
+of the values themselves. 
+
+```{r Relative tolerance}
+res <- mize(rb0, rb_fg, rel_tol = 1e-3)
+# hit relative tolerance
+res$terminate
+
+# but stopped too early!
+res$iter
+res$f
+res$par
+```
+In this example we stopped way too early. Even efficient methods like L-BFGS 
+may make little progress on some iterations, so don't be too aggressive with 
+relative tolerance.
+
+You can also look out for the change in `par` itself getting too small:
+
+```{r Step tolerance}
+# set abs_tol to zero to stop it from triggering instead of step_tol
+res <- mize(rb0, rb_fg, abs_tol = 0, step_tol = .Machine$double.eps)
+res$terminate
+res$iter
+res$f
+res$par
+```
+
+In most cases, the step tolerance should be a reasonable way to spot 
+convergence. Some optimization methods may allow for a step size of zero for
+some iterations, preferring to commence the next iteration using the same
+initial value of `par`, but with different optimization settings. The step
+tolerance criterion knows when this sort of "restart" is being attempted, and
+does not triggered under these conditions.
+
+Other ways to control the amount of time spent include setting the maximum
+number of iterations:
+
+```{r Maximum number of iterations}
+res <- mize(rb0, rb_fg, max_iter = 10)
+
+res$terminate
+res$iter
+res$f
+res$par
+```
+
+Normally, your use of `max_iter` will be to increase it beyond 100 for 
+optimizations that need longer.
+
+When comparing different methods, the number of iterations is obviously less
+important than the amount of actual CPU time you spent. Comparing results
+with a fixed number of iterations is not a very good idea, because different
+methods may do a lot more work within an iteration than others.
+
+For most problems, the time spent calculating the function and gradient values
+will drown out any of the house-keeping that individual methods do, so the 
+number of function and gradient evaluations is the usual determinant of how
+long an optimization takes. You can therefore decide to terminate based
+on the number of function evaluations:
+
+```{r Maximum number of function evaluations}
+res <- mize(rb0, rb_fg, max_fn = 10)
+
+res$terminate
+res$nf
+res$f
+res$par
+```
+
+Number of gradient evaluations:
+
+```{r Maximum number of gradient evaluations}
+res <- mize(rb0, rb_fg, max_gr = 10)
+
+res$terminate
+res$ng
+res$f
+res$par
+```
+
+or both:
+
+```{r Maximum number of function and gradient evaluations}
+res <- mize(rb0, rb_fg, max_fg = 10)
+
+res$terminate
+res$nf
+res$ng
+res$f
+res$par
+```
+
+The function and gradient termination criteria are checked both between 
+iterations and during line search. On the assumption that if you specify 
+a maximum number of evaluations, that means these calculations are expensive,
+`mize` errs on the side of caution and will sometimes calculate fewer 
+evaluations than you ask for, because it thinks that attempting another 
+iteration will exceed the limit.
+
+Finally, there are also gradient tolerances:
+
+```{r Gradient 2-norm tolerance}
+res <- mize(rb0, rb_fg, abs_tol = 0, grad_tol = 1e-3)
+
+res$terminate
+res$f
+res$par
+```
+
+`grad_tol` uses the 2-norm (sometimes referred to as the Euclidean norm) of the 
+gradient to measure convergence. This seems like a good stopping criterion
+because it is always zero at a minimum, even if the function isn't. It is also
+used to compare different methods in Nocedal and Wright's book. However, it
+has also been recognized that it is not always reliable, see for instance this
+[paper by Nocedal and co-workers](http://dx.doi.org/10.1023/A:1014897230089).
+
+Other workers suggest using the infinity norm (the maximum absolute component)
+of the gradient vector, particularly for larger problems. For example, see this
+[conjugate gradient paper by Hager and Zhang](http://dx.doi.org/10.1137/030601880).
+To use the infinity norm, set the `ginf_norm` parameter.
+
+```{r Gradient infinity-norm tolerance}
+res <- mize(rb0, rb_fg, abs_tol = 0, ginf_tol = 1e-3)
+
+res$terminate
+res$f
+res$par
+```
+
+### Logging progress to console
+
+If you want to keep track of the progress of the optimization, set the `verbose`
+option to `TRUE`:
+
+```{r Verbose mode}
+res <- mize(rb0, rb_fg, grad_tol = 1e-3, ginf_tol = 1e-3, max_iter = 10, 
+            verbose = TRUE)
+```
+
+As you can see, information about the state of the optimization is logged to
+the console every time the convergence criteria are checked. The values logged 
+are:
+
+* `f` - The current value of the function.
+* `g2` - The current value of the gradient 2-norm (if you set a non-`NULL` 
+`grad_tol`).
+* `ginf` - The current value of the gradient infinity norm (if you set a 
+non-`NULL` `ginf_tol`).
+* `nf` - The total number of function evaluations so far.
+* `ng` - The total number of gradient evaluations so far.
+* `step` - The magnitude of the change between the previous version of `par` and
+the current value.
+
+Note that values are also provided for iteration 0, which represents the state
+of `par` at its starting point. Because this requires a function evaluation that
+might otherwise not be needed, you may get results where `nf` and `ng` are one
+larger than you'd otherwise expect if `verbose` was `FALSE`.
+
+Because this might be more output than you want, you can also set the 
+`log_every` parameter to make logging slightly less noisy:
+
+```{r Log every 10 iterations}
+res <- mize(rb0, rb_fg, grad_tol = 1e-3, verbose = TRUE, log_every = 10)
+```
+
+On the assumption that you probably want to see information about the last
+iteration, this is also reported, even if it wouldn't normally be reported
+according to the setting for `log_every`.
+
+### A minor complication with convergence checking
+
+By default, convergence is checked at every iteration. For `abs_tol` and 
+`rel_tol`, this means that the function needs to have been evaluated
+at the current value of `par`. A lot of optimization methods do this as part
+of their normal working, so it doesn't cost very much to do the convergence
+check. However, not all optimization methods do. If you specify a non-`NULL`
+value for `rel_tol` and `abs_tol` and the function value isn't available, it
+will be calculated. This could, for some methods, add a lot of overhead. 
+
+There is a trade-off to be made here: although calculating the function value
+just for convergence checking increases the run time of the optimization, it 
+may be less costly than running the optimization for several un-necessary steps
+when you'd otherwise have stopped. Also, the only way for `mize` to keep track
+of the best set of parameters yet seen is by looking at the function value at
+the end of each iteration. If the optimization method doesn't calculate the
+function for each value of `par` and `check_conv_every` doesn't run every
+iteration, then you will only get back the "best" value of `par` for which
+a function evaluation was carried out. Given a combination of particularly 
+heinous functions to optimize and unwise choices of optimization method and
+configuration, you could end up with the optimizer diverging and producing
+progressively worse results, at least temporarily. Convergence checking is
+important under these conditions, to at least get back some sort of improved
+set of parameters.
+
+But if convergence checking at every iteration is too much of a burden, you can
+reduce the frequency with which it is carried out with the `check_conv_every`
+parameter:
+
+```{r Checking convergence less often}
+res <- mize(rb0, rb_fg, grad_tol = 1e-3, check_conv_every = 5, verbose = TRUE)
+```
+
+This also has the side effect of producing less output to the console when
+`verbose = TRUE`, because `log_every` is set to the same value of 
+`check_conv_every` by default. If you set them to different values, `log_every`
+must be an integer multiple of `check_conv_every`. If it's not, it will be 
+silently set to be equal to `check_conv_every`.
+
+In many cases, however, convergence checking every iteration imposes no
+overhead, so this is a non-issue. For methods where it might be an issue, this
+will be mentioned when we discuss that method.
+
+### Storing progress
+
+You may wish to do more than stare at the progress numbers logged to the console
+during optimization when `verbose = TRUE`. If you would like access to these
+values after optimization, set the `store_progress` parameter to true, and
+a data frame called `progress` will be part of the return value:
+
+```{r Returning stored progress}
+res <- mize(rb0, rb_fg, store_progress = TRUE, log_every = 10)
+res$progress
+```
+
+As can be seen, `store_progress` will also obey the `log_every` parameter and
+not store every iteration of convergence information if requested.
+
+## Optimization Methods
+
+The available optimization methods are listed below. I won't be describing the
+algorithms behind them in any depth. For that, you should look in
+the book by [Nocedal and Wright](dx.doi.org/10.1007/978-0-387-40065-5).
+
+Many of these methods can be thought of as coming up with a direction to move
+in, but with the distance to travel in that direction as being someone else's
+problem, i.e. a line search method needs to also be used to determine the
+step size. We'll discuss the available step size methods separately.
+
+### Steepest Descent (`"SD"`)
+
+The good news is that you always get some improvement with steepest descent.
+The bad news is everything else: it often takes a long time to make any 
+progress, unless you are 
+[very clever with the step size](http://dx.doi.org/10.1093/imanum/8.1.141). 
+It is however, the basis for most other gradient descent techniques, 
+and many of them will revert back to this direction, at least temporarily, if 
+things start going wrong.
+
+```{r Steepest descent}
+res <- mize(rb0, rb_fg, max_iter = 10, method = "SD")
+```
+
+### Broyden-Fletcher-Goldfarb-Shanno (`"BFGS"`)
+
+The BFGS method is a quasi-Newton method: it constructs an approximation to the
+inverse of the Hessian. This saves on the annoyance of working out what the
+second derivatives are for your problem, as well as on the time it takes to
+calculate them on every iteration, but not on the storage cost, which is O(N^2).
+It's therefore not appropriate for large problems.
+
+```{r BFGS}
+res <- mize(rb0, rb_fg, max_iter = 10, method = "BFGS")
+```
+
+By default, after the first iteration, the inverse Hessian approximation is 
+scaled to make it more similar to the real inverse Hessian 
+(in terms of eigenvalues). If you don't want to do this, set the `scale_hess`
+parameter to `FALSE`:
+
+```{r BFGS without scaled Hessian}
+res <- mize(rb0, rb_fg, max_iter = 10, method = "BFGS", scale_hess = FALSE)
+```
+
+### Limited-Memory BFGS (`"L-BFGS"`)
+
+The L-BFGS method builds the inverse Hessian approximation implicitly, yielding
+something close to the BFGS direction without ever directly creating a matrix.
+This makes it suitable for larger problems. The closeness to the BFGS result
+is determined by the size of `memory` parameter, which determines the number of
+previous updates that are used to create the direction for the next iteration. 
+The higher this value, the closer to the BFGS result will be obtained, but the 
+more storage is required. In practice, the recommended `memory` size is between
+3 and 7. The default is 5.
+
+```{r LBFGS}
+res <- mize(rb0, rb_fg, max_iter = 10, method = "L-BFGS", memory = 7)
+```
+
+The L-BFGS method also applies a similar Hessian scaling method as with the BFGS
+method, but does so at every iteration. If you don't want it for some reason,
+you can also set `scale_hess` to `FALSE`:
+
+```{r LBFGS without scaled Hessian}
+res <- mize(rb0, rb_fg, max_iter = 10, method = "L-BFGS", scale_hess = FALSE)
+```
+
+### Conjugate Gradient (`"CG"`)
+
+When someone is pulling a decent default optimization off the shelf, if they're
+not reaching for L-BFGS, they're probably going for a conjugate gradient method.
+In their favor, they require less storage than the L-BFGS. However, they tend
+to be a lot more sensitive to poor scaling of the function (i.e. when changing
+different parameters causes very different changes to the objective function)
+and so need tighter line search criteria to make progress.
+
+There are in fact multiple different methods out there under the name 'conjugate
+gradient', which differ in how the direction is determined from the current and 
+previous gradient and the previous direction. The default method in `mize` is
+the "PR+" method (sometimes referred to as "PRP+"), which refers to its 
+inventors, Polak and Ribiere (the third "P" is Polyak who independently 
+discovered it). The "+" indicates that a restart to steepest descent is included
+under certain conditions, which prevents the possibility of convergence failing.
+
+```{r CG with PR+}
+res <- mize(rb0, rb_fg, max_iter = 10, method = "CG")
+```
+
+Other CG update methods are available via the `cg_update` parameter. Methods 
+which seem competitive or even superior to the `"PR+"` update is the `"HS+"`
+method (named after Hestenes and Stiefel) and the `"HZ+"` update (named
+after Hager and Zhang, and part of the 
+[CG_DESCENT](http://users.clas.ufl.edu/hager/papers/Software/) optimizer):
+
+```{r CG with HZ+}
+res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", cg_update = "HZ+")
+```
+
+### Nesterov Accelerated Gradient (`"NAG"`)
+
+The Nesterov Accelerated Gradient method consists of doing a steepest
+descent step immediately followed by a step that resembles momentum (see below),
+but with the previous gradient term replaced with the current gradient.
+
+```{r NAG}
+res <- mize(rb0, rb_fg, max_iter = 10, method = "NAG")
+```
+
+Be aware that the convergence of NAG is not guaranteed to be monotone, that is
+you may (and probably will) see the function value increase between iterations.
+Getting the optimum convergence rates guaranteed by theory requires you to be
+able to estimate how strong the convexity of the function you are minimizing is.
+
+To see this in action, let's increase the iteration count to 100 and plot the 
+progress of the function:
+
+```{r NAG with 100 steps}
+res <- mize(rb0, rb_fg, max_iter = 100, method = "NAG", store_progress = TRUE)
+plot(res$progress$nf, log(res$progress$f), type = "l")
+res$f
+```
+
+Yikes. If you let this optimization continue, it does eventually settle down,
+but it's a real test of patience. Clearly, in this case, there's probably
+a better estimate of the strong convexity parameter.
+
+You can control the strong convexity estimate with the `nest_q` parameter, which
+is inversely related to the amount of momentum that is applied. It should take 
+a value between `0` (you think your function is strongly convex) and `1` 
+(method becomes steepest descent). The default is zero, and this is in fact
+the assumed value in most applications and papers.
+
+Let's try turning down the momentum a little bit and repeat:
+
+```{r NAG with 100 steps and less aggressive momentum}
+resq <- mize(rb0, rb_fg, max_iter = 100, method = "NAG", nest_q = 0.001, 
+            store_progress = TRUE)
+plot(res$progress$nf, log(res$progress$f), type = "l",
+     ylim = range(log(res$progress$f), log(resq$progress$f)))
+lines(resq$progress$nf, log(resq$progress$f), col = "red")
+resq$f
+```
+
+The red line is the result with `nest_q = 0.001`. That's better. Unfortunately, 
+I have no advice on how you should go about estimating the right value for 
+`nest_q`. However, see the section on Adaptive Restart for ways to ameliorate 
+the problem.
+
+### Classical Momentum (`"MOM"`)
+
+Momentum methods use steepest descent and then add a fraction of the previous
+iteration's direction. Often the effectiveness of this approach is likened
+to inertia and has the effect of damping the oscillation in direction that 
+slows the progress of steepest descent with poorly-scaled functions.
+
+Originally popular for training neural networks, the momentum value is often
+a constant and set to a fairly high value, like `0.9`. You can set a constant
+momentum by setting the `mom_schedule` parameter:
+
+```{r Momentum}
+res <- mize(rb0, rb_fg, max_iter = 10, method = "MOM", mom_schedule = 0.9)
+```
+
+Momentum-based methods share the same issues as Nesterov Accelerated Gradient:
+convergence need not be monotone. The plot below demonstrates:
+
+```{r Momentum plot}
+res <- mize(rb0, rb_fg, max_iter = 100, method = "MOM", mom_schedule = 0.9,
+            store_progress = TRUE)
+plot(res$progress$nf, log(res$progress$f), type = "l")
+res$f
+```
+
+To be fair, there is little reason to believe that the sort of settings used
+for neural network training would be effective for minimizing the Rosenbrock
+function.
+
+Non-constant momentum schedules are also available, by passing a string to 
+`mom_schedule`. These include:
+
+* A `switch` function, that steps the momentum from one value (`mom_init`), 
+to another (`mom_final`) at a specified iteration (`mom_switch_iter`):
+```{r momentum with a switch function}
+# Switch from a momentum of 0.4 to 0.8 at iteration 5
+res <- mize(rb0, rb_fg, max_iter = 10, method = "MOM", mom_schedule = "switch",
+            mom_init = 0.4, mom_final = 0.8, mom_switch_iter = 5)
+```
+* A `ramp` function, the linearly increases the momentum from `mom_init`
+to `mom_final` over `max_iter` iterations:
+```{r momentum with a ramp function}
+res <- mize(rb0, rb_fg, max_iter = 10, method = "MOM", mom_schedule = "ramp",
+            mom_init = 0.4, mom_final = 0.8)
+```
+* The schedule used in NAG can be used here by asking for a `"nsconvex"` 
+schedule.
+```{r momentum with nesterov schedule}
+res <- mize(rb0, rb_fg, max_iter = 10, method = "MOM", mom_schedule = "nsconvex")
+```
+* The `nest_q` parameter can also be used here as it can be with NAG:
+```{r momentum with nesterov schedule and non-zero q}
+res <- mize(rb0, rb_fg, max_iter = 10, method = "MOM", mom_schedule = "nsconvex",
+            nest_q = 0.001)
+```
+
+If none of this meets your needs, you can pass a function that takes the current
+iteration number as input and returns a scalar, which will be used as the 
+momentum value, although the value will be clamped between 0 and 1.
+
+For example, you could create a momentum schedule that randomly picks a value
+between 0 and 1:
+```{r momentum with random momentum}
+mom_fn <- function(iter) {
+  runif(n = 1, min = 0, max = 1)
+}
+res <- mize(rb0, rb_fg, max_iter = 10, method = "MOM", mom_schedule = mom_fn)
+```
+I'm saying it's a *good* idea.
+
+### Simplified Nesterov Momentum
+
+Interest in NAG in the neural network community (specifically deep learning),
+was sparked by papers from 
+[Sutskever and co-workers](http://www.jmlr.org/proceedings/papers/v28/sutskever13.html)
+and [Bengio and co-workers](https://arxiv.org/abs/1212.0901) who showed that 
+it could be related to classical momentum in a way that made it easy to 
+implement if you already had a working classical momentum implementation, and
+more importantly, that it seemed to give improvements over classical momentum.
+
+As `mize` already offers NAG by setting `method = "NAG"`, being able to use it
+in a different form related to classical momentum may seem superfluous. But in 
+fact, the use of what's often called "NAG" in deep learning is slightly more
+general (and as far as I'm aware, has no convergence theory to go with it, so
+improvements are not guaranteed). It's probably better to refer to it as 
+(simplified) Nesterov momentum.
+
+At any rate, the key observation of Sutskever was that NAG could be considered
+a momentum method where the momentum stage occurs before the gradient descent
+stage. In this formulation, you can have whatever momentum schedule you like,
+and the hope is that the gradient descent stage can more easily correct if the 
+momentum schedule is too aggressive because it gets to "see" the result of the 
+momentum update and hence the descent occurs from a different location.
+
+To get Nesterov momentum, you need only add a `mom_type = "nesterov"` parameter
+to a momentum optimizer:
+
+```{r Simplified Nesterov momentum}
+res <- mize(rb0, rb_fg, max_iter = 10, method = "MOM", mom_schedule = 0.9, 
+            mom_type = "nesterov")
+```
+
+I know you're itching to see whether Nesterov momentum can calm down the bad 
+case of non-monotone convergence we got with a large classical momentum value
+on the Rosenbrock function:
+
+```{r Nesterov versus classical momentum}
+resc <- mize(rb0, rb_fg, max_iter = 100, method = "MOM", mom_schedule = 0.9, 
+             store_progress = TRUE)
+resn <- mize(rb0, rb_fg, max_iter = 100, method = "MOM", mom_schedule = 0.9, 
+             mom_type = "nesterov", store_progress = TRUE)
+# Best f found for Nesterov momentum
+resn$f
+# Best f found for classical momentum
+resc$f
+plot(resc$progress$nf, log(resc$progress$f), type = "l",
+     ylim = range(log(resc$progress$f), log(resn$progress$f)))
+lines(resn$progress$nf, log(resn$progress$f), col = "red")
+```
+
+The Nesterov momentum is in red. And yes, it's a lot smoother. On the other 
+hand, you can see that the cost function is higher after 100 iterations with
+Nesterov momentum. On yet another hand, `mize` returns the best value found,
+not the last value found, and that happens to be better with nesterov momentum.
+
+Sutskever also came up with a simplified approximation to the momentum schedule
+used in NAG. It doesn't have a big effect on the run time, only applies for
+the default `nest_q` of 0, and at early iterations the momentum is much larger.
+To use it, set the `nest_convex_approx = TRUE` when using the 
+`mom_schedule = "nesterov"`:
+
+```{r Nesterov momentum with convex approximation}
+res <- mize(rb0, rb_fg, max_iter = 10, method = "MOM", 
+            mom_schedule = "nsconvex", nest_convex_approx = TRUE, 
+            mom_type = "nesterov")
+```
+
+## Line Searches
+
+All the above methods need a line search to find out how far to move in the
+gradient descent (i.e. non-momentum) part. The default for all methods mentioned
+so far is a Wolfe line search that satisfies the strong Wolfe conditions. 
+Specifically, [More-Thuente line search](https://doi.org/10.1145/192115.192132),
+converted from 
+[Dianne O'Leary's Matlab code](https://www.cs.umd.edu/users/oleary/software/).
+This uses cubic interpolation to find a point close to a minimize along the
+search direction for each iteration. This requires a function and gradient
+evaluation at each candidate point.
+
+If the More-Thuente line search fails to work for some reason, an alternative
+Wolfe line search method from Carl Edward Rasmussen's 
+[conjugate gradient routine](http://learning.eng.cam.ac.uk/carl/code/minimize/)
+is also available:
+
+```{r use Rasmussen line search}
+res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "Rasmussen")
+# You can explicitly set More-Thuente too
+res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "More-Thuente")
+# More-Thuente can be abbreviated to "MT"
+res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "MT")
+```
+
+Default values use the advice given in the Nocedal and Wright book: the
+`c1` parameter is set to `1e-4`, while `c2` is set to `0.9` for quasi-Newton
+methods (BFGS and L-BFGS) and `0.1` for everything else. For a line search
+involving the strong Wolfe conditions, the `c2` parameter measures how strict
+the line search is: the smaller it is (it cannot be set smaller than `c1` or
+greater than 1), the tighter the line search. This is an important property
+for some conjugate gradient methods to maintain their convergence properties.
+
+You may be able to get away with a looser line search (smaller `c2`) for some 
+methods, e.g.:
+
+```{r Line search parameters}
+res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", cg_update = "HZ+", 
+            c2 = 0.5, c1 = 0.1)
+```
+
+Another important choice is what step size to start each iteration from. Nocedal
+and Wright suggest two methods based on the result achieved for the previous
+iteration, one involving the ratio of the slopes at consecutive iteratons, and 
+one involving a quadratic interpolation. By default, the quadratic 
+interpolation method is tried. 
+
+To try the slope ratio method, set `step_next_init = "slope"`.
+
+```{r Line search with slope ratio}
+res <- mize(rb0, rb_fg, max_iter = 10, step_next_init = "slope")
+```
+
+This only leaves what to do on the very first iteration, where there is no
+previous iteration to look at. You don't really have much information at that
+point apart from the gradient, so all the things I've seen use a step size
+that is effectively inversely proportional to the length of the gradient:
+
+* Carl Edward Rasmussen's 
+[conjugate gradient routine](http://learning.eng.cam.ac.uk/carl/code/minimize/)
+uses $\frac{1}{1+\left|| g \right||_2^2}$ (the square of the 2-norm of the 
+gradient)
+* [SciPy](https://www.scipy.org/)'s `optimize.py` uses
+$\frac{1}{\left|| g \right||_2}$ (the 2-norm of the gradient)
+* Mark Schmidt's 
+[minimization routines](http://www.cs.ubc.ca/~schmidtm/Software/minFunc.html)
+uses $\frac{1}{1+\left|| g \right||_1}$ (the 1-norm of the gradient)
+
+By default I have arbitrarily plumped for the Rasmussen (presumably it doesn't
+make a huge difference), but you can explicitly choose by passing one of 
+`"rasmussen"`, `"scipy"` or `"schmidt"` to the `step0` argument, e.g.:
+
+```{r Line search with scipy initialization}
+res <- mize(rb0, rb_fg, max_iter = 10, step0 = "scipy")
+```
+
+You may also pass a number to `step0` and it will be used as-is:
+
+```{r Line search with initial step length of 1}
+# An initial guess of 1 for the step length isn't bad for L-BFGS
+res <- mize(rb0, rb_fg, max_iter = 10, step0 = 1, method = "L-BFGS")
+```
+
+The L-BFGS and BFGS methods will also attempt the "natural" Newton step length
+of 1, in the way suggested in Nocedal and Wright. If you don't want to do this
+for some reason, it can be explicitly turned off or on via the 
+`try_newton_step` parameter:
+
+```{r BFGS with no Newton step}
+res <- mize(rb0, rb_fg, max_iter = 10, method = "BFGS", try_newton_step = FALSE)
+```
+
+For every other method this is off by default anyway with no particular reason
+to turn it on.
+
+### Other Line Searches
+
+The Wolfe line search is your best bet, but there are some alternatives
+(of somewhat dubious value). 
+
+You can set a constant value for the step size. But note that the total step
+size is actually determined by the product of the step size and the length
+of the gradient vector, so you may want to set `norm_direction` too:
+
+```{r constant step size}
+res <- mize(rb0, rb_fg, max_iter = 10, method = "SD", line_search = "constant",
+            norm_direction = TRUE, step0 = 0.01)
+```
+
+There is also a backtracking line search, which repeatedly reduces the step size
+starting from `step0`, until the sufficient decrease condition of the Wolfe 
+line search conditions is fulfilled (controlled by `c1`, the larger the value,
+the larger the decrease in the function value is needed for a step size to be
+accepted). The step size is reduced by a factor of `step_down` until an 
+acceptable step size is found - which can be very small.
+
+```{r backtracking}
+res <- mize(rb0, rb_fg, max_iter = 10, line_search = "backtracking",
+            step0 = 1, c1 = 0.1, step_down = 0.5)
+```
+
+A similar approach is the `"bold driver"`, which also backtracks, but starts
+from the step size found for the last iteration, increased by a factor 
+`step_up`.
+
+```{r bold driver}
+# increase step size by 10%, but reduce by 50%
+res <- mize(rb0, rb_fg, max_iter = 10, line_search = "bold",
+            step0 = 1, step_down = 0.5, step_up = 1.1)
+```
+
+Unlike backtracking line search, the bold driver accepts any function decrease,
+and does not use `c1`.
+
+### Maximum function or gradient evaluations per line search
+
+It's a good idea to specify a maximum number of function evaluations that can
+be spent in any one line search. This guards against the possibility of poorly
+chosen parameters, badly behaved functions or other numerical issues causing
+the line search to fail to converge. By default, no more than 20 function
+evaluations are allowed per line search. The `ls_max_fn`, `ls_max_gr` and 
+`ls_max_fg` can be used to control this:
+
+```{r max line search functions}
+# No more than 10 gradient evaluations allowed per line search
+res <- mize(rb0, rb_fg, max_iter = 10, ls_max_gr = 10)
+```
+
+## Adaptive Learning Rate Methods
+
+So far, the `method` and `line_search` arguments can be freely mixed and 
+matched. However, some methods choose both the direction and the step size
+directly. The 
+[Delta-Bar-Delta method](http://dx.doi.org/10.1016/0893-6080(88)90003-2) has its 
+roots in neural network research but was also used in the currently popular 
+[t-Distributed Stochastic Neighbor Embedding](https://lvdmaaten.github.io/tsne/) 
+data visualization method.
+
+The way DBD works is to consider each component of the gradient and a weighted
+average of previous iterates gradients. If the sign has changed for that 
+component, that suggests the minimum has been skipped, so the step size (where 
+each component is initialized with value `step0`) is reduced (by a factor 
+`step_down`) in that direction. Otherwise the step size is increased 
+(by a factor `step_up`). The weighting of the average of previous gradients is 
+controlled by `dbd_theta`, which varies between 0 and 1.
+
+The same line search parameters that control the bold driver method can be used
+in DBD:
+
+```{r}
+res <- mize(rb0, rb_fg, max_iter = 10, method = "DBD",
+            step0 = "rasmussen", step_down = 0.5, step_up = 1.1,
+            dbd_weight = 0.5)
+```
+
+One extra parameter is available: `step_up_fn`. In the original DBD paper, 
+when the new step size is to be increased for a component, it is done by adding
+the value of `step_up` to the current value of the step size.
+[Janet and co-workers](https://doi.org/10.1109/IJCNN.1998.687205) noted that
+when the step sizes are small compared to the value of `step_up` this can lead
+to far too large a step size increase. Instead, they suggest multiplying by
+`step_up` so that a percentage increase in the step size is achieved. This is
+the default behavior in `mize`, but the t-SNE optimization method uses the 
+addition method. To get this behavior, set the `step_up_fun` value to `"+"`:
+
+```{r t-SNE style DBD parameters}
+res <- mize(rb0, rb_fg, max_iter = 10, method = "DBD",
+            step0 = "rasmussen", step_down = 0.8, step_up = 0.2,
+            step_up_fun = "+")
+```
+
+The DBD method can be used with momentum. If it is, then the `dbd_weight`
+parameter is ignored and instead of storing its own history of weighted 
+gradients, the update vector stored by the momentum routines is used instead.
+This is not mentioned in the original paper, but is used in the t-SNE
+implementation. 
+
+The DBD method is interesting in that it uses no function evaluations at all
+in its optimization. It doesn't even avail itself of the values of any of the
+gradient components, only their signs. However, as a result, it's really, really
+easy for DBD to diverge horribly and quickly. You will therefore want to ensure
+that you are checking the convergence, even at the cost of calculating the
+function value every iteration.
+
+## Adaptive Restart
+
+[O'Donoghue and Candes](https://arxiv.org/abs/1204.3982) described a restart
+scheme for NAG as a cure for the non-monotonic convergence. They suggest using
+either a function-based check (did the function value after the gradient descent
+stage decrease between iterations?) or a gradient-based check (is the momentum
+direction a descent direction?). If the check fails, then the momentum is 
+restarted: the previous update vector is discarded and the momentum set back to
+zero.
+
+`mize` allows these checks to be used to restart any momentum scheme, not just 
+NAG. The only change is that the function-based check is carried out at the
+beginning and end of each iteration, rather than at the end of the gradient
+descent stage. Restarting is applied using the `restart` argument, supplying
+either `fn` or `gr` for function-based and gradient-based restarting,
+respectively:
+
+```{r momentum with restart}
+resc <- mize(rb0, rb_fg, max_iter = 100, method = "MOM", mom_schedule = 0.9, 
+             store_progress = TRUE)
+resf <- mize(rb0, rb_fg, max_iter = 100, method = "MOM", mom_schedule = 0.9, 
+             store_progress = TRUE, restart = "fn")
+resg <- mize(rb0, rb_fg, max_iter = 100, method = "MOM", mom_schedule = 0.9, 
+             store_progress = TRUE, restart = "gr")
+plot(resc$progress$nf, log(resc$progress$f), type = "l", 
+     ylim = range(log(resc$progress$f), log(resf$progress$f),
+                  log(resg$progress$f)))
+lines(resf$progress$nf, log(resf$progress$f), col = "red")
+lines(resg$progress$nf, log(resg$progress$f), col = "blue")
+```
+
+Adaptive restart (red and blue lines) certainly seems to help here, although 
+the gradient restart (blue line) looks more effective.
+
+The only downside to adaptive restart is that you may want to choose the type
+of restart to not require more overhead of function and gradient calls than
+necessary. In practice, the gradient-based restart is economical because in
+most cases, the gradient calculated at the end of the iteration can be re-used
+for the gradient descent at the start of the next iteration. The one exception
+here is when using nesterov momentum, where the gradients aren't calculated
+in the right location to be of use. In that case, you are better off using
+function-based restarting, although if you aren't checking convergence
+with a function calculation or using a line search method that makes use of
+the function at the starting point, you will obviously incur the overhead
+of the function call.
