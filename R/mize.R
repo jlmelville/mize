@@ -965,7 +965,9 @@ make_mize <- function(method = "L-BFGS",
   if (method == "nag") {
     # Nesterov Accelerated Gradient
     mom_type <- "classical"
-    mom_schedule <- "nsconvex"
+    if (is.null(mom_schedule)) {
+      mom_schedule <- "nsconvex"
+    }
     mom_direction <- nesterov_momentum_direction()
   }
   else if (method == "momentum") {
