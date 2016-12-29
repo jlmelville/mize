@@ -115,7 +115,7 @@
 #'      \deqn{\frac{1}{1+\left|g\right|^2}}{1 / 1 + (|g|^2)}
 #'      \item{\code{"scipy"}} As used in scipy's \code{optimize.py}
 #'      \deqn{\frac{1}{\left|g\right|}}{1 / |g|}
-#'      \item{\code{"minfunc"}} As used by Schmidt in \code{minFunc.m}
+#'      \item{\code{"schmidt"}} As used by Schmidt in \code{minFunc.m}
 #'      (the reciprocal of the l1 norm of g)
 #'      \deqn{\frac{1}{\left|g\right|_1}}{1 / |g|1}
 #'    }
@@ -175,8 +175,9 @@
 #'   \itemize{
 #'   \item{If a numerical scalar is provided, a constant momentum will be
 #'     applied throughout.}
-#'   \item{\code{"nesterov"}} Use the momentum schedule from the Nesterov
-#'   Accelerated Gradient method. Parameters which control the NAG momentum
+#'   \item{\code{"nsconvex"}} Use the momentum schedule from the Nesterov
+#'   Accelerated Gradient method suggested for non-strongly convex functions.
+#'   Parameters which control the NAG momentum
 #'   can also be used in combination with this option.
 #'   \item{\code{"switch"}} Switch from one momentum value (specified via
 #'   \code{mom_init}) to another (\code{mom_final}) at a
@@ -184,6 +185,9 @@
 #'   \item{\code{"ramp"}} Linearly increase from one momentum value
 #'   (\code{mom_init}) to another (\code{mom_final}) over the specified
 #'   period (\code{max_iter}).
+#'   \item{If a function is provided, this will be invoked to provide a momentum
+#'   value. It must take one argument (the current iteration number) and return
+#'   a scalar.}
 #'   }
 #'   String arguments are case insensitive and can be abbreviated.
 #' }
@@ -424,9 +428,12 @@
 #'  calculating the value of \code{g2n} (see below).
 #'  \item{\code{f}} Value of the function, evaluated at the returned
 #'  value of \code{par}.
-#'  \item{\code{g2n}} Optional: the length (Euclidean or l2-norm) of the
+#'  \item{\code{g2}} Optional: the length (Euclidean or l2-norm) of the
 #'  gradient vector, evaluated at the returned value of \code{par}. Calculated
 #'  only if \code{grad_tol} is non-null.
+#'  \item{\code{ginf}} Optional: the infinity norm (maximum absolute component)
+#'  of the gradient vector, evaluated at the returned value of \code{par}.
+#'  Calculated only if \code{ginf_tol} is non-null.
 #'  \item{\code{iter}} The number of iterations the optimization was carried
 #'  out for.
 #'  \item{\code{terminate}} List containing items: \code{what}, indicating what
@@ -493,16 +500,15 @@
 #' res <- mize(rb0, rosenbrock_fg, method = "CG", cg_update = "FR", c2 = 0.1)
 #'
 #' # Steepest decent with constant momentum = 0.9
-#' res <- mize(rb0, rosenbrock_fg, method = "SD", mom_type = "classical",
-#'              mom_schedule = 0.9)
+#' res <- mize(rb0, rosenbrock_fg, method = "MOM", mom_schedule = 0.9)
 #'
 #' # Steepest descent with constant momentum in the Nesterov style as described
 #' # by Sutskever and co-workers
-#' res <- mize(rb0, rosenbrock_fg, method = "SD", mom_type = "nesterov",
+#' res <- mize(rb0, rosenbrock_fg, method = "MOM", mom_type = "nesterov",
 #'              mom_schedule = 0.9)
 #'
 #' # Nesterov momentum with adaptive restart comparing function values
-#' res <- mize(rb0, rosenbrock_fg, method = "SD", mom_type = "nesterov",
+#' res <- mize(rb0, rosenbrock_fg, method = "MOM", mom_type = "nesterov",
 #'              mom_schedule = 0.9, restart = "fn")
 #' @export
 mize <- function(par, fg,
@@ -913,10 +919,18 @@ make_mize <- function(method = "L-BFGS",
     }
 
     line_search <- match.arg(tolower(line_search),
-                             c("more-thuente", "rasmussen", "bold driver",
+                             c("more-thuente", "mt", "rasmussen",
+                               "bold driver",
                                "backtracking", "constant"))
 
     step_type <- switch(line_search,
+      mt = more_thuente_ls(c1 = c1, c2 = c2,
+                           initializer = tolower(step_next_init),
+                           initial_step_length = step0,
+                           try_newton_step = try_newton_step,
+                           max_fn = ls_max_fn,
+                           max_gr = ls_max_gr,
+                           max_fg = ls_max_fg),
       "more-thuente" = more_thuente_ls(c1 = c1, c2 = c2,
                                        initializer = tolower(step_next_init),
                                        initial_step_length = step0,
@@ -951,7 +965,7 @@ make_mize <- function(method = "L-BFGS",
   if (method == "nag") {
     # Nesterov Accelerated Gradient
     mom_type <- "classical"
-    mom_schedule <- "nesterov"
+    mom_schedule <- "nsconvex"
     mom_direction <- nesterov_momentum_direction()
   }
   else if (method == "momentum") {
@@ -969,9 +983,12 @@ make_mize <- function(method = "L-BFGS",
     if (is.numeric(mom_schedule)) {
       mom_step <- constant_step_size(value = mom_schedule)
     }
+    else if (is.function(mom_schedule)) {
+      mom_step <- make_momentum_step(mu_fn = mom_schedule)
+    }
     else {
       mom_schedule <- match.arg(tolower(mom_schedule),
-                                c("ramp", "switch", "nesterov"))
+                                c("ramp", "switch", "nsconvex"))
 
       mom_step <- switch(mom_schedule,
         ramp = make_momentum_step(
@@ -983,7 +1000,7 @@ make_mize <- function(method = "L-BFGS",
             init_value = mom_init,
             final_value = mom_final,
             switch_iter = mom_switch_iter)),
-        nesterov = nesterov_step(burn_in = nest_burn_in, q = nest_q,
+        nsconvex = nesterov_step(burn_in = nest_burn_in, q = nest_q,
                                  use_approx = nest_convex_approx,
                                  use_mu_zero = use_nest_mu_zero)
         )

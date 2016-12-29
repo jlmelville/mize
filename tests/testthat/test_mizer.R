@@ -1221,7 +1221,7 @@ test_that("BFGS with More-Thuente LS", {
         direction = bfgs_direction(),
         step_size = more_thuente_ls(
           c2 = 1e-9,
-          initial_step_length = "s",
+          initial_step_length = "sci",
           initializer = "q",
           try_newton_step = TRUE)),
       verbose = FALSE))
@@ -1254,7 +1254,7 @@ test_that("L-BFGS with More-Thuente LS gives same results as BFGS with sufficien
         direction = lbfgs_direction(),
         step_size = more_thuente_ls(
           c2 = 1e-9,
-          initial_step_length = "s",
+          initial_step_length = "sci",
           initializer = "q",
           try_newton_step = TRUE)),
       verbose = FALSE))

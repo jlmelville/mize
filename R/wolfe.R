@@ -89,7 +89,7 @@ line_search <- function(ls_fn,
   initializer <- match.arg(initializer)
   if (!is.numeric(initial_step_length)) {
     initial_step_length <- match.arg(tolower(initial_step_length),
-                                     c("rasmussen", "scipy", "minfunc"))
+                                     c("rasmussen", "scipy", "schmidt"))
   }
 
   make_step_size(list(
@@ -234,7 +234,7 @@ make_step_zero <- function(initial_step_length, d0,
     # (2 norm of g is sqrt(d) when starting with steepest descent)
     scipy = 1 / sqrt(-d0),
     # Mark Schmidt's minFunc.m uses reciprocal of the one-norm
-    minfunc = 1 / sum(abs(d0))
+    schmidt = 1 / sum(abs(d0))
   )
 
   if (try_newton_step) {

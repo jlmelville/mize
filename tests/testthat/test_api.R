@@ -29,7 +29,7 @@ test_that("grad norm not returned (or calculated) if grad tol is NULL", {
 test_that("L-BFGS with More-Thuente LS", {
   # can abbreviate line search name and initializer
   res <- mize(rb0, rosenbrock_fg, method = "L-BFGS", max_iter = 3,
-               line_search = "mo", c1 = 5e-10, c2 = 1e-9, step0 = "s",
+               line_search = "mo", c1 = 5e-10, c2 = 1e-9, step0 = "scipy",
                step_next_init = "q", scale_hess = FALSE, grad_tol = 1e-5)
 
   expect_equal(res$nf, 17)
@@ -41,7 +41,8 @@ test_that("L-BFGS with More-Thuente LS", {
 
 test_that("BFGS with More-Thuente LS", {
   res <- mize(rb0, rosenbrock_fg, method = "BFGS", max_iter = 3,
-               line_search = "more-thuente", c1 = 5e-10, c2 = 1e-9, step0 = "s",
+               line_search = "more-thuente", c1 = 5e-10, c2 = 1e-9,
+              step0 = "sci",
                step_next_init = "quad", scale_hess = FALSE, grad_tol = 1e-5)
 
   expect_equal(res$nf, 17)

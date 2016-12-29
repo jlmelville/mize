@@ -189,9 +189,12 @@ A list with components:
  calculating the value of \code{g2n} (see below).
  \item{\code{f}} Value of the function, evaluated at the returned
  value of \code{par}.
- \item{\code{g2n}} Optional: the length (Euclidean or l2-norm) of the
+ \item{\code{g2}} Optional: the length (Euclidean or l2-norm) of the
  gradient vector, evaluated at the returned value of \code{par}. Calculated
  only if \code{grad_tol} is non-null.
+ \item{\code{ginf}} Optional: the infinity norm (maximum absolute component)
+ of the gradient vector, evaluated at the returned value of \code{par}.
+ Calculated only if \code{ginf_tol} is non-null.
  \item{\code{iter}} The number of iterations the optimization was carried
  out for.
  \item{\code{terminate}} List containing items: \code{what}, indicating what
@@ -395,6 +398,9 @@ through the momentum arguments:
   \item{\code{"ramp"}} Linearly increase from one momentum value
   (\code{mom_init}) to another (\code{mom_final}) over the specified
   period (\code{max_iter}).
+  \item{If a function is provided, this will be invoked to provide a momentum
+  value. It must take one argument (the current iteration number) and return
+  a scalar.}
   }
   String arguments are case insensitive and can be abbreviated.
 }
