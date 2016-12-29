@@ -23,7 +23,13 @@ devtools::install_github("jlmelville/mize")
 ?mize
 ```
 
-A vignette applying `mize` to a non-trivial optimization problem is available.
+There are also some vignettes:
+
+* `mize.Rmd`, which goes through many of the options available.
+* `mmds.Rmd`, which does a simple, but non-trivial, application of `mize` to
+carry out metric Multi-Dimensional Scaling on the `eurodist` data set.
+* `stateful.Rmd`, which demonstrates how to use `mize` statefully, so you can
+manually and externally invoke each iteration step.
 
 ## Examples
 
