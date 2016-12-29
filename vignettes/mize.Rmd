@@ -264,11 +264,36 @@ of the gradient vector, particularly for larger problems. For example, see this
 To use the infinity norm, set the `ginf_norm` parameter.
 
 ```{r Gradient infinity-norm tolerance}
-res <- mize(rb0, rb_fg, abs_tol = 0, ginf_tol = 1e-3)
+res <- mize(rb0, rb_fg, rel_tol = NULL, abs_tol = NULL, ginf_tol = 1e-3)
 
 res$terminate
 res$f
 res$par
+```
+
+While the gradient norms aren't as reliable for checking convergence, they
+almost never incur any overhead for checking, because the gradient that's 
+calculated at the end of the iteration for this purpose can nearly 
+always be re-used for the gradient descent calculation at the beginning of the
+next iteration, whereas the function-based convergence requires the function
+to be calculated at the end of the iteration and this is not always reused,
+although for many line search methods it is.
+
+By default, because most methods *do* make use of function values, and it 
+provides the most reliable convergence criteria, `rel_tol` and `abs_tol` are 
+non-`NULL` by default. If you really don't want convergence based on function
+evaluation, they can be set to `NULL`. If you set all the criteria to NULL,
+the only thing that will terminate the optimization is `max_iter`:
+
+```{r max_iter as termination criterion only}
+res <- mize(rb0, rb_fg, method = "L-BFGS", rel_tol = NULL, abs_tol = NULL, 
+            step_tol = NULL)
+# got to all 100 iterations
+res$iter
+# although with standard line search if the direction vector gets too small
+# it won't do any line search after the 57ish iterations
+res$nf
+res$ng
 ```
 
 ### Logging progress to console
@@ -656,6 +681,12 @@ res <- mize(rb0, rb_fg, max_iter = 10, method = "MOM",
             mom_type = "nesterov")
 ```
 
+While the `"nesterov"` momentum type is available, I recommend using the 
+`"NAG"` method instead, which calculates the gradient at the expected location
+and is therefore less likely to interact with other parts of `mize` 
+(like adaptive restart, see below) in unexpected ways. You can use a different
+`mom_schedule` with the NAG just like with the momentum method.
+
 ## Line Searches
 
 All the above methods need a line search to find out how far to move in the
@@ -857,8 +888,38 @@ The DBD method is interesting in that it uses no function evaluations at all
 in its optimization. It doesn't even avail itself of the values of any of the
 gradient components, only their signs. However, as a result, it's really, really
 easy for DBD to diverge horribly and quickly. You will therefore want to ensure
-that you are checking the convergence, even at the cost of calculating the
-function value every iteration.
+that you are checking the convergence. This is one of the methods where using
+the `grad_tol` or `ginf_tol` is a better idea than `abs_tol` and `rel_tol`,
+because it provides some check on divergence without calculating the function
+ever iteration only for convergence checking purposes.
+
+```{r}
+# DBD with rel_tol and abs_tol is explicitly set
+res <- mize(rb0, rb_fg, max_iter = 10, method = "DBD",
+             step0 = "rasmussen", step_down = 0.8, step_up = 0.2,
+             step_up_fun = "+", rel_tol = 1e-8, abs_tol = 1e-8)
+# 10 gradient calculations as expected
+res$ng
+# But 10 function calculations too, only used in the tolerance check
+res$nf
+
+# Turn off the rel_tol and abs_tol and let max_iter handle termination
+res <- mize(rb0, rb_fg, max_iter = 10, method = "DBD",
+            step0 = "rasmussen", step_down = 0.8, step_up = 0.2,
+            step_up_fun = "+", rel_tol = NULL, abs_tol = NULL,
+            grad_tol = 1e-5)
+# 11 gradient calculations
+res$ng
+# Only one function evalation needed (to calculate res$f)
+res$nf
+```
+
+Using `grad_tol` results in one extra gradient calculation (because it using
+gradients for the convergence check), but only one function evaluation. The
+more iterations this runs for, the better trade off this is, although in the
+event of a diverging optimization, the "best" `par` that is returned may not
+be as good as would have been returned if we were also using function 
+evaluations.
 
 ## Adaptive Restart
 
