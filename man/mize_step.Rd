@@ -33,10 +33,9 @@ Result of the current optimization step, a list with components:
  \item{\code{f}}. Optional. The new value of the function, evaluated at the returned
    value of \code{par}. Only present if calculated as part of the
    optimization step (e.g. during a line search calculation).
- \item{\code{g2n}}. Optional. The length (2-norm) of the gradient vector, evaluated
-   at the returned value of \code{par}. Only present if the gradient was
-   calculated as part of the optimization step (e.g. during a line search
-   calculation.)
+ \item{\code{g}}. Optional. The gradient vector, evaluated at the returned
+   value of \code{par}. Only present if the gradient was calculated as part
+   of the optimization step (e.g. during a line search calculation.)
 }
 }
 \description{

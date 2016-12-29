@@ -186,7 +186,7 @@ A list with components:
  includes any extra evaluations required for convergence calculations using
  \code{grad_tol}. As with \code{nf}, additional gradient calculations beyond
  what you're expecting may have been needed for logging, convergence and
- calculating the value of \code{g2n} (see below).
+ calculating the value of \code{g2} or \code{ginf} (see below).
  \item{\code{f}} Value of the function, evaluated at the returned
  value of \code{par}.
  \item{\code{g2}} Optional: the length (Euclidean or l2-norm) of the

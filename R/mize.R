@@ -425,7 +425,7 @@
 #'  includes any extra evaluations required for convergence calculations using
 #'  \code{grad_tol}. As with \code{nf}, additional gradient calculations beyond
 #'  what you're expecting may have been needed for logging, convergence and
-#'  calculating the value of \code{g2n} (see below).
+#'  calculating the value of \code{g2} or \code{ginf} (see below).
 #'  \item{\code{f}} Value of the function, evaluated at the returned
 #'  value of \code{par}.
 #'  \item{\code{g2}} Optional: the length (Euclidean or l2-norm) of the
@@ -1087,10 +1087,9 @@ make_mize <- function(method = "L-BFGS",
 #'  \item{\code{f}}. Optional. The new value of the function, evaluated at the returned
 #'    value of \code{par}. Only present if calculated as part of the
 #'    optimization step (e.g. during a line search calculation).
-#'  \item{\code{g2n}}. Optional. The length (2-norm) of the gradient vector, evaluated
-#'    at the returned value of \code{par}. Only present if the gradient was
-#'    calculated as part of the optimization step (e.g. during a line search
-#'    calculation.)
+#'  \item{\code{g}}. Optional. The gradient vector, evaluated at the returned
+#'    value of \code{par}. Only present if the gradient was calculated as part
+#'    of the optimization step (e.g. during a line search calculation.)
 #'}
 #' @seealso \code{\link{make_mize}} to create a value to pass to \code{opt},
 #' \code{\link{mize_init}} to initialize \code{opt} before passing it to this
@@ -1191,7 +1190,7 @@ mize_step <- function(opt, par, fg, iter) {
     res$f <- opt$cache$fn_curr
   }
   if (has_gr_curr(opt, iter + 1)) {
-    res$g2n <- norm2(opt$cache$gr_curr)
+    res$g <- opt$cache$gr_curr
   }
 
   res

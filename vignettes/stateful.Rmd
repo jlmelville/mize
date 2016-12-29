@@ -131,9 +131,8 @@ returned result list which might help:
 
 * `f` - The function value, if it was calculated at `par`. For the few methods
 which don't do this, you can of course generate it yourself via `rb_fg$fn(par)`.
-* `g2n` - The 2-norm (aka Euclidean norm) of the gradient vector, if it was
-calculated at `par`. If it's not present, then obviously there's nothing to stop
-you calculating `rb_fg$gr(par)` yourself.
+* `g` - The gradient vector, if it was calculated at `par`. If it's not present, 
+then obviously there's nothing to stop you calculating `rb_fg$gr(par)` yourself.
 * `nf` - The number of function evaluations carried out so far (i.e. since 
 initialization). `opt` is also keeping track of this, and coordinates with 
 `mize_step`, so you don't need to manually update this yourself between steps.
