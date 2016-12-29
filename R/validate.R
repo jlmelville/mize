@@ -13,7 +13,6 @@ attr(require_validate_fn, 'depends') <- 'fn_new fn_curr save_cache_on_failure'
 # Checks that the gradient is a descent direction
 # This relies on the gradient being calculated in the "classical" location
 # i.e. not using the implementation of Nesterov Acceleration
-# Wants: gradient
 require_validate_gr <- function(opt, par, fg, iter, par0, update) {
   opt$ok <- dot(opt$cache$gr_curr, update) < 0
   opt
