@@ -327,7 +327,7 @@ the line search:
      \deqn{\frac{1}{1+\left|g\right|^2}}{1 / 1 + (|g|^2)}
      \item{\code{"scipy"}} As used in scipy's \code{optimize.py}
      \deqn{\frac{1}{\left|g\right|}}{1 / |g|}
-     \item{\code{"minfunc"}} As used by Schmidt in \code{minFunc.m}
+     \item{\code{"schmidt"}} As used by Schmidt in \code{minFunc.m}
      (the reciprocal of the l1 norm of g)
      \deqn{\frac{1}{\left|g\right|_1}}{1 / |g|1}
    }
@@ -389,8 +389,9 @@ through the momentum arguments:
   \itemize{
   \item{If a numerical scalar is provided, a constant momentum will be
     applied throughout.}
-  \item{\code{"nesterov"}} Use the momentum schedule from the Nesterov
-  Accelerated Gradient method. Parameters which control the NAG momentum
+  \item{\code{"nsconvex"}} Use the momentum schedule from the Nesterov
+  Accelerated Gradient method suggested for non-strongly convex functions.
+  Parameters which control the NAG momentum
   can also be used in combination with this option.
   \item{\code{"switch"}} Switch from one momentum value (specified via
   \code{mom_init}) to another (\code{mom_final}) at a
@@ -534,16 +535,15 @@ res <- mize(rb0, rosenbrock_fg, method = "L-BFGS")
 res <- mize(rb0, rosenbrock_fg, method = "CG", cg_update = "FR", c2 = 0.1)
 
 # Steepest decent with constant momentum = 0.9
-res <- mize(rb0, rosenbrock_fg, method = "SD", mom_type = "classical",
-             mom_schedule = 0.9)
+res <- mize(rb0, rosenbrock_fg, method = "MOM", mom_schedule = 0.9)
 
 # Steepest descent with constant momentum in the Nesterov style as described
 # by Sutskever and co-workers
-res <- mize(rb0, rosenbrock_fg, method = "SD", mom_type = "nesterov",
+res <- mize(rb0, rosenbrock_fg, method = "MOM", mom_type = "nesterov",
              mom_schedule = 0.9)
 
 # Nesterov momentum with adaptive restart comparing function values
-res <- mize(rb0, rosenbrock_fg, method = "SD", mom_type = "nesterov",
+res <- mize(rb0, rosenbrock_fg, method = "MOM", mom_type = "nesterov",
              mom_schedule = 0.9, restart = "fn")
 }
 \references{
