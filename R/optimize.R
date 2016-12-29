@@ -175,9 +175,10 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
     }
   }
 
-  if (is.null(res) || res$iter != iter) {
+  if (is.null(res) || res$iter != iter || is.null(res$f)) {
+    # Always calculate function value before return
     res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg,
-                       calc_fn = calc_fn,
+                       calc_fn = TRUE,
                        calc_gr = calc_gr, gr_norms = gr_norms)
     opt <- res$opt
   }
