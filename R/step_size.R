@@ -14,7 +14,7 @@ constant_step_size <- function(value = 1) {
   make_step_size(list(
       name = "constant",
       calculate = function(opt, stage, sub_stage, par, fg, iter) {
-        list()
+        list(sub_stage = sub_stage)
       },
       value = value
     ))
