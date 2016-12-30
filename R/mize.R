@@ -205,7 +205,11 @@
 #' The effect of the restart is to "forget" any previous momentum update vector,
 #' and, for those momentum schemes that change with iteration number, to
 #' effectively reset the iteration number back to zero. If the \code{mom_type}
-#' is \code{"nesterov"}, the gradient-based restart is not available.
+#' is \code{"nesterov"}, the gradient-based restart is not available. The
+#' \code{restart_wait} parameter controls how many iterations to wait after a
+#' restart, before allowing another restart. Must be a positive integer. Default
+#' is 10, as used by Su and co-workers (2014). Setting this too low could
+#' cause premature convergence.
 #'
 #' If \code{method} type \code{"momentum"} is specified with no other values,
 #' the momentum scheme will default to a constant value of \code{0.9}.
@@ -377,6 +381,8 @@
 #' update is weighted using momentum contribution.
 #' @param restart Momentum restart type. Can be one of "fn" or "gr". See
 #' 'Details'. Ignored if no momentum scheme is being used.
+#' @param restart_wait Number of iterations to wait between restarts. Ignored
+#' if \code{restart} is \code{NULL}.
 #' @param max_iter Maximum number of iterations to optimize for. Defaults to
 #' 100. See the 'Convergence' section for details.
 #' @param max_fn Maximum number of function evaluations. See the 'Convergence'
@@ -481,6 +487,10 @@
 #' Adaptive restart for accelerated gradient schemes.
 #' \emph{Foundations of computational mathematics}, \emph{15}(3), 715-732.
 #'
+#' Su, W., Boyd, S., & Candes, E. (2014).
+#' A differential equation for modeling Nesterov's accelerated gradient method: theory and insights.
+#' In \emph{Advances in Neural Information Processing Systems} (pp. 2510-2518).
+#'
 #' Sutskever, I., Martens, J., Dahl, G., & Hinton, G. (2013).
 #' On the importance of initialization and momentum in deep learning.
 #' In \emph{Proceedings of the 30th international conference on machine learning (ICML-13)}
@@ -547,6 +557,7 @@ mize <- function(par, fg,
                  mom_linear_weight = FALSE,
                  # Adaptive Restart
                  restart = NULL,
+                 restart_wait = 10,
                  # Termination criterion
                  max_iter = 100,
                  max_fn = Inf,
@@ -586,7 +597,8 @@ mize <- function(par, fg,
                    mom_switch_iter = mom_switch_iter,
                    mom_linear_weight = mom_linear_weight,
                    max_iter = max_iter,
-                   restart = restart)
+                   restart = restart,
+                   restart_wait = restart_wait)
   if (max_iter < 0) {
     stop("max_iter must be non-negative")
   }
@@ -706,6 +718,8 @@ mize <- function(par, fg,
 #' out over. Used only if \code{mom_schedule} is set to \code{"ramp"}.
 #' @param restart Momentum restart type. Can be one of "fn" or "gr". See
 #' 'Details' of \code{\link{mize}}.
+#' @param restart_wait Number of iterations to wait between restarts. Ignored
+#' if \code{restart} is \code{NULL}.
 #' @param par Initial values for the function to be optimized over. Optional.
 #' @param fg Function and gradient list. See 'Details' of \code{\link{mize}}.
 #' Optional.
@@ -760,6 +774,7 @@ make_mize <- function(method = "L-BFGS",
                       mom_linear_weight = FALSE,
                       max_iter = NULL,
                       restart = NULL,
+                      restart_wait = 10,
                       par = NULL,
                       fg = NULL) {
 
@@ -796,6 +811,9 @@ make_mize <- function(method = "L-BFGS",
   }
   if (ls_max_fg < 0) {
     stop("ls_max_fg must be non-negative")
+  }
+  if (restart_wait < 1) {
+    stop("restart_wait must be a positive integer")
   }
 
   # Gradient Descent Direction configuration
@@ -1033,6 +1051,7 @@ make_mize <- function(method = "L-BFGS",
     restart <- match.arg(tolower(restart), c("none", "fn", "gr"))
     if (restart != "none") {
       opt <- adaptive_restart(opt, restart)
+      opt <- adaptive_restart(opt, restart, wait = restart_wait)
     }
   }
 

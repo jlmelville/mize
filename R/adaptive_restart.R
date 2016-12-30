@@ -48,9 +48,7 @@ adaptive_restart_gr <- function(opt) {
 # Replace the usual momentum after step event with one which restarts
 # the momentum if validation failed
 require_adaptive_restart <- function(opt, par, fg, iter, par0, update) {
-  if (!opt$ok
-      && (is.null(opt$restart_at)
-          || iter - opt$restart_at > opt$restart_wait)) {
+  if (!opt$ok && can_restart(opt, iter)) {
     opt <- life_cycle_hook("momentum", "init", opt, par, fg, iter)
     opt$restart_at <- iter
   }
@@ -106,4 +104,8 @@ append_depends <- function(opt, stage_type = NULL, sub_stage_type = NULL,
   opt
 }
 
+# True if we aren't currently waiting between restarts
+can_restart <- function(opt, iter) {
+  is.null(opt$restart_at) || iter - opt$restart_at > opt$restart_wait
+}
 

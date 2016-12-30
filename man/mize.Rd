@@ -582,6 +582,10 @@ O'Donoghue, B., & Candes, E. (2013).
 Adaptive restart for accelerated gradient schemes.
 \emph{Foundations of computational mathematics}, \emph{15}(3), 715-732.
 
+Su, W., Boyd, S., & Candes, E. (2014).
+A differential equation for modeling Nesterov’s accelerated gradient method: theory and insights.
+In \emph{Advances in Neural Information Processing Systems} (pp. 2510-2518).
+
 Sutskever, I., Martens, J., Dahl, G., & Hinton, G. (2013).
 On the importance of initialization and momentum in deep learning.
 In \emph{Proceedings of the 30th international conference on machine learning (ICML-13)}

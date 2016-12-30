@@ -2,19 +2,22 @@
 
 # Checks that the function value has decreased over the step
 require_validate_fn <- function(opt, par, fg, iter, par0, update) {
-  opt$ok <- opt$cache$fn_new < opt$cache$fn_curr
+  if (can_restart(opt, iter)) {
+    opt$ok <- opt$cache$fn_new < opt$cache$fn_curr
+  }
   opt
 }
 attr(require_validate_fn, 'name') <- 'validate_fn'
 attr(require_validate_fn, 'event') <- 'during validation'
 attr(require_validate_fn, 'depends') <- 'fn_new fn_curr save_cache_on_failure'
 
-
 # Checks that the gradient is a descent direction
 # This relies on the gradient being calculated in the "classical" location
 # i.e. not using the implementation of Nesterov Acceleration
 require_validate_gr <- function(opt, par, fg, iter, par0, update) {
-  opt$ok <- dot(opt$cache$gr_curr, update) < 0
+  if (can_restart(opt, iter)) {
+    opt$ok <- dot(opt$cache$gr_curr, update) < 0
+  }
   opt
 }
 attr(require_validate_gr, 'name') <- 'validate_gr'

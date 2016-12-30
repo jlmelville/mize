@@ -6,6 +6,11 @@ partial <- function(f, ...) {
   }
 }
 
+# Square of the Euclidean norm of a vector
+sqnorm2 <- function(v) {
+  dot(v, v)
+}
+
 # l2 (Euclidean) norm of a vector
 norm2 <- function(v) {
   sqrt(dot(v, v))
