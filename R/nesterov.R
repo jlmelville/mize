@@ -227,6 +227,7 @@ solve_quad <- function(a, b, c) {
     root_neg = (-b - sqrt(disc)) / (2 * a)
     res <- c(root_pos, root_neg)
   }
+  res
 }
 
 # Step 3 of algorithm 1 in https://arxiv.org/abs/1204.3982
