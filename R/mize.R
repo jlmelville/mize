@@ -452,6 +452,7 @@
 #'  optimization is long and the convergence is checked regularly.
 #'}
 #' @references
+#'
 #' Hager, W. W., & Zhang, H. (2005).
 #' A new conjugate gradient method with guaranteed descent and an efficient line search.
 #' \emph{SIAM Journal on Optimization}, \emph{16}(1), 170-192.
@@ -490,6 +491,10 @@
 #' Su, W., Boyd, S., & Candes, E. (2014).
 #' A differential equation for modeling Nesterov's accelerated gradient method: theory and insights.
 #' In \emph{Advances in Neural Information Processing Systems} (pp. 2510-2518).
+#'
+#' Sutskever, I. (2013).
+#' \emph{Training recurrent neural networks}
+#' (Doctoral dissertation, University of Toronto).
 #'
 #' Sutskever, I., Martens, J., Dahl, G., & Hinton, G. (2013).
 #' On the importance of initialization and momentum in deep learning.
