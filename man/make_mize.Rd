@@ -13,7 +13,7 @@ make_mize(method = "L-BFGS", norm_direction = FALSE, scale_hess = TRUE,
   ls_max_gr = Inf, ls_max_fg = Inf, mom_type = NULL,
   mom_schedule = NULL, mom_init = NULL, mom_final = NULL,
   mom_switch_iter = NULL, mom_linear_weight = FALSE, max_iter = NULL,
-  restart = NULL, par = NULL, fg = NULL)
+  restart = NULL, restart_wait = 10, par = NULL, fg = NULL)
 }
 \arguments{
 \item{method}{Optimization method. See 'Details' of \code{\link{mize}}.}
@@ -118,6 +118,9 @@ out over. Used only if \code{mom_schedule} is set to \code{"ramp"}.}
 
 \item{restart}{Momentum restart type. Can be one of "fn" or "gr". See
 'Details' of \code{\link{mize}}.}
+
+\item{restart_wait}{Number of iterations to wait between restarts. Ignored
+if \code{restart} is \code{NULL}.}
 
 \item{par}{Initial values for the function to be optimized over. Optional.}
 

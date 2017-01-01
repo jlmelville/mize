@@ -13,9 +13,9 @@ mize(par, fg, method = "L-BFGS", norm_direction = FALSE, memory = 5,
   ls_max_gr = Inf, ls_max_fg = Inf, mom_type = NULL,
   mom_schedule = NULL, mom_init = NULL, mom_final = NULL,
   mom_switch_iter = NULL, mom_linear_weight = FALSE, restart = NULL,
-  max_iter = 100, max_fn = Inf, max_gr = Inf, max_fg = Inf,
-  abs_tol = sqrt(.Machine$double.eps), rel_tol = abs_tol, grad_tol = NULL,
-  ginf_tol = NULL, step_tol = sqrt(.Machine$double.eps),
+  restart_wait = 10, max_iter = 100, max_fn = Inf, max_gr = Inf,
+  max_fg = Inf, abs_tol = sqrt(.Machine$double.eps), rel_tol = abs_tol,
+  grad_tol = NULL, ginf_tol = NULL, step_tol = sqrt(.Machine$double.eps),
   check_conv_every = 1, log_every = check_conv_every, verbose = FALSE,
   store_progress = FALSE)
 }
@@ -123,6 +123,9 @@ update is weighted using momentum contribution.}
 
 \item{restart}{Momentum restart type. Can be one of "fn" or "gr". See
 'Details'. Ignored if no momentum scheme is being used.}
+
+\item{restart_wait}{Number of iterations to wait between restarts. Ignored
+if \code{restart} is \code{NULL}.}
 
 \item{max_iter}{Maximum number of iterations to optimize for. Defaults to
 100. See the 'Convergence' section for details.}
@@ -419,7 +422,11 @@ O'Donoghue and Candes. There are two strategies:
 The effect of the restart is to "forget" any previous momentum update vector,
 and, for those momentum schemes that change with iteration number, to
 effectively reset the iteration number back to zero. If the \code{mom_type}
-is \code{"nesterov"}, the gradient-based restart is not available.
+is \code{"nesterov"}, the gradient-based restart is not available. The
+\code{restart_wait} parameter controls how many iterations to wait after a
+restart, before allowing another restart. Must be a positive integer. Default
+is 10, as used by Su and co-workers (2014). Setting this too low could
+cause premature convergence.
 
 If \code{method} type \code{"momentum"} is specified with no other values,
 the momentum scheme will default to a constant value of \code{0.9}.
@@ -583,8 +590,12 @@ Adaptive restart for accelerated gradient schemes.
 \emph{Foundations of computational mathematics}, \emph{15}(3), 715-732.
 
 Su, W., Boyd, S., & Candes, E. (2014).
-A differential equation for modeling Nesterov’s accelerated gradient method: theory and insights.
+A differential equation for modeling Nesterov's accelerated gradient method: theory and insights.
 In \emph{Advances in Neural Information Processing Systems} (pp. 2510-2518).
+
+Sutskever, I. (2013).
+\emph{Training recurrent neural networks}
+(Doctoral dissertation, University of Toronto).
 
 Sutskever, I., Martens, J., Dahl, G., & Hinton, G. (2013).
 On the importance of initialization and momentum in deep learning.
