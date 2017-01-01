@@ -770,7 +770,7 @@ expression.
 There are two ways to deal with this: start storing the
 value of `mu` from the previous iteration, even though I purposely
 chose a constant value of `mu` to keep things simple, or just force
-$\v_1$ to be zero by not updating it on the first iteration. I chose
+$v_1$ to be zero by not updating it on the first iteration. I chose
 the latter.
 
 ### Momentum NAG consistent with NAG
