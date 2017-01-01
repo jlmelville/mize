@@ -1050,7 +1050,6 @@ make_mize <- function(method = "L-BFGS",
   if (!is.null(restart)) {
     restart <- match.arg(tolower(restart), c("none", "fn", "gr"))
     if (restart != "none") {
-      opt <- adaptive_restart(opt, restart)
       opt <- adaptive_restart(opt, restart, wait = restart_wait)
     }
   }
