@@ -139,13 +139,14 @@ $$\theta_t = \theta_{t-1} + \mu_{t-1}v_{t-1} - \varepsilon_t \nabla f\left(\thet
 
 At this point, the expression differs from that given by Sutskever in one 
 detail: the learning rate associated with the gradient descent is currently 
-written as $\varepsilon_{t}$. But remember that we have no moved the boundaries
+written as $\varepsilon_{t}$. But remember that we have now moved the boundaries
 of the iteration: the gradient descent that would have been the first stage
 of iteration $t+1$ is now the second stage of iteration $t$. So the above
 expression is more correctly written as:
 
 $$\theta_t = \theta_{t-1} + \mu_{t-1}v_{t-1} - \varepsilon_{t-1} \nabla f\left(\theta_{t-1} + \mu_{t-1}v_{t-1}\right)$$
-Just as given by Sutskever. And therefore the expression for the parameter 
+
+just as given by Sutskever. And therefore the expression for the parameter 
 update is trivially:
 
 $$\theta_{t+1} = \theta_t + \mu_t v_t - \varepsilon_t \nabla f\left(\theta_t + \mu_t v_t\right)$$
