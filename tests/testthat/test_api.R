@@ -105,11 +105,11 @@ test_that("bold driver SD and classical momentum", {
                mom_schedule = "ramp", mom_init = 0.1, mom_final = 0.3,
                max_iter = 3, grad_tol = 1e-5)
 
-  expect_equal(res$nf, 11)
-  expect_equal(res$ng, 4)
-  expect_equal(res$f, 4.37, tol = 1e-3)
-  expect_equal(res$g2n, 24.09, tol = 1e-3)
-  expect_equal(res$par, c(-1.043, 1.043), tol = 1e-3)
+  expect_equal(res$nf, 12)
+  expect_equal(res$ng, 5) # extra grad eval needed to get data for best found
+  expect_equal(res$f, 4.38, tol = 1e-3)
+  expect_equal(res$g2n, 23.21, tol = 1e-3)
+  expect_equal(res$par, c(-1.006, 1.071), tol = 1e-3)
 })
 
 test_that("bold driver SD and nesterov momentum", {
@@ -120,11 +120,11 @@ test_that("bold driver SD and nesterov momentum", {
                mom_schedule = "ramp", mom_init = 0.1, mom_final = 0.3,
                max_iter = 3, grad_tol = 1e-5)
 
-  expect_equal(res$nf, 11)
-  expect_equal(res$ng, 3)
-  expect_equal(res$f, 4.09, tol = 1e-3)
-  expect_equal(res$g2n, 2.344, tol = 1e-3)
-  expect_equal(res$par, c(-1.019, 1.050), tol = 1e-3)
+  expect_equal(res$nf, 12)
+  expect_equal(res$ng, 5)
+  expect_equal(res$f, 4.38, tol = 1e-3)
+  expect_equal(res$g2n, 23.21, tol = 1e-3)
+  expect_equal(res$par, c(-1.006, 1.071), tol = 1e-3)
 })
 
 test_that("Delta bar delta adaptive learning rate and nesterov momentum", {
@@ -133,10 +133,10 @@ test_that("Delta bar delta adaptive learning rate and nesterov momentum", {
                step0 = 0.1,
                mom_type = "nesterov",
                mom_schedule = 0.2,
-               max_iter = 3, grad_tol = 1e-5, check_conv_every = NULL)
+               max_iter = 3, grad_tol = 1e-5, rel_tol = NULL, abs_tol = NULL)
 
   expect_equal(res$nf, 1)
-  expect_equal(res$ng, 3)
+  expect_equal(res$ng, 4)
   expect_equal(res$f, 4.84, tol = 1e-3)
   expect_equal(res$g2n, 37.85, tol = 1e-3)
   expect_equal(res$par, c(-0.993, 1.079), tol = 1e-3)

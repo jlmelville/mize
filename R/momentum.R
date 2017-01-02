@@ -23,22 +23,34 @@ momentum_direction <- function(normalize = FALSE) {
 #  Adaptive restart can restart the momentum in which case the function will
 #  be passed an "effective" iteration number which may be smaller than the
 #  actual iteration value.
+# use_init_mom If TRUE, then always use the momentum coefficient specified by
+#  mu_fn even when the effective iteration is 1 (first iteration or restart).
+#  In some cases using non-standard momentum (e.g. Nesterov or linear-weighted),
+#  this could result in the resulting step length being shorter or longer
+#  than would be otherwise expected. If FALSE, then the momentum coefficient
+#  is always zero.
 make_momentum_step <- function(mu_fn,
                                min_momentum = 0,
                                max_momentum = 1,
+                               use_init_mom = FALSE,
                                verbose = FALSE) {
   make_step_size(list(
     name = "momentum_step",
     init = function(opt, stage, sub_stage, par, fg, iter) {
+      sub_stage$value <- 0
       sub_stage$t <- 1
-      sub_stage$value <- sub_stage$mu_fn(0)
       list(sub_stage = sub_stage)
     },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
-      sub_stage$value <-
-        sclamp(sub_stage$mu_fn(sub_stage$t),
-               min = sub_stage$min_value,
-               max = sub_stage$max_value)
+      if (!use_init_mom && sub_stage$t <= 1) {
+        sub_stage$value <- 0
+      }
+      else {
+        sub_stage$value <-
+          sclamp(sub_stage$mu_fn(sub_stage$t),
+                 min = sub_stage$min_value,
+                 max = sub_stage$max_value)
+      }
       list(sub_stage = sub_stage)
     },
     after_step = function(opt, stage, sub_stage, par, fg, iter, par0,
@@ -71,14 +83,34 @@ make_switch <- function(init_value = 0.5, final_value = 0.8,
   }
 }
 
-# A function that increases the momentum from init_value to final_value over
-# max_iter iterations.
+# A function that increases from init_value to final_value over
+# max_iter iterations. Iter 0 will always return a value of zero, iter 1
+# begins with init_value.
+#
+# shift - if set to a non-zero value, recalculates the values so that
+# the init_value is used for 'shift' extra iterations, but with final_value
+# still reached after max_iter iterations. Set to 1 for momentum calculations
+# where in most cases the momentum on the first iteration would be either
+# ignored or the value overridden and set to zero anyway. Stops a larger than
+# expected jump on iteration 2.
 make_ramp <- function(max_iter,
                       init_value = 0,
-                      final_value = 0.9) {
+                      final_value = 0.9,
+                      wait = 0) {
+
+  # actual number of iterations
+  iters <- max_iter - 1 - wait
+  # denominator of linear scaling
+  n <- max(iters, 1)
+  m <- (final_value - init_value) / n
+
   function(iter) {
-    ds <- (final_value - init_value) / max_iter
-    (ds * iter) + init_value
+    t <- iter - 1 - wait
+    if (t < 0) {
+      return(init_value)
+    }
+
+    (m * t) + init_value
   }
 }
 

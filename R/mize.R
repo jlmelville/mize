@@ -59,9 +59,6 @@
 #'   \code{nest_convex_approx} is \code{TRUE}.
 #'   \item{\code{nest_convex_approx}} If \code{TRUE}, then use an approximation
 #'   due to Sutskever for calculating the momentum parameter.
-#'   \item{\code{use_nest_mu_zero}} If \code{TRUE}, then the momentum on
-#'   iteration zero is set to 0.4. Otherwise, it's zero. Ignored if
-#'   \code{nest_convex_approx} is \code{FALSE}.
 #'   \item{\code{nest_burn_in}} Number of iterations to wait before using a
 #'   non-zero momentum.
 #'   }
@@ -338,9 +335,6 @@
 #' @param nest_burn_in Number of iterations to wait before using a non-zero
 #' momentum. Only applies using the NAG method or a momentum method with
 #' Nesterov momentum schedule.
-#' @param use_nest_mu_zero If \code{TRUE}, then the momentum on iteration zero
-#' is set to 0.4. Otherwise, it's zero. Only applies using the NAG method or a
-#' momentum method with Nesterov momentum schedule.
 #' @param step_up Value by which to increase the step size for the \code{"bold"}
 #' step size method or the \code{"DBD"} method.
 #' @param step_up_fun Operator to use when combining the current step size with
@@ -377,6 +371,9 @@
 #' @param mom_final Final momentum value.
 #' @param mom_switch_iter For \code{mom_schedule} \code{"switch"} only, the
 #' iteration when \code{mom_init} is changed to \code{mom_final}.
+#' @param use_init_mom If \code{TRUE}, then the momentum coefficient on
+#' the first iteration is non-zero. Otherwise, it's zero. Only applies if
+#' using a momentum schedule.
 #' @param mom_linear_weight If \code{TRUE}, the gradient contribution to the
 #' update is weighted using momentum contribution.
 #' @param restart Momentum restart type. Can be one of "fn" or "gr". See
@@ -518,7 +515,7 @@
 #' res <- mize(rb0, rosenbrock_fg, method = "MOM", mom_schedule = 0.9)
 #'
 #' # Steepest descent with constant momentum in the Nesterov style as described
-#' # by Sutskever and co-workers
+#' # in papers by Sutskever and Bengio
 #' res <- mize(rb0, rosenbrock_fg, method = "MOM", mom_type = "nesterov",
 #'              mom_schedule = 0.9)
 #'
@@ -537,7 +534,7 @@ mize <- function(par, fg,
                  # NAG
                  nest_q = 0, # 1 - SD,
                  nest_convex_approx = FALSE,
-                 nest_burn_in = 0, use_nest_mu_zero = FALSE,
+                 nest_burn_in = 0,
                  # DBD
                  step_up = 1.1,
                  step_up_fun = "*",
@@ -560,6 +557,7 @@ mize <- function(par, fg,
                  mom_final = NULL,
                  mom_switch_iter = NULL,
                  mom_linear_weight = FALSE,
+                 use_init_mom = FALSE,
                  # Adaptive Restart
                  restart = NULL,
                  restart_wait = 10,
@@ -585,7 +583,7 @@ mize <- function(par, fg,
                    cg_update = cg_update,
                    nest_q = nest_q, nest_convex_approx = nest_convex_approx,
                    nest_burn_in = nest_burn_in,
-                   use_nest_mu_zero = use_nest_mu_zero,
+                   use_init_mom = use_init_mom,
                    step_up = step_up,
                    step_up_fun = step_up_fun,
                    step_down = step_down,
@@ -616,6 +614,10 @@ mize <- function(par, fg,
   if (max_fg < 0) {
     stop("max_fg must be non-negative")
   }
+  if (store_progress && is.null(check_conv_every)) {
+    stop("check_conv_every must be non-NULL if store_progress is TRUE")
+  }
+
   res <- opt_loop(opt, par, fg,
           max_iter = max_iter,
           max_fn = max_fn, max_gr = max_gr, max_fg = max_fg,
@@ -676,9 +678,6 @@ mize <- function(par, fg,
 #' @param nest_burn_in Number of iterations to wait before using a non-zero
 #' momentum. Only applies if using the \code{"NAG"} method or setting the
 #' \code{momentum_type} to "Nesterov".
-#' @param use_nest_mu_zero If \code{TRUE}, then the momentum on iteration zero
-#' is set to 0.4. Otherwise, it's zero. Applies only if
-#' \code{nest_convex_approx} is \code{TRUE}.
 #' @param step_up Value by which to increase the step size for the \code{"bold"}
 #' step size method or the \code{"DBD"} method.
 #' @param step_up_fun Operator to use when combining the current step size with
@@ -719,6 +718,9 @@ mize <- function(par, fg,
 #' iteration when \code{mom_init} is changed to \code{mom_final}.
 #' @param mom_linear_weight If \code{TRUE}, the gradient contribution to the
 #' update is weighted using momentum contribution.
+#' @param use_init_mom If \code{TRUE}, then the momentum coefficient on
+#' the first iteration is non-zero. Otherwise, it's zero. Only applies if
+#' using a momentum schedule.
 #' @param max_iter Maximum number of iterations the optimization will be carried
 #' out over. Used only if \code{mom_schedule} is set to \code{"ramp"}.
 #' @param restart Momentum restart type. Can be one of "fn" or "gr". See
@@ -755,7 +757,7 @@ make_mize <- function(method = "L-BFGS",
                       # NAG
                       nest_q = 0,
                       nest_convex_approx = FALSE,
-                      nest_burn_in = 0, use_nest_mu_zero = FALSE,
+                      nest_burn_in = 0,
                       # DBD
                       step_up = 1.1,
                       step_up_fun = c("*", "+"),
@@ -777,6 +779,7 @@ make_mize <- function(method = "L-BFGS",
                       mom_final = NULL,
                       mom_switch_iter = NULL,
                       mom_linear_weight = FALSE,
+                      use_init_mom = FALSE,
                       max_iter = NULL,
                       restart = NULL,
                       restart_wait = 10,
@@ -983,6 +986,11 @@ make_mize <- function(method = "L-BFGS",
         step_size = step_type)))
 
   # Momentum Configuration
+  if (is.null(mom_type)) {
+    mom_type <- "classical"
+  }
+  mom_type <- match.arg(tolower(mom_type), c("classical", "nesterov"))
+
   mom_direction <- momentum_direction()
 
   if (method == "nag") {
@@ -995,8 +1003,8 @@ make_mize <- function(method = "L-BFGS",
   }
   else if (method == "momentum") {
     # Default momentum values
-    if (is.null(mom_type)) {
-      mom_type <- "classical"
+    if (mom_type == "nesterov") {
+      mom_direction <- nesterov_momentum_direction()
     }
     if (is.null(mom_schedule)) {
       mom_schedule <- 0.9
@@ -1006,10 +1014,13 @@ make_mize <- function(method = "L-BFGS",
   # Momentum configuration
   if (!is.null(mom_schedule)) {
     if (is.numeric(mom_schedule)) {
-      mom_step <- constant_step_size(value = mom_schedule)
+      mom_step <- make_momentum_step(
+        mu_fn = make_constant(value = mom_schedule),
+        use_init_mom = use_init_mom)
     }
     else if (is.function(mom_schedule)) {
-      mom_step <- make_momentum_step(mu_fn = mom_schedule)
+      mom_step <- make_momentum_step(mu_fn = mom_schedule,
+                                     use_init_mom = use_init_mom)
     }
     else {
       mom_schedule <- match.arg(tolower(mom_schedule),
@@ -1019,15 +1030,18 @@ make_mize <- function(method = "L-BFGS",
         ramp = make_momentum_step(
           make_ramp(max_iter = max_iter,
                     init_value = mom_init,
-                    final_value = mom_final)),
+                    final_value = mom_final,
+                    wait = ifelse(use_init_mom, 0, 1)),
+          use_init_mom = use_init_mom),
         "switch" = make_momentum_step(
           make_switch(
             init_value = mom_init,
             final_value = mom_final,
-            switch_iter = mom_switch_iter)),
+            switch_iter = mom_switch_iter),
+          use_init_mom = use_init_mom),
         nsconvex = nesterov_step(burn_in = nest_burn_in, q = nest_q,
                                  use_approx = nest_convex_approx,
-                                 use_mu_zero = use_nest_mu_zero)
+                                 use_init_mu = use_init_mom)
         )
     }
 
@@ -1035,16 +1049,7 @@ make_mize <- function(method = "L-BFGS",
       direction = mom_direction,
       step_size = mom_step)
 
-    mom_type <- match.arg(tolower(mom_type), c("classical", "nesterov"))
-    switch(mom_type,
-      classical = {
-        opt <- append_stage(opt, mom_stage)
-      },
-      nesterov = {
-        opt <- prepend_stage(opt, mom_stage)
-        opt$eager_update <- TRUE
-      }
-    )
+    opt <- append_stage(opt, mom_stage)
 
     if (mom_linear_weight) {
       opt <- append_stage(opt, momentum_correction_stage())

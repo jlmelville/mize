@@ -6,18 +6,18 @@
 \usage{
 mize(par, fg, method = "L-BFGS", norm_direction = FALSE, memory = 5,
   scale_hess = TRUE, cg_update = "PR+", nest_q = 0,
-  nest_convex_approx = FALSE, nest_burn_in = 0, use_nest_mu_zero = FALSE,
-  step_up = 1.1, step_up_fun = "*", step_down = 0.5, dbd_weight = 0.1,
+  nest_convex_approx = FALSE, nest_burn_in = 0, step_up = 1.1,
+  step_up_fun = "*", step_down = 0.5, dbd_weight = 0.1,
   line_search = "More-Thuente", c1 = 1e-04, c2 = NULL, step0 = NULL,
   step_next_init = NULL, try_newton_step = NULL, ls_max_fn = 20,
   ls_max_gr = Inf, ls_max_fg = Inf, mom_type = NULL,
   mom_schedule = NULL, mom_init = NULL, mom_final = NULL,
-  mom_switch_iter = NULL, mom_linear_weight = FALSE, restart = NULL,
-  restart_wait = 10, max_iter = 100, max_fn = Inf, max_gr = Inf,
-  max_fg = Inf, abs_tol = sqrt(.Machine$double.eps), rel_tol = abs_tol,
-  grad_tol = NULL, ginf_tol = NULL, step_tol = sqrt(.Machine$double.eps),
-  check_conv_every = 1, log_every = check_conv_every, verbose = FALSE,
-  store_progress = FALSE)
+  mom_switch_iter = NULL, mom_linear_weight = FALSE, use_init_mom = FALSE,
+  restart = NULL, restart_wait = 10, max_iter = 100, max_fn = Inf,
+  max_gr = Inf, max_fg = Inf, abs_tol = sqrt(.Machine$double.eps),
+  rel_tol = abs_tol, grad_tol = NULL, ginf_tol = NULL,
+  step_tol = sqrt(.Machine$double.eps), check_conv_every = 1,
+  log_every = check_conv_every, verbose = FALSE, store_progress = FALSE)
 }
 \arguments{
 \item{par}{Initial values for the function to be optimized over.}
@@ -59,10 +59,6 @@ schedule.}
 \item{nest_burn_in}{Number of iterations to wait before using a non-zero
 momentum. Only applies using the NAG method or a momentum method with
 Nesterov momentum schedule.}
-
-\item{use_nest_mu_zero}{If \code{TRUE}, then the momentum on iteration zero
-is set to 0.4. Otherwise, it's zero. Only applies using the NAG method or a
-momentum method with Nesterov momentum schedule.}
 
 \item{step_up}{Value by which to increase the step size for the \code{"bold"}
 step size method or the \code{"DBD"} method.}
@@ -120,6 +116,10 @@ iteration when \code{mom_init} is changed to \code{mom_final}.}
 
 \item{mom_linear_weight}{If \code{TRUE}, the gradient contribution to the
 update is weighted using momentum contribution.}
+
+\item{use_init_mom}{If \code{TRUE}, then the momentum coefficient on
+the first iteration is non-zero. Otherwise, it's zero. Only applies if
+using a momentum schedule.}
 
 \item{restart}{Momentum restart type. Can be one of "fn" or "gr". See
 'Details'. Ignored if no momentum scheme is being used.}
@@ -272,9 +272,6 @@ following parameters:
   \code{nest_convex_approx} is \code{TRUE}.
   \item{\code{nest_convex_approx}} If \code{TRUE}, then use an approximation
   due to Sutskever for calculating the momentum parameter.
-  \item{\code{use_nest_mu_zero}} If \code{TRUE}, then the momentum on
-  iteration zero is set to 0.4. Otherwise, it's zero. Ignored if
-  \code{nest_convex_approx} is \code{FALSE}.
   \item{\code{nest_burn_in}} Number of iterations to wait before using a
   non-zero momentum.
   }

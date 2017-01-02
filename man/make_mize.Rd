@@ -6,13 +6,13 @@
 \usage{
 make_mize(method = "L-BFGS", norm_direction = FALSE, scale_hess = TRUE,
   memory = 5, cg_update = "PR+", nest_q = 0, nest_convex_approx = FALSE,
-  nest_burn_in = 0, use_nest_mu_zero = FALSE, step_up = 1.1,
-  step_up_fun = c("*", "+"), step_down = 0.5, dbd_weight = 0.1,
-  line_search = "More-Thuente", c1 = 1e-04, c2 = NULL, step0 = NULL,
-  step_next_init = NULL, try_newton_step = NULL, ls_max_fn = Inf,
-  ls_max_gr = Inf, ls_max_fg = Inf, mom_type = NULL,
-  mom_schedule = NULL, mom_init = NULL, mom_final = NULL,
-  mom_switch_iter = NULL, mom_linear_weight = FALSE, max_iter = NULL,
+  nest_burn_in = 0, step_up = 1.1, step_up_fun = c("*", "+"),
+  step_down = 0.5, dbd_weight = 0.1, line_search = "More-Thuente",
+  c1 = 1e-04, c2 = NULL, step0 = NULL, step_next_init = NULL,
+  try_newton_step = NULL, ls_max_fn = Inf, ls_max_gr = Inf,
+  ls_max_fg = Inf, mom_type = NULL, mom_schedule = NULL,
+  mom_init = NULL, mom_final = NULL, mom_switch_iter = NULL,
+  mom_linear_weight = FALSE, use_init_mom = FALSE, max_iter = NULL,
   restart = NULL, restart_wait = 10, par = NULL, fg = NULL)
 }
 \arguments{
@@ -49,10 +49,6 @@ applies if \code{method} is \code{"NAG"}.}
 \item{nest_burn_in}{Number of iterations to wait before using a non-zero
 momentum. Only applies if using the \code{"NAG"} method or setting the
 \code{momentum_type} to "Nesterov".}
-
-\item{use_nest_mu_zero}{If \code{TRUE}, then the momentum on iteration zero
-is set to 0.4. Otherwise, it's zero. Applies only if
-\code{nest_convex_approx} is \code{TRUE}.}
 
 \item{step_up}{Value by which to increase the step size for the \code{"bold"}
 step size method or the \code{"DBD"} method.}
@@ -112,6 +108,10 @@ iteration when \code{mom_init} is changed to \code{mom_final}.}
 
 \item{mom_linear_weight}{If \code{TRUE}, the gradient contribution to the
 update is weighted using momentum contribution.}
+
+\item{use_init_mom}{If \code{TRUE}, then the momentum coefficient on
+the first iteration is non-zero. Otherwise, it's zero. Only applies if
+using a momentum schedule.}
 
 \item{max_iter}{Maximum number of iterations the optimization will be carried
 out over. Used only if \code{mom_schedule} is set to \code{"ramp"}.}

@@ -45,12 +45,12 @@ nesterov_momentum_direction <- function() {
 #   be zero. Ignored if use_approx is TRUE.
 # use_approx Use the approximation to the momentum schedule given by
 #   Sutskever and co-workers.
-# use_mu_zero If TRUE, then the momentum calculated on iteration zero uses
+# use_init_mu If TRUE, then the momentum calculated on the first iteration uses
 #   the calculated non-zero value, otherwise use zero. Because velocity is
 #   normally zero initially, this rarely has an effect, unless linear weighting
 #   of the momentum is being used. Ignored if use_approx is FALSE.
 nesterov_step <- function(burn_in = 0, q = 0, use_approx = FALSE,
-                          use_mu_zero = FALSE) {
+                          use_init_mu = FALSE) {
   if (!is_in_range(q, 0, 1)) {
     stop("q must be between 0 and 1")
   }
@@ -60,7 +60,7 @@ nesterov_step <- function(burn_in = 0, q = 0, use_approx = FALSE,
 
   if (use_approx) {
     nesterov_convex_approx_step(burn_in = burn_in,
-                                use_mu_zero = use_mu_zero)
+                                use_init_mu = use_init_mu)
   }
   else {
     nesterov_convex_step(q = q, burn_in = burn_in)
@@ -77,14 +77,16 @@ nesterov_step <- function(burn_in = 0, q = 0, use_approx = FALSE,
 #  to 2, you get the same "pattern" of results as if you were using the
 #  Sutskever Nesterov Momentum approach (i.e. applying a classical momentum
 #  step before a steepest descent step).
-# use_mu_zero If TRUE, then the momentum calculated on iteration zero uses
-#   the calculated non-zero value, otherwise use zero. Because velocity is
-#   normally zero initially, this rarely has an effect, unless linear weighting
-#   of the momentum is being used.
-make_nesterov_convex_approx <- function(burn_in = 0, use_mu_zero = FALSE) {
+# use_init_mu If TRUE, then return a non-zero momentum on the first iteration.
+#  Otherwise use zero. Although a velocity of zero normally enforces
+#  steepest descent on the first iteration, for some methods (e.g.
+#  NAG or linearly weighted classical momentum), this can have an effect.
+#  Set this to TRUE to always get steepest decent.
+make_nesterov_convex_approx <- function(burn_in = 0, use_init_mu = FALSE) {
   function(iter) {
-
-    if (iter < burn_in || (!use_mu_zero && iter == burn_in)) {
+    # if we haven't waited long enough or we always use zero on the first
+    # iteration, return 0
+    if (iter < burn_in || (iter == burn_in && !use_init_mu)) {
       return(0)
     }
 
@@ -98,19 +100,21 @@ make_nesterov_convex_approx <- function(burn_in = 0, use_mu_zero = FALSE) {
 #  to 2, you get the same "pattern" of results as if you were using the
 #  Sutskever Nesterov Momentum approach (i.e. applying a classical momentum
 #  step before a steepest descent step).
-# use_mu_zero if TRUE, then when the iteration number is zero, the momentum
-#  is also zero, rather than using the equation, which produces a momentum of
-#  0.4. From reading various papers, this is probably the intended behavior.
-#  Normally, the update step is also zero on iteration zero, so this makes
-#  no difference, but if you have linearly weighted the momentum, you will
-#  get only 60% of the gradient step you might have been expecting on the
-#  first step.
-nesterov_convex_approx_step <- function(burn_in = 0, use_mu_zero = FALSE) {
+# use_init_mu if TRUE, then on the first iteration, the momentum
+#  uses the equation, which produces a momentum of 0.4. Otherwise, use a
+#  momentum coefficient of zero. From reading various papers, a coefficient
+#  of zero is probably the intended behavior.
+#  Normally, the velocity vector is also zero on the first iteration, so this
+#  makes no difference, but if you have linearly weighted the momentum,
+#  you will get only 60% of the gradient step you might have been expecting
+#  on the first step, and you will get a 60% longer step size if using NAG.
+nesterov_convex_approx_step <- function(burn_in = 0, use_init_mu = FALSE) {
   make_momentum_step(mu_fn =
                        make_nesterov_convex_approx(burn_in = burn_in,
-                                                   use_mu_zero = use_mu_zero),
+                                                   use_init_mu = use_init_mu),
                      min_momentum = 0,
-                     max_momentum = 1)
+                     max_momentum = 1,
+                     use_init_mom = use_init_mu)
 }
 
 # The NAG pseudo-momentum schedule.

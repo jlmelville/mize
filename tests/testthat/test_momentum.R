@@ -24,11 +24,11 @@ test_that("momentum schedules", {
   expect_equal(step_m(1000), 0.6)
 
   linear_m <- make_ramp(max_iter = 1000, init_value = 0.1, final_value = 0.8)
-  expect_equal(linear_m(0), 0.1)
-  expect_equal(linear_m(500), 0.45)
+  expect_equal(linear_m(1), 0.1)
+  expect_equal(linear_m(500), 0.45, tol = 1e-3)
   expect_equal(linear_m(1000), 0.8)
 
-  nest_m <- make_nesterov_convex_approx(burn_in = 0, use_mu_zero = FALSE)
+  nest_m <- make_nesterov_convex_approx(burn_in = 0, use_init_mu = FALSE)
   expect_equal(nest_m(0), 0)
   expect_equal(nest_m(1), 0.5)
   expect_equal(nest_m(5), 0.7)
@@ -38,7 +38,7 @@ test_that("momentum schedules", {
   expect_equal(nest_m(500), 0.9941, tolerance = 0.0001)
   expect_equal(nest_m(1000), 0.9970, tolerance = 0.0001)
 
-  nest_m <- make_nesterov_convex_approx(burn_in = 0, use_mu_zero = TRUE)
+  nest_m <- make_nesterov_convex_approx(burn_in = 0, use_init_mu = TRUE)
   expect_equal(nest_m(0), 0.4)
   expect_equal(nest_m(1), 0.5)
   expect_equal(nest_m(5), 0.7)
@@ -48,7 +48,7 @@ test_that("momentum schedules", {
   expect_equal(nest_m(500), 0.9941, tolerance = 0.0001)
   expect_equal(nest_m(1000), 0.9970, tolerance = 0.0001)
 
-  nest_m <- make_nesterov_convex_approx(burn_in = 1, use_mu_zero = FALSE)
+  nest_m <- make_nesterov_convex_approx(burn_in = 1, use_init_mu = FALSE)
   expect_equal(nest_m(0), 0)
   expect_equal(nest_m(1), 0)
   expect_equal(nest_m(2), 0.5)
@@ -59,7 +59,7 @@ test_that("momentum schedules", {
   expect_equal(nest_m(501), 0.9941, tolerance = 0.0001)
   expect_equal(nest_m(1001), 0.9970, tolerance = 0.0001)
 
-  nest_m <- make_nesterov_convex_approx(burn_in = 1, use_mu_zero = TRUE)
+  nest_m <- make_nesterov_convex_approx(burn_in = 1, use_init_mu = TRUE)
   expect_equal(nest_m(0), 0)
   expect_equal(nest_m(1), 0.4)
   expect_equal(nest_m(2), 0.5)

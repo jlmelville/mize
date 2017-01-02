@@ -729,7 +729,8 @@ test_that("classical momentum with constant function factory", {
         step_size = make_momentum_step(
           make_constant(
             value = 0.2
-          ))
+          ),
+          use_init_mom = TRUE)
       ),
       verbose = FALSE))
 
@@ -742,7 +743,7 @@ test_that("classical momentum with constant function factory", {
   fs <- c(24.2, 21.95, 19.44, 17.06)
   g2ns <- c(232.87, 217.96, 200.42, 182.69)
   steps <- c(0, 0.01, 0.012, 0.0124)
-  mus <- c(0.2, 0.2, 0.2, 0.2)
+  mus <- c(0, 0.2, 0.2, 0.2)
   par <- c(-1.168, 1.013)
 
   expect_equal(res$progress$nf, nfs)
@@ -766,10 +767,12 @@ test_that("classical momentum with ramp function", {
         direction = momentum_direction(),
         step_size = make_momentum_step(
           make_ramp(
-            init_value = 0.0,
+            init_value = 0.1,
             final_value = 0.3,
-            max_iter = 3
-          ))
+            max_iter = 3,
+            wait = 0
+          ),
+          use_init_mom = TRUE)
       ),
       verbose = FALSE))
 
@@ -782,7 +785,7 @@ test_that("classical momentum with ramp function", {
   fs <- c(24.2, 21.95, 19.44, 16.84)
   g2ns <- c(232.87, 217.96, 200.42, 181.00)
   steps <- c(0, 0.01, 0.012, 0.0136)
-  mus <- c(0.0, 0.1, 0.2, 0.3)
+  mus <- c(0, 0.1, 0.2, 0.3)
   par <- c(-1.167, 1.014)
 
   expect_equal(res$progress$nf, nfs)
@@ -809,7 +812,8 @@ test_that("classical momentum with switch function", {
             init_value = 0.5,
             final_value = 0.8,
             switch_iter = 2
-          ))
+          ),
+          use_init_mom = TRUE)
       ),
       verbose = FALSE))
 
@@ -822,7 +826,7 @@ test_that("classical momentum with switch function", {
   fs <- c(24.2, 21.95, 18.26, 14.00)
   g2ns <- c(232.87, 217.96, 191.79, 157.67)
   steps <- c(0, 0.01, 0.018, 0.0244)
-  mus <- c(0.5, 0.5, 0.8, 0.8)
+  mus <- c(0, 0.5, 0.8, 0.8)
   par <- c(-1.152, 1.020)
 
   expect_equal(res$progress$nf, nfs)
@@ -1119,7 +1123,7 @@ test_that("NAG with approximate convex momentum", {
         step_size = more_thuente_ls(c2 = 1.e-9)),
       momentum_stage(
         direction = nesterov_momentum_direction(),
-        step_size = nesterov_convex_approx_step()
+        step_size = nesterov_convex_approx_step(use_init_mu = FALSE)
       ),
       verbose = FALSE))
 
@@ -1127,15 +1131,15 @@ test_that("NAG with approximate convex momentum", {
                  store_progress = TRUE, verbose = FALSE, count_res_fg = FALSE,
                  grad_tol = 1e-5)
 
-  nfs <- c(0, 9, 15, 26)
-  ngs <- c(0, 9, 15, 26)
-  fs <- c(24.2, 8.223, 4.097, 15.55)
-  g2ns <- c(232.87, 86.69, 1.791, 77.44)
-  steps <- c(0, 0.275, 0.0926, 1.703)
+  nfs <- c(0, 9, 17, 22)
+  ngs <- c(0, 9, 17, 22)
+  fs <- c(24.2, 4.128, 4.004, 3.337)
+  g2ns <- c(232.87, 1.777, 30.137, 7.777)
+  steps <- c(0, 0.184, 0.369, 0.0999)
   # From reading the Sutskever paper, it seems to be the case that mu = 0.4
   # (from t = 0) is not intended to ever be used, so default is that mu = 0
-  mus <- c(0, 0.5, 0.571, 0.625)
-  par <- c(-0.09, -0.371)
+  mus <- c(0, 0, 0.571, 0.625)
+  par <- c(-0.805, 0.676)
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
@@ -1146,7 +1150,7 @@ test_that("NAG with approximate convex momentum", {
   expect_equal(res$par, par, tol = 1e-3)
 })
 
-test_that("NAG with approximate convex momentum and mu = 0.4 at t = 0", {
+test_that("NAG with approximate convex momentum and mu = 0.5 at t = 1", {
 
   opt <- make_opt(
     make_stages(
@@ -1155,7 +1159,7 @@ test_that("NAG with approximate convex momentum and mu = 0.4 at t = 0", {
         step_size = more_thuente_ls(c2 = 1.e-9)),
       momentum_stage(
         direction = nesterov_momentum_direction(),
-        step_size = nesterov_convex_approx_step(use_mu_zero = TRUE)
+        step_size = nesterov_convex_approx_step(use_init_mu = TRUE)
       ),
       verbose = FALSE))
 
@@ -1168,10 +1172,10 @@ test_that("NAG with approximate convex momentum and mu = 0.4 at t = 0", {
   fs <- c(24.2, 8.223, 4.097, 15.55)
   g2ns <- c(232.87, 86.69, 1.791, 77.44)
   steps <- c(0, 0.275, 0.0926, 1.703)
-  # Only difference from previous test is that mu = 0.4 at t = 0
-  # Can have an effect if linearly weighting momentum:
-  # only get 0.6 of grad step on first step
-  mus <- c(0.4, 0.5, 0.571, 0.625)
+  # Only difference from previous test is that mu = 0.5 at t = 1
+  # But affects length of gradient descent step even though velocity is 0 for
+  # momentum step
+  mus <- c(0, 0.5, 0.571, 0.625)
   par <- c(-0.09, -0.371)
 
   expect_equal(res$progress$nf, nfs)
