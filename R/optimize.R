@@ -195,6 +195,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
   if (!ret_opt) {
     res["opt"] <- NULL
   }
+
   if (is.null(terminate$what)) {
     terminate <- list(what = "max_iter", val = max_iter)
   }
@@ -283,10 +284,12 @@ check_termination <- function(terminate, opt, iter, step = NULL,
             terminate$val <- atol
           }
           else {
-            rtol <- abs(fn_old - fn_new) / min(abs(fn_new), abs(fn_old))
-            if (rtol < rel_tol) {
-              terminate$what <- "rel_tol"
-              terminate$val <- rtol
+            if (!is.null(rel_tol)) {
+              rtol <- abs(fn_old - fn_new) / min(abs(fn_new), abs(fn_old))
+              if (rtol < rel_tol) {
+                terminate$what <- "rel_tol"
+                terminate$val <- rtol
+              }
             }
           }
         }
