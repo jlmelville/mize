@@ -288,7 +288,6 @@ cvsrch <- function(phi, step0, alpha = 1,
     # and compute the directional derivative.
     step <- phi(step$alpha)
     nfev <- nfev + 1
-
     # Test for convergence.
     info <- check_convergence(step0, step, brackt, infoc, stmin, stmax,
                               alpha_min, alpha_max, c1, c2, dgtest, nfev,
@@ -427,6 +426,9 @@ check_convergence <- function(step0, step, brackt, infoc, stmin, stmax,
                               alpha_min, alpha_max, c1, c2, dgtest, nfev,
                               maxfev, xtol) {
   info <- 0
+  if (!is.finite(step$f) || any(is.nan(step$df))) {
+    return(6)
+  }
   if ((brackt && (step$alpha <= stmin || step$alpha >= stmax)) || infoc == 0) {
     # rounding errors prevent further progress
     info <- 6
