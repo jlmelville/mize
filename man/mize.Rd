@@ -542,7 +542,7 @@ res <- mize(rb0, rosenbrock_fg, method = "CG", cg_update = "FR", c2 = 0.1)
 res <- mize(rb0, rosenbrock_fg, method = "MOM", mom_schedule = 0.9)
 
 # Steepest descent with constant momentum in the Nesterov style as described
-# by Sutskever and co-workers
+# in papers by Sutskever and Bengio
 res <- mize(rb0, rosenbrock_fg, method = "MOM", mom_type = "nesterov",
              mom_schedule = 0.9)
 
