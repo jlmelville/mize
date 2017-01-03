@@ -544,6 +544,20 @@ I have no advice on how you should go about estimating the right value for
 `nest_q`. However, see the section on Adaptive Restart for ways to ameliorate 
 the problem.
 
+To get the theoretical guarantees about convergence, you actually need to follow
+a fairly strict formula about what the step size should be (it's related to the
+reciprocal of the Lipschitz constant of the function), and 
+[Sutskever](http://hdl.handle.net/1807/36012) notes that for non-convex 
+functions (with sparse stochastic gradient) the theoretically optimal momentum 
+and step size values are too aggressive. Alas, the best advice (at least for
+deep learning applications) given was "manual tuning".
+
+There are connections between NAG and classical momentum, and there is some
+evidence (at least in deep learning) that replacing classical momentum
+with the NAG method, but using the same momentum schedule (see below) can 
+improve results. I have written more (much more) on the subject 
+[here](https://jlmelville.github.io/mize/nesterov.html).
+
 ### Classical Momentum (`"MOM"`)
 
 Momentum methods use steepest descent and then add a fraction of the previous
@@ -654,7 +668,8 @@ on the Rosenbrock function:
 resc <- mize(rb0, rb_fg, max_iter = 100, method = "MOM", mom_schedule = 0.9, 
              store_progress = TRUE)
 resn <- mize(rb0, rb_fg, max_iter = 100, method = "MOM", mom_schedule = 0.9, 
-             mom_type = "nesterov", store_progress = TRUE)
+             mom_type = "nesterov", 
+             store_progress = TRUE)
 # Best f found for Nesterov momentum
 resn$f
 # Best f found for classical momentum
@@ -665,9 +680,8 @@ lines(resn$progress$nf, log(resn$progress$f), col = "red")
 ```
 
 The Nesterov momentum is in red. And yes, it's a lot smoother. On the other 
-hand, you can see that the cost function is higher after 100 iterations with
-Nesterov momentum. On yet another hand, `mize` returns the best value found,
-not the last value found, and that happens to be better with nesterov momentum.
+hand, you can see that the cost function increases and then levels off.
+Clearly, some tweaking of the correct momentum schedule to use is needed.
 
 Sutskever also came up with a simplified approximation to the momentum schedule
 used in NAG. It doesn't have a big effect on the run time, only applies for
@@ -680,12 +694,6 @@ res <- mize(rb0, rb_fg, max_iter = 10, method = "MOM",
             mom_schedule = "nsconvex", nest_convex_approx = TRUE, 
             mom_type = "nesterov")
 ```
-
-While the `"nesterov"` momentum type is available, I recommend using the 
-`"NAG"` method instead, which calculates the gradient at the expected location
-and is therefore less likely to interact with other parts of `mize` 
-(like adaptive restart, see below) in unexpected ways. You can use a different
-`mom_schedule` with the NAG just like with the momentum method.
 
 ## Line Searches
 
@@ -952,8 +960,8 @@ lines(resf$progress$nf, log(resf$progress$f), col = "red")
 lines(resg$progress$nf, log(resg$progress$f), col = "blue")
 ```
 
-Adaptive restart (red and blue lines) certainly seems to help here, although 
-the gradient restart (blue line) looks more effective.
+Adaptive restart (red and blue lines) certainly seems to help here, although
+with either gradient or function-based restart seeming equally effective.
 
 The only downside to adaptive restart is that you may want to choose the type
 of restart to not require more overhead of function and gradient calls than
@@ -965,4 +973,35 @@ in the right location to be of use. In that case, you are better off using
 function-based restarting, although if you aren't checking convergence
 with a function calculation or using a line search method that makes use of
 the function at the starting point, you will obviously incur the overhead
-of the function call.
+of the function call. This is one reason to favour using the NAG method directly
+rather than emulating it with Nesterov momentum.
+
+There is also a `restart_wait` parameter. This determines how many iterations 
+to wait between attempted restarts. By default, using the value from the paper
+of Su and co-workers, we wait 10 iterations before allowing another restart.
+Making the wait time too short may lead to premature convergence:
+
+```{r momentum with restart and wait time}
+resfw <- mize(rb0, rb_fg, max_iter = 100, method = "MOM", mom_schedule = 0.9, 
+             store_progress = TRUE, restart = "fn", restart_wait = 1)
+resgw <- mize(rb0, rb_fg, max_iter = 100, method = "MOM", mom_schedule = 0.9, 
+             store_progress = TRUE, restart = "gr", restart_wait = 1)
+plot(resc$progress$nf, log(resc$progress$f), type = "l", 
+     ylim = range(log(resc$progress$f), log(resf$progress$f),
+                  log(resg$progress$f), log(resfw$progress$f),
+                  log(resgw$progress$f)))
+lines(resf$progress$nf, log(resf$progress$f), col = "red")
+lines(resfw$progress$nf, log(resfw$progress$f), col = "blue")
+lines(resgw$progress$nf, log(resgw$progress$f), col = "orange")
+```
+
+Here, reducing the wait time to 1 had a great effect on gradient restarting
+(the orange line), it substantially outperforms the other methods.
+On the other hand, function restarting more often (the blue line) led to worse 
+performance.
+
+There is also a `"speed"` restart type, related to a restart strategy 
+introduced by [Su and co-workers](https://papers.nips.cc/paper/5322-a-differential-equation-for-modeling-nesterovs-accelerated-gradient-method-theory-and-insights), which restarts if the update vector doesn't
+increase in length (as measured by Euclidean 2-norm) between iterations.
+This seems less performant in their experiments than gradient-based restarting,
+but might provide more stability under some circumstances.

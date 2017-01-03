@@ -121,8 +121,8 @@ update is weighted using momentum contribution.}
 the first iteration is non-zero. Otherwise, it's zero. Only applies if
 using a momentum schedule.}
 
-\item{restart}{Momentum restart type. Can be one of "fn" or "gr". See
-'Details'. Ignored if no momentum scheme is being used.}
+\item{restart}{Momentum restart type. Can be one of "fn", "gr" or "speed".
+See Details'. Ignored if no momentum scheme is being used.}
 
 \item{restart_wait}{Number of iterations to wait between restarts. Ignored
 if \code{restart} is \code{NULL}.}
@@ -407,13 +407,16 @@ through the momentum arguments:
 }
 
 The \code{restart} parameter provides a way to restart the momentum if the
-optimization appears to be not be making progress, using the method of
-O'Donoghue and Candes. There are two strategies:
+optimization appears to be not be making progress, inspired by the method
+of O'Donoghue and Candes (2013) and Su and co-workers (2014). There are three
+strategies:
 \itemize{
   \item{\code{"fn"}} A restart is applied if the function does not decrease
   on consecutive iterations.
   \item{\code{"gr"}} A restart is applied if the direction of the
   optimization is not a descent direction.
+  \item{\code{"speed"}} A restart is applied if the update vector is not
+  longer (as measured by Euclidean 2-norm) in consecutive iterations.
 }
 
 The effect of the restart is to "forget" any previous momentum update vector,
@@ -423,7 +426,8 @@ is \code{"nesterov"}, the gradient-based restart is not available. The
 \code{restart_wait} parameter controls how many iterations to wait after a
 restart, before allowing another restart. Must be a positive integer. Default
 is 10, as used by Su and co-workers (2014). Setting this too low could
-cause premature convergence.
+cause premature convergence. These methods were developed specifically
+for the NAG method, but can be employed with any momentum type and schedule.
 
 If \code{method} type \code{"momentum"} is specified with no other values,
 the momentum scheme will default to a constant value of \code{0.9}.

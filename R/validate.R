@@ -24,6 +24,17 @@ attr(require_validate_gr, 'name') <- 'validate_gr'
 attr(require_validate_gr, 'event') <- 'during validation'
 attr(require_validate_gr, 'depends') <- 'gradient save_cache_on_failure'
 
+# Checks that the update vector is getting larger
+require_validate_speed <- function(opt, par, fg, iter, par0, update) {
+  if (can_restart(opt, iter)) {
+    opt$ok <- sqnorm2(update) > sqnorm2(opt$cache$update_old)
+  }
+  opt
+}
+attr(require_validate_speed, 'name') <- 'validate_speed'
+attr(require_validate_speed, 'event') <- 'during validation'
+attr(require_validate_speed, 'depends') <- 'save_cache_on_failure'
+
 # Validate Dependencies ------------------------------------------------------------
 
 # Caches the current fn value
