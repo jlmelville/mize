@@ -489,6 +489,10 @@
 #' Adaptive restart for accelerated gradient schemes.
 #' \emph{Foundations of computational mathematics}, \emph{15}(3), 715-732.
 #'
+#' Schmidt, M. (2005).
+#' minFunc: unconstrained differentiable multivariate optimization in Matlab.
+#' \href{http://www.cs.ubc.ca/~schmidtm/Software/minFunc.html}
+#'
 #' Su, W., Boyd, S., & Candes, E. (2014).
 #' A differential equation for modeling Nesterov's accelerated gradient method: theory and insights.
 #' In \emph{Advances in Neural Information Processing Systems} (pp. 2510-2518).
