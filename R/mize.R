@@ -491,7 +491,7 @@
 #'
 #' Schmidt, M. (2005).
 #' minFunc: unconstrained differentiable multivariate optimization in Matlab.
-#' \href{http://www.cs.ubc.ca/~schmidtm/Software/minFunc.html}
+#' \url{http://www.cs.ubc.ca/~schmidtm/Software/minFunc.html}
 #'
 #' Su, W., Boyd, S., & Candes, E. (2014).
 #' A differential equation for modeling Nesterov's accelerated gradient method: theory and insights.
