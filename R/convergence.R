@@ -1,34 +1,27 @@
 # if any of the termination criteria are fulfilled, a list is returned
 # saying which one and what the value was that triggered the termination.
-# Otherwise, an empty list is returned
+# Otherwise, an empty list is returned.
 # Gradient and Function-based termination (abs_tol, rel_tol and grad_tol)
 # are checked only if the function and gradient values were calculated
 # in the optimization step.
 check_mize_convergence <- function(opt, iter, step = NULL) {
 
   convergence <- opt$convergence
-  max_fn <- convergence$max_fn
-  max_gr <- convergence$max_gr
-  max_fg <- convergence$max_fg
-  abs_tol <- convergence$abs_tol
-  rel_tol <- convergence$rel_tol
-  grad_tol <- convergence$grad_tol
-  ginf_tol <- convergence$ginf_tol
-  step_tol <- convergence$step_tol
 
-  terminate <- check_counts(opt, max_fn, max_gr, max_fg)
+  terminate <- check_counts(opt, convergence$max_fn, convergence$max_gr,
+                            convergence$max_fg)
   if (!is.null(terminate)) {
     opt$terminate <- terminate
     return(opt)
   }
 
-  terminate <- check_step_conv(opt, iter, step, step_tol)
+  terminate <- check_step_conv(opt, iter, step, convergence$step_tol)
   if (!is.null(terminate)) {
     opt$terminate <- terminate
     return(opt)
   }
 
-  terminate <- check_gr_conv(opt, grad_tol, ginf_tol)
+  terminate <- check_gr_conv(opt, convergence$grad_tol, convergence$ginf_tol)
   if (!is.null(terminate)) {
     opt$terminate <- terminate
     return(opt)
@@ -40,7 +33,8 @@ check_mize_convergence <- function(opt, iter, step = NULL) {
     convergence$fn_new <- fn_new
     opt$convergence <- convergence
 
-    terminate <- check_fn_conv(opt, iter, fn_old, fn_new, abs_tol, rel_tol)
+    terminate <- check_fn_conv(opt, iter, fn_old, fn_new,
+                               convergence$abs_tol, convergence$rel_tol)
     if (!is.null(terminate)) {
       opt$terminate <- terminate
       return(opt)
