@@ -3,13 +3,13 @@
 # Repeatedly minimizes par using opt until one of the termination conditions
 # is met
 opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
-                    store_progress = FALSE, invalidate_cache = FALSE,
-                    max_fn = Inf, max_gr = Inf, max_fg = Inf,
-                    abs_tol = sqrt(.Machine$double.eps),
-                    rel_tol = abs_tol, grad_tol = NULL, ginf_tol = NULL,
-                    step_tol = .Machine$double.eps,
-                    check_conv_every = 1, log_every = check_conv_every,
-                    ret_opt = FALSE, count_res_fg = TRUE) {
+                     store_progress = FALSE, invalidate_cache = FALSE,
+                     max_fn = Inf, max_gr = Inf, max_fg = Inf,
+                     abs_tol = sqrt(.Machine$double.eps),
+                     rel_tol = abs_tol, grad_tol = NULL, ginf_tol = NULL,
+                     step_tol = .Machine$double.eps,
+                     check_conv_every = 1, log_every = check_conv_every,
+                     ret_opt = FALSE, count_res_fg = TRUE) {
 
   # log_every must be an integer multiple of check_conv_every
   if (!is.null(check_conv_every) && log_every %% check_conv_every != 0) {
@@ -17,19 +17,25 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
   }
 
   opt <- mize_init(opt, par, fg)
-  opt$counts$max_fn <- max_fn
-  opt$counts$max_gr <- max_gr
-  opt$counts$max_fg <- max_fg
+  opt$convergence <- list(
+    max_fn = max_fn,
+    max_gr = max_gr,
+    max_fg = max_fg,
+    abs_tol = abs_tol,
+    rel_tol = rel_tol,
+    grad_tol = grad_tol,
+    ginf_tol = ginf_tol,
+    step_tol = step_tol
+  )
 
   progress <- data.frame()
-  terminate <- list()
 
   # Whether and what function convergence info to calculate
   calc_fn <- (is.numeric(abs_tol) && is.finite(abs_tol)) ||
-             (is.numeric(rel_tol) && is.finite(rel_tol))
+    (is.numeric(rel_tol) && is.finite(rel_tol))
   # Whether and what gradient convergence info to calculate
   calc_gr <- (is.numeric(grad_tol) && is.finite(grad_tol)) ||
-             (is.numeric(ginf_tol) && is.finite(ginf_tol))
+    (is.numeric(ginf_tol) && is.finite(ginf_tol))
   gr_norms <- c()
   if (is.numeric(grad_tol) && is.finite(grad_tol)) {
     gr_norms <- c(gr_norms, 2)
@@ -88,9 +94,8 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
       step_res <- mize_step(opt, par, fg, iter)
       opt <- step_res$opt
       par <- step_res$par
-      if (!is.null(opt$error)) {
-        terminate$what <- opt$error
-        terminate$val <- "Error"
+
+      if (!is.null(opt$terminate)) {
         break
       }
 
@@ -99,13 +104,11 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
       # So if we are limiting the number of function evaluations, we need to keep
       # one spare to evaluate fn after the loop finishes for when we return par
       if (iter == 1) {
-        # message("has fn curr? ", has_fn_curr(opt, iter + 1))
-        # message("counts before = ", fn_count_before, " counts after = ", opt$counts$fn)
         if (!has_fn_curr(opt, iter + 1)) {
           if (fn_count_before != opt$counts$fn) {
-            opt$counts$max_fn <- opt$counts$max_fn - 1
+            opt$convergence$max_fn <- opt$convergence$max_fn - 1
           }
-          opt$counts$max_fg <- opt$counts$max_fg - 1
+          opt$convergence$max_fg <- opt$convergence$max_fg - 1
         }
       }
 
@@ -123,14 +126,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
           opt_report(res, print_time = TRUE, print_par = FALSE)
         }
 
-        terminate <- check_termination(terminate, opt, iter = iter,
-                                       step = res$step,
-                                       max_fn = opt$counts$max_fn,
-                                       max_gr = opt$counts$max_gr,
-                                       max_fg = opt$counts$max_fg,
-                                       abs_tol = abs_tol, rel_tol = rel_tol,
-                                       grad_tol = grad_tol, ginf_tol = ginf_tol,
-                                       step_tol = step_tol)
+        opt <-  check_mize_convergence(opt, iter, step = res$step)
       }
 
       # might not have worked out which criterion to use on iteration 0
@@ -153,7 +149,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
         }
       }
 
-      if (!is.null(terminate$what)) {
+      if (!is.null(opt$terminate)) {
         break
       }
     }
@@ -196,10 +192,11 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
     res["opt"] <- NULL
   }
 
-  if (is.null(terminate$what)) {
-    terminate <- list(what = "max_iter", val = max_iter)
+  if (is.null(opt$terminate)) {
+    opt$terminate <- list(what = "max_iter", val = max_iter)
   }
-  res$terminate <- terminate[c("what", "val")]
+  res$terminate <- opt$terminate
+
   Filter(Negate(is.null), res)
 }
 

@@ -1169,15 +1169,15 @@ mize_step <- function(opt, par, fg, iter) {
     opt$stage_i <- i
     stage <- opt$stages[[i]]
     opt <- life_cycle_hook(stage$type, "before", opt, par, fg, iter)
-    if (!is.null(opt$error)) {
+    if (!is.null(opt$terminate)) {
       break
     }
     opt <- life_cycle_hook(stage$type, "during", opt, par, fg, iter)
-    if (!is.null(opt$error)) {
+    if (!is.null(opt$terminate)) {
       break
     }
     opt <- life_cycle_hook(stage$type, "after", opt, par, fg, iter)
-    if (!is.null(opt$error)) {
+    if (!is.null(opt$terminate)) {
       break
     }
 
@@ -1195,12 +1195,12 @@ mize_step <- function(opt, par, fg, iter) {
     }
 
     opt <- life_cycle_hook("stage", "after", opt, par, fg, iter)
-    if (!is.null(opt$error)) {
+    if (!is.null(opt$terminate)) {
       break
     }
   }
 
-  if (is.null(opt$error)) {
+  if (is.null(opt$terminate)) {
     opt$ok <- TRUE
     if (!opt$eager_update) {
       par <- par + step_result
@@ -1214,11 +1214,11 @@ mize_step <- function(opt, par, fg, iter) {
   }
   # If the this solution was vetoed or something catastrostep_downc happened,
   # roll back to the previous one.
-  if (!is.null(opt$error) || !opt$ok) {
+  if (!is.null(opt$terminate) || !opt$ok) {
     par <- par0
   }
 
-  if (is.null(opt$error)) {
+  if (is.null(opt$terminate)) {
     opt <- life_cycle_hook("step", "after", opt, par, fg, iter, par0,
                          step_result)
   }

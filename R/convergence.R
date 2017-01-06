@@ -4,9 +4,67 @@
 # Gradient and Function-based termination (abs_tol, rel_tol and grad_tol)
 # are checked only if the function and gradient values were calculated
 # in the optimization step.
-check_termination <- function(terminate, opt, iter, step = NULL,
-                              max_fn, max_gr, max_fg,
-                              abs_tol, rel_tol, grad_tol, ginf_tol, step_tol) {
+check_mize_convergence <- function(opt, iter, step = NULL) {
+
+  convergence <- opt$convergence
+  max_fn <- convergence$max_fn
+  max_gr <- convergence$max_gr
+  max_fg <- convergence$max_fg
+  abs_tol <- convergence$abs_tol
+  rel_tol <- convergence$rel_tol
+  grad_tol <- convergence$grad_tol
+  ginf_tol <- convergence$ginf_tol
+  step_tol <- convergence$step_tol
+
+  terminate <- check_counts(opt, max_fn, max_gr, max_fg)
+  if (!is.null(terminate)) {
+    opt$terminate <- terminate
+    return(opt)
+  }
+
+  terminate <- check_step_conv(opt, iter, step, step_tol)
+  if (!is.null(terminate)) {
+    opt$terminate <- terminate
+    return(opt)
+  }
+
+  terminate <- check_gr_conv(opt, grad_tol, ginf_tol)
+  if (!is.null(terminate)) {
+    opt$terminate <- terminate
+    return(opt)
+  }
+
+  if (!is.null(opt$cache$fn_curr)) {
+    fn_new <- opt$cache$fn_curr
+    fn_old <- convergence$fn_new
+    convergence$fn_new <- fn_new
+    opt$convergence <- convergence
+
+    terminate <- check_fn_conv(opt, iter, fn_old, fn_new, abs_tol, rel_tol)
+    if (!is.null(terminate)) {
+      opt$terminate <- terminate
+      return(opt)
+    }
+  }
+
+  opt
+}
+
+# Returns a termination list if step falls below step_tol
+# A zero step is allowed if this is a restart step
+check_step_conv <- function(opt, iter, step = NULL, step_tol = NULL) {
+  if (is.null(step) || is.null(step_tol) || is_restart_iter(opt, iter) ||
+      step >= step_tol) {
+    return()
+  }
+
+  list(what = "step_tol", val = step)
+}
+
+# Return a termination list if maximum number of function and/or gradient
+# calls has been exceeded
+check_counts <- function(opt, max_fn, max_gr, max_fg) {
+  terminate <- NULL
   if (opt$counts$fn >= max_fn) {
     terminate <- list(
       what = "max_fn",
@@ -25,78 +83,73 @@ check_termination <- function(terminate, opt, iter, step = NULL,
       val = opt$counts$fn + opt$counts$gr
     )
   }
-  else if (step_converged(opt, iter, step, step_tol)) {
-    terminate <- list(
-      what = "step_tol",
-      val = step
-    )
-  }
-  if (!is.null(grad_tol) && !is.null(opt$cache$gr_curr)) {
-    if (any(!is.finite(opt$cache$gr_curr))) {
-      terminate$what <- "gr_inf"
-      terminate$val <- Inf
-      return(terminate)
-    }
-    gtol <- norm2(opt$cache$gr_curr)
-    if (gtol <= grad_tol) {
-      terminate <- list(
-        what = "grad_tol",
-        val = gtol
-      )
-    }
-  }
-  if (!is.null(ginf_tol) && !is.null(opt$cache$gr_curr)) {
-    if (any(!is.finite(opt$cache$gr_curr))) {
-      terminate$what <- "gr_inf"
-      terminate$val <- Inf
-      return(terminate)
-    }
-    gitol <- norm_inf(opt$cache$gr_curr)
-    if (gitol <= ginf_tol) {
-      terminate <- list(
-        what = "ginf_tol",
-        val = gitol
-      )
-    }
-  }
-  if (!is.null(rel_tol) || !is.null(abs_tol)) {
-    if (!is.null(opt$cache$fn_curr)) {
-      fn_new <- opt$cache$fn_curr
-      if (!is.finite(fn_new)) {
-        terminate$what <- "fn_inf"
-        terminate$val <- fn_new
-        return(terminate)
-      }
-
-      if (!is.null(terminate$fn_new)) {
-        fn_old <- terminate$fn_new
-        atol <- abs(fn_old - fn_new)
-        if (is.null(opt$restart_at) || (opt$restart_at != iter)) {
-          if (!is.null(abs_tol) && atol < abs_tol) {
-            terminate$what <- "abs_tol"
-            terminate$val <- atol
-          }
-          else {
-            if (!is.null(rel_tol)) {
-              rtol <- abs(fn_old - fn_new) / min(abs(fn_new), abs(fn_old))
-              if (rtol < rel_tol) {
-                terminate$what <- "rel_tol"
-                terminate$val <- rtol
-              }
-            }
-          }
-        }
-      }
-
-      terminate$fn_new <- fn_new
-    }
-  }
   terminate
 }
 
-step_converged <- function(opt, iter, step = NULL, step_tol = NULL) {
-  !is.null(step) &&
-  !is.null(step_tol) &&
-  step < step_tol &&
-  (is.null(opt$restart_at) || opt$restart_at != iter)
+# Return a termination list if the gradient 2 norm tolerance (grad_tol) or
+# infinity norm tolerance is reached. Termination is also indicated if
+# any element of the gradient vector is not finite. Requires the gradient
+# have already been calculated - this routine does NOT calculate it if it's
+# not present
+check_gr_conv <- function(opt, grad_tol, ginf_tol) {
+  if (is.null(opt$cache$gr_curr)) {
+    return()
+  }
+
+  if (any(!is.finite(opt$cache$gr_curr))) {
+    return(list(what = "gr_inf", val = Inf))
+  }
+
+  if (!is.null(grad_tol)) {
+    gtol <- norm2(opt$cache$gr_curr)
+    if (gtol <= grad_tol) {
+      return(list(what = "grad_tol", val = gtol))
+    }
+  }
+
+  if (!is.null(ginf_tol)) {
+    gitol <- norm_inf(opt$cache$gr_curr)
+    if (gitol <= ginf_tol) {
+      return(list(what = "ginf_tol", val = gitol))
+    }
+  }
 }
+
+# Return a termination list if the absolute or relative tolerance is reached
+# for the difference between fn_old and fn_new. Termination is also indicated
+# if fn_new is non-finite. Tolerance is not checked if this is a restart
+# iteration.
+check_fn_conv <- function(opt, iter, fn_old, fn_new, abs_tol, rel_tol) {
+  if (!is.finite(fn_new)) {
+    return(list(what = "fn_inf", val = fn_new))
+  }
+
+  if (is.null(fn_old)) {
+    return()
+  }
+
+  if (is_restart_iter(opt, iter)) {
+    return()
+  }
+
+  if (!is.null(abs_tol)) {
+    atol <- abs(fn_old - fn_new)
+    if (atol < abs_tol) {
+      return(list(what = "abs_tol", val = atol))
+    }
+  }
+
+  if (!is.null(rel_tol)) {
+    rtol <- abs(fn_old - fn_new) / min(abs(fn_new), abs(fn_old))
+    if (rtol < rel_tol) {
+      return(list(what = "rel_tol", val = rtol))
+    }
+  }
+}
+
+# True if this iteration was marked as a restart
+# Zero step size and function difference is allowed under these circumstances.
+is_restart_iter <- function(opt, iter) {
+  !is.null(opt$restart_at) && opt$restart_at == iter
+}
+

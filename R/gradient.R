@@ -446,6 +446,10 @@ require_gradient <- function(opt, stage, par, fg, iter) {
 
     if (any(!is.finite(opt$cache$gr_curr))) {
       opt$error <- "gr_inf"
+      opt$terminate <- list(
+        what = "gr_inf",
+        val = Inf
+      )
     }
   }
 

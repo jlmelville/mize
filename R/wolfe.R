@@ -161,14 +161,14 @@ line_search <- function(ls_fn,
       max_fn <- Inf
       max_gr <- Inf
       max_fg <- Inf
-      if (!is.null(opt$counts$max_fn) && is.finite(opt$counts$max_fn)) {
-        max_fn <- opt$counts$max_fn - opt$counts$fn
+      if (!is.null(opt$convergence$max_fn) && is.finite(opt$convergence$max_fn)) {
+        max_fn <- opt$convergence$max_fn - opt$counts$fn
       }
-      if (!is.null(opt$counts$max_gr) && is.finite(opt$counts$max_gr)) {
-        max_gr <- opt$counts$max_gr - opt$counts$gr
+      if (!is.null(opt$convergence$max_gr) && is.finite(opt$convergence$max_gr)) {
+        max_gr <- opt$convergence$max_gr - opt$counts$gr
       }
-      if (!is.null(opt$counts$max_fg) && is.finite(opt$counts$max_fg)) {
-        max_fg <- opt$counts$max_fg - (opt$counts$fn + opt$counts$gr)
+      if (!is.null(opt$convergence$max_fg) && is.finite(opt$convergence$max_fg)) {
+        max_fg <- opt$convergence$max_fg - (opt$counts$fn + opt$counts$gr)
       }
       if (max_fn <= 0 || max_gr <= 0 || max_fg <= 0) {
         sub_stage$value <- 0

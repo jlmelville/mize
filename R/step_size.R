@@ -227,12 +227,12 @@ backtracking <- function(rho = 0.5,
 
 max_fn_per_ls <- function(opt, max_ls_fn = Inf) {
   max_fn <- max_ls_fn
-  if (!is.null(opt$counts$max_fn)) {
-    max_fn <- min(max_fn, opt$counts$max_fn - opt$counts$fn)
+  if (!is.null(opt$convergence$max_fn)) {
+    max_fn <- min(max_fn, opt$convergence$max_fn - opt$counts$fn)
   }
-  if (!is.null(opt$counts$max_fg)) {
+  if (!is.null(opt$convergence$max_fg)) {
     max_fn <- min(max_fn,
-                  opt$counts$max_fg - (opt$counts$fn + opt$counts$gr))
+                  opt$convergence$max_fg - (opt$counts$fn + opt$counts$gr))
   }
   max_fn
 }
