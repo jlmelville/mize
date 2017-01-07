@@ -23,10 +23,10 @@ test_that("momentum schedules", {
   expect_equal(step_m(101), 0.6)
   expect_equal(step_m(1000), 0.6)
 
-  linear_m <- make_ramp(max_iter = 1000, init_value = 0.1, final_value = 0.8)
-  expect_equal(linear_m(1), 0.1)
-  expect_equal(linear_m(500), 0.45, tol = 1e-3)
-  expect_equal(linear_m(1000), 0.8)
+  linear_m <- make_ramp(init_value = 0.1, final_value = 0.8)
+  expect_equal(linear_m(1, max_iter = 1000), 0.1)
+  expect_equal(linear_m(500, max_iter = 1000), 0.45, tol = 1e-3)
+  expect_equal(linear_m(1000, max_iter = 1000), 0.8)
 
   nest_m <- make_nesterov_convex_approx(burn_in = 0, use_init_mu = FALSE)
   expect_equal(nest_m(0), 0)

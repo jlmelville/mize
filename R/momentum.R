@@ -87,24 +87,22 @@ make_switch <- function(init_value = 0.5, final_value = 0.8,
 # max_iter iterations. Iter 0 will always return a value of zero, iter 1
 # begins with init_value.
 #
-# shift - if set to a non-zero value, recalculates the values so that
-# the init_value is used for 'shift' extra iterations, but with final_value
+# wait - if set to a non-zero value, recalculates the values so that
+# the init_value is used for 'wait' extra iterations, but with final_value
 # still reached after max_iter iterations. Set to 1 for momentum calculations
 # where in most cases the momentum on the first iteration would be either
 # ignored or the value overridden and set to zero anyway. Stops a larger than
 # expected jump on iteration 2.
-make_ramp <- function(max_iter,
-                      init_value = 0,
+make_ramp <- function(init_value = 0,
                       final_value = 0.9,
                       wait = 0) {
 
-  # actual number of iterations
-  iters <- max_iter - 1 - wait
-  # denominator of linear scaling
-  n <- max(iters, 1)
-  m <- (final_value - init_value) / n
-
   function(iter, max_iter) {
+    # actual number of iterations
+    iters <- max_iter - 1 - wait
+    # denominator of linear scaling
+    n <- max(iters, 1)
+    m <- (final_value - init_value) / n
     t <- iter - 1 - wait
     if (t < 0) {
       return(init_value)

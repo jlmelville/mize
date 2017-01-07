@@ -180,8 +180,7 @@
 #'   \code{mom_init}) to another (\code{mom_final}) at a
 #'   a specified iteration (\code{mom_switch_iter}).
 #'   \item{\code{"ramp"}} Linearly increase from one momentum value
-#'   (\code{mom_init}) to another (\code{mom_final}) over the specified
-#'   period (\code{max_iter}).
+#'   (\code{mom_init}) to another (\code{mom_final}).
 #'   \item{If a function is provided, this will be invoked to provide a momentum
 #'   value. It must take one argument (the current iteration number) and return
 #'   a scalar.}
@@ -735,8 +734,6 @@ mize <- function(par, fg,
 #' @param use_init_mom If \code{TRUE}, then the momentum coefficient on the
 #'   first iteration is non-zero. Otherwise, it's zero. Only applies if using a
 #'   momentum schedule.
-#' @param max_iter Maximum number of iterations the optimization will be carried
-#'   out over. Used only if \code{mom_schedule} is set to \code{"ramp"}.
 #' @param restart Momentum restart type. Can be one of "fn" or "gr". See
 #'   'Details' of \code{\link{mize}}.
 #' @param restart_wait Number of iterations to wait between restarts. Ignored if
@@ -744,6 +741,8 @@ mize <- function(par, fg,
 #' @param par (Optional) Initial values for the function to be optimized over.
 #' @param fg (Optional). Function and gradient list. See 'Details' of
 #'   \code{\link{mize}}.
+#' @param max_iter (Optional). Maximum number of iterations. See the
+#'   'Convergence' section of \code{\link{mize}} for details.
 #' @param max_fn (Optional). Maximum number of function evaluations. See the
 #'   'Convergence' section of \code{\link{mize}} for details.
 #' @param max_gr (Optional). Maximum number of gradient evaluations. See the
@@ -814,11 +813,11 @@ make_mize <- function(method = "L-BFGS",
                       mom_switch_iter = NULL,
                       mom_linear_weight = FALSE,
                       use_init_mom = FALSE,
-                      max_iter = NULL,
                       restart = NULL,
                       restart_wait = 10,
                       par = NULL,
                       fg = NULL,
+                      max_iter = 100,
                       max_fn = Inf, max_gr = Inf, max_fg = Inf,
                       abs_tol = sqrt(.Machine$double.eps),
                       rel_tol = abs_tol, grad_tol = NULL, ginf_tol = NULL,
@@ -1066,8 +1065,7 @@ make_mize <- function(method = "L-BFGS",
 
       mom_step <- switch(mom_schedule,
         ramp = make_momentum_step(
-          make_ramp(max_iter = max_iter,
-                    init_value = mom_init,
+          make_ramp(init_value = mom_init,
                     final_value = mom_final,
                     wait = ifelse(use_init_mom, 0, 1)),
           use_init_mom = use_init_mom),
@@ -1288,6 +1286,8 @@ mize_step <- function(opt, par, fg) {
 #' @param par Vector of initial values for the function to be optimized over.
 #' @param fg Function and gradient list. See the documentaion of
 #'   \code{\link{mize}}.
+#' @param max_iter (Optional). Maximum number of iterations. See the
+#'   'Convergence' section of \code{\link{mize}} for details.
 #' @param max_fn (Optional). Maximum number of function evaluations. See the
 #'   'Convergence' section of \code{\link{mize}} for details.
 #' @param max_gr (Optional). Maximum number of gradient evaluations. See the

@@ -12,8 +12,8 @@ make_mize(method = "L-BFGS", norm_direction = FALSE, scale_hess = TRUE,
   try_newton_step = NULL, ls_max_fn = 20, ls_max_gr = Inf,
   ls_max_fg = Inf, mom_type = NULL, mom_schedule = NULL,
   mom_init = NULL, mom_final = NULL, mom_switch_iter = NULL,
-  mom_linear_weight = FALSE, use_init_mom = FALSE, max_iter = NULL,
-  restart = NULL, restart_wait = 10, par = NULL, fg = NULL,
+  mom_linear_weight = FALSE, use_init_mom = FALSE, restart = NULL,
+  restart_wait = 10, par = NULL, fg = NULL, max_iter = 100,
   max_fn = Inf, max_gr = Inf, max_fg = Inf,
   abs_tol = sqrt(.Machine$double.eps), rel_tol = abs_tol, grad_tol = NULL,
   ginf_tol = NULL, step_tol = .Machine$double.eps)
@@ -117,9 +117,6 @@ update is weighted using momentum contribution.}
 first iteration is non-zero. Otherwise, it's zero. Only applies if using a
 momentum schedule.}
 
-\item{max_iter}{Maximum number of iterations the optimization will be carried
-out over. Used only if \code{mom_schedule} is set to \code{"ramp"}.}
-
 \item{restart}{Momentum restart type. Can be one of "fn" or "gr". See
 'Details' of \code{\link{mize}}.}
 
@@ -130,6 +127,9 @@ out over. Used only if \code{mom_schedule} is set to \code{"ramp"}.}
 
 \item{fg}{(Optional). Function and gradient list. See 'Details' of
 \code{\link{mize}}.}
+
+\item{max_iter}{(Optional). Maximum number of iterations. See the
+'Convergence' section of \code{\link{mize}} for details.}
 
 \item{max_fn}{(Optional). Maximum number of function evaluations. See the
 'Convergence' section of \code{\link{mize}} for details.}

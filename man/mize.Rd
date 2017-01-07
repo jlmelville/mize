@@ -397,8 +397,7 @@ through the momentum arguments:
   \code{mom_init}) to another (\code{mom_final}) at a
   a specified iteration (\code{mom_switch_iter}).
   \item{\code{"ramp"}} Linearly increase from one momentum value
-  (\code{mom_init}) to another (\code{mom_final}) over the specified
-  period (\code{max_iter}).
+  (\code{mom_init}) to another (\code{mom_final}).
   \item{If a function is provided, this will be invoked to provide a momentum
   value. It must take one argument (the current iteration number) and return
   a scalar.}

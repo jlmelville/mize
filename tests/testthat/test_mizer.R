@@ -770,7 +770,6 @@ test_that("classical momentum with ramp function", {
           make_ramp(
             init_value = 0.1,
             final_value = 0.3,
-            max_iter = 3,
             wait = 0
           ),
           use_init_mom = TRUE)

@@ -4,9 +4,9 @@
 \alias{mize_init}
 \title{Initialize the Optimizer.}
 \usage{
-mize_init(opt, par, fg, max_fn = Inf, max_gr = Inf, max_fg = Inf,
-  abs_tol = sqrt(.Machine$double.eps), rel_tol = abs_tol, grad_tol = NULL,
-  ginf_tol = NULL, step_tol = .Machine$double.eps)
+mize_init(opt, par, fg, max_iter = 100, max_fn = Inf, max_gr = Inf,
+  max_fg = Inf, abs_tol = sqrt(.Machine$double.eps), rel_tol = abs_tol,
+  grad_tol = NULL, ginf_tol = NULL, step_tol = .Machine$double.eps)
 }
 \arguments{
 \item{opt}{Optimizer, created by \code{\link{make_mize}}.}
@@ -15,6 +15,9 @@ mize_init(opt, par, fg, max_fn = Inf, max_gr = Inf, max_fg = Inf,
 
 \item{fg}{Function and gradient list. See the documentaion of
 \code{\link{mize}}.}
+
+\item{max_iter}{(Optional). Maximum number of iterations. See the
+'Convergence' section of \code{\link{mize}} for details.}
 
 \item{max_fn}{(Optional). Maximum number of function evaluations. See the
 'Convergence' section of \code{\link{mize}} for details.}
