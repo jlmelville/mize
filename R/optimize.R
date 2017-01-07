@@ -25,27 +25,10 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
   }
 
   progress <- data.frame()
-
-  # Whether and what function convergence info to calculate
-  calc_fn <- (is.numeric(abs_tol) && is.finite(abs_tol)) ||
-    (is.numeric(rel_tol) && is.finite(rel_tol))
-  # Whether and what gradient convergence info to calculate
-  calc_gr <- (is.numeric(grad_tol) && is.finite(grad_tol)) ||
-    (is.numeric(ginf_tol) && is.finite(ginf_tol))
-  gr_norms <- c()
-  if (is.numeric(grad_tol) && is.finite(grad_tol)) {
-    gr_norms <- c(gr_norms, 2)
-  }
-  if (is.numeric(ginf_tol) && is.finite(ginf_tol)) {
-    gr_norms <- c(gr_norms, Inf)
-  }
-
   res <- NULL
 
   if (verbose || store_progress) {
-    res <- opt_results(opt, par, fg, 0, count_fg = count_res_fg,
-                       calc_fn = calc_fn,
-                       calc_gr = calc_gr, gr_norms = gr_norms)
+    res <- opt_results(opt, par, fg, 0, count_fg = count_res_fg)
     opt <- res$opt
     if (store_progress) {
       progress <- update_progress(opt_res = res, progress = progress)
@@ -110,9 +93,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
 
       # Check termination conditions
       if (!is.null(check_conv_every) && iter %% check_conv_every == 0) {
-        res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg,
-                           calc_fn = calc_fn,
-                           calc_gr = calc_gr, gr_norms = gr_norms)
+        res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg)
         opt <- res$opt
 
         if (store_progress && iter %% log_every == 0) {
@@ -159,9 +140,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
     opt <- opt_clear_cache(opt)
     opt <- set_fn_curr(opt, best_fn, iter + 1)
     # recalculate result for this iteration
-    res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg,
-                       calc_fn = calc_fn,
-                       calc_gr = calc_gr, gr_norms = gr_norms)
+    res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg)
     if (verbose) {
       message("Returning best result found")
     }
@@ -170,8 +149,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
   if (is.null(res) || res$iter != iter || is.null(res$f)) {
     # Always calculate function value before return
     res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg,
-                       calc_fn = TRUE,
-                       calc_gr = calc_gr, gr_norms = gr_norms)
+                       calc_fn = TRUE)
     opt <- res$opt
   }
   if (verbose && iter %% log_every != 0) {
@@ -221,7 +199,27 @@ opt_clear_cache <- function(opt) {
 # size taken during the optimization step, including momentum.
 # If a momentum stage is present, the value of the momentum is stored as 'mu'.
 opt_results <- function(opt, par, fg, iter, par0 = NULL, count_fg = TRUE,
-                        calc_fn = FALSE, calc_gr = FALSE, gr_norms = c()) {
+                        calc_fn = NULL,
+                        calc_gr = NULL, gr_norms = c()) {
+
+  # Whether and what convergence info to calculate if fn/gr calculation not
+  # explicitly asked for
+  if (is.null(calc_fn)) {
+    calc_fn <- is_finite_numeric(opt$convergence$abs_tol) ||
+               is_finite_numeric(opt$convergence$rel_tol)
+  }
+  if (is.null(calc_gr)) {
+    calc_gr <- is_finite_numeric(opt$convergence$grad_tol) ||
+               is_finite_numeric(opt$convergence$ginf_tol)
+  }
+  if (length(gr_norms) == 0) {
+    if (is_finite_numeric(opt$convergence$grad_tol)) {
+      gr_norms <- c(gr_norms, 2)
+    }
+    if (is_finite_numeric(opt$convergence$ginf_tol)) {
+      gr_norms <- c(gr_norms, Inf)
+    }
+  }
 
   f <- NULL
   if (calc_fn || has_fn_curr(opt, iter + 1)) {

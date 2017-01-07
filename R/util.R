@@ -77,6 +77,10 @@ is_in_range <- function(x, left, right, lopen = TRUE, ropen = TRUE) {
   left %lop% x && x %rop% right
 }
 
+# Checks if nullable x is finite
+is_finite_numeric <- function(x) {
+  is.numeric(x) && is.finite(x)
+}
 
 # Logging Hooks -----------------------------------------------------------
 
