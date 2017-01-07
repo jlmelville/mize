@@ -1104,7 +1104,7 @@ make_mize <- function(method = "L-BFGS",
 
   # Initialize for specific dataset if par and fg are provided
   if (!is.null(par) && !is.null(fg)) {
-    opt <- mize_init(opt, par, fg,
+    opt <- mize_init(opt, par, fg, max_iter = max_iter,
                      max_fn = max_fn, max_gr = max_gr, max_fg = max_fg,
                      abs_tol = abs_tol, rel_tol = rel_tol,
                      grad_tol = grad_tol, ginf_tol = ginf_tol,
@@ -1334,6 +1334,7 @@ mize_step <- function(opt, par, fg) {
 #' }
 #'
 mize_init <- function(opt, par, fg,
+                      max_iter = 100,
                       max_fn = Inf, max_gr = Inf, max_fg = Inf,
                       abs_tol = sqrt(.Machine$double.eps),
                       rel_tol = abs_tol, grad_tol = NULL, ginf_tol = NULL,
@@ -1342,6 +1343,7 @@ mize_init <- function(opt, par, fg,
   opt$iter <- 0
   opt <- life_cycle_hook("opt", "init", opt, par, fg, opt$iter)
   opt$convergence <- list(
+    max_iter = max_iter,
     max_fn = max_fn,
     max_gr = max_gr,
     max_fg = max_fg,
@@ -1578,6 +1580,11 @@ check_mize_convergence <- function(opt, mize_step_info) {
       opt$terminate <- terminate
       return(opt)
     }
+  }
+
+  if (opt$iter == convergence$max_iter) {
+    opt$is_terminated <- TRUE
+    opt$terminate <- list(what = "max_iter", val = convergence$max_iter)
   }
 
   opt

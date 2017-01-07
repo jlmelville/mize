@@ -17,7 +17,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
   }
 
   if (!opt$is_initialized) {
-    opt <- mize_init(opt, par, fg,
+    opt <- mize_init(opt, par, fg, max_iter = max_iter,
                      max_fn = max_fn, max_gr = max_gr, max_fg = max_fg,
                      abs_tol = abs_tol, rel_tol = rel_tol,
                      grad_tol = grad_tol, ginf_tol = ginf_tol,
@@ -166,7 +166,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
   }
 
   if (is.null(opt$terminate)) {
-    opt$terminate <- list(what = "max_iter", val = max_iter)
+    opt$terminate <- list(what = "max_iter", val = opt$convergence$max_iter)
   }
   step_info$terminate <- opt$terminate
 
