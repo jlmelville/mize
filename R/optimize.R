@@ -16,7 +16,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
     log_every <- check_conv_every
   }
 
-  if (is.null(opt$initialized)) {
+  if (!opt$is_initialized) {
     opt <- mize_init(opt, par, fg,
                      max_fn = max_fn, max_gr = max_gr, max_fg = max_fg,
                      abs_tol = abs_tol, rel_tol = rel_tol,
@@ -362,6 +362,7 @@ make_opt <- function(stages,
     handlers = list(),
     eager_update = FALSE,
     is_terminated = FALSE,
+    is_initialized = FALSE,
     verbose = verbose
   )
 

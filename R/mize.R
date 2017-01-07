@@ -1354,7 +1354,7 @@ mize_init <- function(opt, par, fg,
     ginf_tol = ginf_tol,
     step_tol = step_tol
   )
-  opt$initialized <- TRUE
+  opt$is_initialized <- TRUE
   opt
 }
 
