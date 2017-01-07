@@ -9,7 +9,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
                      rel_tol = abs_tol, grad_tol = NULL, ginf_tol = NULL,
                      step_tol = .Machine$double.eps,
                      check_conv_every = 1, log_every = check_conv_every,
-                     ret_opt = FALSE, count_res_fg = TRUE) {
+                     ret_opt = FALSE) {
 
   # log_every must be an integer multiple of check_conv_every
   if (!is.null(check_conv_every) && log_every %% check_conv_every != 0) {

@@ -47,7 +47,7 @@ test_that("counting result fun grad calls increases counts", {
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
                   store_progress = TRUE,
                   verbose = FALSE,
-                  count_res_fg = TRUE, grad_tol = 1e-5)
+                  grad_tol = 1e-5)
 
   # extra f and g calls are recorded corresponding to generating progress
   # data (including during iteration 0)
@@ -84,8 +84,7 @@ test_that("can check convergence less often and get fewer fn/gr calls", {
 
   res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
                   store_progress = TRUE,
-                  verbose = FALSE,
-                  count_res_fg = TRUE, grad_tol = 1e-5, check_conv_every = 1000)
+                  verbose = FALSE, grad_tol = 1e-5, check_conv_every = 1000)
 
   # fewer stored progress values first and last iter only
   # same number of gradient evaluations, but fewer total function evaluations
