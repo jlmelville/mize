@@ -188,7 +188,7 @@ backtracking <- function(rho = 0.5,
 
         while ((!is.finite(opt$fn) || !armijo_ok(f0, d0, alpha, opt$fn, c1))
                && alpha > sub_stage$min_value
-               && opt$count$fn < max_fn) {
+               && opt$counts$fn < max_fn) {
           alpha <- sclamp(alpha * rho,
                           min = sub_stage$min_value,
                           max = sub_stage$max_value)
