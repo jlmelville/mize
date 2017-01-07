@@ -28,7 +28,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
   res <- NULL
 
   if (verbose || store_progress) {
-    res <- opt_results(opt, par, fg, 0, count_fg = count_res_fg)
+    res <- opt_results(opt, par, fg, 0)
     opt <- res$opt
     if (store_progress) {
       progress <- update_progress(opt_res = res, progress = progress)
@@ -93,7 +93,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
 
       # Check termination conditions
       if (!is.null(check_conv_every) && iter %% check_conv_every == 0) {
-        res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg)
+        res <- opt_results(opt, par, fg, iter, par0)
         opt <- res$opt
 
         if (store_progress && iter %% log_every == 0) {
@@ -140,7 +140,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
     opt <- opt_clear_cache(opt)
     opt <- set_fn_curr(opt, best_fn, iter + 1)
     # recalculate result for this iteration
-    res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg)
+    res <- opt_results(opt, par, fg, iter, par0)
     if (verbose) {
       message("Returning best result found")
     }
@@ -148,8 +148,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
 
   if (is.null(res) || res$iter != iter || is.null(res$f)) {
     # Always calculate function value before return
-    res <- opt_results(opt, par, fg, iter, par0, count_fg = count_res_fg,
-                       calc_fn = TRUE)
+    res <- opt_results(opt, par, fg, iter, par0, calc_fn = TRUE)
     opt <- res$opt
   }
   if (verbose && iter %% log_every != 0) {
@@ -198,9 +197,19 @@ opt_clear_cache <- function(opt) {
 # descent stage (i.e. the result of the line search). Step is the total step
 # size taken during the optimization step, including momentum.
 # If a momentum stage is present, the value of the momentum is stored as 'mu'.
-opt_results <- function(opt, par, fg, iter, par0 = NULL, count_fg = TRUE,
+opt_results <- function(opt, par, fg, iter, par0 = NULL,
                         calc_fn = NULL,
                         calc_gr = NULL, gr_norms = c()) {
+
+  # An internal flag useful for unit tests: if FALSE, doesn't count any
+  # fn/gr calculations towards their counts. Can still get back fn/gr values
+  # without confusing the issue of the expected number of fn/gr evaluations
+  if (!is.null(opt$count_res_fg)) {
+    count_fg <- opt$count_res_fg
+  }
+  else {
+    count_fg <- TRUE
+  }
 
   # Whether and what convergence info to calculate if fn/gr calculation not
   # explicitly asked for

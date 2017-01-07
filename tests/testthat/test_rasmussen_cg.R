@@ -18,10 +18,11 @@ test_that("CG gives same results as minimize.m webpage", {
         direction = cg_direction(cg_update = pr_update),
         step_size = rasmussen_ls(initial_step_length = "r")),
       verbose = FALSE))
+  opt$count_res_fg <- FALSE
 
   res <- opt_loop(opt, c(0,0), rosenbrock_fg, 15,
                  store_progress = TRUE, verbose = FALSE, grad_tol = 0,
-                 abs_tol = 0, count_res_fg = FALSE)
+                 abs_tol = 0)
 
   # function evaluations and g2norms calculated from running minimize.m
   # in Octave
@@ -57,13 +58,14 @@ test_that("CG without fg helper function gives same results", {
         direction = cg_direction(cg_update = pr_update),
         step_size = rasmussen_ls(initial_step_length = "r")),
       verbose = FALSE))
+  opt$count_res_fg <- FALSE
 
   rb_no_fg <- rosenbrock_fg
   rb_no_fg$fg <- NULL
 
   res <- opt_loop(opt, c(0,0), rb_no_fg, 15,
                  store_progress = TRUE, verbose = FALSE, grad_tol = 0,
-                 abs_tol = 0, count_res_fg = FALSE)
+                 abs_tol = 0)
 
   # function evaluations and g2norms calculated from running minimize.m
   # in Octave
