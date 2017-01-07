@@ -1358,6 +1358,125 @@ mize_init <- function(opt, par, fg,
   opt
 }
 
+# Creates a result object.
+# If the function and gradient were not calculated as part of the optimization
+# step, they WILL be calculated here, and do contribute to the total
+# fn or gr count reported.
+# if calc_gr is TRUE then the gradient will be calculated if it isn't
+# available.
+# gr_norms is a vector containing zero or more of the norms to be calculated:
+#   2 for the l2 (Euclidean) norm
+#   Inf for the infinity norm (max absolute component)
+# Other reported results: alpha is the step size portion of the gradient
+# descent stage (i.e. the result of the line search). Step is the total step
+# size taken during the optimization step, including momentum.
+# If a momentum stage is present, the value of the momentum is stored as 'mu'.
+mize_step_summary <- function(opt, par, fg, par0 = NULL,
+                        calc_fn = NULL, calc_gr = NULL) {
+
+  iter <- opt$iter
+  # An internal flag useful for unit tests: if FALSE, doesn't count any
+  # fn/gr calculations towards their counts. Can still get back fn/gr values
+  # without confusing the issue of the expected number of fn/gr evaluations
+  if (!is.null(opt$count_res_fg)) {
+    count_fg <- opt$count_res_fg
+  }
+  else {
+    count_fg <- TRUE
+  }
+
+  # Whether and what convergence info to calculate if fn/gr calculation not
+  # explicitly asked for
+  if (is.null(calc_fn)) {
+    calc_fn <- is_finite_numeric(opt$convergence$abs_tol) ||
+      is_finite_numeric(opt$convergence$rel_tol)
+  }
+  if (is.null(calc_gr)) {
+    calc_gr <- is_finite_numeric(opt$convergence$grad_tol) ||
+      is_finite_numeric(opt$convergence$ginf_tol)
+  }
+  gr_norms <- c()
+  if (is_finite_numeric(opt$convergence$grad_tol)) {
+    gr_norms <- c(gr_norms, 2)
+  }
+  if (is_finite_numeric(opt$convergence$ginf_tol)) {
+    gr_norms <- c(gr_norms, Inf)
+  }
+
+  f <- NULL
+  if (calc_fn || has_fn_curr(opt, iter + 1)) {
+    if (!has_fn_curr(opt, iter + 1)) {
+      f <- fg$fn(par)
+      if (count_fg) {
+        opt <- set_fn_curr(opt, f, iter + 1)
+        opt$counts$fn <- opt$counts$fn + 1
+      }
+    }
+    else {
+      f <- opt$cache$fn_curr
+    }
+  }
+
+  g2n <- NULL
+  ginfn <- NULL
+  if (calc_gr || has_gr_curr(opt, iter + 1)) {
+    if (!has_gr_curr(opt, iter + 1)) {
+      g <- fg$gr(par)
+      if (grad_is_first_stage(opt) && count_fg) {
+        opt <- set_gr_curr(opt, g, iter + 1)
+        opt$counts$gr <- opt$counts$gr + 1
+      }
+    }
+    else {
+      g <- opt$cache$gr_curr
+    }
+    if (2 %in% gr_norms) {
+      g2n <- norm2(g)
+    }
+    if (Inf %in% gr_norms) {
+      ginfn <- norm_inf(g)
+    }
+  }
+
+  if (!is.null(par0)) {
+    step_size <- norm2(par - par0)
+  }
+  else {
+    step_size <- 0
+  }
+
+  alpha <- NULL
+  if (length(opt$stages) == 1 && opt$stages[[1]]$type == "gradient_descent") {
+    alpha <- norm2(opt$stages[[1]]$step_size$value)
+    if (is.null(alpha)) {
+      alpha <- 0
+    }
+  }
+
+  res <- list(
+    opt = opt,
+    f = f,
+    g2n = g2n,
+    ginfn = ginfn,
+    nf = opt$counts$fn,
+    ng = opt$counts$gr,
+    par = par,
+    step = step_size,
+    alpha = alpha,
+    iter = iter
+  )
+
+  if ("momentum" %in% names(opt$stages)) {
+    res$mu <- opt$stages[["momentum"]]$step_size$value
+    if (is.null(res$mu)) {
+      res$mu <- 0
+    }
+  }
+
+  res
+}
+
+
 #' Check Optimization Convergence
 #'
 #' Updates the optimizer with information about convergence or termination,
