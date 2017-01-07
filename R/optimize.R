@@ -103,7 +103,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
           opt_report(res, print_time = TRUE, print_par = FALSE)
         }
 
-        opt <-  check_mize_convergence(opt, step_res)
+        opt <-  check_mize_convergence(opt, res)
       }
 
       # might not have worked out which criterion to use on iteration 0

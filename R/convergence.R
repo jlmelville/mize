@@ -5,7 +5,6 @@ check_step_conv <- function(opt, iter, step = NULL, step_tol = NULL) {
       step >= step_tol) {
     return()
   }
-
   list(what = "step_tol", val = step)
 }
 

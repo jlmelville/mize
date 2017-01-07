@@ -1264,9 +1264,6 @@ mize_step <- function(opt, par, fg) {
   if (has_gr_curr(opt, iter + 1)) {
     res$g <- opt$cache$gr_curr
   }
-  if (!is.null(opt$convergence$step_tol)) {
-    res$step_size <- norm2(par - par0)
-  }
   res
 }
 
@@ -1502,7 +1499,7 @@ mize_step_summary <- function(opt, par, fg, par0 = NULL,
 #' @return \code{opt} updated with convergence and termination data. See
 #'   'Details'.
 #' @export
-check_mize_convergence <- function(opt, step_res) {
+check_mize_convergence <- function(opt, mize_step_info) {
 
   convergence <- opt$convergence
 
@@ -1514,7 +1511,7 @@ check_mize_convergence <- function(opt, step_res) {
     return(opt)
   }
 
-  terminate <- check_step_conv(opt, opt$iter, step_res$step_size,
+  terminate <- check_step_conv(opt, opt$iter, mize_step_info$step,
                                convergence$step_tol)
   if (!is.null(terminate)) {
     opt$terminate <- terminate
