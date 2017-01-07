@@ -47,7 +47,7 @@ make_momentum_step <- function(mu_fn,
       }
       else {
         sub_stage$value <-
-          sclamp(sub_stage$mu_fn(sub_stage$t),
+          sclamp(sub_stage$mu_fn(sub_stage$t, opt$convergence$max_iter),
                  min = sub_stage$min_value,
                  max = sub_stage$max_value)
       }
@@ -73,7 +73,7 @@ make_momentum_step <- function(mu_fn,
 # specified iteration.
 make_switch <- function(init_value = 0.5, final_value = 0.8,
                         switch_iter = 250) {
-  function(iter) {
+  function(iter, max_iter) {
     if (iter >= switch_iter) {
       return(final_value)
     }
@@ -104,7 +104,7 @@ make_ramp <- function(max_iter,
   n <- max(iters, 1)
   m <- (final_value - init_value) / n
 
-  function(iter) {
+  function(iter, max_iter) {
     t <- iter - 1 - wait
     if (t < 0) {
       return(init_value)
@@ -116,7 +116,7 @@ make_ramp <- function(max_iter,
 
 # A function that returns a constant momentum value
 make_constant <- function(value) {
-  function(iter) {
+  function(iter, max_iter) {
     value
   }
 }

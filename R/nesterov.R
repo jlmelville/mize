@@ -83,7 +83,7 @@ nesterov_step <- function(burn_in = 0, q = 0, use_approx = FALSE,
 #  NAG or linearly weighted classical momentum), this can have an effect.
 #  Set this to TRUE to always get steepest decent.
 make_nesterov_convex_approx <- function(burn_in = 0, use_init_mu = FALSE) {
-  function(iter) {
+  function(iter, max_iter) {
     # if we haven't waited long enough or we always use zero on the first
     # iteration, return 0
     if (iter < burn_in || (iter == burn_in && !use_init_mu)) {
