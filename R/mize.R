@@ -1355,21 +1355,61 @@ mize_init <- function(opt, par, fg,
   opt
 }
 
-# Creates a result object.
-# If the function and gradient were not calculated as part of the optimization
-# step, they WILL be calculated here, and do contribute to the total
-# fn or gr count reported.
-# if calc_gr is TRUE then the gradient will be calculated if it isn't
-# available.
-# gr_norms is a vector containing zero or more of the norms to be calculated:
-#   2 for the l2 (Euclidean) norm
-#   Inf for the infinity norm (max absolute component)
-# Other reported results: alpha is the step size portion of the gradient
-# descent stage (i.e. the result of the line search). Step is the total step
-# size taken during the optimization step, including momentum.
-# If a momentum stage is present, the value of the momentum is stored as 'mu'.
-mize_step_summary <- function(opt, par, fg, par0 = NULL,
-                        calc_fn = NULL, calc_gr = NULL) {
+#'Mize Step Summary
+#'
+#'Produces a result summary for an optimization iteration. Information such as
+#'function value, gradient norm and step size may be returned.
+#'
+#'By default, convergence tolerance parameters will be used to determine what
+#'function and gradient data is returned. The function value will be returned if
+#'it was already calculated and cached in the optimization iteration. Otherwise,
+#'it will be calculated only if a non-null absolute or relative tolerance value
+#'was asked for. A gradient norm will be returned only if a non-null gradient
+#'tolerance was specified, even if the gradient is available.
+#'
+#'Note that if a function tolerance was specified, but was not calculated for
+#'the relevant value of \code{par}, they will be calculated here and the
+#'calculation does contribute to the total function count (and will be cached
+#'for potential use in the next iteration). The same applies for gradient
+#'tolerances and gradient calculation. Function and gradient calculation can
+#'also be forced here by setting the \code{calc_fn} and \code{calc_gr}
+#'(respectively) parameters to \code{TRUE}.
+#'
+#'@param opt Optimizer to generate summary for, from return value of
+#'  \code{\link{mize_step}}.
+#'@param par Vector of parameters at the end of the iteration, from return value
+#'  of \code{\link{mize_step}}.
+#'@param fg Function and gradient list. See the documentaion of
+#'  \code{\link{mize}}.
+#'@param par0 (Optional). Vector of parameters at the end of the previous
+#'  iteration. Used to calculate step size.
+#'@param calc_fn (Optional). If \code{TRUE}, force calculation of function if
+#'  not already cached in \code{opt}, even if it wouldn't be needed for
+#'  convergence checking.
+#'@return A list with the following items: \itemize{
+#'
+#'  \item \code{opt} Optimizer with updated state (e.g. function and gradient
+#'  counts).
+#'
+#'  \item \code{iter} Iteration number.
+#'
+#'  \item \code{f} Function value at \code{par}.
+#'
+#'  \item \code{g2n} 2-norm of the gradient at \code{par}.
+#'
+#'  \item \code{ginfn} Infinity-norm of the gradient at \code{par}.
+#'
+#'  \item \code{nf} Number of function evaluations so far.
+#'
+#'  \item \code{ng} Number of gradient evaluations so far.
+#'
+#'  \item \code{step} Size of the step between \code{par0} and \code{par}.
+#'
+#'  \item \code{alpha} Step length of the gradient descent part of the step.
+#'
+#'  \item \code{mu} Momentum coefficient for this iteration}
+#'@export
+mize_step_summary <- function(opt, par, fg, par0 = NULL, calc_fn = NULL) {
 
   iter <- opt$iter
   # An internal flag useful for unit tests: if FALSE, doesn't count any
@@ -1388,10 +1428,7 @@ mize_step_summary <- function(opt, par, fg, par0 = NULL,
     calc_fn <- is_finite_numeric(opt$convergence$abs_tol) ||
       is_finite_numeric(opt$convergence$rel_tol)
   }
-  if (is.null(calc_gr)) {
-    calc_gr <- is_finite_numeric(opt$convergence$grad_tol) ||
-      is_finite_numeric(opt$convergence$ginf_tol)
-  }
+
   gr_norms <- c()
   if (is_finite_numeric(opt$convergence$grad_tol)) {
     gr_norms <- c(gr_norms, 2)
@@ -1399,6 +1436,7 @@ mize_step_summary <- function(opt, par, fg, par0 = NULL,
   if (is_finite_numeric(opt$convergence$ginf_tol)) {
     gr_norms <- c(gr_norms, Inf)
   }
+  calc_gr <- length(gr_norms) > 0
 
   f <- NULL
   if (calc_fn || has_fn_curr(opt, iter + 1)) {
@@ -1495,7 +1533,8 @@ mize_step_summary <- function(opt, par, fg, par0 = NULL,
 #' \code{\link{make_mize}} or \code{\link{mize_init}}.
 #'
 #' @param opt Optimizer, created by \code{\link{make_mize}}.
-#' @param step_res Step result list, return value of \code{\link{mize_step}}.
+#' @param mize_step_info Step info for this iteration, created by
+#'   \code{\link{mize_step_summary}}
 #' @return \code{opt} updated with convergence and termination data. See
 #'   'Details'.
 #' @export

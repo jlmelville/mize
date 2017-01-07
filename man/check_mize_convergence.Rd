@@ -4,12 +4,13 @@
 \alias{check_mize_convergence}
 \title{Check Optimization Convergence}
 \usage{
-check_mize_convergence(opt, step_res)
+check_mize_convergence(opt, mize_step_info)
 }
 \arguments{
 \item{opt}{Optimizer, created by \code{\link{make_mize}}.}
 
-\item{step_res}{Step result list, return value of \code{\link{mize_step}}.}
+\item{mize_step_info}{Step info for this iteration, created by
+\code{\link{mize_step_summary}}}
 }
 \value{
 \code{opt} updated with convergence and termination data. See
