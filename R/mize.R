@@ -803,7 +803,7 @@ make_mize <- function(method = "L-BFGS",
                       step0 = NULL,
                       step_next_init = NULL,
                       try_newton_step = NULL,
-                      ls_max_fn = Inf,
+                      ls_max_fn = 20,
                       ls_max_gr = Inf,
                       ls_max_fg = Inf,
                       # Momentum
