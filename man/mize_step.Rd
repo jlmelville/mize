@@ -4,7 +4,7 @@
 \alias{mize_step}
 \title{One Step of Optimization}
 \usage{
-mize_step(opt, par, fg, iter)
+mize_step(opt, par, fg)
 }
 \arguments{
 \item{opt}{Optimizer, created by \code{\link{make_mize}}.}
@@ -13,45 +13,46 @@ mize_step(opt, par, fg, iter)
 
 \item{fg}{Function and gradient list. See the documentaion of
 \code{\link{mize}}.}
-
-\item{iter}{Current iteration number. Should increase by one each time this
-function is invoked.}
 }
 \value{
 Result of the current optimization step, a list with components:
-\itemize{
+ \itemize{
+
  \item{\code{opt}}. Updated version of the optimizer passed to the \code{opt}
-   argument Should be passed as the \code{opt} argument in the next
-   iteration.
- \item{\code{par}}. Updated version of the parameters passed to the \code{par}
-   argument. Should be passed as the \code{par} argument in the next
-   iteration.
- \item{\code{nf}}. Running total number of function evaluations carried out since
-   iteration 1.
- \item{\code{ng}}. Running total number of gradient evaluations carried out since
-   iteration 1.
- \item{\code{f}}. Optional. The new value of the function, evaluated at the returned
-   value of \code{par}. Only present if calculated as part of the
-   optimization step (e.g. during a line search calculation).
+ argument Should be passed as the \code{opt} argument in the next iteration.
+
+ \item{\code{par}}. Updated version of the parameters passed to the
+ \code{par} argument. Should be passed as the \code{par} argument in the next
+ iteration.
+
+ \item{\code{nf}}. Running total number of function evaluations carried out
+ since iteration 1.
+
+ \item{\code{ng}}. Running total number of gradient evaluations carried out
+ since iteration 1.
+
+ \item{\code{f}}. Optional. The new value of the function, evaluated at the
+ returned value of \code{par}. Only present if calculated as part of the
+ optimization step (e.g. during a line search calculation).
+
  \item{\code{g}}. Optional. The gradient vector, evaluated at the returned
-   value of \code{par}. Only present if the gradient was calculated as part
-   of the optimization step (e.g. during a line search calculation.)
-}
+ value of \code{par}. Only present if the gradient was calculated as part of
+ the optimization step (e.g. during a line search calculation.)}
 }
 \description{
 Performs one iteration of optimization using a specified optimizer.
 }
 \details{
-This function returns both the (hopefully) optimized vector of parameters,
-and an updated version of the optimizer itself. This is intended to be used
-when you want more control over the optimization process compared to the more
-black box approach of the \code{\link{mize}} function. In return for having
-to manually call this function every time you want the next iteration of
+This function returns both the (hopefully) optimized vector of parameters, and
+an updated version of the optimizer itself. This is intended to be used when
+you want more control over the optimization process compared to the more black
+box approach of the \code{\link{mize}} function. In return for having to
+manually call this function every time you want the next iteration of
 optimization, you gain the ability to do your own checks for convergence,
 logging and so on, as well as take other action between iterations, e.g.
 visualization.
 
-Normally callng this function should return a more optimized vector of
+Normally calling this function should return a more optimized vector of
 parameters than the input, or at  least leave the parameters unchanged if no
 improvement was found, although this is determined by how the optimizer was
 configured by \code{\link{make_mize}}. It is very possible to create an
@@ -78,15 +79,15 @@ rosenbrock_fg <- list(
                   par = rb0, fg = rosenbrock_fg)
  par <- rb0
  for (iter in 1:3) {
-   res <- mize_step(opt, par, rosenbrock_fg, iter)
+   res <- mize_step(opt, par, rosenbrock_fg)
    par <- res$par
    opt <- res$opt
  }
 }
 \seealso{
 \code{\link{make_mize}} to create a value to pass to \code{opt},
-\code{\link{mize_init}} to initialize \code{opt} before passing it to this
-function for the first time. \code{\link{mize}} creates an optimizer and
-carries out a full optimization with it.
+ \code{\link{mize_init}} to initialize \code{opt} before passing it to this
+ function for the first time. \code{\link{mize}} creates an optimizer and
+ carries out a full optimization with it.
 }
 

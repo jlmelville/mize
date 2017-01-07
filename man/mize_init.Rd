@@ -4,7 +4,9 @@
 \alias{mize_init}
 \title{Initialize the Optimizer.}
 \usage{
-mize_init(opt, par, fg)
+mize_init(opt, par, fg, max_fn = Inf, max_gr = Inf, max_fg = Inf,
+  abs_tol = sqrt(.Machine$double.eps), rel_tol = abs_tol, grad_tol = NULL,
+  ginf_tol = NULL, step_tol = .Machine$double.eps)
 }
 \arguments{
 \item{opt}{Optimizer, created by \code{\link{make_mize}}.}
@@ -13,6 +15,34 @@ mize_init(opt, par, fg)
 
 \item{fg}{Function and gradient list. See the documentaion of
 \code{\link{mize}}.}
+
+\item{max_fn}{(Optional). Maximum number of function evaluations. See the
+'Convergence' section of \code{\link{mize}} for details.}
+
+\item{max_gr}{(Optional). Maximum number of gradient evaluations. See the
+'Convergence' section of \code{\link{mize}} for details.}
+
+\item{max_fg}{(Optional). Maximum number of function or gradient evaluations.
+See the 'Convergence' section of \code{\link{mize}} for details.}
+
+\item{abs_tol}{(Optional). Absolute tolerance for comparing two function
+evaluations. See the 'Convergence' section of \code{\link{mize}} for
+details.}
+
+\item{rel_tol}{(Optional). Relative tolerance for comparing two function
+evaluations. See the 'Convergence' section of \code{\link{mize}} for
+details.}
+
+\item{grad_tol}{(Optional). Absolute tolerance for the length (l2-norm) of
+the gradient vector. See the 'Convergence' section of \code{\link{mize}}
+for details.}
+
+\item{ginf_tol}{(Optional). Absolute tolerance for the infinity norm (maximum
+absolute component) of the gradient vector. See the 'Convergence' section
+of \code{\link{mize}} for details.}
+
+\item{step_tol}{(Optional). Absolute tolerance for the size of the parameter
+update. See the 'Convergence' section of \code{\link{mize}} for details.}
 }
 \value{
 Initialized optimizer.
@@ -21,12 +51,15 @@ Initialized optimizer.
 Prepares the optimizer for use with a specific function and starting point.
 }
 \details{
-Should be called after creating an optimizer with \code{\link{make_mize}}
-and before beginning any optimization with \code{\link{mize_step}}. Note
-that if \code{fg} and \code{par} are available at the time
-\code{\link{mize_step}} is called, they can be passed to that function
-and initialization will be carried out automatically, avoiding the need to
-call \code{mize_init}.
+Should be called after creating an optimizer with \code{\link{make_mize}} and
+before beginning any optimization with \code{\link{mize_step}}. Note that if
+\code{fg} and \code{par} are available at the time \code{\link{mize_step}} is
+called, they can be passed to that function and initialization will be
+carried out automatically, avoiding the need to call \code{mize_init}.
+
+Optional convergence parameters may also be passed here, for use with
+\code{\link{check_mize_convergence}}. They are optional if you do your own
+convergence checking.
 
 Details of the \code{fg} list can be found in the 'Details' section of
 \code{\link{mize}}.
@@ -49,7 +82,7 @@ opt <- mize_init(opt, rb0, rosebrock_fg)
 # Finally, can commence the optimization loop
 par <- rb0
 for (iter in 1:3) {
-  res <- mize_step(opt, par, rosenbrock_fg, iter)
+  res <- mize_step(opt, par, rosenbrock_fg)
   par <- res$par
   opt <- res$opt
 }

@@ -440,7 +440,7 @@ There are several ways for the optimization to terminate. The type of
 termination is communicated by a two-item list \code{terminate} in the return
 value, consisting of \code{what}, a short string describing what caused the
 termination, and \code{val}, the value of the termination criterion that
-causes termination.
+caused termination.
 
 The following parameters control various stopping criteria:
 

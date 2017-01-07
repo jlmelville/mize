@@ -13,17 +13,20 @@ make_mize(method = "L-BFGS", norm_direction = FALSE, scale_hess = TRUE,
   ls_max_fg = Inf, mom_type = NULL, mom_schedule = NULL,
   mom_init = NULL, mom_final = NULL, mom_switch_iter = NULL,
   mom_linear_weight = FALSE, use_init_mom = FALSE, max_iter = NULL,
-  restart = NULL, restart_wait = 10, par = NULL, fg = NULL)
+  restart = NULL, restart_wait = 10, par = NULL, fg = NULL,
+  max_fn = Inf, max_gr = Inf, max_fg = Inf,
+  abs_tol = sqrt(.Machine$double.eps), rel_tol = abs_tol, grad_tol = NULL,
+  ginf_tol = NULL, step_tol = .Machine$double.eps)
 }
 \arguments{
 \item{method}{Optimization method. See 'Details' of \code{\link{mize}}.}
 
-\item{norm_direction}{If \code{TRUE}, then the steepest descent direction
-is normalized to unit length. Useful for adaptive step size methods where
-the previous step size is used to initialize the next iteration.}
+\item{norm_direction}{If \code{TRUE}, then the steepest descent direction is
+normalized to unit length. Useful for adaptive step size methods where the
+previous step size is used to initialize the next iteration.}
 
-\item{scale_hess}{if \code{TRUE}, the approximation to the inverse Hessian
-is scaled according to the method described by Nocedal and Wright
+\item{scale_hess}{if \code{TRUE}, the approximation to the inverse Hessian is
+scaled according to the method described by Nocedal and Wright
 (approximating an eigenvalue). Applies only to the methods \code{BFGS}
 (where the scaling is applied only during the first step) and \code{L-BFGS}
 (where the scaling is applied during every iteration). Ignored otherwise.}
@@ -31,9 +34,9 @@ is scaled according to the method described by Nocedal and Wright
 \item{memory}{The number of updates to store if using the \code{L-BFGS}
 method. Ignored otherwise. Must be a positive integer.}
 
-\item{cg_update}{Type of update to use for the \code{CG} method. Can be
-one of \code{"FR"} (Fletcher-Reeves), \code{"PR"} (Polak-Ribiere),
-\code{"PR+"} (Polak-Ribiere with a reset to steepest descent), \code{"HS"}
+\item{cg_update}{Type of update to use for the \code{CG} method. Can be one
+of \code{"FR"} (Fletcher-Reeves), \code{"PR"} (Polak-Ribiere), \code{"PR+"}
+(Polak-Ribiere with a reset to steepest descent), \code{"HS"}
 (Hestenes-Stiefel), or \code{"DY"} (Dai-Yuan). Ignored if \code{method} is
 not \code{"CG"}.}
 
@@ -57,12 +60,13 @@ step size method or the \code{"DBD"} method.}
 \code{step_up}. Can be one of \code{"*"} (to multiply the current step size
 with \code{step_up}) or \code{"+"} (to add).}
 
-\item{step_down}{Multiplier to reduce the step size by if using the \code{"DBD"}
-method or the \code{"bold"} or \code{"back"} line search method. Should be
-a positive value less than 1.}
+\item{step_down}{Multiplier to reduce the step size by if using the
+\code{"DBD"} method or the \code{"bold"} or \code{"back"} line search
+method. Should be a positive value less than 1.}
 
-\item{dbd_weight}{Weighting parameter used by the \code{"DBD"} method only, and
-only if no momentum scheme is provided. Must be an integer between 0 and 1.}
+\item{dbd_weight}{Weighting parameter used by the \code{"DBD"} method only,
+and only if no momentum scheme is provided. Must be an integer between 0
+and 1.}
 
 \item{line_search}{Type of line search to use. See 'Details' of
 \code{\link{mize}}.}
@@ -80,16 +84,16 @@ searches. Should be a value between \code{c1} and 1.}
 the line search on iterations after the first. See 'Details' of
 \code{\link{mize}}.}
 
-\item{try_newton_step}{For Wolfe-type line searches only, try the
-line step value of 1 as the initial step size whenever \code{step_next_init}
-suggests a step size > 1. Defaults to \code{TRUE} for quasi-Newton methods
-such as BFGS and L-BFGS, \code{FALSE} otherwise.}
+\item{try_newton_step}{For Wolfe-type line searches only, try the line step
+value of 1 as the initial step size whenever \code{step_next_init} suggests
+a step size > 1. Defaults to \code{TRUE} for quasi-Newton methods such as
+BFGS and L-BFGS, \code{FALSE} otherwise.}
 
-\item{ls_max_fn}{Maximum number of function evaluations allowed during a
-line search.}
+\item{ls_max_fn}{Maximum number of function evaluations allowed during a line
+search.}
 
-\item{ls_max_gr}{Maximum number of gradient evaluations allowed during a
-line search.}
+\item{ls_max_gr}{Maximum number of gradient evaluations allowed during a line
+search.}
 
 \item{ls_max_fg}{Maximum number of function or gradient evaluations allowed
 during a line search.}
@@ -109,9 +113,9 @@ iteration when \code{mom_init} is changed to \code{mom_final}.}
 \item{mom_linear_weight}{If \code{TRUE}, the gradient contribution to the
 update is weighted using momentum contribution.}
 
-\item{use_init_mom}{If \code{TRUE}, then the momentum coefficient on
-the first iteration is non-zero. Otherwise, it's zero. Only applies if
-using a momentum schedule.}
+\item{use_init_mom}{If \code{TRUE}, then the momentum coefficient on the
+first iteration is non-zero. Otherwise, it's zero. Only applies if using a
+momentum schedule.}
 
 \item{max_iter}{Maximum number of iterations the optimization will be carried
 out over. Used only if \code{mom_schedule} is set to \code{"ramp"}.}
@@ -119,13 +123,41 @@ out over. Used only if \code{mom_schedule} is set to \code{"ramp"}.}
 \item{restart}{Momentum restart type. Can be one of "fn" or "gr". See
 'Details' of \code{\link{mize}}.}
 
-\item{restart_wait}{Number of iterations to wait between restarts. Ignored
-if \code{restart} is \code{NULL}.}
+\item{restart_wait}{Number of iterations to wait between restarts. Ignored if
+\code{restart} is \code{NULL}.}
 
-\item{par}{Initial values for the function to be optimized over. Optional.}
+\item{par}{(Optional) Initial values for the function to be optimized over.}
 
-\item{fg}{Function and gradient list. See 'Details' of \code{\link{mize}}.
-Optional.}
+\item{fg}{(Optional). Function and gradient list. See 'Details' of
+\code{\link{mize}}.}
+
+\item{max_fn}{(Optional). Maximum number of function evaluations. See the
+'Convergence' section of \code{\link{mize}} for details.}
+
+\item{max_gr}{(Optional). Maximum number of gradient evaluations. See the
+'Convergence' section of \code{\link{mize}} for details.}
+
+\item{max_fg}{(Optional). Maximum number of function or gradient evaluations.
+See the 'Convergence' section of \code{\link{mize}} for details.}
+
+\item{abs_tol}{(Optional). Absolute tolerance for comparing two function
+evaluations. See the 'Convergence' section of \code{\link{mize}} for
+details.}
+
+\item{rel_tol}{(Optional). Relative tolerance for comparing two function
+evaluations. See the 'Convergence' section of \code{\link{mize}} for
+details.}
+
+\item{grad_tol}{(Optional). Absolute tolerance for the length (l2-norm) of
+the gradient vector. See the 'Convergence' section of \code{\link{mize}}
+for details.}
+
+\item{ginf_tol}{(Optional). Absolute tolerance for the infinity norm (maximum
+absolute component) of the gradient vector. See the 'Convergence' section
+of \code{\link{mize}} for details.}
+
+\item{step_tol}{(Optional). Absolute tolerance for the size of the parameter
+update. See the 'Convergence' section of \code{\link{mize}} for details.}
 }
 \description{
 Factory function for creating a (possibly uninitialized) optimizer.
@@ -135,15 +167,20 @@ If the function to be optimized and starting point are not present at
 creation time, then the optimizer should be initialized using
 \code{\link{mize_init}} before being used with \code{\link{mize_step}}.
 
-See the documentation to \code{\link{mize}} for an explanation of all
-the parameters.
+See the documentation to \code{\link{mize}} for an explanation of all the
+parameters.
 
-Details of the \code{fg} list containing the function to be optimized and
-its gradient can be found in the 'Details' section of \code{\link{mize}}.
-It is optional for this function, but if it is passed to this function,
-along with the vector of initial values, \code{par}, the optimizer will be
-returned already initialized for this function. Otherwise,
-\code{\link{mize_init}} must be called before optimization begins.
+Details of the \code{fg} list containing the function to be optimized and its
+gradient can be found in the 'Details' section of \code{\link{mize}}. It is
+optional for this function, but if it is passed to this function, along with
+the vector of initial values, \code{par}, the optimizer will be returned
+already initialized for this function. Otherwise, \code{\link{mize_init}}
+must be called before optimization begins.
+
+Additionally, optional convergence parameters may also be passed here, for
+use with \code{\link{check_mize_convergence}}. They are optional here if you
+plan to call \code{\link{mize_init}} later, or if you want to do your own
+convergence checking.
 }
 \examples{
 # Function to optimize and starting point

@@ -221,7 +221,7 @@
 #' termination is communicated by a two-item list \code{terminate} in the return
 #' value, consisting of \code{what}, a short string describing what caused the
 #' termination, and \code{val}, the value of the termination criterion that
-#' causes termination.
+#' caused termination.
 #'
 #' The following parameters control various stopping criteria:
 #'
@@ -650,94 +650,120 @@ mize <- function(par, fg,
 #' creation time, then the optimizer should be initialized using
 #' \code{\link{mize_init}} before being used with \code{\link{mize_step}}.
 #'
-#' See the documentation to \code{\link{mize}} for an explanation of all
-#' the parameters.
+#' See the documentation to \code{\link{mize}} for an explanation of all the
+#' parameters.
 #'
-#' Details of the \code{fg} list containing the function to be optimized and
-#' its gradient can be found in the 'Details' section of \code{\link{mize}}.
-#' It is optional for this function, but if it is passed to this function,
-#' along with the vector of initial values, \code{par}, the optimizer will be
-#' returned already initialized for this function. Otherwise,
-#' \code{\link{mize_init}} must be called before optimization begins.
+#' Details of the \code{fg} list containing the function to be optimized and its
+#' gradient can be found in the 'Details' section of \code{\link{mize}}. It is
+#' optional for this function, but if it is passed to this function, along with
+#' the vector of initial values, \code{par}, the optimizer will be returned
+#' already initialized for this function. Otherwise, \code{\link{mize_init}}
+#' must be called before optimization begins.
+#'
+#' Additionally, optional convergence parameters may also be passed here, for
+#' use with \code{\link{check_mize_convergence}}. They are optional here if you
+#' plan to call \code{\link{mize_init}} later, or if you want to do your own
+#' convergence checking.
 #'
 #' @param method Optimization method. See 'Details' of \code{\link{mize}}.
-#' @param norm_direction If \code{TRUE}, then the steepest descent direction
-#' is normalized to unit length. Useful for adaptive step size methods where
-#' the previous step size is used to initialize the next iteration.
-#' @param scale_hess if \code{TRUE}, the approximation to the inverse Hessian
-#' is scaled according to the method described by Nocedal and Wright
-#' (approximating an eigenvalue). Applies only to the methods \code{BFGS}
-#' (where the scaling is applied only during the first step) and \code{L-BFGS}
-#' (where the scaling is applied during every iteration). Ignored otherwise.
+#' @param norm_direction If \code{TRUE}, then the steepest descent direction is
+#'   normalized to unit length. Useful for adaptive step size methods where the
+#'   previous step size is used to initialize the next iteration.
+#' @param scale_hess if \code{TRUE}, the approximation to the inverse Hessian is
+#'   scaled according to the method described by Nocedal and Wright
+#'   (approximating an eigenvalue). Applies only to the methods \code{BFGS}
+#'   (where the scaling is applied only during the first step) and \code{L-BFGS}
+#'   (where the scaling is applied during every iteration). Ignored otherwise.
 #' @param memory The number of updates to store if using the \code{L-BFGS}
-#' method. Ignored otherwise. Must be a positive integer.
-#' @param cg_update Type of update to use for the \code{CG} method. Can be
-#' one of \code{"FR"} (Fletcher-Reeves), \code{"PR"} (Polak-Ribiere),
-#' \code{"PR+"} (Polak-Ribiere with a reset to steepest descent), \code{"HS"}
-#' (Hestenes-Stiefel), or \code{"DY"} (Dai-Yuan). Ignored if \code{method} is
-#' not \code{"CG"}.
+#'   method. Ignored otherwise. Must be a positive integer.
+#' @param cg_update Type of update to use for the \code{CG} method. Can be one
+#'   of \code{"FR"} (Fletcher-Reeves), \code{"PR"} (Polak-Ribiere), \code{"PR+"}
+#'   (Polak-Ribiere with a reset to steepest descent), \code{"HS"}
+#'   (Hestenes-Stiefel), or \code{"DY"} (Dai-Yuan). Ignored if \code{method} is
+#'   not \code{"CG"}.
 #' @param nest_q Strong convexity parameter for the \code{"NAG"} method's
-#' momentum term. Must take a value between 0 (strongly convex) and 1 (results
-#' in steepest descent).Ignored unless the \code{method} is \code{"NAG"} and
-#' \code{nest_convex_approx} is \code{FALSE}.
+#'   momentum term. Must take a value between 0 (strongly convex) and 1 (results
+#'   in steepest descent).Ignored unless the \code{method} is \code{"NAG"} and
+#'   \code{nest_convex_approx} is \code{FALSE}.
 #' @param nest_convex_approx If \code{TRUE}, then use an approximation due to
-#' Sutskever for calculating the momentum parameter in the NAG method. Only
-#' applies if \code{method} is \code{"NAG"}.
+#'   Sutskever for calculating the momentum parameter in the NAG method. Only
+#'   applies if \code{method} is \code{"NAG"}.
 #' @param nest_burn_in Number of iterations to wait before using a non-zero
-#' momentum. Only applies if using the \code{"NAG"} method or setting the
-#' \code{momentum_type} to "Nesterov".
+#'   momentum. Only applies if using the \code{"NAG"} method or setting the
+#'   \code{momentum_type} to "Nesterov".
 #' @param step_up Value by which to increase the step size for the \code{"bold"}
-#' step size method or the \code{"DBD"} method.
+#'   step size method or the \code{"DBD"} method.
 #' @param step_up_fun Operator to use when combining the current step size with
-#' \code{step_up}. Can be one of \code{"*"} (to multiply the current step size
-#' with \code{step_up}) or \code{"+"} (to add).
-#' @param step_down Multiplier to reduce the step size by if using the \code{"DBD"}
-#' method or the \code{"bold"} or \code{"back"} line search method. Should be
-#' a positive value less than 1.
-#' @param dbd_weight Weighting parameter used by the \code{"DBD"} method only, and
-#' only if no momentum scheme is provided. Must be an integer between 0 and 1.
+#'   \code{step_up}. Can be one of \code{"*"} (to multiply the current step size
+#'   with \code{step_up}) or \code{"+"} (to add).
+#' @param step_down Multiplier to reduce the step size by if using the
+#'   \code{"DBD"} method or the \code{"bold"} or \code{"back"} line search
+#'   method. Should be a positive value less than 1.
+#' @param dbd_weight Weighting parameter used by the \code{"DBD"} method only,
+#'   and only if no momentum scheme is provided. Must be an integer between 0
+#'   and 1.
 #' @param line_search Type of line search to use. See 'Details' of
-#' \code{\link{mize}}.
+#'   \code{\link{mize}}.
 #' @param c1 Sufficient decrease parameter for Wolfe-type line searches. Should
-#' be a value between 0 and 1.
+#'   be a value between 0 and 1.
 #' @param c2 Sufficient curvature parameter for line search for Wolfe-type line
-#' searches. Should be a value between \code{c1} and 1.
+#'   searches. Should be a value between \code{c1} and 1.
 #' @param step0 Initial value for the line search on the first step. See
-#' 'Details' of \code{\link{mize}}.
+#'   'Details' of \code{\link{mize}}.
 #' @param step_next_init For Wolfe-type line searches only, how to initialize
-#' the line search on iterations after the first. See 'Details' of
-#' \code{\link{mize}}.
-#' @param try_newton_step For Wolfe-type line searches only, try the
-#' line step value of 1 as the initial step size whenever \code{step_next_init}
-#' suggests a step size > 1. Defaults to \code{TRUE} for quasi-Newton methods
-#' such as BFGS and L-BFGS, \code{FALSE} otherwise.
-#' @param ls_max_fn Maximum number of function evaluations allowed during a
-#' line search.
-#' @param ls_max_gr Maximum number of gradient evaluations allowed during a
-#' line search.
+#'   the line search on iterations after the first. See 'Details' of
+#'   \code{\link{mize}}.
+#' @param try_newton_step For Wolfe-type line searches only, try the line step
+#'   value of 1 as the initial step size whenever \code{step_next_init} suggests
+#'   a step size > 1. Defaults to \code{TRUE} for quasi-Newton methods such as
+#'   BFGS and L-BFGS, \code{FALSE} otherwise.
+#' @param ls_max_fn Maximum number of function evaluations allowed during a line
+#'   search.
+#' @param ls_max_gr Maximum number of gradient evaluations allowed during a line
+#'   search.
 #' @param ls_max_fg Maximum number of function or gradient evaluations allowed
-#' during a line search.
+#'   during a line search.
 #' @param mom_type Momentum type, either \code{"classical"} or
-#' \code{"nesterov"}.
+#'   \code{"nesterov"}.
 #' @param mom_schedule Momentum schedule. See 'Details' of \code{\link{mize}}.
 #' @param mom_init Initial momentum value.
 #' @param mom_final Final momentum value.
 #' @param mom_switch_iter For \code{mom_schedule} \code{"switch"} only, the
-#' iteration when \code{mom_init} is changed to \code{mom_final}.
+#'   iteration when \code{mom_init} is changed to \code{mom_final}.
 #' @param mom_linear_weight If \code{TRUE}, the gradient contribution to the
-#' update is weighted using momentum contribution.
-#' @param use_init_mom If \code{TRUE}, then the momentum coefficient on
-#' the first iteration is non-zero. Otherwise, it's zero. Only applies if
-#' using a momentum schedule.
+#'   update is weighted using momentum contribution.
+#' @param use_init_mom If \code{TRUE}, then the momentum coefficient on the
+#'   first iteration is non-zero. Otherwise, it's zero. Only applies if using a
+#'   momentum schedule.
 #' @param max_iter Maximum number of iterations the optimization will be carried
-#' out over. Used only if \code{mom_schedule} is set to \code{"ramp"}.
+#'   out over. Used only if \code{mom_schedule} is set to \code{"ramp"}.
 #' @param restart Momentum restart type. Can be one of "fn" or "gr". See
-#' 'Details' of \code{\link{mize}}.
-#' @param restart_wait Number of iterations to wait between restarts. Ignored
-#' if \code{restart} is \code{NULL}.
-#' @param par Initial values for the function to be optimized over. Optional.
-#' @param fg Function and gradient list. See 'Details' of \code{\link{mize}}.
-#' Optional.
+#'   'Details' of \code{\link{mize}}.
+#' @param restart_wait Number of iterations to wait between restarts. Ignored if
+#'   \code{restart} is \code{NULL}.
+#' @param par (Optional) Initial values for the function to be optimized over.
+#' @param fg (Optional). Function and gradient list. See 'Details' of
+#'   \code{\link{mize}}.
+#' @param max_fn (Optional). Maximum number of function evaluations. See the
+#'   'Convergence' section of \code{\link{mize}} for details.
+#' @param max_gr (Optional). Maximum number of gradient evaluations. See the
+#'   'Convergence' section of \code{\link{mize}} for details.
+#' @param max_fg (Optional). Maximum number of function or gradient evaluations.
+#'   See the 'Convergence' section of \code{\link{mize}} for details.
+#' @param abs_tol (Optional). Absolute tolerance for comparing two function
+#'   evaluations. See the 'Convergence' section of \code{\link{mize}} for
+#'   details.
+#' @param rel_tol (Optional). Relative tolerance for comparing two function
+#'   evaluations. See the 'Convergence' section of \code{\link{mize}} for
+#'   details.
+#' @param grad_tol (Optional). Absolute tolerance for the length (l2-norm) of
+#'   the gradient vector. See the 'Convergence' section of \code{\link{mize}}
+#'   for details.
+#' @param ginf_tol (Optional). Absolute tolerance for the infinity norm (maximum
+#'   absolute component) of the gradient vector. See the 'Convergence' section
+#'   of \code{\link{mize}} for details.
+#' @param step_tol (Optional). Absolute tolerance for the size of the parameter
+#'   update. See the 'Convergence' section of \code{\link{mize}} for details.
 #' @export
 #' @examples
 #' # Function to optimize and starting point
@@ -792,7 +818,11 @@ make_mize <- function(method = "L-BFGS",
                       restart = NULL,
                       restart_wait = 10,
                       par = NULL,
-                      fg = NULL) {
+                      fg = NULL,
+                      max_fn = Inf, max_gr = Inf, max_fg = Inf,
+                      abs_tol = sqrt(.Machine$double.eps),
+                      rel_tol = abs_tol, grad_tol = NULL, ginf_tol = NULL,
+                      step_tol = .Machine$double.eps) {
 
   if (memory < 1) {
     stop("memory must be > 0")
@@ -1074,65 +1104,72 @@ make_mize <- function(method = "L-BFGS",
 
   # Initialize for specific dataset if par and fg are provided
   if (!is.null(par) && !is.null(fg)) {
-    opt <- mize_init(opt, par, fg)
+    opt <- mize_init(opt, par, fg,
+                     max_fn = max_fn, max_gr = max_gr, max_fg = max_fg,
+                     abs_tol = abs_tol, rel_tol = rel_tol,
+                     grad_tol = grad_tol, ginf_tol = ginf_tol,
+                     step_tol = step_tol)
   }
 
   opt
 }
 
-#' One Step of Optimization
+#'One Step of Optimization
 #'
-#' Performs one iteration of optimization using a specified optimizer.
+#'Performs one iteration of optimization using a specified optimizer.
 #'
-#' This function returns both the (hopefully) optimized vector of parameters,
-#' and an updated version of the optimizer itself. This is intended to be used
-#' when you want more control over the optimization process compared to the more
-#' black box approach of the \code{\link{mize}} function. In return for having
-#' to manually call this function every time you want the next iteration of
-#' optimization, you gain the ability to do your own checks for convergence,
-#' logging and so on, as well as take other action between iterations, e.g.
-#' visualization.
+#'This function returns both the (hopefully) optimized vector of parameters, and
+#'an updated version of the optimizer itself. This is intended to be used when
+#'you want more control over the optimization process compared to the more black
+#'box approach of the \code{\link{mize}} function. In return for having to
+#'manually call this function every time you want the next iteration of
+#'optimization, you gain the ability to do your own checks for convergence,
+#'logging and so on, as well as take other action between iterations, e.g.
+#'visualization.
 #'
-#' Normally callng this function should return a more optimized vector of
-#' parameters than the input, or at  least leave the parameters unchanged if no
-#' improvement was found, although this is determined by how the optimizer was
-#' configured by \code{\link{make_mize}}. It is very possible to create an
-#' optimizer that can cause a solution to diverge. It is the responsibility of
-#' the caller to check that the result of the optimization step has actually
-#' reduced the value returned from function being optimized.
+#'Normally calling this function should return a more optimized vector of
+#'parameters than the input, or at  least leave the parameters unchanged if no
+#'improvement was found, although this is determined by how the optimizer was
+#'configured by \code{\link{make_mize}}. It is very possible to create an
+#'optimizer that can cause a solution to diverge. It is the responsibility of
+#'the caller to check that the result of the optimization step has actually
+#'reduced the value returned from function being optimized.
 #'
-#' Details of the \code{fg} list can be found in the 'Details' section of
-#' \code{\link{mize}}.
+#'Details of the \code{fg} list can be found in the 'Details' section of
+#'\code{\link{mize}}.
 #'
-#' @param opt Optimizer, created by \code{\link{make_mize}}.
-#' @param par Vector of initial values for the function to be optimized over.
-#' @param fg Function and gradient list. See the documentaion of
-#' \code{\link{mize}}.
-#' @param iter Current iteration number. Should increase by one each time this
-#'   function is invoked.
-#' @return Result of the current optimization step, a list with components:
-#'\itemize{
+#'@param opt Optimizer, created by \code{\link{make_mize}}.
+#'@param par Vector of initial values for the function to be optimized over.
+#'@param fg Function and gradient list. See the documentaion of
+#'  \code{\link{mize}}.
+#'@return Result of the current optimization step, a list with components:
+#'  \itemize{
+#'
 #'  \item{\code{opt}}. Updated version of the optimizer passed to the \code{opt}
-#'    argument Should be passed as the \code{opt} argument in the next
-#'    iteration.
-#'  \item{\code{par}}. Updated version of the parameters passed to the \code{par}
-#'    argument. Should be passed as the \code{par} argument in the next
-#'    iteration.
-#'  \item{\code{nf}}. Running total number of function evaluations carried out since
-#'    iteration 1.
-#'  \item{\code{ng}}. Running total number of gradient evaluations carried out since
-#'    iteration 1.
-#'  \item{\code{f}}. Optional. The new value of the function, evaluated at the returned
-#'    value of \code{par}. Only present if calculated as part of the
-#'    optimization step (e.g. during a line search calculation).
+#'  argument Should be passed as the \code{opt} argument in the next iteration.
+#'
+#'  \item{\code{par}}. Updated version of the parameters passed to the
+#'  \code{par} argument. Should be passed as the \code{par} argument in the next
+#'  iteration.
+#'
+#'  \item{\code{nf}}. Running total number of function evaluations carried out
+#'  since iteration 1.
+#'
+#'  \item{\code{ng}}. Running total number of gradient evaluations carried out
+#'  since iteration 1.
+#'
+#'  \item{\code{f}}. Optional. The new value of the function, evaluated at the
+#'  returned value of \code{par}. Only present if calculated as part of the
+#'  optimization step (e.g. during a line search calculation).
+#'
 #'  \item{\code{g}}. Optional. The gradient vector, evaluated at the returned
-#'    value of \code{par}. Only present if the gradient was calculated as part
-#'    of the optimization step (e.g. during a line search calculation.)
-#'}
-#' @seealso \code{\link{make_mize}} to create a value to pass to \code{opt},
-#' \code{\link{mize_init}} to initialize \code{opt} before passing it to this
-#' function for the first time. \code{\link{mize}} creates an optimizer and
-#' carries out a full optimization with it.
+#'  value of \code{par}. Only present if the gradient was calculated as part of
+#'  the optimization step (e.g. during a line search calculation.)}
+#'
+#'@seealso \code{\link{make_mize}} to create a value to pass to \code{opt},
+#'  \code{\link{mize_init}} to initialize \code{opt} before passing it to this
+#'  function for the first time. \code{\link{mize}} creates an optimizer and
+#'  carries out a full optimization with it.
 #' @examples
 #' rosenbrock_fg <- list(
 #'   fn = function(x) {
@@ -1149,22 +1186,19 @@ make_mize <- function(method = "L-BFGS",
 #'                   par = rb0, fg = rosenbrock_fg)
 #'  par <- rb0
 #'  for (iter in 1:3) {
-#'    res <- mize_step(opt, par, rosenbrock_fg, iter)
+#'    res <- mize_step(opt, par, rosenbrock_fg)
 #'    par <- res$par
 #'    opt <- res$opt
 #'  }
-#' @export
-mize_step <- function(opt, par, fg, iter) {
+#'@export
+mize_step <- function(opt, par, fg) {
+  opt$iter <- opt$iter + 1
+  iter <- opt$iter
   opt <- life_cycle_hook("step", "before", opt, par, fg, iter)
 
   par0 <- par
   step_result <- NULL
 
-  # In the main part of the step, opt$error is used to indicate
-  # something catastrophic has occurred (most likely non-finite gradient value)
-  # not to be confused with opt$ok which is used to indicate whether the
-  # solution is valid
-  opt$error <- NULL
   for (i in 1:length(opt$stages)) {
     opt$stage_i <- i
     stage <- opt$stages[[i]]
@@ -1212,7 +1246,7 @@ mize_step <- function(opt, par, fg, iter) {
     opt <- life_cycle_hook("validation", "during", opt, par, fg, iter,
                            par0, step_result)
   }
-  # If the this solution was vetoed or something catastrostep_downc happened,
+  # If the this solution was vetoed or the catastrophe happened,
   # roll back to the previous one.
   if (!is.null(opt$terminate) || !opt$ok) {
     par <- par0
@@ -1230,7 +1264,9 @@ mize_step <- function(opt, par, fg, iter) {
   if (has_gr_curr(opt, iter + 1)) {
     res$g <- opt$cache$gr_curr
   }
-
+  if (!is.null(opt$convergence$step_tol)) {
+    res$step_size <- norm2(par - par0)
+  }
   res
 }
 
@@ -1238,12 +1274,15 @@ mize_step <- function(opt, par, fg, iter) {
 #'
 #' Prepares the optimizer for use with a specific function and starting point.
 #'
-#' Should be called after creating an optimizer with \code{\link{make_mize}}
-#' and before beginning any optimization with \code{\link{mize_step}}. Note
-#' that if \code{fg} and \code{par} are available at the time
-#' \code{\link{mize_step}} is called, they can be passed to that function
-#' and initialization will be carried out automatically, avoiding the need to
-#' call \code{mize_init}.
+#' Should be called after creating an optimizer with \code{\link{make_mize}} and
+#' before beginning any optimization with \code{\link{mize_step}}. Note that if
+#' \code{fg} and \code{par} are available at the time \code{\link{mize_step}} is
+#' called, they can be passed to that function and initialization will be
+#' carried out automatically, avoiding the need to call \code{mize_init}.
+#'
+#' Optional convergence parameters may also be passed here, for use with
+#' \code{\link{check_mize_convergence}}. They are optional if you do your own
+#' convergence checking.
 #'
 #' Details of the \code{fg} list can be found in the 'Details' section of
 #' \code{\link{mize}}.
@@ -1251,7 +1290,27 @@ mize_step <- function(opt, par, fg, iter) {
 #' @param opt Optimizer, created by \code{\link{make_mize}}.
 #' @param par Vector of initial values for the function to be optimized over.
 #' @param fg Function and gradient list. See the documentaion of
-#' \code{\link{mize}}.
+#'   \code{\link{mize}}.
+#' @param max_fn (Optional). Maximum number of function evaluations. See the
+#'   'Convergence' section of \code{\link{mize}} for details.
+#' @param max_gr (Optional). Maximum number of gradient evaluations. See the
+#'   'Convergence' section of \code{\link{mize}} for details.
+#' @param max_fg (Optional). Maximum number of function or gradient evaluations.
+#'   See the 'Convergence' section of \code{\link{mize}} for details.
+#' @param abs_tol (Optional). Absolute tolerance for comparing two function
+#'   evaluations. See the 'Convergence' section of \code{\link{mize}} for
+#'   details.
+#' @param rel_tol (Optional). Relative tolerance for comparing two function
+#'   evaluations. See the 'Convergence' section of \code{\link{mize}} for
+#'   details.
+#' @param grad_tol (Optional). Absolute tolerance for the length (l2-norm) of
+#'   the gradient vector. See the 'Convergence' section of \code{\link{mize}}
+#'   for details.
+#' @param ginf_tol (Optional). Absolute tolerance for the infinity norm (maximum
+#'   absolute component) of the gradient vector. See the 'Convergence' section
+#'   of \code{\link{mize}} for details.
+#' @param step_tol (Optional). Absolute tolerance for the size of the parameter
+#'   update. See the 'Convergence' section of \code{\link{mize}} for details.
 #' @return Initialized optimizer.
 #' @export
 #' @examples
@@ -1272,13 +1331,99 @@ mize_step <- function(opt, par, fg, iter) {
 #' # Finally, can commence the optimization loop
 #' par <- rb0
 #' for (iter in 1:3) {
-#'   res <- mize_step(opt, par, rosenbrock_fg, iter)
+#'   res <- mize_step(opt, par, rosenbrock_fg)
 #'   par <- res$par
 #'   opt <- res$opt
 #' }
 #'
-mize_init <- function(opt, par, fg) {
+mize_init <- function(opt, par, fg,
+                      max_fn = Inf, max_gr = Inf, max_fg = Inf,
+                      abs_tol = sqrt(.Machine$double.eps),
+                      rel_tol = abs_tol, grad_tol = NULL, ginf_tol = NULL,
+                      step_tol = .Machine$double.eps) {
   opt <- register_hooks(opt)
-  opt <- life_cycle_hook("opt", "init", opt, par, fg, 0)
+  opt$iter <- 0
+  opt <- life_cycle_hook("opt", "init", opt, par, fg, opt$iter)
+  opt$convergence <- list(
+    max_fn = max_fn,
+    max_gr = max_gr,
+    max_fg = max_fg,
+    abs_tol = abs_tol,
+    rel_tol = rel_tol,
+    grad_tol = grad_tol,
+    ginf_tol = ginf_tol,
+    step_tol = step_tol
+  )
+  opt$initialized <- TRUE
+  opt
+}
+
+#' Check Optimization Convergence
+#'
+#' Updates the optimizer with information about convergence or termination,
+#' signalling if the optimization process should stop.
+#'
+#' On returning from this function, the updated value of \code{opt} will
+#' contain: \itemize{
+#'
+#' \item A boolean value \code{is_terminated} which is \code{TRUE} if
+#' termination has been indicated, and \code{FALSE} otherwise.
+#'
+#' \item A list \code{terminate} if \code{is_terminated} is \code{TRUE}. This
+#' contains two items: \code{what}, a short string describing what caused the
+#' termination, and \code{val}, the value of the termination criterion that
+#' caused termination. This list will not be present if \code{is_terminated} is
+#' \code{FALSE}.}
+#'
+#' Convergence criteria are only checked here. To set these criteria, use
+#' \code{\link{make_mize}} or \code{\link{mize_init}}.
+#'
+#' @param opt Optimizer, created by \code{\link{make_mize}}.
+#' @param step_res Step result list, return value of \code{\link{mize_step}}.
+#' @return \code{opt} updated with convergence and termination data. See
+#'   'Details'.
+#' @export
+check_mize_convergence <- function(opt, step_res) {
+
+  convergence <- opt$convergence
+
+  terminate <- check_counts(opt, convergence$max_fn, convergence$max_gr,
+                            convergence$max_fg)
+  if (!is.null(terminate)) {
+    opt$terminate <- terminate
+    opt$is_terminated <- TRUE
+    return(opt)
+  }
+
+  terminate <- check_step_conv(opt, opt$iter, step_res$step_size,
+                               convergence$step_tol)
+  if (!is.null(terminate)) {
+    opt$terminate <- terminate
+    opt$is_terminated <- TRUE
+    return(opt)
+  }
+
+  terminate <- check_gr_conv(opt, convergence$grad_tol, convergence$ginf_tol)
+  if (!is.null(terminate)) {
+    opt$terminate <- terminate
+    opt$is_terminated <- TRUE
+    return(opt)
+  }
+
+  if (!is.null(opt$cache$fn_curr)) {
+    fn_new <- opt$cache$fn_curr
+    fn_old <- convergence$fn_new
+    convergence$fn_new <- fn_new
+    opt$convergence <- convergence
+
+    terminate <- check_fn_conv(opt, opt$iter, fn_old, fn_new,
+                               convergence$abs_tol, convergence$rel_tol)
+    if (!is.null(terminate)) {
+      opt$is_terminated <- TRUE
+      opt$terminate <- terminate
+      return(opt)
+    }
+  }
+
   opt
 }

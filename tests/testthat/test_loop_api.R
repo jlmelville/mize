@@ -6,7 +6,7 @@ test_that("steepest descent with constant step size", {
   opt <- mize_init(opt, rb0, rosenbrock_fg)
   par <- rb0
   for (iter in 1:3) {
-    res <- mize_step(opt, par, rosenbrock_fg, iter)
+    res <- mize_step(opt, par, rosenbrock_fg)
     par <- res$par
     opt <- res$opt
   }
@@ -25,7 +25,7 @@ test_that("can initialize in make_mize if par and fg are to hand", {
 
   par <- rb0
   for (iter in 1:3) {
-    res <- mize_step(opt, par, rosenbrock_fg, iter)
+    res <- mize_step(opt, par, rosenbrock_fg)
     par <- res$par
     opt <- res$opt
   }

@@ -16,17 +16,13 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
     log_every <- check_conv_every
   }
 
-  opt <- mize_init(opt, par, fg)
-  opt$convergence <- list(
-    max_fn = max_fn,
-    max_gr = max_gr,
-    max_fg = max_fg,
-    abs_tol = abs_tol,
-    rel_tol = rel_tol,
-    grad_tol = grad_tol,
-    ginf_tol = ginf_tol,
-    step_tol = step_tol
-  )
+  if (is.null(opt$initialized)) {
+    opt <- mize_init(opt, par, fg,
+                     max_fn = max_fn, max_gr = max_gr, max_fg = max_fg,
+                     abs_tol = abs_tol, rel_tol = rel_tol,
+                     grad_tol = grad_tol, ginf_tol = ginf_tol,
+                     step_tol = step_tol)
+  }
 
   progress <- data.frame()
 
@@ -91,7 +87,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
       if (iter == 1) {
         fn_count_before <- opt$counts$fn
       }
-      step_res <- mize_step(opt, par, fg, iter)
+      step_res <- mize_step(opt, par, fg)
       opt <- step_res$opt
       par <- step_res$par
 
@@ -126,7 +122,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
           opt_report(res, print_time = TRUE, print_par = FALSE)
         }
 
-        opt <-  check_mize_convergence(opt, iter, step = res$step)
+        opt <-  check_mize_convergence(opt, step_res)
       }
 
       # might not have worked out which criterion to use on iteration 0
@@ -365,6 +361,7 @@ make_opt <- function(stages,
     hooks = list(),
     handlers = list(),
     eager_update = FALSE,
+    is_terminated = FALSE,
     verbose = verbose
   )
 
