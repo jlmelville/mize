@@ -25,16 +25,16 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
   }
 
   progress <- data.frame()
-  res <- NULL
+  step_info <- NULL
 
   if (verbose || store_progress) {
-    res <- mize_step_summary(opt, par, fg)
-    opt <- res$opt
+    step_info <- mize_step_summary(opt, par, fg)
+    opt <- step_info$opt
     if (store_progress) {
-      progress <- update_progress(opt_res = res, progress = progress)
+      progress <- update_progress(step_info, progress)
     }
     if (verbose) {
-      opt_report(res, print_time = TRUE, print_par = FALSE)
+      opt_report(step_info, print_time = TRUE, print_par = FALSE)
     }
   }
 
@@ -93,17 +93,17 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
 
       # Check termination conditions
       if (!is.null(check_conv_every) && iter %% check_conv_every == 0) {
-        res <- mize_step_summary(opt, par, fg, par0)
-        opt <- res$opt
+        step_info <- mize_step_summary(opt, par, fg, par0)
+        opt <- step_info$opt
 
         if (store_progress && iter %% log_every == 0) {
-          progress <- update_progress(opt_res = res, progress = progress)
+          progress <- update_progress(step_info, progress)
         }
         if (verbose && iter %% log_every == 0) {
-          opt_report(res, print_time = TRUE, print_par = FALSE)
+          opt_report(step_info, print_time = TRUE, print_par = FALSE)
         }
 
-        opt <-  check_mize_convergence(opt, res)
+        opt <-  check_mize_convergence(opt, step_info)
       }
 
       # might not have worked out which criterion to use on iteration 0
@@ -140,37 +140,37 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
     opt <- opt_clear_cache(opt)
     opt <- set_fn_curr(opt, best_fn, iter + 1)
     # recalculate result for this iteration
-    res <- mize_step_summary(opt, par, fg, par0)
+    step_info <- mize_step_summary(opt, par, fg, par0)
     if (verbose) {
       message("Returning best result found")
     }
   }
 
-  if (is.null(res) || res$iter != iter || is.null(res$f)) {
+  if (is.null(step_info) || step_info$iter != iter || is.null(step_info$f)) {
     # Always calculate function value before return
-    res <- mize_step_summary(opt, par, fg, par0, calc_fn = TRUE)
-    opt <- res$opt
+    step_info <- mize_step_summary(opt, par, fg, par0, calc_fn = TRUE)
+    opt <- step_info$opt
   }
   if (verbose && iter %% log_every != 0) {
-    opt_report(res, print_time = TRUE, print_par = FALSE)
+    opt_report(step_info, print_time = TRUE, print_par = FALSE)
   }
   if (store_progress && iter %% log_every != 0) {
-    progress <- update_progress(opt_res = res, progress = progress)
+    progress <- update_progress(step_info, progress)
   }
 
   if (store_progress) {
-    res$progress <- progress
+    step_info$progress <- progress
   }
   if (!ret_opt) {
-    res["opt"] <- NULL
+    step_info["opt"] <- NULL
   }
 
   if (is.null(opt$terminate)) {
     opt$terminate <- list(what = "max_iter", val = max_iter)
   }
-  res$terminate <- opt$terminate
+  step_info$terminate <- opt$terminate
 
-  Filter(Negate(is.null), res)
+  Filter(Negate(is.null), step_info)
 }
 
 # Clears the cache. Results should be identical whether a cache is used or not.
@@ -185,24 +185,24 @@ opt_clear_cache <- function(opt) {
 }
 
 # Prints information about the current optimization result
-opt_report <- function(opt_result, print_time = FALSE, print_par = FALSE) {
+opt_report <- function(step_info, print_time = FALSE, print_par = FALSE) {
 
   fmsg <- ""
-  if (!is.null(opt_result$f)) {
-    fmsg <- paste0(fmsg, " f = ", formatC(opt_result$f))
+  if (!is.null(step_info$f)) {
+    fmsg <- paste0(fmsg, " f = ", formatC(step_info$f))
   }
-  if (!is.null(opt_result$g2n)) {
-    fmsg <- paste0(fmsg, " g2 = ", formatC(opt_result$g2n))
+  if (!is.null(step_info$g2n)) {
+    fmsg <- paste0(fmsg, " g2 = ", formatC(step_info$g2n))
   }
-  if (!is.null(opt_result$ginfn)) {
-    fmsg <- paste0(fmsg, " ginf = ", formatC(opt_result$ginfn))
+  if (!is.null(step_info$ginfn)) {
+    fmsg <- paste0(fmsg, " ginf = ", formatC(step_info$ginfn))
   }
 
-  msg <- paste0("iter ", opt_result$iter
+  msg <- paste0("iter ", step_info$iter
                 , fmsg
-                , " nf = ", opt_result$nf
-                , " ng = ", opt_result$ng
-                , " step = ", formatC(opt_result$step)
+                , " nf = ", step_info$nf
+                , " ng = ", step_info$ng
+                , " step = ", formatC(step_info$step)
   )
 
   if (print_time) {
@@ -210,22 +210,22 @@ opt_report <- function(opt_result, print_time = FALSE, print_par = FALSE) {
   }
 
   if (print_par) {
-    msg <- paste0(msg, " par = ", vec_formatC(opt_result$par))
+    msg <- paste0(msg, " par = ", vec_formatC(step_info$par))
   }
 
   message(msg)
 }
 
 # Transfers data from the result object to the progress data frame
-update_progress <- function(opt_res, progress) {
+update_progress <- function(step_info, progress) {
   res_names <- c("f", "g2n", "ginf", "nf", "ng", "step", "alpha", "mu")
-  res_names <- Filter(function(x) { !is.null(opt_res[[x]]) }, res_names)
+  res_names <- Filter(function(x) { !is.null(step_info[[x]]) }, res_names)
 
-  progress <- rbind(progress, opt_res[res_names])
+  progress <- rbind(progress, step_info[res_names])
 
   # Probably not a major performance issue to regenerate column names each time
   colnames(progress) <- res_names
-  rownames(progress)[nrow(progress)] <- opt_res$iter
+  rownames(progress)[nrow(progress)] <- step_info$iter
   progress
 }
 
