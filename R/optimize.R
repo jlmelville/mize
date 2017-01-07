@@ -198,7 +198,7 @@ opt_clear_cache <- function(opt) {
 # size taken during the optimization step, including momentum.
 # If a momentum stage is present, the value of the momentum is stored as 'mu'.
 opt_results <- function(opt, par, fg, par0 = NULL,
-                        calc_fn = NULL, calc_gr = NULL, gr_norms = c()) {
+                        calc_fn = NULL, calc_gr = NULL) {
 
   iter <- opt$iter
   # An internal flag useful for unit tests: if FALSE, doesn't count any
@@ -221,13 +221,12 @@ opt_results <- function(opt, par, fg, par0 = NULL,
     calc_gr <- is_finite_numeric(opt$convergence$grad_tol) ||
                is_finite_numeric(opt$convergence$ginf_tol)
   }
-  if (length(gr_norms) == 0) {
-    if (is_finite_numeric(opt$convergence$grad_tol)) {
-      gr_norms <- c(gr_norms, 2)
-    }
-    if (is_finite_numeric(opt$convergence$ginf_tol)) {
-      gr_norms <- c(gr_norms, Inf)
-    }
+  gr_norms <- c()
+  if (is_finite_numeric(opt$convergence$grad_tol)) {
+    gr_norms <- c(gr_norms, 2)
+  }
+  if (is_finite_numeric(opt$convergence$ginf_tol)) {
+    gr_norms <- c(gr_norms, Inf)
   }
 
   f <- NULL
