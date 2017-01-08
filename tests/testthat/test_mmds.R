@@ -1,7 +1,7 @@
 context("MMDS")
 test_that("can do MMDS with eurodist", {
 
-make_fg <- function(distmat) {
+make_mmds_fg <- function(distmat) {
   R <- as.matrix(distmat)
   cost_fun <- function(R, D) {
     diff2 <- (R - D) ^ 2
@@ -42,8 +42,8 @@ make_fg <- function(distmat) {
 }
 
 set.seed(42)
-ed0 <- rnorm(attr(eurodist, 'Size') * 2)
-res <- mize(par = ed0, fg = make_fg(datasets::eurodist), method = "L-BFGS",
+ed0 <- rnorm(attr(datasets::eurodist, 'Size') * 2)
+res <- mize(par = ed0, fg = make_mmds_fg(datasets::eurodist), method = "L-BFGS",
             rel_tol = 1e-8)
 
 # coordinates are abritrary, but hopefully repeatable thanks to set.seed
