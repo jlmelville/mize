@@ -1,0 +1,225 @@
+---
+title: "Convergence"
+author: "James Melville"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE, echo = FALSE, message = FALSE}
+knitr::opts_chunk$set(echo = TRUE, collapse = TRUE, comment = "#>")
+library(mize)
+```
+
+There are a variety of ways that the optimization can terminate, running the 
+gamut from good (you have reached the minimum and further work is pointless) to
+bad (the solution diverged and an infinity or NaN turned up in a calculation).
+
+We'll use the 2D Rosenbrock function for the examples, which has a minimum at
+`c(1, 1)`, where the function equals `0`.
+
+```{r Test data}
+rb_fg <- list(
+   fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
+   gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+                          200 *        (x[2] - x[1] * x[1])) })
+rb0 <- c(-1.2, 1)
+```
+
+## Iteration tolerance
+
+An obvious way for the optimization to terminate is if you run out of 
+iterations:
+
+```{r termination by max_iter}
+res <- mize(rb0, rb_fg, max_iter = 10)
+res$terminate
+res$f
+res$par
+```
+
+When comparing different methods, the number of iterations is obviously less
+important than the amount of actual CPU time you spent. Comparing results
+with a fixed number of iterations is not a very good idea, because different
+methods may do a lot more work within an iteration than others. See the 
+section on function and gradient tolerance below.
+
+## Function tolerance
+
+There are two ways to specify a function tolerance, based on comparing the
+difference between consecutive function values. `abs_tol` measures absolute
+tolerance.
+
+```{r Absolute tolerance}
+res <- mize(rb0, rb_fg, max_iter = 100, abs_tol = 1e-8)
+res$terminate
+res$f
+res$par
+```
+
+However, relative tolerance is often preferred, because it measures the change 
+in value relative to the size of the values themselves. 
+
+```{r Relative tolerance}
+res <- mize(rb0, rb_fg, max_iter = 100, rel_tol = 1e-3)
+# hit relative tolerance
+res$terminate
+
+# but stopped too early!
+res$iter
+res$f
+res$par
+```
+In this example we stopped way too early. Even efficient methods like L-BFGS 
+may make little progress on some iterations, so don't be too aggressive with 
+relative tolerance.
+
+## Gradient tolerance
+
+Gradient tolerances measure the difference between the size of the gradient on
+consecutive step. `grad_tol` uses the 2-norm (sometimes referred to as the
+Euclidean norm) of the gradient to measure convergence.
+
+```{r Gradient 2-norm tolerance}
+res <- mize(rb0, rb_fg, abs_tol = 0, grad_tol = 1e-3)
+
+res$terminate
+res$f
+res$par
+```
+
+This seems like a good stopping criterion because it is always zero at a
+minimum, even if the function isn't. It is also used to compare different
+methods in Nocedal and Wright's book. However, it has also been recognized that
+it is not always reliable, see for instance this 
+[paper by Nocedal and co-workers](http://dx.doi.org/10.1023/A:1014897230089).
+
+Other workers suggest using the infinity norm (the maximum absolute component)
+of the gradient vector, particularly for larger problems. For example, see this
+[conjugate gradient paper by Hager and Zhang](http://dx.doi.org/10.1137/030601880).
+To use the infinity norm, set the `ginf_norm` parameter.
+
+```{r Gradient infinity-norm tolerance}
+res <- mize(rb0, rb_fg, rel_tol = NULL, abs_tol = NULL, ginf_tol = 1e-3)
+
+res$terminate
+res$f
+res$par
+```
+
+While the gradient norms aren't as reliable for checking convergence, they 
+almost never incur any overhead for checking, because the gradient that's 
+calculated at the end of the iteration for this purpose can nearly always be
+re-used for the gradient descent calculation at the beginning of the next
+iteration, whereas the function-based convergence requires the function to be
+calculated at the end of the iteration and this is not always reused, although
+for many line search methods it is.
+
+## Step tolerance
+
+You can also look out for the change in `par` itself getting too small:
+
+```{r Step tolerance}
+# set abs_tol to zero to stop it from triggering instead of step_tol
+res <- mize(rb0, rb_fg, abs_tol = 0, step_tol = .Machine$double.eps)
+res$terminate
+res$iter
+res$f
+res$par
+```
+
+In most cases, the step tolerance should be a reasonable way to spot 
+convergence. Some optimization methods may allow for a step size of zero for 
+some iterations, preferring to commence the next iteration using the same 
+initial value of `par`, but with different optimization settings. The step 
+tolerance criterion knows when this sort of "restart" is being attempted, and 
+does not triggered under these conditions.
+
+## Function and gradient count tolerance
+
+For most problems, the time spent calculating the function and gradient values 
+will drown out any of the house-keeping that individual methods do, so the 
+number of function and gradient evaluations is the usual determinant of how long
+an optimization takes. You can therefore decide to terminate based on the number
+of function evaluations:
+
+```{r Maximum number of function evaluations}
+res <- mize(rb0, rb_fg, max_fn = 10)
+
+res$terminate
+res$nf
+res$f
+res$par
+```
+
+Number of gradient evaluations:
+
+```{r Maximum number of gradient evaluations}
+res <- mize(rb0, rb_fg, max_gr = 10)
+
+res$terminate
+res$ng
+res$f
+res$par
+```
+
+or both:
+
+```{r Maximum number of function and gradient evaluations}
+res <- mize(rb0, rb_fg, max_fg = 10)
+
+res$terminate
+res$nf
+res$ng
+res$f
+res$par
+```
+
+The function and gradient termination criteria are checked both between 
+iterations and during line search. On the assumption that if you specify 
+a maximum number of evaluations, that means these calculations are expensive,
+`mize` errs on the side of caution and will sometimes calculate fewer 
+evaluations than you ask for, because it thinks that attempting another 
+iteration will exceed the limit.
+
+## A minor complication with convergence checking
+
+By default, convergence is checked at every iteration. For `abs_tol` and 
+`rel_tol`, this means that the function needs to have been evaluated at the
+current value of `par`. A lot of optimization methods do this as part of their
+normal working, so it doesn't cost very much to do the convergence check.
+However, not all optimization methods do. If you specify a non-`NULL` value for
+`rel_tol` and `abs_tol` and the function value isn't available, it will be
+calculated. This could, for some methods, add a lot of overhead.
+
+If this is important, then using a gradient-based tolerance will be a better 
+choice.
+
+`mize` internally uses the function value as a way to keep track of the best 
+`par` found during optimization. If this isn't available, it will use a gradient
+norm if that is being calculated. This is less reliable than using function
+values, but better than nothing. If you turn off all function and gradient
+tolerances then `mize` will be unable to return the best set of parameters found
+over the course of the optimization. Instead, you'll get the last set of
+parameters it used.
+
+If convergence checking at every iteration is too much of a burden, you can 
+reduce the frequency with which it is carried out with the `check_conv_every` 
+parameter:
+
+```{r Checking convergence less often}
+res <- mize(rb0, rb_fg, grad_tol = 1e-3, check_conv_every = 5, verbose = TRUE)
+```
+
+This also has the side effect of producing less output to the console when 
+`verbose = TRUE`, because `log_every` is set to the same value of 
+`check_conv_every` by default. If you set them to different values, `log_every` 
+must be an integer multiple of `check_conv_every`. If it's not, it will be 
+silently set to be equal to `check_conv_every`.
+
+In many cases, however, convergence checking every iteration imposes no 
+overhead, so this is a non-issue. The vignette that runs through the methods
+available in `mize` mentions where it might be an issue.
