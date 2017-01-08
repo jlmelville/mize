@@ -161,7 +161,7 @@ test_that("Step tolerance is triggered when progress stalls", {
   # NULL abs_tol to stop it from triggering before step_tol
   res <- mize(rb0, rosenbrock_fg, "L-BFGS", memory = 5, abs_tol = NULL,
               step_tol = .Machine$double.eps)
-  expect_equal(res$nf, 58)
+  expect_equal(res$nf, 57)
   expect_equal(res$ng, 57)
   expect_equal(res$f, 0, tol = 1e-3)
   expect_equal(res$par, c(1, 1))

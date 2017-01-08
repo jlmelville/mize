@@ -112,7 +112,10 @@ line_search <- function(ls_fn,
       pm <- stage$direction$value
       if (norm2(pm) < sqrt(sub_stage$eps)) {
         sub_stage$value <- 0
-        return(list(sub_stage = sub_stage))
+        if (is_last_stage(opt, stage)) {
+          opt <- set_fn_new(opt, opt$cache$fn_curr, iter)
+        }
+        return(list(opt = opt, sub_stage = sub_stage))
       }
 
       if (is_first_stage(opt, stage) && has_fn_curr(opt, iter)) {
