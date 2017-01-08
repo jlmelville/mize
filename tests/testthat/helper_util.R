@@ -1,6 +1,5 @@
 # Functions used only for testing
 
-
 # Rosenbrock ---------------------------------------------------------------
 
 rb0 <- c(-1.2, 1)
@@ -40,6 +39,40 @@ rosenbrock_fg <- list(
   n = 2
 )
 
+# log-sum-exp -------------------------------------------------------------
+
+# http://papers.nips.cc/paper/5322-a-differential-equation-for-modeling-nesterovs-accelerated-gradient-method-theory-and-insights.pdf
+
+log_sum_exp_fg <- function(n = 50, m = 200, rho = 20, bvar = 2) {
+  A <- matrix(stats::rnorm(m * n), nrow = m)
+  b <- stats::rnorm(n = m, mean = 0, sd = sqrt(bvar))
+  lse_fg(A = A, b = b, rho = rho)
+}
+
+# Smooth and convex, but not strongly convex
+lse_fg <- function(A, b, rho) {
+  fn <- function(x) {
+    rho * log(sum(exp((A %*% x - b) / rho)))
+  }
+  gr <- function(x) {
+    rAxb <- exp((A %*% x - b) / rho)
+    mult <- sweep(A, 1, rAxb, "*")
+    num <- colSums(mult)
+    as.vector(num / sum(rAxb))
+  }
+  res <- list(
+    fn = fn,
+    gr = gr,
+    A = A,
+    b = b,
+    rho = rho
+  )
+  res$grr <- make_gfd(fn = res$fn)
+  res
+}
+
+# Function with unhelpful Hessian -----------------------------------------
+
 tricky_fg <- function() {
   res <- list(
     fn = function(par) {
@@ -55,6 +88,9 @@ tricky_fg <- function() {
 
   res
 }
+
+
+# Line Search Util --------------------------------------------------------
 
 # Create Initial Step Value
 #
