@@ -94,7 +94,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
       # Check termination conditions
       if (!is.null(check_conv_every) && iter %% check_conv_every == 0) {
         step_info <- mize_step_summary(opt, par, fg, par0)
-        opt <- step_info$opt
+        opt <- check_mize_convergence(step_info)
 
         if (store_progress && iter %% log_every == 0) {
           progress <- update_progress(step_info, progress)
@@ -103,7 +103,6 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
           opt_report(step_info, print_time = TRUE, print_par = FALSE)
         }
 
-        opt <-  check_mize_convergence(opt, step_info)
       }
 
       # might not have worked out which criterion to use on iteration 0
@@ -169,7 +168,7 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
     opt$terminate <- list(what = "max_iter", val = opt$convergence$max_iter)
   }
   step_info$terminate <- opt$terminate
-
+  step_info$par <- par
   Filter(Negate(is.null), step_info)
 }
 
@@ -185,7 +184,8 @@ opt_clear_cache <- function(opt) {
 }
 
 # Prints information about the current optimization result
-opt_report <- function(step_info, print_time = FALSE, print_par = FALSE) {
+opt_report <- function(step_info, print_time = FALSE, print_par = FALSE,
+                       par = NULL) {
 
   fmsg <- ""
   if (!is.null(step_info$f)) {
@@ -210,7 +210,7 @@ opt_report <- function(step_info, print_time = FALSE, print_par = FALSE) {
   }
 
   if (print_par) {
-    msg <- paste0(msg, " par = ", vec_formatC(step_info$par))
+    msg <- paste0(msg, " par = ", vec_formatC(par))
   }
 
   message(msg)
