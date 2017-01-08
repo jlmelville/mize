@@ -218,6 +218,22 @@ to `mize` is:
 ```{r more efficient fg}
 make_fg <- function(distmat) {
   R <- as.matrix(distmat)
+  cost_fun <- function(R, D) {
+    diff2 <- (R - D) ^ 2
+    sum(diff2) * 0.5
+  }
+  cost_grad <- function(R, D, y) {
+    K <- (R - D) / (D + 1.e-10)
+
+    G <- matrix(nrow = nrow(y), ncol = ncol(y))
+
+    for (i in 1:nrow(y)) {
+      dyij <- sweep(-y, 2, -y[i, ])
+      G[i, ] <- apply(dyij * K[, i], 2, sum)
+    }
+
+    as.vector(t(G)) * -2
+  }
   list(
     fn = function(par) {
       y <- matrix(par, ncol = 2, byrow = TRUE)
