@@ -819,9 +819,9 @@ make_mize <- function(method = "L-BFGS",
                       fg = NULL,
                       max_iter = 100,
                       max_fn = Inf, max_gr = Inf, max_fg = Inf,
-                      abs_tol = sqrt(.Machine$double.eps),
+                      abs_tol = NULL,
                       rel_tol = abs_tol, grad_tol = NULL, ginf_tol = NULL,
-                      step_tol = .Machine$double.eps) {
+                      step_tol = NULL) {
 
   if (memory < 1) {
     stop("memory must be > 0")
@@ -1334,11 +1334,11 @@ mize_step <- function(opt, par, fg) {
 #' }
 #'
 mize_init <- function(opt, par, fg,
-                      max_iter = 100,
+                      max_iter = Inf,
                       max_fn = Inf, max_gr = Inf, max_fg = Inf,
-                      abs_tol = sqrt(.Machine$double.eps),
+                      abs_tol = NULL,
                       rel_tol = abs_tol, grad_tol = NULL, ginf_tol = NULL,
-                      step_tol = .Machine$double.eps) {
+                      step_tol = NULL) {
   opt <- register_hooks(opt)
   opt$iter <- 0
   opt <- life_cycle_hook("opt", "init", opt, par, fg, opt$iter)
@@ -1383,7 +1383,7 @@ mize_init <- function(opt, par, fg,
 #'  of \code{\link{mize_step}}.
 #'@param fg Function and gradient list. See the documentaion of
 #'  \code{\link{mize}}.
-#'@param par0 (Optional). Vector of parameters at the end of the previous
+#'@param par_old (Optional). Vector of parameters at the end of the previous
 #'  iteration. Used to calculate step size.
 #'@param calc_fn (Optional). If \code{TRUE}, force calculation of function if
 #'  not already cached in \code{opt}, even if it wouldn't be needed for
@@ -1405,13 +1405,25 @@ mize_init <- function(opt, par, fg,
 #'
 #'  \item \code{ng} Number of gradient evaluations so far.
 #'
-#'  \item \code{step} Size of the step between \code{par0} and \code{par}.
+#'  \item \code{step} Size of the step between \code{par_old} and \code{par},
+#'  if \code{par_old} is provided.
 #'
 #'  \item \code{alpha} Step length of the gradient descent part of the step.
 #'
 #'  \item \code{mu} Momentum coefficient for this iteration}
 #'@export
-mize_step_summary <- function(opt, par, fg, par0 = NULL, calc_fn = NULL) {
+#'@examples
+#' rb_fg <- list(
+#'   fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
+#'   gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+#'                          200 *        (x[2] - x[1] * x[1])) })
+#' rb0 <- c(-1.2, 1)
+#'
+#' opt <- make_mize(method = "BFGS", par = rb0, fg = rb_fg, max_iter = 30)
+#' mize_res <- mize_step(opt = opt, par = rb0, fg = rb_fg)
+#' # Get info about first step, use rb0 to compare new par with initial value
+#' step_info <- mize_step_summary(mize_res$opt, mize_res$par, rb_fg, rb0)
+mize_step_summary <- function(opt, par, fg, par_old = NULL, calc_fn = NULL) {
 
   iter <- opt$iter
   # An internal flag useful for unit tests: if FALSE, doesn't count any
@@ -1475,16 +1487,16 @@ mize_step_summary <- function(opt, par, fg, par0 = NULL, calc_fn = NULL) {
     }
   }
 
-  if (!is.null(par0)) {
-    step_size <- norm2(par - par0)
+  if (!is.null(par_old)) {
+    step_size <- norm2(par - par_old)
   }
   else {
     step_size <- 0
   }
 
-  alpha <- NULL
-  if (length(opt$stages) == 1 && opt$stages[[1]]$type == "gradient_descent") {
-    alpha <- norm2(opt$stages[[1]]$step_size$value)
+  alpha <- 0
+  if (!is.null(opt$stages[["gradient_descent"]]$step_size$value)) {
+    alpha <- norm2(opt$stages[["gradient_descent"]]$step_size$value)
     if (is.null(alpha)) {
       alpha <- 0
     }
@@ -1497,7 +1509,6 @@ mize_step_summary <- function(opt, par, fg, par0 = NULL, calc_fn = NULL) {
     ginfn = ginfn,
     nf = opt$counts$fn,
     ng = opt$counts$gr,
-    par = par,
     step = step_size,
     alpha = alpha,
     iter = iter
@@ -1510,7 +1521,7 @@ mize_step_summary <- function(opt, par, fg, par0 = NULL, calc_fn = NULL) {
     }
   }
 
-  res
+  Filter(Negate(is.null), res)
 }
 
 
@@ -1534,13 +1545,26 @@ mize_step_summary <- function(opt, par, fg, par0 = NULL, calc_fn = NULL) {
 #' Convergence criteria are only checked here. To set these criteria, use
 #' \code{\link{make_mize}} or \code{\link{mize_init}}.
 #'
-#' @param opt Optimizer, created by \code{\link{make_mize}}.
 #' @param mize_step_info Step info for this iteration, created by
 #'   \code{\link{mize_step_summary}}
 #' @return \code{opt} updated with convergence and termination data. See
 #'   'Details'.
 #' @export
-check_mize_convergence <- function(opt, mize_step_info) {
+#'@examples
+#' rb_fg <- list(
+#'   fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
+#'   gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+#'                          200 *        (x[2] - x[1] * x[1])) })
+#' rb0 <- c(-1.2, 1)
+#'
+#' opt <- make_mize(method = "BFGS", par = rb0, fg = rb_fg, max_iter = 30)
+#' mize_res <- mize_step(opt = opt, par = rb0, fg = rb_fg)
+#' step_info <- mize_step_summary(mize_res$opt, mize_res$par, rb_fg, rb0)
+#' # check convergence by looking at opt$is_terminated
+#' opt <- check_mize_convergence(step_info)
+check_mize_convergence <- function(mize_step_info) {
+
+  opt <- mize_step_info$opt
 
   convergence <- opt$convergence
 

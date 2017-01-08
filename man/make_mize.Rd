@@ -14,9 +14,8 @@ make_mize(method = "L-BFGS", norm_direction = FALSE, scale_hess = TRUE,
   mom_init = NULL, mom_final = NULL, mom_switch_iter = NULL,
   mom_linear_weight = FALSE, use_init_mom = FALSE, restart = NULL,
   restart_wait = 10, par = NULL, fg = NULL, max_iter = 100,
-  max_fn = Inf, max_gr = Inf, max_fg = Inf,
-  abs_tol = sqrt(.Machine$double.eps), rel_tol = abs_tol, grad_tol = NULL,
-  ginf_tol = NULL, step_tol = .Machine$double.eps)
+  max_fn = Inf, max_gr = Inf, max_fg = Inf, abs_tol = NULL,
+  rel_tol = abs_tol, grad_tol = NULL, ginf_tol = NULL, step_tol = NULL)
 }
 \arguments{
 \item{method}{Optimization method. See 'Details' of \code{\link{mize}}.}

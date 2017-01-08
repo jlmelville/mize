@@ -4,11 +4,9 @@
 \alias{check_mize_convergence}
 \title{Check Optimization Convergence}
 \usage{
-check_mize_convergence(opt, mize_step_info)
+check_mize_convergence(mize_step_info)
 }
 \arguments{
-\item{opt}{Optimizer, created by \code{\link{make_mize}}.}
-
 \item{mize_step_info}{Step info for this iteration, created by
 \code{\link{mize_step_summary}}}
 }
@@ -35,5 +33,18 @@ caused termination. This list will not be present if \code{is_terminated} is
 
 Convergence criteria are only checked here. To set these criteria, use
 \code{\link{make_mize}} or \code{\link{mize_init}}.
+}
+\examples{
+rb_fg <- list(
+  fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
+  gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+                         200 *        (x[2] - x[1] * x[1])) })
+rb0 <- c(-1.2, 1)
+
+opt <- make_mize(method = "BFGS", par = rb0, fg = rb_fg, max_iter = 30)
+mize_res <- mize_step(opt = opt, par = rb0, fg = rb_fg)
+step_info <- mize_step_summary(mize_res$opt, mize_res$par, rb_fg, rb0)
+# check convergence by looking at opt$is_terminated
+opt <- check_mize_convergence(step_info)
 }
 

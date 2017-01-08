@@ -4,9 +4,9 @@
 \alias{mize_init}
 \title{Initialize the Optimizer.}
 \usage{
-mize_init(opt, par, fg, max_iter = 100, max_fn = Inf, max_gr = Inf,
-  max_fg = Inf, abs_tol = sqrt(.Machine$double.eps), rel_tol = abs_tol,
-  grad_tol = NULL, ginf_tol = NULL, step_tol = .Machine$double.eps)
+mize_init(opt, par, fg, max_iter = Inf, max_fn = Inf, max_gr = Inf,
+  max_fg = Inf, abs_tol = NULL, rel_tol = abs_tol, grad_tol = NULL,
+  ginf_tol = NULL, step_tol = NULL)
 }
 \arguments{
 \item{opt}{Optimizer, created by \code{\link{make_mize}}.}

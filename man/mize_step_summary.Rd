@@ -4,7 +4,7 @@
 \alias{mize_step_summary}
 \title{Mize Step Summary}
 \usage{
-mize_step_summary(opt, par, fg, par0 = NULL, calc_fn = NULL)
+mize_step_summary(opt, par, fg, par_old = NULL, calc_fn = NULL)
 }
 \arguments{
 \item{opt}{Optimizer to generate summary for, from return value of
@@ -16,7 +16,7 @@ of \code{\link{mize_step}}.}
 \item{fg}{Function and gradient list. See the documentaion of
 \code{\link{mize}}.}
 
-\item{par0}{(Optional). Vector of parameters at the end of the previous
+\item{par_old}{(Optional). Vector of parameters at the end of the previous
 iteration. Used to calculate step size.}
 
 \item{calc_fn}{(Optional). If \code{TRUE}, force calculation of function if
@@ -41,7 +41,8 @@ A list with the following items: \itemize{
 
  \item \code{ng} Number of gradient evaluations so far.
 
- \item \code{step} Size of the step between \code{par0} and \code{par}.
+ \item \code{step} Size of the step between \code{par_old} and \code{par},
+ if \code{par_old} is provided.
 
  \item \code{alpha} Step length of the gradient descent part of the step.
 
@@ -66,5 +67,17 @@ for potential use in the next iteration). The same applies for gradient
 tolerances and gradient calculation. Function and gradient calculation can
 also be forced here by setting the \code{calc_fn} and \code{calc_gr}
 (respectively) parameters to \code{TRUE}.
+}
+\examples{
+rb_fg <- list(
+  fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
+  gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+                         200 *        (x[2] - x[1] * x[1])) })
+rb0 <- c(-1.2, 1)
+
+opt <- make_mize(method = "BFGS", par = rb0, fg = rb_fg, max_iter = 30)
+mize_res <- mize_step(opt = opt, par = rb0, fg = rb_fg)
+# Get info about first step, use rb0 to compare new par with initial value
+step_info <- mize_step_summary(mize_res$opt, mize_res$par, rb_fg, rb0)
 }
 
