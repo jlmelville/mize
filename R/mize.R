@@ -919,7 +919,8 @@ make_mize <- function(method = "L-BFGS",
     },
     dbd = {
       dir_type <- sd_direction(normalize = norm_direction)
-    }
+    },
+    stop("Unknown method: '", method, "'")
   )
 
   # If it's not already been turned on, turn off the Newton step option
