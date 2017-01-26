@@ -24,6 +24,12 @@
 # t-SNE), you can specify kappa_fun to be `+` to add kappa to the learning rate
 # when increasing the learning rate.
 #
+# Idea behind combining momentum with adaptive step size: slide 25 of
+# http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf
+# notes that
+# "Use the agreement in sign between the current gradient for a weight and the
+# velocity for that weight (Jacobs, 1989)."
+#
 # kappa amount to increase the learning rate by.
 # kappa_fun - operator to apply to kappa and the current learning rate when
 #  increasing the learning rate. Set it to `+` to add to the current learning
