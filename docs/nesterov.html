@@ -147,12 +147,12 @@ $(document).ready(function () {
 </div>
 <div id="nag" class="section level2">
 <h2>NAG</h2>
-<p>Let’s start with Nesterov Accelerated Gradient. It’s basic form consists of a gradient descent step, followed by something that looks a lot like a momentum term, but isn’t exactly the same as that found in classical momentum. I’ll call it a “momentum stage” here. It’s important to note that the parameters being minimized by NAG are given the symbol <span class="math inline">\(y\)</span> by Sutskever, not <span class="math inline">\(\theta\)</span>. You’ll see that <span class="math inline">\(\theta\)</span> is the symbol for the parameters after they’ve been updated by the gradient descent stage, but before the momentum stage.</p>
+<p>The Nesterov Accelerated Gradient method consists of a gradient descent step, followed by something that looks a lot like a momentum term, but isn’t exactly the same as that found in classical momentum. I’ll call it a “momentum stage” here. It’s important to note that the parameters being minimized by NAG are given the symbol <span class="math inline">\(y\)</span> by Sutskever, not <span class="math inline">\(\theta\)</span>. You’ll see that <span class="math inline">\(\theta\)</span> is the symbol for the parameters after they’ve been updated by the gradient descent stage, but before the momentum stage.</p>
 <p>Here’s the gradient descent stage: <span class="math display">\[\theta_t = y_t - \varepsilon_t \nabla f\left(y_t\right)\]</span> And here’s the momentum stage: <span class="math display">\[y_{t+1} = \theta_t + \mu_t\left(\theta_t - \theta_{t-1} \right)\]</span> That concludes one iteration of NAG. The hard part is actually finding the correct learning rate and momentum value in order to get the convergence guarantees that make the method attractive, but that needn’t concern us. Sutskever in his thesis suggests manual tuning to get an optimal result (at least for deep learning applications) so we are in heuristic territory here anyway.</p>
 </div>
 <div id="sutskever-nesterov-momentum" class="section level2">
 <h2>Sutskever Nesterov Momentum</h2>
-<p>The key idea behind the Sutskever momentum derivation is to shift the perspective about which of the parameters we want as the result of the iteration, from <span class="math inline">\(y\)</span> to <span class="math inline">\(\theta\)</span>. Rather than having the optimization iterations proceed as “gradient descent, momentum (end of iteration 1), gradient descent, momentum (end of iteration 2), gradient descent etc.” move the boundary of where the iterations end by a half-iteration to get “momentum, gradient descent (end of iteration 1), momentum, gradient descent etc.”. This leaves a phantom gradient descent step that used to the be first stage of the first iteration, now floating in the nether regions of iteration zero, but you can just pretend that the starting position is the result of gradient descent from some other arbitrary starting position.</p>
+<p>The key idea behind the Sutskever momentum derivation is to shift the perspective about which of the parameters we want as the result of the iteration, from <span class="math inline">\(y\)</span> to <span class="math inline">\(\theta\)</span>. Rather than having the optimization iterations proceed as “gradient descent, momentum (end of iteration 1), gradient descent, momentum (end of iteration 2), gradient descent etc.” move the boundary of where the iterations end by a half-iteration to get “momentum, gradient descent (end of iteration 1), momentum, gradient descent (end of iteration 2) etc.”. This leaves a phantom gradient descent step that used to be first stage of the first iteration, now floating in the nether regions of iteration zero, but you can just pretend that the starting position is the result of gradient descent from some other arbitrary starting position.</p>
 <p>The Sutskever derivation then proceeds as follows. First, rewrite the momentum stage in terms of <span class="math inline">\(y_t\)</span>:</p>
 <p><span class="math display">\[y_t = \theta_{t-1} + \mu_{t-1}\left(\theta_{t-1} - \theta_{t-2} \right)\]</span></p>
 <p>Then note that the term in parentheses is just the definition of the velocity vector, so we can write:</p>
@@ -166,7 +166,7 @@ $(document).ready(function () {
 <p><span class="math display">\[\theta_{t+1} = \theta_t + \mu_t v_t - \varepsilon_t \nabla f\left(\theta_t + \mu_t v_t\right)\]</span></p>
 <p>with the velocity vector defined as:</p>
 <p><span class="math display">\[v_{t+1} = \mu_t v_t - \varepsilon_t \nabla f\left(\theta_t + \mu_t v_t\right)\]</span></p>
-<p>As you can see this looks just like the classical momentum update, except that the gradient is calculated after the momentum update. Hence, one can do NAG by simply reversing the order in which the update is usually carried out: do the momentum stage first, update the parameters, and then do the gradient descent part.</p>
+<p>This looks just like the classical momentum update, except that the gradient is calculated after the momentum update. Hence, one can do NAG by simply reversing the order in which the update is usually carried out: do the momentum stage first, update the parameters, and then do the gradient descent part.</p>
 <div id="bengio-nesterov-momentum" class="section level3">
 <h3>Bengio Nesterov Momentum</h3>
 <p>The Bengio formulation of Nesterov momentum starts from the Sutskever definition and then defines a new variable, <span class="math inline">\(\Theta\)</span>, which represents <span class="math inline">\(\theta\)</span> after the momentum update:</p>
@@ -186,7 +186,7 @@ $(document).ready(function () {
 <p><span class="math display">\[\Theta_{t+1} = 
 \Theta_t + \mu_{t+1} \mu_t v_t - \mu_{t+1} \varepsilon_t \nabla f\left(\Theta_t\right) 
 - \varepsilon_t \nabla f\left(\Theta_t\right)
-\]</span> and grouping the gradient descent parts, finally gives:</p>
+\]</span> and, after grouping the gradient descent parts, finally gives:</p>
 <p><span class="math display">\[\Theta_{t+1} = 
 \Theta_t + \mu_{t+1} \mu_t v_t - \left(1 + \mu_{t+1} \right) \varepsilon_t \nabla f\left(\Theta_t\right) 
 \]</span> At this point in the other derivations, I isolated the bits on the RHS that wasn’t the old parameter and defined them as the velocity vector. Well, we can’t do that here, as we’re already using the Sutskever definition of the velocity vector which is <span class="math inline">\(\theta_t - \theta_{t-1}\)</span> and <em>not</em> <span class="math inline">\(\Theta_t - \Theta_{t-1}\)</span>. I said it was a bit tricky.</p>
@@ -217,7 +217,7 @@ $(document).ready(function () {
 \right]
 - \varepsilon_t \nabla f\left(\theta_t \right)
 \]</span></p>
-<p>Finally, we can subtitute in <span class="math inline">\(v_t\)</span> for the first two terms in the square brackets:</p>
+<p>Finally, we can subtitute in <span class="math inline">\(v_t\)</span> for the first two terms in the square brackets, to give:</p>
 <p><span class="math display">\[\theta_{t+1} = \theta_t 
 + \mu_t \left[v_t
 + \varepsilon_{t-1} \nabla f\left(\theta_{t-1} \right)
@@ -227,7 +227,7 @@ $(document).ready(function () {
 \]</span></p>
 <p>with velocity:</p>
 <p><span class="math display">\[v_{t+1} =  
-+ \mu_t \left[v_t
+ \mu_t \left[v_t
 + \varepsilon_{t-1} \nabla f\left(\theta_{t-1} \right)
 - \varepsilon_t \nabla f\left(\theta_t \right)
 \right]
@@ -237,13 +237,13 @@ $(document).ready(function () {
 <p>You could also choose to expand the velocity expression to make it look a bit like the Bengio formulation:</p>
 <p><span class="math display">\[
 v_{t+1} =  
-+ \mu_t \left[v_t
+\mu_t \left[v_t
 + \varepsilon_{t-1} \nabla f\left(\theta_{t-1} \right)
 \right]
 - \left(1 + \mu_t\right) \varepsilon_t \nabla f\left(\theta_t \right)
 \]</span></p>
-<p>but as this version still isn’t just a coefficient change compared to the classical momentum expression, it probably doesn’t gain you anything.</p>
-<p>From the look of the expression, it seems that a major downside of this expression is that calculated the parameters for iteration <span class="math inline">\(t+1\)</span> requires storage of information from not only iteration <span class="math inline">\(t\)</span> but from iteration <span class="math inline">\(t-1\)</span> too. But you don’t necessarily have to do any extra storage in an implementation that used this version of NAG. At the end of an iteration, when saving the velocity vector for the next iteration, you change:</p>
+<p>but as this version can’t be expressed as the classical momentum form with different coefficients, the way the Bengio formulation can be, it probably doesn’t gain you anything.</p>
+<p>From the look of the expression, it seems that a major downside of this expression is that calculating the parameters for iteration <span class="math inline">\(t+1\)</span> requires storage of information from not only iteration <span class="math inline">\(t\)</span> but from iteration <span class="math inline">\(t-1\)</span> too. But you don’t necessarily have to do any extra storage with an implementation that used this version of NAG. At the end of an iteration, when saving the velocity vector for the next iteration, you change:</p>
 <p><span class="math display">\[v_{t-1} \leftarrow v_t\]</span> to: <span class="math display">\[v_{t-1} \leftarrow v_t + \varepsilon_{t} \nabla f\left(\theta_t \right)\]</span></p>
 <p>and then when calculating the momentum term, change:</p>
 <p><span class="math display">\[\mu_t v_t\]</span> to: <span class="math display">\[\mu_t \left[v_t - \varepsilon_{t} \nabla f\left(\theta_t \right)\right]\]</span></p>
@@ -516,7 +516,7 @@ sbnag_df &lt;- data.frame(Bengio = bnag_opt$fs,
 </table>
 <p>The first two columns pit the Sutskever vs Bengio formulations directly. And, as we would expect, they’re not the same: the Sutskever iteration result is from the gradient descent stage, and the Bengio result comes from the momentum stage. But if we put the momentum results from the Sutskever formulation up, we can see that they are the same as the Bengio result, but behind by one iteration, i.e. the Bengio result at iteration <span class="math inline">\(t\)</span> matches the Sutskever momentum stage result at <span class="math inline">\(t+1\)</span>. The final column, indicates the results using the alternative derivation I provided. It matches the Bengio results. Hurrah.</p>
 <p>However, none of the results match the vanilla NAG implementation. A clue to what’s going on is from looking at the classical momentum result in the “CM” column. The first iteration of classical momentum is always plain gradient descent, and that’s also how NAG works by construction. We can see that both NAG and CM have the same result on the first iteration, which suggests they’re working correctly. The Sutskever version is also doing gradient descent on its first step. But the other implementations clearly aren’t doing gradient descent on their first iteration, and on subsequent iterations even the Sutskever version diverges from the NAG result.</p>
-<p>We’ll get back to this, but let’s just make sure these observtions holds up at the end of the table too.</p>
+<p>We’ll get back to this, but let’s just make sure these observations holds up at the end of the table too.</p>
 <pre class="r"><code>knitr::kable(tail(sbnag_df), caption = paste(
   &quot;Last few evaluations of NAG implementations, with lr = &quot;, 
   formatC(lr), &quot;mu = &quot;, formatC(mu),
@@ -684,7 +684,7 @@ bnagc &lt;- function(par, fn, gr, lr, mu, max_iter = 10) {
 
   list(par = par, f = f, fs = fs)
 }</code></pre>
-<p>“Fixing” the Bengio formulation turns out to be a bit more work than you might think. As we noticed earlier, to get gradient decent on the first iteration, <span class="math inline">\(\mu_1\)</span> needs to be set to zero. However, as a result this means the assumption we made that <span class="math inline">\(\mu_{t}\mu_{t-1} = \mu_{t-1}^2\)</span> isn’t correct for iteration 2: <span class="math inline">\(\mu_2\mu_1 = 0 \neq \mu_2^2\)</span>. However, we can’t just set <code>mu</code> to 0 for the second iteration, because the non-zero <span class="math inline">\(\mu_2\)</span> is used on its own as part of the gradient descent expression.</p>
+<p>“Fixing” the Bengio formulation turns out to be a bit more work than you might think. As we noticed earlier, to get gradient decent on the first iteration, <span class="math inline">\(\mu_1\)</span>, needs to be set to zero. However, as a result this means the assumption we made that <span class="math inline">\(\mu_{t}\mu_{t-1} = \mu_{t-1}^2\)</span> isn’t correct for iteration 2: <span class="math inline">\(\mu_2\mu_1 = 0 \neq \mu_2^2\)</span>. However, we can’t just set <code>mu</code> to 0 for the second iteration, because the non-zero <span class="math inline">\(\mu_2\)</span> is used on its own as part of the gradient descent expression.</p>
 <p>There are two ways to deal with this: start storing the value of <code>mu</code> from the previous iteration, even though I purposely chose a constant value of <code>mu</code> to keep things simple, or just force <span class="math inline">\(v_1\)</span> to be zero by not updating it on the first iteration. I chose the latter.</p>
 </div>
 <div id="momentum-nag-consistent-with-nag" class="section level3">

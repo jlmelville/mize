@@ -87,13 +87,13 @@ $$v_{t+1} = \mu_t v_t - \varepsilon_t \nabla f\left(\theta_t \right)$$
 
 ## NAG
 
-Let's start with Nesterov Accelerated Gradient. It's basic form consists of a
-gradient descent step, followed by something that looks a lot like a momentum
-term, but isn't exactly the same as that found in classical momentum. I'll call
-it a "momentum stage" here. It's important to note that the parameters being 
-minimized by NAG are given the symbol $y$ by Sutskever, not $\theta$. You'll
-see that $\theta$ is the symbol for the parameters after they've been 
-updated by the gradient descent stage, but before the momentum stage.
+The Nesterov Accelerated Gradient method consists of a gradient descent step,
+followed by something that looks a lot like a momentum term, but isn't exactly
+the same as that found in classical momentum. I'll call it a "momentum stage"
+here. It's important to note that the parameters being minimized by NAG are
+given the symbol $y$ by Sutskever, not $\theta$. You'll see that $\theta$ is the
+symbol for the parameters after they've been updated by the gradient descent
+stage, but before the momentum stage.
 
 Here's the gradient descent stage:
 $$\theta_t = y_t - \varepsilon_t \nabla f\left(y_t\right)$$
@@ -110,15 +110,15 @@ anyway.
 
 The key idea behind the Sutskever momentum derivation is to shift the 
 perspective about which of the parameters we want as the result of the 
-iteration, from $y$ to $\theta$. Rather than having the optimization iterations
-proceed as "gradient descent, momentum (end of iteration 1), gradient descent,
-momentum (end of iteration 2), gradient descent etc." move the boundary of 
-where the iterations end by a half-iteration to get "momentum, gradient descent 
-(end of iteration 1), momentum, gradient descent etc.". This leaves a phantom
-gradient descent step that used to the be first stage of the first iteration,
-now floating in the nether regions of iteration zero, but you can just pretend 
-that the starting position is the result of gradient descent from some other
-arbitrary starting position.
+iteration, from $y$ to $\theta$. Rather than having the optimization iterations 
+proceed as "gradient descent, momentum (end of iteration 1), gradient descent, 
+momentum (end of iteration 2), gradient descent etc." move the boundary of where
+the iterations end by a half-iteration to get "momentum, gradient descent (end
+of iteration 1), momentum, gradient descent (end of iteration 2) etc.". This
+leaves a phantom gradient descent step that used to be first stage of the
+first iteration, now floating in the nether regions of iteration zero, but you
+can just pretend that the starting position is the result of gradient descent
+from some other arbitrary starting position.
 
 The Sutskever derivation then proceeds as follows. First, rewrite the
 momentum stage in terms of $y_t$:
@@ -155,11 +155,10 @@ with the velocity vector defined as:
 
 $$v_{t+1} = \mu_t v_t - \varepsilon_t \nabla f\left(\theta_t + \mu_t v_t\right)$$
 
-As you can see this looks just like the classical momentum update, except that
-the gradient is calculated after the momentum update. Hence, one can do NAG
-by simply reversing the order in which the update is usually carried out:
-do the momentum stage first, update the parameters, and then do the gradient
-descent part.
+This looks just like the classical momentum update, except that the gradient is
+calculated after the momentum update. Hence, one can do NAG by simply reversing
+the order in which the update is usually carried out: do the momentum stage
+first, update the parameters, and then do the gradient descent part.
 
 ### Bengio Nesterov Momentum
 
@@ -203,7 +202,7 @@ $$\Theta_{t+1} =
 \Theta_t + \mu_{t+1} \mu_t v_t - \mu_{t+1} \varepsilon_t \nabla f\left(\Theta_t\right) 
 - \varepsilon_t \nabla f\left(\Theta_t\right)
 $$
-and grouping the gradient descent parts, finally gives:
+and, after grouping the gradient descent parts, finally gives:
 
 $$\Theta_{t+1} = 
 \Theta_t + \mu_{t+1} \mu_t v_t - \left(1 + \mu_{t+1} \right) \varepsilon_t \nabla f\left(\Theta_t\right) 
@@ -265,7 +264,7 @@ $$\theta_{t+1} = \theta_t
 $$
 
 Finally, we can subtitute in $v_t$ for the first two terms in the square
-brackets:
+brackets, to give:
 
 $$\theta_{t+1} = \theta_t 
 + \mu_t \left[v_t
@@ -278,7 +277,7 @@ $$
 with velocity:
 
 $$v_{t+1} =  
-+ \mu_t \left[v_t
+ \mu_t \left[v_t
 + \varepsilon_{t-1} \nabla f\left(\theta_{t-1} \right)
 - \varepsilon_t \nabla f\left(\theta_t \right)
 \right]
@@ -297,21 +296,22 @@ like the Bengio formulation:
 
 $$
 v_{t+1} =  
-+ \mu_t \left[v_t
+\mu_t \left[v_t
 + \varepsilon_{t-1} \nabla f\left(\theta_{t-1} \right)
 \right]
 - \left(1 + \mu_t\right) \varepsilon_t \nabla f\left(\theta_t \right)
 $$
 
-but as this version still isn't just a coefficient change compared to the
-classical momentum expression, it probably doesn't gain you anything.
+but as this version can't be expressed as the classical momentum form with
+different coefficients, the way the Bengio formulation can be, it probably
+doesn't gain you anything.
 
-From the look of the expression, it seems that a major downside of this
-expression is that calculated the parameters for iteration $t+1$ requires
+From the look of the expression, it seems that a major downside of this 
+expression is that calculating the parameters for iteration $t+1$ requires 
 storage of information from not only iteration $t$ but from iteration $t-1$ too.
-But you don't necessarily have to do any extra storage in an 
-implementation that used this version of NAG. At the end of an iteration, 
-when saving the velocity vector for the next iteration, you change:
+But you don't necessarily have to do any extra storage with an implementation
+that used this version of NAG. At the end of an iteration, when saving the
+velocity vector for the next iteration, you change:
 
 $$v_{t-1} \leftarrow v_t$$
 to:
@@ -598,7 +598,7 @@ implementations clearly aren't doing gradient descent on their first iteration,
 and on subsequent iterations even the Sutskever version diverges from the NAG
 result.
 
-We'll get back to this, but let's just make sure these observtions holds up at 
+We'll get back to this, but let's just make sure these observations holds up at 
 the end of the table too.
 
 ```{r table tail}
@@ -761,7 +761,7 @@ bnagc <- function(par, fn, gr, lr, mu, max_iter = 10) {
 
 "Fixing" the Bengio formulation turns out to be a bit more work than
 you might think. As we noticed earlier, to get gradient decent on the
-first iteration, $\mu_1$ needs to be set to zero. However, as a result
+first iteration, $\mu_1$, needs to be set to zero. However, as a result
 this means the assumption we made that $\mu_{t}\mu_{t-1} = \mu_{t-1}^2$
 isn't correct for iteration 2: $\mu_2\mu_1 = 0 \neq \mu_2^2$. However,
 we can't just set `mu` to 0 for the second iteration, because the
