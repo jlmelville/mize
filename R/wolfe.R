@@ -183,7 +183,7 @@ line_search <- function(ls_fn,
       else {
         ls_result <- ls_fn(phi_alpha, step0, sub_stage$value,
                            total_max_fn = max_fn, total_max_gr = max_gr,
-                           total_max_fg = max_fg)
+                           total_max_fg = max_fg, pm = pm)
         sub_stage$value <- ls_result$step$alpha
 
         opt$counts$fn <- opt$counts$fn + ls_result$nfn

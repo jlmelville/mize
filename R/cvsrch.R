@@ -22,7 +22,8 @@
 #  \href{https://www.cs.umd.edu/users/oleary/software/}{Dianne O'Leary}.
 more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf) {
   function(phi, step0, alpha,
-           total_max_fn = Inf, total_max_gr = Inf, total_max_fg = Inf) {
+           total_max_fn = Inf, total_max_gr = Inf, total_max_fg = Inf,
+           pm = NULL) {
     maxfev <- min(max_fn, total_max_fn, total_max_gr, floor(total_max_fg / 2))
     if (maxfev <= 0) {
       return(list(step = step0, nfn = 0, ngr = 0))
