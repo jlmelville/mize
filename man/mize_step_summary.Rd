@@ -80,4 +80,3 @@ mize_res <- mize_step(opt = opt, par = rb0, fg = rb_fg)
 # Get info about first step, use rb0 to compare new par with initial value
 step_info <- mize_step_summary(mize_res$opt, mize_res$par, rb_fg, rb0)
 }
-

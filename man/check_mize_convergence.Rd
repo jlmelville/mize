@@ -47,4 +47,3 @@ step_info <- mize_step_summary(mize_res$opt, mize_res$par, rb_fg, rb0)
 # check convergence by looking at opt$is_terminated
 opt <- check_mize_convergence(step_info)
 }
-

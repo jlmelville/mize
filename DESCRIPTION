@@ -14,7 +14,7 @@ Suggests:
     testthat,
     knitr,
     rmarkdown
-RoxygenNote: 5.0.1
+RoxygenNote: 6.0.1
 URL: http://github.com/jlmelville/mize
 BugReports: http://github.com/jlmelville/mize/issues
 VignetteBuilder: knitr

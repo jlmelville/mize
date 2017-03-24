@@ -527,6 +527,7 @@ evaluations and \code{check_conv_every} is set to be so large that no
 convergence calculation is carried out before \code{max_iter} is reached,
 then the returned value of \code{par} is the last value encountered.
 }
+
 \examples{
 # Function to optimize and starting point defined after creating optimizer
 rosenbrock_fg <- list(
@@ -606,4 +607,3 @@ On the importance of initialization and momentum in deep learning.
 In \emph{Proceedings of the 30th international conference on machine learning (ICML-13)}
 (pp. 1139-1147).
 }
-

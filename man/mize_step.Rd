@@ -90,4 +90,3 @@ rosenbrock_fg <- list(
  function for the first time. \code{\link{mize}} creates an optimizer and
  carries out a full optimization with it.
 }
-

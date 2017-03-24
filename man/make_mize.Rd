@@ -198,4 +198,3 @@ opt <- make_mize(method = "L-BFGS")
 # Need to call mizer_init separately:
 opt <- mize_init(opt, rb0, rosenbrock_fg)
 }
-
