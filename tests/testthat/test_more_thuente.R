@@ -5,18 +5,6 @@ context("More'-Thuente Line Search")
 # from plugging the input values into Dianne O'Leary's Matlab code (running
 # under GNU Octave).
 
-expect_step <- function(actual, x, f, df, alpha, nfev, tolerance = 1e-4) {
-  expect_equal(actual$step$par, x, tolerance = tolerance)
-  expect_equal(actual$step$f, f, tolerance = tolerance)
-  expect_equal(actual$step$df, df, tolerance = tolerance)
-  expect_equal(actual$step$alpha, alpha, tolerance = tolerance)
-  expect_equal(actual$nfn, nfev)
-}
-
-step <- function(x, f, df, alpha, nfev) {
-  list(x = x, step = list(f = f, df = df, alpha = alpha), nfev = nfev)
-}
-
 mtls <- function(fg, x, pv, alpha, c1, c2) {
   res <- cvsrch(phi = make_phi_alpha(x, fg, pv, calc_gradient_default = TRUE),
                 alpha,

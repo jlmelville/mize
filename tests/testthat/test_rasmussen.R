@@ -1,13 +1,5 @@
 context("Rasmussen Line Search")
 
-expect_step <- function(actual, x, f, df, alpha, nfev, tolerance = 1e-4) {
-  expect_equal(actual$step$par, x, tolerance = tolerance)
-  expect_equal(actual$step$f, f, tolerance = tolerance)
-  expect_equal(actual$step$df, df, tolerance = tolerance)
-  expect_equal(actual$step$alpha, alpha, tolerance = tolerance)
-  expect_equal(actual$nfn, nfev)
-}
-
 rls <- function(fg, x, pv, alpha, c1, c2) {
   res <- ras_ls(phi = make_phi_alpha(x, fg, pv, calc_gradient_default = TRUE),
          alpha,

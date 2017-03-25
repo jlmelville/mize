@@ -3,14 +3,6 @@ context("Schmidt (MinFunc) Line Search")
 # Test values produced by running the original minFunc WolfeLineSearch function
 # using Octave 4.2.0
 
-expect_step <- function(actual, x, f, df, alpha, nfev, tolerance = 1e-4) {
-  expect_equal(actual$step$par, x, tolerance = tolerance)
-  expect_equal(actual$step$f, f, tolerance = tolerance)
-  expect_equal(actual$step$df, df, tolerance = tolerance)
-  expect_equal(actual$step$alpha, alpha, tolerance = tolerance)
-  expect_equal(actual$nfn, nfev)
-}
-
 mfls <- function(fg, x, pv, alpha, c1, c2, LS_interp = 2, debug = FALSE) {
   step0 <- make_step0(fg, x, pv)
 
