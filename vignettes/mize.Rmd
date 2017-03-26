@@ -511,26 +511,36 @@ This uses cubic interpolation to find a point close to a minimize along the
 search direction for each iteration. This requires a function and gradient
 evaluation at each candidate point.
 
-If the More-Thuente line search fails to work for some reason, an alternative
+If the More-Thuente line search fails to work for some reason, alternative
 Wolfe line search method from Carl Edward Rasmussen's 
 [conjugate gradient routine](http://learning.eng.cam.ac.uk/carl/code/minimize/)
-is also available:
+and Mark Schmidt's 
+[minimization routines](http://www.cs.ubc.ca/~schmidtm/Software/minFunc.html)
+are also available (although they are all quite similar):
 
-```{r use Rasmussen line search}
+```{r use Rasmussen or Schmidt line search}
 res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "Rasmussen")
+# Use Mark Schmidt's minFunc line search 
+res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "Schmidt")
 # You can explicitly set More-Thuente too
 res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "More-Thuente")
 # More-Thuente can be abbreviated to "MT"
 res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "MT")
 ```
 
-Default values use the advice given in the Nocedal and Wright book: the
-`c1` parameter is set to `1e-4`, while `c2` is set to `0.9` for quasi-Newton
-methods (BFGS and L-BFGS) and `0.1` for everything else. For a line search
-involving the strong Wolfe conditions, the `c2` parameter measures how strict
-the line search is: the smaller it is (it cannot be set smaller than `c1` or
-greater than 1), the tighter the line search. This is an important property
-for some conjugate gradient methods to maintain their convergence properties.
+A variety of interpolation methods are available in the Matlab minfunc code, but 
+mize only uses the default: use cubic interpolation and extrapolation methods,
+falling back to back-tracking Armijo search (also using cubic interpolation) if
+a non-finite value is encountered.
+
+Default values for the line search tolerance use the advice given in the Nocedal
+and Wright book: the `c1` parameter is set to `1e-4`, while `c2` is set to `0.9`
+for quasi-Newton methods (BFGS and L-BFGS) and `0.1` for everything else. For a
+line search involving the strong Wolfe conditions, the `c2` parameter measures
+how strict the line search is: the smaller it is (it cannot be set smaller than
+`c1` or greater than 1), the tighter the line search. This is an important
+property for some conjugate gradient methods to maintain their convergence
+properties.
 
 You may be able to get away with a looser line search (smaller `c2`) for some 
 methods, e.g.:
@@ -554,8 +564,8 @@ res <- mize(rb0, rb_fg, max_iter = 10, step_next_init = "slope")
 
 This only leaves what to do on the very first iteration, where there is no
 previous iteration to look at. You don't really have much information at that
-point apart from the gradient, so all the things I've seen use a step size
-that is effectively inversely proportional to the length of the gradient:
+point apart from the gradient, so all the implementations I've seen use a step 
+size that is effectively inversely proportional to the length of the gradient:
 
 * Carl Edward Rasmussen's 
 [conjugate gradient routine](http://learning.eng.cam.ac.uk/carl/code/minimize/)
@@ -609,13 +619,27 @@ res <- mize(rb0, rb_fg, max_iter = 10, method = "SD", line_search = "constant",
 ```
 
 There is also a backtracking line search, which repeatedly reduces the step size
-starting from `step0`, until the sufficient decrease condition of the Wolfe 
-line search conditions is fulfilled (controlled by `c1`, the larger the value,
-the larger the decrease in the function value is needed for a step size to be
-accepted). The step size is reduced by a factor of `step_down` until an 
-acceptable step size is found - which can be very small.
+starting from `step0`, until the sufficient decrease condition (also known as
+the Armijo condition) of the Wolfe line search conditions is fulfilled. This is
+controlled by `c1`, the larger the value, the larger the decrease in the
+function value is needed for a step size to be accepted. By default, the cubic
+interpolation method from 
+[minFunc](http://www.cs.ubc.ca/~schmidtm/Software/minFunc.html) is used to
+find the step size.
 
-```{r backtracking}
+```{r backtracking with cubic interpolation}
+res <- mize(rb0, rb_fg, max_iter = 10, line_search = "backtracking", step0 = 1, 
+            c1 = 0.1)
+```
+
+You will often see a simple fixed step size reduction used in combination 
+with this line search, mainly due to ease of implementation. Cubic interpolation
+is probably always preferable, but if you want to use a constant step size 
+reduction, provide a non-`NULL` value to `step_down`. The step size will be 
+multiplied by this value so it should be a value between zero and one. Set it
+to `0.5`, for example, to halve the step size while backtracking:
+
+```{r backtracking with halved step size}
 res <- mize(rb0, rb_fg, max_iter = 10, line_search = "backtracking",
             step0 = 1, c1 = 0.1, step_down = 0.5)
 ```
