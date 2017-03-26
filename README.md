@@ -65,7 +65,9 @@ while (!done) {
 
 ## See also
 
-The Wolfe line search functionality uses a conversion of Carl Edward Rasmussen's
+The Wolfe line searches use conversion of Mark Schmidt's 
+[minFunc routines](http://www.cs.ubc.ca/~schmidtm/Software/minFunc.html),
+Carl Edward Rasmussen's
 [Matlab code](http://learning.eng.cam.ac.uk/carl/code/minimize/) and Dianne 
 O'Leary's Matlab translation of the 
 [More'-Thuente line search](https://www.cs.umd.edu/users/oleary/software/)
