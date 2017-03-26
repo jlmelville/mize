@@ -1,8 +1,8 @@
 mixedExtrap <- function(x0, f0, g0, x1, f1, g1, minStep, maxStep, debug) {
   alpha_c <- polyinterp(point_matrix(c(x0, x1), c(f0, f1), c(g0, g1)),
-                        minStep, maxStep, debug = TRUE)
+                        minStep, maxStep, debug = debug)
   alpha_s <- polyinterp(point_matrix(c(x0, x1), c(f0, NA), c(g0, g1)),
-                        minStep, maxStep, debug = TRUE)
+                        minStep, maxStep, debug = debug)
   if (debug) {
     message("cubic ext = ", formatC(alpha_c), " secant ext = ", formatC(alpha_s),
             " minStep = ", formatC(minStep),
