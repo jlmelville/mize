@@ -143,7 +143,7 @@
 #'   should be a positive scalar.
 #'   \item{\code{step_down}} The amount by which to decrease the step size in a
 #'   direction where the currents step size is deemed to be too long. This
-#'   should be a positive scalar smaller than 1.
+#'   should be a positive scalar smaller than 1. Default is 0.5.
 #'   \item{\code{step_up_fun}} How to increase the step size: either the method of
 #'   Jacobs (addition of \code{step_up}) or Janet and co-workers (multiplication
 #'   by \code{step_up}). Note that the step size decrease \code{step_down} is always
@@ -290,7 +290,7 @@
 #' non-finite (i.e. \code{Inf} or \code{NaN}) gradient or function value.
 #' Some, but not all, line-searches will try to recover from the latter, by
 #' reducing the step size, but a non-finite gradient calculation during the
-#' gradient descent portion of opimization is considered catastrostep_downc by mizer,
+#' gradient descent portion of opimization is considered catastrosphic by mizer,
 #' and it will give up. Termination under non-finite gradient or function
 #' conditions will result in \code{terminate$what} being \code{"gr_inf"} or
 #' \code{"fn_inf"} respectively. Unlike the convergence criteria, the
@@ -344,8 +344,8 @@
 #' \code{step_up}. Can be one of \code{"*"} (to multiply the current step size
 #' with \code{step_up}) or \code{"+"} (to add).
 #' @param step_down Multiplier to reduce the step size by if using the \code{"DBD"}
-#' method or the \code{"bold"} or \code{"back"} line search method. Should be
-#' a positive value less than 1.
+#' method or the \code{"bold"} line search method. Should be a positive value
+#' less than 1. Also optional for use with the \code{"back"} line search method.
 #' @param dbd_weight Weighting parameter used by the \code{"DBD"} method only, and
 #' only if no momentum scheme is provided. Must be an integer between 0 and 1.
 #' @param line_search Type of line search to use. See 'Details'.
@@ -545,7 +545,7 @@ mize <- function(par, fg,
                  # DBD
                  step_up = 1.1,
                  step_up_fun = "*",
-                 step_down = 0.5,
+                 step_down = NULL,
                  dbd_weight = 0.1,
                  # Line Search configuration
                  line_search = "More-Thuente",
@@ -696,8 +696,9 @@ mize <- function(par, fg,
 #'   \code{step_up}. Can be one of \code{"*"} (to multiply the current step size
 #'   with \code{step_up}) or \code{"+"} (to add).
 #' @param step_down Multiplier to reduce the step size by if using the
-#'   \code{"DBD"} method or the \code{"bold"} or \code{"back"} line search
-#'   method. Should be a positive value less than 1.
+#'   \code{"DBD"} method or the \code{"bold"}. Can also be used with the
+#'   \code{"back"} line search method, but is optional. Should be a positive
+#'   value less than 1.
 #' @param dbd_weight Weighting parameter used by the \code{"DBD"} method only,
 #'   and only if no momentum scheme is provided. Must be an integer between 0
 #'   and 1.
@@ -794,7 +795,7 @@ make_mize <- function(method = "L-BFGS",
                       # DBD
                       step_up = 1.1,
                       step_up_fun = c("*", "+"),
-                      step_down = 0.5,
+                      step_down = NULL,
                       dbd_weight = 0.1,
                       # Line Search
                       line_search = "More-Thuente",
@@ -836,7 +837,7 @@ make_mize <- function(method = "L-BFGS",
     stop("step_up must be positive")
   }
   step_up_fun <- match.arg(step_up_fun)
-  if (!is_in_range(step_down, 0, 1)) {
+  if (!is.null(step_down) && !is_in_range(step_down, 0, 1)) {
     stop("step_down must be between 0 and 1")
   }
   if (!is_in_range(dbd_weight, 0, 1)) {
@@ -947,6 +948,9 @@ make_mize <- function(method = "L-BFGS",
     else {
       stop("Unknown delta-bar-delta step_up function '", step_up_fun, "'")
     }
+    if (is.null(step_down)) {
+      step_down <- 0.5
+    }
     step_type <- delta_bar_delta(epsilon = eps_init,
                                  kappa = step_up, kappa_fun = step_up_fun,
                                  phi = step_down, theta = dbd_weight,
@@ -985,7 +989,14 @@ make_mize <- function(method = "L-BFGS",
     line_search <- match.arg(tolower(line_search),
                              c("more-thuente", "mt", "rasmussen",
                                "bold driver",
-                               "backtracking", "constant"))
+                               "backtracking", "constant",
+                               "schmidt", "minfunc", "armijo"))
+
+    if (line_search == "bold driver") {
+      if (is.null(step_down)) {
+        step_down <- 0.5
+      }
+    }
 
     step_type <- switch(line_search,
       mt = more_thuente_ls(c1 = c1, c2 = c2,
@@ -1011,8 +1022,29 @@ make_mize <- function(method = "L-BFGS",
                               max_fg = ls_max_fg),
       "bold driver" = bold_driver(inc_mult = step_up, dec_mult = step_down,
                                   max_fn = ls_max_fn),
-      backtracking = backtracking(rho = step_down, c1 = c1, max_fn = ls_max_fn),
-      constant = constant_step_size(value = step0)
+      constant = constant_step_size(value = step0),
+      schmidt = schmidt_ls(c1 = c1, c2 = c2,
+                           initializer = tolower(step_next_init),
+                           initial_step_length = step0,
+                           try_newton_step = try_newton_step,
+                           max_fn = ls_max_fn,
+                           max_gr = ls_max_gr,
+                           max_fg = ls_max_fg),
+      minfunc = schmidt_ls(c1 = c1, c2 = c2,
+                           initializer = tolower(step_next_init),
+                           initial_step_length = step0,
+                           try_newton_step = try_newton_step,
+                           max_fn = ls_max_fn,
+                           max_gr = ls_max_gr,
+                           max_fg = ls_max_fg),
+      backtracking = schmidt_armijo_ls(c1 = c1,
+                          initializer = tolower(step_next_init),
+                          initial_step_length = step0,
+                          try_newton_step = try_newton_step,
+                          step_down = step_down,
+                          max_fn = ls_max_fn,
+                          max_gr = ls_max_gr,
+                          max_fg = ls_max_fg)
     )
   }
 

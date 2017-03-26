@@ -52,6 +52,21 @@ test_that("BFGS with More-Thuente LS", {
   expect_equal(res$par, c(-0.785, 0.558), tol = 1e-3)
 })
 
+test_that("CG with Schmidt LS", {
+  # lower case names should be ok for method, cg_update, step0 etc.
+  res <- mize(rb0, rosenbrock_fg, method = "cg",
+              cg_update = "pr+",
+              max_iter = 3,
+              line_search = "schmidt", c1 = 5e-10, c2 = 1e-9, step0 = "schmidt",
+              step_next_init = "slope", grad_tol = 1e-5)
+
+  expect_equal(res$nf, 10)
+  expect_equal(res$ng, 10)
+  expect_equal(res$f, 3.225, tol = 1e-3)
+  expect_equal(res$g2n, 22.34, tol = 1e-3)
+  expect_equal(res$par, c(-0.705, 0.441), tol = 1e-3)
+})
+
 test_that("CG with Rasmussen LS", {
   # lower case names should be ok for method, cg_update, step0 etc.
   res <- mize(rb0, rosenbrock_fg, method = "cg",
@@ -231,8 +246,11 @@ test_that("max functions per line search", {
   expect_equal(res$f, 0, tol = 1e-3)
 })
 
-test_that("exploding backtracking line search returns normally", {
+test_that("backtracking line search", {
   res <- mize(rb0, rosenbrock_fg, method = "NAG", line_search = "BACK",
-              ls_max_fn = 5)
-  expect_equal(res$terminate$what, "fn_inf")
+              max_iter = 3)
+  expect_equal(res$nf, 7)
+  expect_equal(res$ng, 6)
+  expect_equal(res$f, 20.44, tol = 1e-3)
+  expect_equal(res$par, c(-1.184, 1.006), tol = 1e-3)
 })

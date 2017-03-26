@@ -1,3 +1,36 @@
+# step_down if non-NULL, multiply the step size by this value when backtracking
+# Otherwise, use a cubic interpolation based on previous function and derivative
+# values
+schmidt_armijo_backtrack <- function(c1 = 0.05, step_down = NULL, max_fn = Inf) {
+  function(phi, step0, alpha,
+           total_max_fn = Inf, total_max_gr = Inf, total_max_fg = Inf,
+           pm) {
+    maxfev <- min(max_fn, total_max_fn, total_max_gr, floor(total_max_fg / 2))
+    if (maxfev <= 0) {
+      return(list(step = step0, nfn = 0, ngr = 0))
+    }
+    if (!is.null(step_down)) {
+      # fixed-size step reduction by a factor of step_down
+      LS_interp <- 0
+    }
+    else {
+      # cubic interpolation
+      LS_interp <- 2
+    }
+
+    res <- ArmijoBacktrack(step = alpha, f = step0$f, g = step0$df,
+                           gtd = step0$d,
+                           c1 = c1, LS_interp = LS_interp, LS_multi = 0,
+                           maxLS = maxfev, step_down = step_down,
+                           funObj = phi, varargin = NULL,
+                           pnorm_inf = max(abs(pm)),
+                           progTol = 1e-9, debug = FALSE)
+
+    res$ngr <- res$nfn
+    res
+  }
+}
+
 # Backtracking linesearch to satisfy Armijo condition
 #
 # Inputs:
@@ -39,7 +72,8 @@
 ArmijoBacktrack <-
   function(step, f, g, gtd,
            c1 = 1e-4,
-           LS_interp = 2, LS_multi = 0,
+           LS_interp = 2, LS_multi = 0, maxLS = Inf,
+           step_down = 0.5,
            funObj,
            varargin = NULL,
            pnorm_inf,
@@ -57,13 +91,9 @@ ArmijoBacktrack <-
     g_new <- fun_obj_res$df
     gtd_new <- fun_obj_res$d
 
-    # fun_obj_res <- funObj(x + step * d, varargin)
-    # f_new <- fun_obj_res$f_new
-    # g_new <- fun_obj_res$g_new
-
     funEvals <- 1
 
-    while (f_new > f + c1 * step * gtd || !is.finite(f_new)) {
+    while (funEvals < maxLS && (f_new > f + c1 * step * gtd || !is.finite(f_new))) {
       temp <- step
 
       if (LS_interp == 0 || !is.finite(f_new)) {
@@ -71,7 +101,7 @@ ArmijoBacktrack <-
         if (debug) {
           message('Fixed BT')
         }
-        step <- 0.5 * step
+        step <- step_down * step
 
       }
       else if (LS_interp == 1 || !is.finite(g_new)) {
@@ -160,10 +190,7 @@ ArmijoBacktrack <-
       fun_obj_res <- funObj(step)
       f_new <- fun_obj_res$f
       g_new <- fun_obj_res$df
-
-      # fun_obj_res <- funObj(x + step * d, varargin)
-      # f_new <- fun_obj_res$f_new
-      # g_new <- fun_obj_res$g_new
+      gtd_new <- fun_obj_res$d
 
       funEvals <- funEvals + 1
 
@@ -175,14 +202,13 @@ ArmijoBacktrack <-
         step <- 0
         f_new <- f
         g_new <- g
+        gtd_new <- gtd
         break
       }
     }
 
     list(
-      step = step,
-      f_new = f_new,
-      g_new = g_new,
-      funEvals = funEvals
+      step = list(alpha = step, f = f_new, df = g_new, d = gtd_new),
+      nfn = funEvals
     )
   }

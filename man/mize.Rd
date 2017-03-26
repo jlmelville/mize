@@ -7,7 +7,7 @@
 mize(par, fg, method = "L-BFGS", norm_direction = FALSE, memory = 5,
   scale_hess = TRUE, cg_update = "PR+", nest_q = 0,
   nest_convex_approx = FALSE, nest_burn_in = 0, step_up = 1.1,
-  step_up_fun = "*", step_down = 0.5, dbd_weight = 0.1,
+  step_up_fun = "*", step_down = NULL, dbd_weight = 0.1,
   line_search = "More-Thuente", c1 = 1e-04, c2 = NULL, step0 = NULL,
   step_next_init = NULL, try_newton_step = NULL, ls_max_fn = 20,
   ls_max_gr = Inf, ls_max_fg = Inf, mom_type = NULL,
@@ -68,8 +68,8 @@ step size method or the \code{"DBD"} method.}
 with \code{step_up}) or \code{"+"} (to add).}
 
 \item{step_down}{Multiplier to reduce the step size by if using the \code{"DBD"}
-method or the \code{"bold"} or \code{"back"} line search method. Should be
-a positive value less than 1.}
+method or the \code{"bold"} line search method. Should be a positive value
+less than 1. Also optional for use with the \code{"back"} line search method.}
 
 \item{dbd_weight}{Weighting parameter used by the \code{"DBD"} method only, and
 only if no momentum scheme is provided. Must be an integer between 0 and 1.}
@@ -358,7 +358,7 @@ parameters can be used to control the step size:
   should be a positive scalar.
   \item{\code{step_down}} The amount by which to decrease the step size in a
   direction where the currents step size is deemed to be too long. This
-  should be a positive scalar smaller than 1.
+  should be a positive scalar smaller than 1. Default is 0.5.
   \item{\code{step_up_fun}} How to increase the step size: either the method of
   Jacobs (addition of \code{step_up}) or Janet and co-workers (multiplication
   by \code{step_up}). Note that the step size decrease \code{step_down} is always
@@ -509,7 +509,7 @@ Other ways for the optimization to terminate is if an iteration generates a
 non-finite (i.e. \code{Inf} or \code{NaN}) gradient or function value.
 Some, but not all, line-searches will try to recover from the latter, by
 reducing the step size, but a non-finite gradient calculation during the
-gradient descent portion of opimization is considered catastrostep_downc by mizer,
+gradient descent portion of opimization is considered catastrosphic by mizer,
 and it will give up. Termination under non-finite gradient or function
 conditions will result in \code{terminate$what} being \code{"gr_inf"} or
 \code{"fn_inf"} respectively. Unlike the convergence criteria, the

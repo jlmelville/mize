@@ -7,7 +7,7 @@
 make_mize(method = "L-BFGS", norm_direction = FALSE, scale_hess = TRUE,
   memory = 5, cg_update = "PR+", nest_q = 0, nest_convex_approx = FALSE,
   nest_burn_in = 0, step_up = 1.1, step_up_fun = c("*", "+"),
-  step_down = 0.5, dbd_weight = 0.1, line_search = "More-Thuente",
+  step_down = NULL, dbd_weight = 0.1, line_search = "More-Thuente",
   c1 = 1e-04, c2 = NULL, step0 = NULL, step_next_init = NULL,
   try_newton_step = NULL, ls_max_fn = 20, ls_max_gr = Inf,
   ls_max_fg = Inf, mom_type = NULL, mom_schedule = NULL,
@@ -60,8 +60,9 @@ step size method or the \code{"DBD"} method.}
 with \code{step_up}) or \code{"+"} (to add).}
 
 \item{step_down}{Multiplier to reduce the step size by if using the
-\code{"DBD"} method or the \code{"bold"} or \code{"back"} line search
-method. Should be a positive value less than 1.}
+\code{"DBD"} method or the \code{"bold"}. Can also be used with the
+\code{"back"} line search method, but is optional. Should be a positive
+value less than 1.}
 
 \item{dbd_weight}{Weighting parameter used by the \code{"DBD"} method only,
 and only if no momentum scheme is provided. Must be an integer between 0

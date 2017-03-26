@@ -1,6 +1,10 @@
-# Translation of Mark Schmidt's minFunc line search
+# Translation of Mark Schmidt's minFunc line search for the Strong Wolfe
+# conditions
 # http://www.cs.ubc.ca/~schmidtm/Software/minFunc.html, 2005.
 
+# Uses the default line search settings: cubic interpolation/extrapolation
+# Falling back to Armijo backtracking (also using cubic interpolation) if
+# a non-legal value is found
 schmidt <- function(c1 = c2 / 2, c2 = 0.1, max_fn = Inf) {
   if (c2 < c1) {
     stop("schmidt line search: c2 < c1")
@@ -12,20 +16,16 @@ schmidt <- function(c1 = c2 / 2, c2 = 0.1, max_fn = Inf) {
     if (maxfev <= 0) {
       return(list(step = step0, nfn = 0, ngr = 0))
     }
-    res <- WolfeLineSearch(alpha = step0$alpha, f = step0$f, g = step0$df,
+    res <- WolfeLineSearch(alpha = alpha, f = step0$f, g = step0$df,
                            gtd = step0$d,
                            c1 = 1e-4, c2 = 0.1, LS_interp = 2, LS_multi = 0,
-                           maxLS = 25,
+                           maxLS = maxfev,
                            funObj = phi, varargin = NULL,
                            pnorm_inf = max(abs(pm)),
                            progTol = 1e-9, debug = FALSE)
-    list(step = list(
-      alpha = res$step,
-      f = res$f_new,
-      df = res$g_new,
-      d = res$d_new),
-      nfn = res$funEvals, ngr = res$funEvals)
-    }
+    res$ngr = res$nfn
+    res
+  }
 }
 
 #
@@ -120,7 +120,6 @@ WolfeLineSearch <-
       if (f_new > f + c1 * alpha * gtd || (LSiter > 1 && f_new >= f_prev)) {
         bracket <- c(t_prev, alpha)
         bracketFval <- c(f_prev, f_new)
-        # bracketGval <- c(g_prev, g_new)
         bracketDval <- c(gtd_prev, gtd_new)
 
         bracket_step <- list(step_prev, step_new)
@@ -133,7 +132,6 @@ WolfeLineSearch <-
       else if (abs(gtd_new) <= -c2 * gtd) {
         bracket <- alpha
         bracketFval <- c(f_new)
-        # bracketGval <- c(g_new)
         bracketDval <- c(gtd_new)
         done <- TRUE
 
@@ -146,7 +144,6 @@ WolfeLineSearch <-
       else if (gtd_new >= 0) {
         bracket <- c(t_prev, alpha)
         bracketFval <- c(f_prev, f_new)
-        # bracketGval <- c(g_prev, g_new)
         bracketDval <- c(gtd_prev, gtd_new)
 
         bracket_step <- list(step_prev, step_new)
@@ -196,10 +193,6 @@ WolfeLineSearch <-
       step_new <- list(alpha = alpha, f = f_new, df = g_new, d = gtd_new)
 
 
-      # fun_obj_res <- funObj(x + step * d, varargin)
-      # f_new <- fun_obj_res$f_new
-      # g_new <- fun_obj_res$g_new
-
       funEvals <- funEvals + 1
       LSiter <- LSiter + 1
     }
@@ -207,7 +200,6 @@ WolfeLineSearch <-
     if (LSiter == maxLS) {
       bracket <- c(0, alpha)
       bracketFval <- c(f, f_new)
-      # bracketGval <- c(g, g_new)
       bracketDval <- c(gtd, gtd_new)
       bracket_step <- list(step0, step_new)
     }
@@ -266,7 +258,6 @@ WolfeLineSearch <-
         if (!LOposRemoved) {
           oldLOval <- bracket[nonTpos]
           oldLOFval <- bracketFval[nonTpos]
-          # oldLOGval <- bracketGval[, nonTpos]
           oldLODval <- bracketDval[nonTpos]
         }
 
@@ -310,10 +301,6 @@ WolfeLineSearch <-
       g_new <- fun_obj_res$df
       gtd_new <- fun_obj_res$d
 
-      # fun_obj_res <- funObj(x + step * d, varargin)
-      # f_new <- fun_obj_res$f_new
-      # g_new <- fun_obj_res$g_new
-
       funEvals <- funEvals + 1
       LSiter <- LSiter + 1
 
@@ -339,7 +326,6 @@ WolfeLineSearch <-
         # Armijo condition not satisfied or not lower than lowest point
         bracket[HIpos] <- alpha
         bracketFval[HIpos] <- f_new
-        # bracketGval[, HIpos] <- g_new
         bracketDval[HIpos] <- gtd_new
         Tpos <- HIpos
       }
@@ -364,7 +350,6 @@ WolfeLineSearch <-
           # Old HI becomes new LO
           bracket[HIpos] <- bracket[LOpos]
           bracketFval[HIpos] <- bracketFval[LOpos]
-          # bracketGval[, HIpos] <- bracketGval[, LOpos]
           bracketDval[HIpos] <- bracketDval[LOpos]
           if (LS_interp == 3) {
             if (debug) {
@@ -373,7 +358,6 @@ WolfeLineSearch <-
             LOposRemoved <- TRUE
             oldLOval <- bracket[LOpos]
             oldLOFval <- bracketFval[LOpos]
-            # oldLOGval <- bracketGval[, LOpos]
             oldLODval <- bracketDval[LOpos]
           }
         }
@@ -383,7 +367,6 @@ WolfeLineSearch <-
         # New point becomes new LO
         bracket[LOpos] <- alpha
         bracketFval[LOpos] <- f_new
-        # bracketGval[, LOpos] <- g_new
         bracketDval[LOpos] <- gtd_new
         Tpos <- LOpos
       }
@@ -414,7 +397,6 @@ WolfeLineSearch <-
     f_LO <- bracketFval[LOpos]
     alpha <- bracket[LOpos]
     f_new <- bracketFval[LOpos]
-    # g_new <- bracketGval[, LOpos]
     d_new <- bracketDval[LOpos]
 
     list(
