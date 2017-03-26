@@ -291,9 +291,17 @@ out:
 
 \itemize{
   \item \code{"Rasmussen"} carries out a line search using the strong Wolfe
-  conditions and the method of Rasmussen.
+  conditions as implemented by Carl Edward Rasmussen's minimize.m routines.
   \item \code{"More-Thuente"} carries out a line search using the strong Wolfe
-  conditions and the method of More-Thuente.
+  conditions and the method of More-Thuente. Can be abbreviated to
+  \code{"MT"}.
+  \item \code{"Schmidt"} carries out a line search using the strong Wolfe
+  conditions as implemented in Mark Schmidt's minFunc routines.
+  \item \code{"Backtracking"} carries out a back tracking line search using
+  the sufficient decrease (Armijo) condition. By default, cubic interpolation
+  is used to find an acceptable step size. A constant step size reduction
+  can be used by specifying a value for \code{step_down} between 0 and 1
+  (e.g. step size will be halved if \code{step_down} is set to \code{0.5}).
   \item \code{"Bold Driver"} carries out a back tracking line search until a
   reduction in the function value is found.
   \item \code{"Constant"} uses a constant line search, the value of which
@@ -365,12 +373,12 @@ parameters can be used to control the step size:
   a multiplication.
 }
 
-The \code{"bold driver"} line search also uses the \code{step_up} and \code{step_down}
-parameters with similar meanings to their use with the \code{"DBD"} method:
-the backtracking portion reduces the step size by a factor of \code{step_down}.
-Once a satisfactory step size has been found, the line search for the
-next iteration is initialized by multiplying the previously found step size
-by \code{step_up}.
+The \code{"bold driver"} line search also uses the \code{step_up} and
+\code{step_down} parameters with similar meanings to their use with the
+\code{"DBD"} method: the backtracking portion reduces the step size by a
+factor of \code{step_down}. Once a satisfactory step size has been found, the
+line search for the next iteration is initialized by multiplying the
+previously found step size by \code{step_up}.
 }
 
 \section{Momentum}{
