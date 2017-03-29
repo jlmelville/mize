@@ -63,8 +63,8 @@ schmidt_armijo_backtrack <- function(c1 = 0.05, step_down = NULL, max_fn = Inf) 
   }
 }
 
+# Translated minFunc routines ---------------------------------------------
 
-#
 # Bracketing Line Search to Satisfy Wolfe Conditions
 #
 # Inputs:
@@ -102,96 +102,69 @@ WolfeLineSearch <-
 
     # Evaluate the Objective and Gradient at the Initial Step
     fun_obj_res <- funObj(alpha)
-    f_new <- fun_obj_res$f
-    g_new <- fun_obj_res$df
-    gtd_new <- fun_obj_res$d
-    step_new <- list(alpha = alpha, f = f_new, df = g_new, d = gtd_new)
-
+    step_new <- list(alpha = alpha, f = fun_obj_res$f, df = fun_obj_res$df,
+                     d = fun_obj_res$d)
     funEvals <- 1
 
     # Bracket an Interval containing a point satisfying the
     # Wolfe criteria
-
     done <- FALSE
 
-    LSiter <- 0
-    t_prev <- 0
-    f_prev <- f
-    g_prev <- g
-    gtd_prev <- gtd
-
-    step0 <- list(alpha = 0, f = f, df = g, d = gtd_prev)
+    step0 <- list(alpha = 0, f = f, df = g, d = gtd)
     step_prev <- step0
 
     # Bracketing Phase
     if (debug) {
       message("% BRACKET PHASE %")
     }
+    LSiter <- 0
     while (LSiter < maxLS) {
 
-      if (!is.finite(f_new) || !is.finite(g_new)) {
+      if (!is.finite(step_new$f) || !is.finite(step_new$df)) {
         if (debug) {
           message('Extrapolated into illegal region, switching to Armijo line-search')
         }
-        alpha <- (alpha + t_prev) / 2
+        step_new$alpha <- mean(c(step_new$alpha, step_prev$alpha))
 
         # Do Armijo
-        armijo_res <- ArmijoBacktrack(alpha, f, g, gtd,
+        armijo_res <- ArmijoBacktrack(step_new$alpha, step0$f, step0$df, step0$d,
                           c1, LS_interp, LS_multi,
-                          funObj, varargin,
+                          funObj, varargin, pnorm_inf,
                           progTol, debug)
 
-        alpha <- armijo_res$t
-        f_new <- armijo_res$f_new
-        g_new <- armijo_res$g_new
-        armijoFunEvals <- armijo_res$armijoFunEvals
-
-        funEvals <- funEvals + armijoFunEvals
-        return(list(
-          step = list(alpha = alpha, f = f_new, df = g_new),
-          nfn = funEvals
-        ))
+        armijo_res$nfn <- armijo_res$nfn + funEvals
+        return(armijo_res)
       }
 
-      if (f_new > f + c1 * alpha * gtd || (LSiter > 1 && f_new >= f_prev)) {
-        bracket <- c(t_prev, alpha)
-        bracketFval <- c(f_prev, f_new)
-        bracketDval <- c(gtd_prev, gtd_new)
-
+      # See if we have found the other side of the bracket
+      if (!armijo_ok_step(step0, step_new, c1) || (LSiter > 1 && step_new$f >= step_prev$f)) {
         bracket_step <- list(step_prev, step_new)
 
         if (debug) {
-          message('Armijo failed or f_new >= f_prev: bracket is [prev new]')
+          message('Armijo failed or step_new$f >= step_prev$f: bracket is [prev new]')
         }
         break
       }
-      else if (abs(gtd_new) <= -c2 * gtd) {
-        bracket <- alpha
-        bracketFval <- c(f_new)
-        bracketDval <- c(gtd_new)
+      else if (strong_curvature_ok_step(step0, step_new, c2)) {
+        bracket_step <- list(step_new)
         done <- TRUE
 
-        bracket_step <- list(step_new)
         if (debug) {
           message('Sufficient curvature found: bracket is [new]')
         }
         break
       }
-      else if (gtd_new >= 0) {
-        bracket <- c(t_prev, alpha)
-        bracketFval <- c(f_prev, f_new)
-        bracketDval <- c(gtd_prev, gtd_new)
-
+      else if (step_new$d >= 0) {
         bracket_step <- list(step_prev, step_new)
+
         if (debug) {
-          message('gtd_new >= 0: bracket is [prev, new]')
+          message('step_new$d >= 0: bracket is [prev, new]')
         }
         break
       }
 
-      minStep <- alpha + 0.01 * (alpha - t_prev)
-      maxStep <- alpha * 10
-
+      minStep <- step_new$alpha + 0.01 * (step_new$alpha - step_prev$alpha)
+      maxStep <- step_new$alpha * 10
 
       if (LS_interp <= 1) {
         if (debug) {
@@ -203,40 +176,26 @@ WolfeLineSearch <-
         if (debug) {
           message('Cubic Extrapolation')
         }
-        alpha_new <- polyinterp(point_matrix(
-          c(t_prev, alpha), c(f_prev, f_new), c(gtd_prev, gtd_new)),
-          minStep, maxStep)
+        alpha_new <- polyinterp(point_matrix_step(step_prev, step_new),
+                                minStep, maxStep)
       }
       else {
         # LS_interp == 3
-        alpha_new <- mixedExtrap(t_prev, f_prev, gtd_prev,
-                            alpha, f_new,  gtd_new, minStep, maxStep, debug)
+        alpha_new <- mixedExtrap_step(step_prev, step_new, minStep, maxStep,
+                                      debug)
       }
-
-      t_prev <- alpha
-      alpha <- alpha_new
-      f_prev <- f_new
-      g_prev <- g_new
-      gtd_prev <- gtd_new
 
       step_prev <- step_new
 
-      fun_obj_res <- funObj(alpha)
-      f_new <- fun_obj_res$f
-      g_new <- fun_obj_res$df
-      gtd_new <- fun_obj_res$d
-
-      step_new <- list(alpha = alpha, f = f_new, df = g_new, d = gtd_new)
-
-
+      fun_obj_res <- funObj(alpha_new)
+      step_new <- list(alpha = alpha_new, f = fun_obj_res$f,
+                       df = fun_obj_res$df, d = fun_obj_res$d)
       funEvals <- funEvals + 1
+
       LSiter <- LSiter + 1
     }
 
     if (LSiter == maxLS) {
-      bracket <- c(0, alpha)
-      bracketFval <- c(f, f_new)
-      bracketDval <- c(gtd, gtd_new)
       bracket_step <- list(step0, step_new)
     }
 
@@ -244,202 +203,151 @@ WolfeLineSearch <-
     # We now either have a point satisfying the criteria, or a bracket
     # surrounding a point satisfying the criteria
     # Refine the bracket until we find a point satisfying the criteria
+    if (!done) {
+      maxLS <- maxLS - LSiter
+      zoom_res <- schmidt_zoom(bracket_step, LS_interp, maxLS, funObj,
+                               step0, c1, c2, pnorm_inf, progTol, debug)
 
-    if (debug) {
-      message("% ZOOM PHASE %")
+      funEvals <- funEvals + zoom_res$funEvals
+      bracket_step <- zoom_res$bracket
     }
 
-    insufProgress <- FALSE
-    Tpos <- 2
-    LOposRemoved <- FALSE
-    if (debug) {
-      if (length(bracket_step) == 2) {
-        message("bracket alpha = [", formatC(bracket_step[[1]]$alpha), ", ",
-              formatC(bracket_step[[2]]$alpha), "]")
-      }
-      else {
-        message("bracket alpha = [", formatC(bracket_step[[1]]$alpha), "]")
+    LOpos <- which.min(bracket_props(bracket_step, 'f'))
+    list(step = bracket_step[[LOpos]], nfn = funEvals)
+  }
+
+schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
+                         step0, c1, c2, pnorm_inf, progTol, debug) {
+  insufProgress <- FALSE
+  Tpos <- 2 # position in the bracket of the current best step
+  # mixed interp only: if true, save point from previous bracket
+  LOposRemoved <- FALSE
+
+  funEvals <- 0
+
+  done <- FALSE
+  LSiter <- 0
+  while (!done && LSiter < maxLS) {
+    # Find High and Low Points in bracket
+    LOpos <- which.min(bracket_props(bracket_step, 'f'))
+    HIpos <- -LOpos + 3 # 1 or 2, whichever wasn't the LOpos
+
+    # Compute new trial value
+    if (LS_interp <= 1 || !bracket_is_legal(bracket_step)) {
+      alpha <- mean(bracket_props(bracket_step, 'alpha'))
+      if (debug) {
+        message('Bisecting: trial step = ', formatC(alpha))
       }
     }
-    while (!done && LSiter < maxLS) {
-      # Find High and Low Points in bracket
-      LOpos <- which.min(bracketFval)
-      f_LO <- bracketFval[LOpos]
-      HIpos <- -LOpos + 3 # 1 or 2, whichever wasn't the LOpos
-
-      # Compute new trial value
-      if (LS_interp <= 1 || !all(is.finite(c(bracketFval, bracketDval)))) {
-        alpha <- mean(bracket)
-        if (debug) {
-          message('Bisecting: trial step = ', formatC(alpha))
-        }
-
+    else if (LS_interp == 2) {
+      alpha <- polyinterp(
+        point_matrix_step(bracket_step[[1]], bracket_step[[2]]),
+        debug = debug)
+      if (debug) {
+        message('Grad-Cubic Interpolation: trial step = ', formatC(alpha))
       }
-      else if (LS_interp == 2) {
-        alpha <- polyinterp(point_matrix(
-          c(bracket[1], bracket[2]),
-          c(bracketFval[1], bracketFval[2]),
-          c(bracketDval[1], bracketDval[2])), debug = debug)
-        if (debug) {
-          message('Grad-Cubic Interpolation: trial step = ', formatC(alpha),
-                   ' a1 = ', formatC(bracket[1]), ' a2 = ', formatC(bracket[2]),
-                   ' f1 = ', formatC(bracketFval[1]), ' f2 = ', formatC(bracketFval[2]),
-                   ' d1 = ', formatC(bracketDval[1]), ' d2 = ', formatC(bracketDval[2])
-                  )
-        }
+    }
+    else {
+      # Mixed Case #
+      nonTpos <- -Tpos + 3
+      if (!LOposRemoved) {
+        oldLO <- bracket_step[[nonTpos]]
       }
-      else {
-        # Mixed Case #
-        nonTpos <- -Tpos + 3
-        if (!LOposRemoved) {
-          oldLOval <- bracket[nonTpos]
-          oldLOFval <- bracketFval[nonTpos]
-          oldLODval <- bracketDval[nonTpos]
-        }
+      alpha <- mixedInterp_step(bracket_step, Tpos, oldLO, debug)
+      if (debug) {
+        message('Mixed Interpolation: trial step = ', formatC(alpha))
+      }
+    }
 
-        alpha <- mixedInterp(bracket, bracketFval, bracketDval,
-                            Tpos,
-                            oldLOval, oldLOFval, oldLODval, debug)
-        if (debug) {
-          message('Mixed Interpolation: trial step = ', formatC(alpha))
-        }
+    # Test that we are making sufficient progress
+    bracket_alphas <- bracket_props(bracket_step, 'alpha')
+    alpha_max <- max(bracket_alphas)
+    alpha_min <- min(bracket_alphas)
+    alpha_range <- alpha_max - alpha_min
+    if (min(alpha_max - alpha, alpha - alpha_min) / alpha_range < 0.1) {
+      if (debug) {
+        message('Interpolation close to boundary')
       }
 
-      # Test that we are making sufficient progress
-      if (min(max(bracket) - alpha, alpha - min(bracket)) / (max(bracket) - min(bracket)) < 0.1) {
+      if (insufProgress || alpha >= alpha_max || alpha <= alpha_min) {
         if (debug) {
-          message('Interpolation close to boundary')
+          message('Evaluating at 0.1 away from boundary')
         }
-
-        if (insufProgress || alpha >= max(bracket) || alpha <= min(bracket)) {
-          if (debug) {
-            message('Evaluating at 0.1 away from boundary')
-          }
-          if (abs(alpha - max(bracket)) < abs(alpha - min(bracket))) {
-            alpha <- max(bracket) - 0.1 * (max(bracket) - min(bracket))
-          }
-          else {
-            alpha <- min(bracket) + 0.1 * (max(bracket) - min(bracket))
-          }
-          insufProgress <- FALSE
+        if (abs(alpha - alpha_max) < abs(alpha - alpha_min)) {
+          alpha <- alpha_max - 0.1 * alpha_range
         }
         else {
-          insufProgress <- TRUE
+          alpha <- alpha_min + 0.1 * alpha_range
         }
-      }
-      else {
         insufProgress <- FALSE
       }
-
-      # Evaluate new point
-      fun_obj_res <- funObj(alpha)
-      f_new <- fun_obj_res$f
-      g_new <- fun_obj_res$df
-      gtd_new <- fun_obj_res$d
-
-      funEvals <- funEvals + 1
-      LSiter <- LSiter + 1
-
-      armijo <- f_new < f + c1 * alpha * gtd
-      if (debug) {
-        message('Armijo check f_new ', f_new,
-                ' < f + c1 * t * gtd = ',
-                formatC(f), ' + ', formatC(c1), ' * ', formatC(alpha), ' * ',
-                formatC(gtd), ' = ', formatC(f + c1 * alpha * gtd), ' ? ')
-      }
-      if (!armijo || f_new >= f_LO) {
-        if (debug) {
-          if (!armijo) {
-            message("Armijo not satisfied")
-          }
-          if (f_new >= f_LO) {
-            message('f_new >= f_LO ', f_new, " ", f_LO)
-          }
-        }
-        if (debug) {
-          message("New point becomes new HI")
-        }
-        # Armijo condition not satisfied or not lower than lowest point
-        bracket[HIpos] <- alpha
-        bracketFval[HIpos] <- f_new
-        bracketDval[HIpos] <- gtd_new
-        Tpos <- HIpos
-      }
       else {
-        if (debug) {
-          message("Wolfe conditions check |gtd_new| ",
-                  formatC(abs(gtd_new)), " <= -c2 * gtd = ",
-                  formatC(-c2), " * " , formatC(gtd), " = ",
-                  formatC(-c2 * gtd), " ?")
-        }
-        if (abs(gtd_new) <= -c2 * gtd) {
-          if (debug) {
-            message("Wolfe conditions satisfied, done!")
-          }
-          # Wolfe conditions satisfied
-          done <- TRUE
-        }
-        else if (gtd_new * (bracket[HIpos] - bracket[LOpos]) >= 0) {
-          if (debug) {
-            message("Old HI becomes new LO")
-          }
-          # Old HI becomes new LO
-          bracket[HIpos] <- bracket[LOpos]
-          bracketFval[HIpos] <- bracketFval[LOpos]
-          bracketDval[HIpos] <- bracketDval[LOpos]
-          if (LS_interp == 3) {
-            if (debug) {
-              message('LO Pos is being removed!')
-            }
-            LOposRemoved <- TRUE
-            oldLOval <- bracket[LOpos]
-            oldLOFval <- bracketFval[LOpos]
-            oldLODval <- bracketDval[LOpos]
-          }
-        }
-        if (debug) {
-          message("New point becomes new LO")
-        }
-        # New point becomes new LO
-        bracket[LOpos] <- alpha
-        bracketFval[LOpos] <- f_new
-        bracketDval[LOpos] <- gtd_new
-        Tpos <- LOpos
-      }
-
-      if (debug) {
-        message('Bracket ', formatC(bracket[1]), " ",
-                formatC(bracket[2]), " width = ",
-                formatC(abs(bracket[1] - bracket[2])))
-      }
-
-
-      if (!done && abs(bracket[1] - bracket[2]) * pnorm_inf < progTol) {
-        if (debug) {
-          message('Line-search bracket has been reduced below progTol')
-        }
-        break
-      }
-    } # end of while loop
-
-    ##
-    if (LSiter == maxLS) {
-      if (debug) {
-        message('Line Search Exceeded Maximum Line Search Iterations')
+        insufProgress <- TRUE
       }
     }
+    else {
+      insufProgress <- FALSE
+    }
 
-    LOpos <- which.min(bracketFval)
-    f_LO <- bracketFval[LOpos]
-    alpha <- bracket[LOpos]
-    f_new <- bracketFval[LOpos]
-    d_new <- bracketDval[LOpos]
+    # Evaluate new point
+    fun_obj_res <- funObj(alpha)
+    step_new <- list(alpha = alpha, f = fun_obj_res$f, df = fun_obj_res$df, d = fun_obj_res$d)
+    funEvals <- funEvals + 1
 
-    list(
-      step = list(alpha = alpha, f = f_new, df = g_new, d = d_new),
-      nfn = funEvals
-    )
+    # Update bracket
+    if (!armijo_ok_step(step0, step_new, c1) || step_new$f >= bracket_step[[LOpos]]$f) {
+      if (debug) {
+        message("New point becomes new HI")
+      }
+      # Armijo condition not satisfied or not lower than lowest point
+      bracket_step[[HIpos]] <- step_new
+      Tpos <- HIpos
+    }
+    else {
+      if (strong_curvature_ok_step(step0, step_new, c2)) {
+        # Wolfe conditions satisfied
+        done <- TRUE
+      }
+      else if (step_new$d * (bracket_step[[HIpos]]$alpha - bracket_step[[LOpos]]$alpha) >= 0) {
+        if (debug) {
+          message("Old LO becomes new HI")
+        }
+        # Old HI becomes new LO
+        bracket_step[[HIpos]] <- bracket_step[[LOpos]]
+
+        if (LS_interp == 3) {
+          if (debug) {
+            message('LO Pos is being removed!')
+          }
+          LOposRemoved <- TRUE
+          oldLO <- bracket_step[[LOpos]]
+        }
+      }
+
+      if (debug) {
+        message("New point becomes new LO")
+      }
+      # New point becomes new LO
+      bracket_step[[LOpos]] <- step_new
+      Tpos <- LOpos
+    }
+
+    LSiter <- LSiter + 1
+
+    if (!done && abs(bracket_step[[1]]$alpha - bracket_step[[2]]$alpha) * pnorm_inf < progTol) {
+      if (debug) {
+        message('Line-search bracket has been reduced below progTol')
+      }
+      break
+    }
+  } # end of while loop
+  if (LSiter == maxLS) {
+    if (debug) {
+      message('Line Search Exceeded Maximum Line Search Iterations')
+    }
   }
+  list(bracket = bracket_step, funEvals = funEvals)
+}
 
 # Backtracking linesearch to satisfy Armijo condition
 #
@@ -623,6 +531,11 @@ ArmijoBacktrack <-
     )
   }
 
+mixedExtrap_step <- function(step0, step1, minStep, maxStep, debug) {
+  mixedExtrap(step0$alpha, step0$f, step0$d, step1$alpha, step1$f, step1$d,
+              minStep, maxStep, debug)
+}
+
 mixedExtrap <- function(x0, f0, g0, x1, f1, g1, minStep, maxStep, debug) {
   alpha_c <- polyinterp(point_matrix(c(x0, x1), c(f0, f1), c(g0, g1)),
                         minStep, maxStep, debug = debug)
@@ -651,13 +564,28 @@ mixedExtrap <- function(x0, f0, g0, x1, f1, g1, minStep, maxStep, debug) {
   res
 }
 
-mixedInterp <-
-  function(bracket, bracketFval, bracketDval,
-           Tpos,
-           oldLOval, oldLOFval, oldLODval,
-           debug) {
-    # Mixed Case
-    nonTpos <- -Tpos + 3
+mixedInterp_step <- function(bracket_step,
+                        Tpos,
+                        oldLO,
+                        debug) {
+
+  bracket <- c(bracket_step[[1]]$alpha, bracket_step[[2]]$alpha)
+  bracketFval <- c(bracket_step[[1]]$f, bracket_step[[2]]$f)
+  bracketDval <- c(bracket_step[[1]]$d, bracket_step[[2]]$d)
+
+  mixedInterp(bracket, bracketFval, bracketDval, Tpos,
+              oldLO$alpha, oldLO$f, oldLO$d, debug)
+}
+
+mixedInterp <- function(
+  bracket, bracketFval, bracketDval,
+  Tpos,
+  oldLOval, oldLOFval, oldLODval,
+  debug) {
+
+  # Mixed Case
+  nonTpos <- -Tpos + 3
+
 
     gtdT <- bracketDval[Tpos]
     gtdNonT <- bracketDval[nonTpos]
@@ -956,3 +884,16 @@ point_matrix <- function(xs, fs, gs) {
   matrix(c(xs, fs, gs), ncol = 3)
 }
 
+point_matrix_step <- function(step1, step2) {
+  point_matrix(c(step1$alpha, step2$alpha), c(step1$f, step2$f),
+               c(step1$d, step2$d))
+}
+
+bracket_is_legal <- function(bracket) {
+  all(is.finite(c(bracket[[1]]$f, bracket[[2]]$f,
+                  bracket[[1]]$d, bracket[[2]]$d)))
+}
+
+bracket_props <- function(bracket, prop) {
+  sapply(bracket, `[[`, prop)
+}
