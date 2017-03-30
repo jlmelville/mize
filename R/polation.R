@@ -136,7 +136,6 @@ quadratic_interpolate_step <- function(step1, step2) {
 # @param g2 f'(x) value at second point.
 # @return Quadratic interpolated estimate of minimum value of x.
 quadratic_interpolateg <- function(x1, g1, x2, g2) {
-  #x1 - (0.5 * g1 * (x2 - x1) ^ 2) / (f2 - f1 - g1 * (x2 - x1))
   x2 + (x1 - x2) * g2 / (g2 - g1)
 }
 
