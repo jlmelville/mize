@@ -100,103 +100,32 @@ WolfeLineSearch <-
            funObj, varargin = NULL,
            pnorm_inf, progTol = 1e-9, debug = FALSE) {
 
-    # Evaluate the Objective and Gradient at the Initial Step
-    fun_obj_res <- funObj(alpha)
-    step_new <- list(alpha = alpha, f = fun_obj_res$f, df = fun_obj_res$df,
-                     d = fun_obj_res$d)
-    funEvals <- 1
 
     # Bracket an Interval containing a point satisfying the
     # Wolfe criteria
-    done <- FALSE
-
     step0 <- list(alpha = 0, f = f, df = g, d = gtd)
-    step_prev <- step0
 
-    # Bracketing Phase
-    if (debug) {
-      message("% BRACKET PHASE %")
-    }
-    LSiter <- 0
-    while (LSiter < maxLS) {
+    bracket_res <- schmidt_bracket(alpha, LS_interp, maxLS, funObj, step0,
+                                   c1, c2, debug)
+    bracket_step <- bracket_res$bracket
+    funEvals <- bracket_res$funEvals
+    LSiter <- bracket_res$LSiter
+    done <- bracket_res$done
 
-      if (!is.finite(step_new$f) || !is.finite(step_new$df)) {
-        if (debug) {
-          message('Extrapolated into illegal region, switching to Armijo line-search')
-        }
-        step_new$alpha <- mean(c(step_new$alpha, step_prev$alpha))
-
-        # Do Armijo
-        armijo_res <- ArmijoBacktrack(step_new$alpha, step0$f, step0$df, step0$d,
-                          c1, LS_interp, LS_multi,
-                          funObj, varargin, pnorm_inf,
-                          progTol, debug)
-
-        armijo_res$nfn <- armijo_res$nfn + funEvals
-        return(armijo_res)
+    if (!bracket_is_legal(bracket_step)) {
+      if (debug) {
+        message('Switching to Armijo line-search')
       }
+      alpha <- mean(bracket_props(bracket_step, 'alpha'))
 
-      # See if we have found the other side of the bracket
-      if (!armijo_ok_step(step0, step_new, c1) || (LSiter > 1 && step_new$f >= step_prev$f)) {
-        bracket_step <- list(step_prev, step_new)
+      # Do Armijo
+      armijo_res <- ArmijoBacktrack(alpha, step0$f, step0$df, step0$d,
+                                    c1, LS_interp, LS_multi,
+                                    funObj, NULL, pnorm_inf,
+                                    progTol, debug)
 
-        if (debug) {
-          message('Armijo failed or step_new$f >= step_prev$f: bracket is [prev new]')
-        }
-        break
-      }
-      else if (strong_curvature_ok_step(step0, step_new, c2)) {
-        bracket_step <- list(step_new)
-        done <- TRUE
-
-        if (debug) {
-          message('Sufficient curvature found: bracket is [new]')
-        }
-        break
-      }
-      else if (step_new$d >= 0) {
-        bracket_step <- list(step_prev, step_new)
-
-        if (debug) {
-          message('step_new$d >= 0: bracket is [prev, new]')
-        }
-        break
-      }
-
-      minStep <- step_new$alpha + 0.01 * (step_new$alpha - step_prev$alpha)
-      maxStep <- step_new$alpha * 10
-
-      if (LS_interp <= 1) {
-        if (debug) {
-          message('Extending Bracket')
-        }
-        alpha_new <- maxStep
-      }
-      else if (LS_interp == 2) {
-        if (debug) {
-          message('Cubic Extrapolation')
-        }
-        alpha_new <- polyinterp(point_matrix_step(step_prev, step_new),
-                                minStep, maxStep)
-      }
-      else {
-        # LS_interp == 3
-        alpha_new <- mixedExtrap_step(step_prev, step_new, minStep, maxStep,
-                                      debug)
-      }
-
-      step_prev <- step_new
-
-      fun_obj_res <- funObj(alpha_new)
-      step_new <- list(alpha = alpha_new, f = fun_obj_res$f,
-                       df = fun_obj_res$df, d = fun_obj_res$d)
-      funEvals <- funEvals + 1
-
-      LSiter <- LSiter + 1
-    }
-
-    if (LSiter == maxLS) {
-      bracket_step <- list(step0, step_new)
+      armijo_res$nfn <- armijo_res$nfn + funEvals
+      return(armijo_res)
     }
 
     ## Zoom Phase
@@ -215,6 +144,98 @@ WolfeLineSearch <-
     LOpos <- which.min(bracket_props(bracket_step, 'f'))
     list(step = bracket_step[[LOpos]], nfn = funEvals)
   }
+
+schmidt_bracket <- function(alpha, LS_interp, maxLS, funObj, step0, c1, c2, debug) {
+  step_prev <- step0
+
+  # Evaluate the Objective and Gradient at the Initial Step
+  fun_obj_res <- funObj(alpha)
+  step_new <- list(alpha = alpha, f = fun_obj_res$f, df = fun_obj_res$df,
+                   d = fun_obj_res$d)
+  funEvals <- 1
+
+  done <- FALSE
+
+  LSiter <- 0
+  while (LSiter < maxLS) {
+
+    if (!is.finite(step_new$f) || !is.finite(step_new$df)) {
+      if (debug) {
+        message('Extrapolated into illegal region, returning')
+      }
+      bracket_step <- list(step_prev, step_new)
+
+      return(list(bracket = bracket_step, done = done,
+                  funEvals = funEvals, LSiter = LSiter))
+    }
+
+    # See if we have found the other side of the bracket
+    if (!armijo_ok_step(step0, step_new, c1) || (LSiter > 1 && step_new$f >= step_prev$f)) {
+      bracket_step <- list(step_prev, step_new)
+
+      if (debug) {
+        message('Armijo failed or step_new$f >= step_prev$f: bracket is [prev new]')
+      }
+      break
+    }
+    else if (strong_curvature_ok_step(step0, step_new, c2)) {
+      bracket_step <- list(step_new)
+      done <- TRUE
+
+      if (debug) {
+        message('Sufficient curvature found: bracket is [new]')
+      }
+      break
+    }
+    else if (step_new$d >= 0) {
+      bracket_step <- list(step_prev, step_new)
+
+      if (debug) {
+        message('step_new$d >= 0: bracket is [prev, new]')
+      }
+      break
+    }
+
+    minStep <- step_new$alpha + 0.01 * (step_new$alpha - step_prev$alpha)
+    maxStep <- step_new$alpha * 10
+
+    if (LS_interp <= 1) {
+      if (debug) {
+        message('Extending Bracket')
+      }
+      alpha_new <- maxStep
+    }
+    else if (LS_interp == 2) {
+      if (debug) {
+        message('Cubic Extrapolation')
+      }
+      alpha_new <- polyinterp(point_matrix_step(step_prev, step_new),
+                              minStep, maxStep)
+    }
+    else {
+      # LS_interp == 3
+      alpha_new <- mixedExtrap_step(step_prev, step_new, minStep, maxStep,
+                                    debug)
+    }
+
+    step_prev <- step_new
+
+    fun_obj_res <- funObj(alpha_new)
+    step_new <- list(alpha = alpha_new, f = fun_obj_res$f,
+                     df = fun_obj_res$df, d = fun_obj_res$d)
+    funEvals <- funEvals + 1
+
+    LSiter <- LSiter + 1
+  }
+
+  if (LSiter == maxLS) {
+    bracket_step <- list(step0, step_new)
+  }
+
+  list(bracket = bracket_step, done = done,
+       funEvals = funEvals, LSiter = LSiter)
+}
+
 
 schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
                          step0, c1, c2, pnorm_inf, progTol, debug) {
@@ -890,10 +911,13 @@ point_matrix_step <- function(step1, step2) {
 }
 
 bracket_is_legal <- function(bracket) {
-  all(is.finite(c(bracket[[1]]$f, bracket[[2]]$f,
-                  bracket[[1]]$d, bracket[[2]]$d)))
+  all(is.finite(c(bracket_props(bracket, c('f', 'd')))))
 }
 
+# extracts all the properties (e.g. 'f', 'df', 'd' or 'alpha') from all members
+# of the bracket. Works if there are one or two bracket members. Can get
+# multiple properties at once, by providing an array of the properties,
+# e.g. bracket_props(bracket, c('f', 'd'))
 bracket_props <- function(bracket, prop) {
-  sapply(bracket, `[[`, prop)
+  unlist(sapply(bracket, `[`, prop))
 }
