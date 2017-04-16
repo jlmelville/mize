@@ -998,7 +998,8 @@ make_mize <- function(method = "L-BFGS",
                              c("more-thuente", "mt", "rasmussen",
                                "bold driver",
                                "backtracking", "constant",
-                               "schmidt", "minfunc", "armijo"))
+                               "schmidt", "minfunc", "armijo",
+                               "hager-zhang", "hz"))
 
     if (line_search == "bold driver") {
       if (is.null(step_down)) {
@@ -1052,7 +1053,21 @@ make_mize <- function(method = "L-BFGS",
                           step_down = step_down,
                           max_fn = ls_max_fn,
                           max_gr = ls_max_gr,
-                          max_fg = ls_max_fg)
+                          max_fg = ls_max_fg),
+      "hager-zhang" = hager_zhang_ls(c1 = c1, c2 = c2,
+                                     initializer = tolower(step_next_init),
+                                     initial_step_length = step0,
+                                     try_newton_step = try_newton_step,
+                                     max_fn = ls_max_fn,
+                                     max_gr = ls_max_gr,
+                                     max_fg = ls_max_fg),
+      hz =  hager_zhang_ls(c1 = c1, c2 = c2,
+                           initializer = tolower(step_next_init),
+                           initial_step_length = step0,
+                           try_newton_step = try_newton_step,
+                           max_fn = ls_max_fn,
+                           max_gr = ls_max_gr,
+                           max_fg = ls_max_fg)
     )
   }
 

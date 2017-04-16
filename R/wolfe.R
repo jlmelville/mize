@@ -137,6 +137,41 @@ schmidt_armijo_ls <- function(c1 = 0.005,
               debug = debug)
 }
 
+
+# Hager-Zhang -------------------------------------------------------------
+
+hager_zhang_ls <- function(c1 = c2 / 2, c2 = 0.1,
+                           max_alpha_mult = 10,
+                           min_step_size = .Machine$double.eps,
+                           initializer = "s",
+                           initial_step_length = "schmidt",
+                           try_newton_step = FALSE,
+                           stop_at_min = TRUE, eps = .Machine$double.eps,
+                           max_fn = Inf,
+                           max_gr = Inf,
+                           max_fg = Inf,
+                           debug = FALSE) {
+  if (!is_in_range(c1, 0, 1, lopen = FALSE, ropen = FALSE)) {
+    stop("c1 must be between 0 and 1")
+  }
+  if (!is.null(c2) && !is_in_range(c2, c1, 1, lopen = FALSE, ropen = FALSE)) {
+    stop("c2 must be between c1 and 1")
+  }
+
+  max_ls_fn <- min(max_fn, max_gr, floor(max_fg / 2))
+
+  line_search(hager_zhang(c1 = c1, c2 = c2, max_fn = max_ls_fn),
+              name = "hager-zhang",
+              max_alpha_mult = max_alpha_mult,
+              min_step_size = min_step_size, stop_at_min = stop_at_min,
+              initializer = initializer,
+              initial_step_length = initial_step_length,
+              try_newton_step = try_newton_step,
+              eps = eps,
+              debug = debug)
+
+}
+
 # Line Search -------------------------------------------------------------
 
 line_search <- function(ls_fn,

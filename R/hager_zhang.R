@@ -13,6 +13,36 @@
 # I have tried to indicate in the comments which parts of which routines
 # match the notation in the above papers.
 
+
+# Adapter -----------------------------------------------------------------
+
+hager_zhang <- function(c1 = c2 / 2, c2 = 0.1, max_fn = Inf) {
+  if (c2 < c1) {
+    stop("hager-zhang line search: c2 < c1")
+  }
+  function(phi, step0, alpha,
+           total_max_fn = Inf, total_max_gr = Inf, total_max_fg = Inf,
+           pm) {
+    maxfev <- min(max_fn, total_max_fn, total_max_gr, floor(total_max_fg / 2))
+    if (maxfev <= 0) {
+      return(list(step = step0, nfn = 0, ngr = 0))
+    }
+    res <- line_search_hz(alpha, step0, phi, c1 = c1, c2 = c2,
+                               eps = 1e-6, theta = 0.5, rho = 5,
+                               gamma = 0.66,
+                               max_fn = maxfev,
+                               xtol = 1e-6,
+                               strong_curvature = TRUE,
+                               always_check_convergence = TRUE,
+                               approx_armijo = TRUE,
+                               verbose = FALSE)
+
+    res$ngr = res$nfn
+    res
+  }
+}
+
+
 # Line Search -------------------------------------------------------------
 
 # Routine 'Line Search Algorithm' L0-3
