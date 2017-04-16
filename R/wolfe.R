@@ -538,7 +538,7 @@ strong_wolfe_ok <- function(f0, d0, alpha, fa, da, c1, c2) {
     strong_curvature_ok(d0, da, c2)
 }
 
-# Are the Strong Wolfe Conditions Met?
+# Are the Strong Wolfe Conditions Met for the Given Step?
 #
 # Line search test.
 #
@@ -557,4 +557,29 @@ strong_wolfe_ok_step <- function(step0, step, c1, c2) {
   armijo_ok_step(step0, step, c1) && strong_curvature_ok_step(step0, step, c2)
 }
 
+# Are the Wolfe Conditions Met for the Given Step?
+wolfe_ok_step <- function(step0, step, c1, c2) {
+  armijo_ok_step(step0, step, c1) && curvature_ok_step(step0, step, c2)
+}
 
+# Is the approximate Armijo condition met?
+#
+# Suggested by Hager and Zhang (2005) as part of the Approximate Wolfe
+# Conditions. The second of these conditions is identical to the (weak)
+# curvature condition.
+#
+# The first condition applies the armijo condition to a quadratic approximation
+# to the function, which allows for higher precision in finding the minimizer.
+#
+# It is suggested that the approximate version of the Armijo condition be used
+# when fa is 'close' to f0, e.g. fa <= f0 + eps * |f0| where eps = 1e-6
+#
+# c1 should be < 0.5
+approx_armijo_ok <- function(d0, da, c1) {
+  (2 * c1 - 1) * d0 >= da
+}
+
+# Is the approximate Armijo condition met for the given step?
+approx_armijo_ok_step <- function(step0, step, c1) {
+  approx_armijo_ok(step0$d, step$d, c1)
+}
