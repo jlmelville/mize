@@ -20,7 +20,7 @@ schmidt <- function(c1 = c2 / 2, c2 = 0.1, max_fn = Inf) {
     }
     res <- WolfeLineSearch(alpha = alpha, f = step0$f, g = step0$df,
                            gtd = step0$d,
-                           c1 = 1e-4, c2 = 0.1, LS_interp = 2, LS_multi = 0,
+                           c1 = c1, c2 = c2, LS_interp = 2, LS_multi = 0,
                            maxLS = maxfev,
                            funObj = phi, varargin = NULL,
                            pnorm_inf = max(abs(pm)),
@@ -323,11 +323,13 @@ schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
       # Armijo condition not satisfied or not lower than lowest point
       bracket_step[[HIpos]] <- step_new
       Tpos <- HIpos
+      # [LO, new]
     }
     else {
       if (strong_curvature_ok_step(step0, step_new, c2)) {
         # Wolfe conditions satisfied
         done <- TRUE
+        # [new, HI]
       }
       else if (step_new$d * (bracket_step[[HIpos]]$alpha - bracket_step[[LOpos]]$alpha) >= 0) {
         if (debug) {
@@ -343,7 +345,9 @@ schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
           LOposRemoved <- TRUE
           oldLO <- bracket_step[[LOpos]]
         }
+        # [new, LO]
       }
+      # else [new, HI]
 
       if (debug) {
         message("New point becomes new LO")
