@@ -57,7 +57,7 @@ test_that("CG with Schmidt LS", {
   res <- mize(rb0, rosenbrock_fg, method = "cg",
               cg_update = "pr+",
               max_iter = 3,
-              line_search = "schmidt", c1 = 5e-10, c2 = 1e-9, step0 = "schmidt",
+              line_search = "schmidt", c1 = 1e-4, c2 = 0.1, step0 = "schmidt",
               step_next_init = "slope", grad_tol = 1e-5)
 
   expect_equal(res$nf, 10)
