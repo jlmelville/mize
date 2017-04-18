@@ -597,6 +597,47 @@ wolfe_ok_step <- function(step0, step, c1, c2) {
   armijo_ok_step(step0, step, c1) && curvature_ok_step(step0, step, c2)
 }
 
+# Create a Wolfe Conditions check function allowing for either approximate or
+# exact Armijo condition and weak or strong curvature condition
+make_wolfe_ok_step_fn <- function(approx_armijo = FALSE,
+                                  strong_curvature = TRUE, eps = 1e-6) {
+
+  approx_armijo_ok_fn <- make_approx_armijo_ok_step(eps)
+
+  function(step0, step, c1, c2) {
+    if (approx_armijo) {
+      ok <- approx_armijo_ok_fn(step0, step, c1)
+    }
+    else {
+      ok <- armijo_ok_step(step0, step, c1)
+    }
+
+    if (ok) {
+      if (strong_curvature) {
+        ok <- strong_curvature_ok_step(step0, step, c2)
+      }
+      else {
+        ok <- curvature_ok_step(step0, step, c2)
+      }
+    }
+    ok
+  }
+}
+
+# Create Approximation Armijo check function:
+# Checks approximate Armijo conditions only if exact Armijo check fails and
+# if function value is sufficiently close to step0 value according to eps
+make_approx_armijo_ok_step <- function(eps) {
+  function(step0, step, c1) {
+    eps_k <- eps * abs(step0$f)
+
+    if (armijo_ok_step(step0, step, c1)) {
+      return(TRUE)
+    }
+    (step$f <= step0$f + eps_k) && approx_armijo_ok_step(step0, step, c1)
+  }
+}
+
 # Is the approximate Armijo condition met?
 #
 # Suggested by Hager and Zhang (2005) as part of the Approximate Wolfe
