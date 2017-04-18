@@ -7,7 +7,8 @@
 # Uses the default line search settings: cubic interpolation/extrapolation
 # Falling back to Armijo backtracking (also using cubic interpolation) if
 # a non-legal value is found
-schmidt <- function(c1 = c2 / 2, c2 = 0.1, max_fn = Inf) {
+schmidt <- function(c1 = c2 / 2, c2 = 0.1, max_fn = Inf, eps = 1e-6,
+                    strong_curvature = TRUE, approx_armijo = FALSE) {
   if (c2 < c1) {
     stop("schmidt line search: c2 < c1")
   }
@@ -18,13 +19,31 @@ schmidt <- function(c1 = c2 / 2, c2 = 0.1, max_fn = Inf) {
     if (maxfev <= 0) {
       return(list(step = step0, nfn = 0, ngr = 0))
     }
+
+    if (approx_armijo) {
+      armijo_check_fn <- make_approx_armijo_ok_step(eps)
+    }
+    else {
+      armijo_check_fn <- armijo_ok_step
+    }
+
+    if (strong_curvature) {
+      curvature_check_fn <- strong_curvature_ok_step
+    }
+    else {
+      curvature_check_fn <- curvature_ok_step
+    }
+
     res <- WolfeLineSearch(alpha = alpha, f = step0$f, g = step0$df,
                            gtd = step0$d,
                            c1 = c1, c2 = c2, LS_interp = 2, LS_multi = 0,
                            maxLS = maxfev,
                            funObj = phi, varargin = NULL,
                            pnorm_inf = max(abs(pm)),
-                           progTol = 1e-9, debug = FALSE)
+                           progTol = 1e-9,
+                           armijo_check_fn = armijo_check_fn,
+                           curvature_check_fn = curvature_check_fn,
+                           debug = FALSE)
     res$ngr = res$nfn
     res
   }
@@ -98,15 +117,16 @@ WolfeLineSearch <-
   function(alpha, f, g, gtd,
            c1 = 1e-4, c2 = 0.1, LS_interp = 1, LS_multi = 0, maxLS = 25,
            funObj, varargin = NULL,
-           pnorm_inf, progTol = 1e-9, debug = FALSE) {
-
-
+           pnorm_inf, progTol = 1e-9, armijo_check_fn = armijo_ok_step,
+           curvature_check_fn = strong_curvature_ok_step,
+           debug = FALSE) {
     # Bracket an Interval containing a point satisfying the
     # Wolfe criteria
     step0 <- list(alpha = 0, f = f, df = g, d = gtd)
 
     bracket_res <- schmidt_bracket(alpha, LS_interp, maxLS, funObj, step0,
-                                   c1, c2, debug)
+                                   c1, c2, armijo_check_fn, curvature_check_fn,
+                                   debug)
     bracket_step <- bracket_res$bracket
     funEvals <- bracket_res$funEvals
     LSiter <- bracket_res$LSiter
@@ -135,7 +155,9 @@ WolfeLineSearch <-
     if (!done) {
       maxLS <- maxLS - LSiter
       zoom_res <- schmidt_zoom(bracket_step, LS_interp, maxLS, funObj,
-                               step0, c1, c2, pnorm_inf, progTol, debug)
+                               step0, c1, c2, pnorm_inf, progTol,
+                               armijo_check_fn, curvature_check_fn,
+                               debug)
 
       funEvals <- funEvals + zoom_res$funEvals
       bracket_step <- zoom_res$bracket
@@ -145,7 +167,8 @@ WolfeLineSearch <-
     list(step = bracket_step[[LOpos]], nfn = funEvals)
   }
 
-schmidt_bracket <- function(alpha, LS_interp, maxLS, funObj, step0, c1, c2, debug) {
+schmidt_bracket <- function(alpha, LS_interp, maxLS, funObj, step0, c1, c2,
+                            armijo_check_fn, curvature_check_fn, debug) {
   step_prev <- step0
 
   # Evaluate the Objective and Gradient at the Initial Step
@@ -170,7 +193,7 @@ schmidt_bracket <- function(alpha, LS_interp, maxLS, funObj, step0, c1, c2, debu
     }
 
     # See if we have found the other side of the bracket
-    if (!armijo_ok_step(step0, step_new, c1) || (LSiter > 1 && step_new$f >= step_prev$f)) {
+    if (!armijo_check_fn(step0, step_new, c1) || (LSiter > 1 && step_new$f >= step_prev$f)) {
       bracket_step <- list(step_prev, step_new)
 
       if (debug) {
@@ -178,7 +201,7 @@ schmidt_bracket <- function(alpha, LS_interp, maxLS, funObj, step0, c1, c2, debu
       }
       break
     }
-    else if (strong_curvature_ok_step(step0, step_new, c2)) {
+    else if (curvature_check_fn(step0, step_new, c2)) {
       bracket_step <- list(step_new)
       done <- TRUE
 
@@ -236,9 +259,10 @@ schmidt_bracket <- function(alpha, LS_interp, maxLS, funObj, step0, c1, c2, debu
        funEvals = funEvals, LSiter = LSiter)
 }
 
-
 schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
-                         step0, c1, c2, pnorm_inf, progTol, debug) {
+                         step0, c1, c2, pnorm_inf, progTol, armijo_check_fn,
+                         curvature_check_fn,
+                         debug) {
   insufProgress <- FALSE
   Tpos <- 2 # position in the bracket of the current best step
   # mixed interp only: if true, save point from previous bracket
@@ -316,7 +340,7 @@ schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
     funEvals <- funEvals + 1
 
     # Update bracket
-    if (!armijo_ok_step(step0, step_new, c1) || step_new$f >= bracket_step[[LOpos]]$f) {
+    if (!armijo_check_fn(step0, step_new, c1) || step_new$f >= bracket_step[[LOpos]]$f) {
       if (debug) {
         message("New point becomes new HI")
       }
@@ -326,7 +350,7 @@ schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
       # [LO, new]
     }
     else {
-      if (strong_curvature_ok_step(step0, step_new, c2)) {
+      if (curvature_check_fn(step0, step_new, c2)) {
         # Wolfe conditions satisfied
         done <- TRUE
         # [new, HI]

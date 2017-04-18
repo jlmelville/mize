@@ -4,8 +4,23 @@ context("Schmidt (MinFunc) Line Search")
 # using Octave 4.2.0
 
 mfls <- function(fg, x, alpha, c1, c2, pv = -fg$gr(x)/abs(fg$gr(x)),
-                 LS_interp = 2, debug = FALSE) {
+                 LS_interp = 2, debug = FALSE, eps = 1e-6,
+                 approx_armijo = FALSE, strong_curvature = TRUE) {
   step0 <- make_step0(fg, x, pv)
+
+  if (approx_armijo) {
+    armijo_check_fn <- make_approx_armijo_ok_step(eps)
+  }
+  else {
+    armijo_check_fn <- armijo_ok_step
+  }
+
+  if (strong_curvature) {
+    curvature_check_fn <- strong_curvature_ok_step
+  }
+  else {
+    curvature_check_fn <- curvature_ok_step
+  }
 
   res <- WolfeLineSearch(alpha = alpha, f = step0$f, g = step0$df,
                          gtd = step0$d,
@@ -14,7 +29,10 @@ mfls <- function(fg, x, alpha, c1, c2, pv = -fg$gr(x)/abs(fg$gr(x)),
                          funObj = make_phi_alpha(x, fg, pv, calc_gradient_default = TRUE),
                          varargin = NULL,
                          pnorm_inf = max(abs(pv)),
-                         progTol = 1e-9, debug = debug)
+                         progTol = 1e-9,
+                         debug = debug,
+                         armijo_check_fn = armijo_check_fn,
+                         curvature_check_fn = curvature_check_fn)
 
   res$step$par <- x + res$step$alpha * pv
   res
