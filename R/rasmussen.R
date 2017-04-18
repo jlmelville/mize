@@ -44,7 +44,7 @@ rasmussen <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
     armijo_check_fn <- armijo_ok_step
   }
 
-  wolfe_step_ok_fn <- make_wolfe_ok_step_fn(strong_curvature = strong_curvature,
+  wolfe_ok_step_fn <- make_wolfe_ok_step_fn(strong_curvature = strong_curvature,
                                             approx_armijo = approx_armijo,
                                             eps = eps)
 
@@ -58,7 +58,7 @@ rasmussen <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
 
     res <- ras_ls(phi, alpha, step0, c1 = c1, c2 = c2, ext = ext, int = int,
                   max_fn = maxfev, armijo_check_fn = armijo_check_fn,
-                  wolfe_step_ok_fn = wolfe_step_ok_fn)
+                  wolfe_ok_step_fn = wolfe_ok_step_fn)
     list(step = res$step, nfn = res$nfn, ngr = res$nfn)
   }
 }
@@ -85,7 +85,7 @@ rasmussen <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
 # }
 ras_ls <- function(phi, alpha, step0, c1 = 0.1, c2 = 0.1 / 2, ext = 3.0,
                    int = 0.1, max_fn = Inf, armijo_check_fn = armijo_ok_step,
-                   wolfe_step_ok_fn = strong_wolfe_ok_step) {
+                   wolfe_ok_step_fn = strong_wolfe_ok_step) {
   if (c2 < c1) {
     stop("Rasmussen line search: c2 < c1")
   }
@@ -105,7 +105,7 @@ ras_ls <- function(phi, alpha, step0, c1 = 0.1, c2 = 0.1 / 2, ext = 3.0,
   # interpolate until the Strong Wolfe conditions are met
   int_result <- interpolate_step_size(phi, step0, step, c1, c2, int, max_fn,
                                       armijo_check_fn = armijo_check_fn,
-                                      wolfe_step_ok_fn = wolfe_step_ok_fn)
+                                      wolfe_ok_step_fn = wolfe_ok_step_fn)
   int_result$nfn <- int_result$nfn + nfn
   int_result
 }
@@ -229,12 +229,12 @@ tweaked_extrapolation <- function(step0, step, ext, int) {
 # }
 interpolate_step_size <- function(phi, step0, step, c1, c2, int, max_fn = 20,
                                   armijo_check_fn = armijo_ok_step,
-                                  wolfe_step_ok_fn = strong_wolfe_ok_step) {
+                                  wolfe_ok_step_fn = strong_wolfe_ok_step) {
   step2 <- step0
   step3 <- step
   nfn <- 0
 
-  while (!wolfe_step_ok_fn(step0, step3, c1, c2) && nfn < max_fn) {
+  while (!wolfe_ok_step_fn(step0, step3, c1, c2) && nfn < max_fn) {
     if (step3$d > 0 || !armijo_check_fn(step0, step3, c1)) {
       step4 <- step3
     } else {

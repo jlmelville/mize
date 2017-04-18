@@ -10,7 +10,7 @@ rls <- function(fg, x, pv = -fg$gr(x)/abs(fg$gr(x)), alpha, c1, c2,
     armijo_check_fn <- armijo_ok_step
   }
 
-  wolfe_step_ok_fn <- make_wolfe_ok_step_fn(strong_curvature = strong_curvature,
+  wolfe_ok_step_fn <- make_wolfe_ok_step_fn(strong_curvature = strong_curvature,
                                             approx_armijo = approx_armijo,
                                             eps = eps)
 
@@ -18,7 +18,7 @@ rls <- function(fg, x, pv = -fg$gr(x)/abs(fg$gr(x)), alpha, c1, c2,
          alpha,
          step0 = make_step0(fg, x, pv),
          max_fn = 10000, c1 = c1, c2 = c2, armijo_check_fn = armijo_check_fn,
-         wolfe_step_ok_fn = wolfe_step_ok_fn)
+         wolfe_ok_step_fn = wolfe_ok_step_fn)
   res$step$par <- x + res$step$alpha * pv
   res
 }
