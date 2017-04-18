@@ -7,7 +7,7 @@
 # \enumerate{
 #  \item Using cubic extrapolation from an initial starting guess for the step
 #    size until either the sufficient decrease condition is not met or the
-#    strong curvature condition is met.
+#    curvature condition is met.
 #  \item Interpolation (quadratic or cubic) between that point and the start
 #    point of the search until either a step size is found which meets the
 #    Strong Wolfe conditions or the maximum number of allowed function
@@ -31,10 +31,23 @@
 #  and also part of the Matlab
 #  \href{(http://www.gaussianprocess.org/gpml/code/matlab/doc/)}{GPML} package.
 rasmussen <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
-                      max_fn = Inf) {
+                      max_fn = Inf, eps = 1e-6, approx_armijo = FALSE,
+                      strong_curvature = TRUE) {
   if (c2 < c1) {
     stop("rasmussen line search: c2 < c1")
   }
+
+  if (approx_armijo) {
+    armijo_check_fn <- make_approx_armijo_ok_step(eps)
+  }
+  else {
+    armijo_check_fn <- armijo_ok_step
+  }
+
+  wolfe_step_ok_fn <- make_wolfe_ok_step_fn(strong_curvature = strong_curvature,
+                                            approx_armijo = approx_armijo,
+                                            eps = eps)
+
   function(phi, step0, alpha,
            total_max_fn = Inf, total_max_gr = Inf, total_max_fg = Inf,
            pm = NULL) {
@@ -42,8 +55,10 @@ rasmussen <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
     if (maxfev <= 0) {
       return(list(step = step0, nfn = 0, ngr = 0))
     }
+
     res <- ras_ls(phi, alpha, step0, c1 = c1, c2 = c2, ext = ext, int = int,
-                  max_fn = maxfev)
+                  max_fn = maxfev, armijo_check_fn = armijo_check_fn,
+                  wolfe_step_ok_fn = wolfe_step_ok_fn)
     list(step = res$step, nfn = res$nfn, ngr = res$nfn)
   }
 }
@@ -69,7 +84,8 @@ rasmussen <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
 #   \item nfn Number of function evaluations.
 # }
 ras_ls <- function(phi, alpha, step0, c1 = 0.1, c2 = 0.1 / 2, ext = 3.0,
-                   int = 0.1, max_fn = Inf) {
+                   int = 0.1, max_fn = Inf, armijo_check_fn = armijo_ok_step,
+                   wolfe_step_ok_fn = strong_wolfe_ok_step) {
   if (c2 < c1) {
     stop("Rasmussen line search: c2 < c1")
   }
@@ -77,7 +93,7 @@ ras_ls <- function(phi, alpha, step0, c1 = 0.1, c2 = 0.1 / 2, ext = 3.0,
   # extrapolate from initial alpha until either curvature condition is met
   # or the armijo condition is NOT met
   ex_result <- extrapolate_step_size(phi, alpha, step0, c1, c2, ext, int,
-                                     max_fn)
+                                     max_fn, armijo_check_fn)
 
   step <- ex_result$step
   nfn <- ex_result$nfn
@@ -87,7 +103,9 @@ ras_ls <- function(phi, alpha, step0, c1 = 0.1, c2 = 0.1 / 2, ext = 3.0,
   }
 
   # interpolate until the Strong Wolfe conditions are met
-  int_result <- interpolate_step_size(phi, step0, step, c1, c2, int, max_fn)
+  int_result <- interpolate_step_size(phi, step0, step, c1, c2, int, max_fn,
+                                      armijo_check_fn = armijo_check_fn,
+                                      wolfe_step_ok_fn = wolfe_step_ok_fn)
   int_result$nfn <- int_result$nfn + nfn
   int_result
 }
@@ -140,17 +158,18 @@ find_finite <- function(phi, alpha, min_alpha = 0, max_fn = 20) {
 #   \item nfn Number of function evaluations.
 # }
 extrapolate_step_size <- function(phi, alpha, step0, c1, c2, ext, int,
-                                  max_fn = 20) {
+                                  max_fn = 20,
+                                  armijo_check_fn = armijo_ok_step) {
   step <- list(alpha = alpha)
 
   nfn <- 0
-  while (1) {
+  while (TRUE) {
     result <- find_finite(phi, step$alpha, max_fn, min_alpha = 0)
     nfn <- nfn + result$nfn
     max_fn <- max_fn - result$nfn
     step <- result$step
 
-    if (extrapolation_ok(step0, step, c1, c2) || max_fn == 0) {
+    if (extrapolation_ok(step0, step, c1, c2, armijo_check_fn) || max_fn == 0) {
       break
     }
     step$alpha <- tweaked_extrapolation(step0, step, ext, int)
@@ -171,8 +190,8 @@ extrapolate_step_size <- function(phi, alpha, step0, c1, c2, ext, int,
 # @param c2 Constant used in curvature condition. Should take a value between
 #   c1 and 1.
 # @return TRUE if the extrapolated point is sufficiently large.
-extrapolation_ok <- function(step0, step, c1, c2) {
-  curvature_ok_step(step0, step, c2) || !armijo_ok_step(step0, step, c1)
+extrapolation_ok <- function(step0, step, c1, c2, armijo_check_fn) {
+  curvature_ok_step(step0, step, c2) || !armijo_check_fn(step0, step, c1)
 }
 
 # Extrapolate and Tweak Step Size
@@ -208,13 +227,15 @@ tweaked_extrapolation <- function(step0, step, ext, int) {
 #   \item step Valid step size or the last step size evaluated.
 #   \item nfn Number of function evaluations.
 # }
-interpolate_step_size <- function(phi, step0, step, c1, c2, int, max_fn = 20) {
+interpolate_step_size <- function(phi, step0, step, c1, c2, int, max_fn = 20,
+                                  armijo_check_fn = armijo_ok_step,
+                                  wolfe_step_ok_fn = strong_wolfe_ok_step) {
   step2 <- step0
   step3 <- step
   nfn <- 0
 
-  while (!strong_wolfe_ok_step(step0, step3, c1, c2) && nfn < max_fn) {
-    if (step3$d > 0 || !armijo_ok_step(step0, step3, c1)) {
+  while (!wolfe_step_ok_fn(step0, step3, c1, c2) && nfn < max_fn) {
+    if (step3$d > 0 || !armijo_check_fn(step0, step3, c1)) {
       step4 <- step3
     } else {
       step2 <- step3
@@ -232,6 +253,3 @@ interpolate_step_size <- function(phi, step0, step, c1, c2, int, max_fn = 20) {
   }
   list(step = step3, nfn = nfn)
 }
-
-
-
