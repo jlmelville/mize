@@ -31,8 +31,8 @@
 #  and also part of the Matlab
 #  \href{(http://www.gaussianprocess.org/gpml/code/matlab/doc/)}{GPML} package.
 rasmussen <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
-                      max_fn = Inf, eps = 1e-6, approx_armijo = FALSE,
-                      strong_curvature = TRUE) {
+                      max_fn = Inf, xtol = 1e-6, eps = 1e-6, approx_armijo = FALSE,
+                      strong_curvature = TRUE, verbose = FALSE) {
   if (c2 < c1) {
     stop("rasmussen line search: c2 < c1")
   }
@@ -58,7 +58,7 @@ rasmussen <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
 
     res <- ras_ls(phi, alpha, step0, c1 = c1, c2 = c2, ext = ext, int = int,
                   max_fn = maxfev, armijo_check_fn = armijo_check_fn,
-                  wolfe_ok_step_fn = wolfe_ok_step_fn)
+                  wolfe_ok_step_fn = wolfe_ok_step_fn, verbose = verbose)
     list(step = res$step, nfn = res$nfn, ngr = res$nfn)
   }
 }
@@ -84,8 +84,10 @@ rasmussen <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
 #   \item nfn Number of function evaluations.
 # }
 ras_ls <- function(phi, alpha, step0, c1 = 0.1, c2 = 0.1 / 2, ext = 3.0,
-                   int = 0.1, max_fn = Inf, armijo_check_fn = armijo_ok_step,
-                   wolfe_ok_step_fn = strong_wolfe_ok_step) {
+                   int = 0.1, max_fn = Inf, xtol = 1e-6,
+                   armijo_check_fn = armijo_ok_step,
+                   wolfe_ok_step_fn = strong_wolfe_ok_step,
+                   verbose = verbose) {
   if (c2 < c1) {
     stop("Rasmussen line search: c2 < c1")
   }
@@ -102,10 +104,15 @@ ras_ls <- function(phi, alpha, step0, c1 = 0.1, c2 = 0.1 / 2, ext = 3.0,
     return(ex_result)
   }
 
+  if (verbose) {
+    message("Bracket: ", format_bracket(list(step0, step)))
+  }
   # interpolate until the Strong Wolfe conditions are met
   int_result <- interpolate_step_size(phi, step0, step, c1, c2, int, max_fn,
+                                      xtol = xtol,
                                       armijo_check_fn = armijo_check_fn,
-                                      wolfe_ok_step_fn = wolfe_ok_step_fn)
+                                      wolfe_ok_step_fn = wolfe_ok_step_fn,
+                                      verbose = verbose)
   int_result$nfn <- int_result$nfn + nfn
   int_result
 }
@@ -228,11 +235,16 @@ tweaked_extrapolation <- function(step0, step, ext, int) {
 #   \item nfn Number of function evaluations.
 # }
 interpolate_step_size <- function(phi, step0, step, c1, c2, int, max_fn = 20,
+                                  xtol = 1e-6,
                                   armijo_check_fn = armijo_ok_step,
-                                  wolfe_ok_step_fn = strong_wolfe_ok_step) {
+                                  wolfe_ok_step_fn = strong_wolfe_ok_step,
+                                  verbose = FALSE) {
   step2 <- step0
   step3 <- step
   nfn <- 0
+  if (verbose) {
+    message("Interpolating")
+  }
 
   while (!wolfe_ok_step_fn(step0, step3, c1, c2) && nfn < max_fn) {
     if (step3$d > 0 || !armijo_check_fn(step0, step3, c1)) {
@@ -247,9 +259,23 @@ interpolate_step_size <- function(phi, step0, step, c1, c2, int, max_fn = 20,
       step3$alpha <- cubic_interpolate_step(step2, step4)
     }
 
+    if (verbose) {
+      message("Bracket: ", format_bracket(list(step2, step4)),
+              " alpha: ", formatC(step3$alpha), " f: ", formatC(step3$f),
+              " d: ", formatC(step3$d))
+    }
     step3$alpha <- tweak_interpolation(step3$alpha, step2$alpha, step4$alpha, int)
     step3 <- phi(step3$alpha)
     nfn <- nfn + 1
+
+    if (bracket_size(list(step2, step4)) < xtol * step3$alpha) {
+      if (verbose) {
+        message("Bracket size: ", formatC(bracket_size(list(step2, step4))),
+                " reduced below tolerance ", formatC(xtol * step3$alpha))
+      }
+      break
+    }
+
   }
   list(step = step3, nfn = nfn)
 }
