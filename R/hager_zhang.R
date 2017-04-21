@@ -207,7 +207,7 @@ line_search_hz <- function(alpha, step0, phi, c1 = 0.1, c2 = 0.9,
               formatC(old_diff))
     }
 
-    if (new_diff < xtol * max(bracket_props(bracket, 'alpha'))) {
+    if (new_diff < xtol * max(new_range)) {
       if (verbose) {
         message("Bracket size reduced below tolerance")
       }
