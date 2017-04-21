@@ -555,14 +555,3 @@ hz_ok_bracket_pos <- function(bracket, step0, c1, c2, eps,
   ok_pos
 }
 
-
-# Utility -----------------------------------------------------------------
-
-format_bracket <- function(bracket) {
-  paste0("[", formatC(bracket[[1]]$alpha), ", ", formatC(bracket[[2]]$alpha),
-         "]")
-}
-
-is_in_bracket <- function(bracket, alpha) {
-  is_in_range(alpha, bracket[[1]]$alpha, bracket[[2]]$alpha)
-}

@@ -938,19 +938,3 @@ point_matrix_step <- function(step1, step2) {
                c(step1$d, step2$d))
 }
 
-bracket_is_legal <- function(bracket) {
-  all(is.finite(c(bracket_props(bracket, c('f', 'd')))))
-}
-
-# extracts all the properties (e.g. 'f', 'df', 'd' or 'alpha') from all members
-# of the bracket. Works if there are one or two bracket members. Can get
-# multiple properties at once, by providing an array of the properties,
-# e.g. bracket_props(bracket, c('f', 'd'))
-bracket_props <- function(bracket, prop) {
-  unlist(sapply(bracket, `[`, prop))
-}
-
-bracket_size <- function(bracket) {
-  bracket_range <- bracket_props(bracket, 'alpha')
-  abs(bracket_range[2] - bracket_range[1])
-}

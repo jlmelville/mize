@@ -659,3 +659,32 @@ approx_armijo_ok <- function(d0, da, c1) {
 approx_armijo_ok_step <- function(step0, step, c1) {
   approx_armijo_ok(step0$d, step$d, c1)
 }
+
+
+# Bracket -----------------------------------------------------------------
+
+bracket_is_legal <- function(bracket) {
+  all(is.finite(c(bracket_props(bracket, c('f', 'd')))))
+}
+
+# extracts all the properties (e.g. 'f', 'df', 'd' or 'alpha') from all members
+# of the bracket. Works if there are one or two bracket members. Can get
+# multiple properties at once, by providing an array of the properties,
+# e.g. bracket_props(bracket, c('f', 'd'))
+bracket_props <- function(bracket, prop) {
+  unlist(sapply(bracket, `[`, prop))
+}
+
+bracket_size <- function(bracket) {
+  bracket_range <- bracket_props(bracket, 'alpha')
+  abs(bracket_range[2] - bracket_range[1])
+}
+
+is_in_bracket <- function(bracket, alpha) {
+  is_in_range(alpha, bracket[[1]]$alpha, bracket[[2]]$alpha)
+}
+
+format_bracket <- function(bracket) {
+  paste0("[", formatC(bracket[[1]]$alpha), ", ", formatC(bracket[[2]]$alpha),
+         "]")
+}
