@@ -22,7 +22,21 @@
 # @seealso This code is based on a translation of the original MINPACK code
 #  for Matlab by
 #  \href{https://www.cs.umd.edu/users/oleary/software/}{Dianne O'Leary}.
-more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf) {
+more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf, eps = 1e-6,
+                         approx_armijo = FALSE,
+                         strong_curvature = TRUE) {
+
+  if (approx_armijo) {
+    armijo_check_fn <- make_approx_armijo_ok_step(eps)
+  }
+  else {
+    armijo_check_fn <- armijo_ok_step
+  }
+
+  wolfe_ok_step_fn <- make_wolfe_ok_step_fn(strong_curvature = strong_curvature,
+                                            approx_armijo = approx_armijo,
+                                            eps = eps)
+
   function(phi, step0, alpha,
            total_max_fn = Inf, total_max_gr = Inf, total_max_fg = Inf,
            pm = NULL) {
@@ -31,7 +45,9 @@ more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf) {
       return(list(step = step0, nfn = 0, ngr = 0))
     }
     res <- cvsrch(phi, step0, alpha = alpha, c1 = c1, c2 = c2,
-                  maxfev = maxfev)
+                  maxfev = maxfev,
+                  armijo_check_fn = armijo_check_fn,
+                  wolfe_ok_step_fn = wolfe_ok_step_fn)
     list(step = res$step, nfn = res$nfn, ngr = res$nfn)
   }
 }
@@ -116,12 +132,12 @@ more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf) {
 #         integer n
 #         f
 #         x(n),g(n)
-#	  ----------
+#	  ---
 #         Calculate the function at x and
 #         return this value in the variable f.
 #         Calculate the gradient at x and
 #         return this vector in g.
-#	  ----------
+#	  ---
 #	  return
 #	  end
 #
@@ -199,9 +215,11 @@ more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf) {
 #
 #     **********
 cvsrch <- function(phi, step0, alpha = 1,
-                    c1 = 1e-4, c2 = 0.1, xtol = .Machine$double.eps,
-                    alpha_min = 0, alpha_max = Inf,
-                    maxfev = Inf, delta = 0.66) {
+                   c1 = 1e-4, c2 = 0.1, xtol = .Machine$double.eps,
+                   alpha_min = 0, alpha_max = Inf,
+                   maxfev = Inf, delta = 0.66,
+                   armijo_check_fn = armijo_ok_step,
+                   wolfe_ok_step_fn = strong_wolfe_ok_step) {
 
   xtrapf <- 4
   infoc <- 1
@@ -244,7 +262,6 @@ cvsrch <- function(phi, step0, alpha = 1,
   }
 
   # Check that pv is a descent direction.
-  d0 <- step0$d
   if (step0$d >= 0.0) {
     stop("Not a descent direction")
   }
@@ -293,8 +310,10 @@ cvsrch <- function(phi, step0, alpha = 1,
     nfev <- nfev + 1
     # Test for convergence.
     info <- check_convergence(step0, step, brackt, infoc, stmin, stmax,
-                              alpha_min, alpha_max, c1, c2, dgtest, nfev,
-                              maxfev, xtol)
+                              alpha_min, alpha_max, c1, c2, nfev,
+                              maxfev, xtol,
+                              armijo_check_fn = armijo_check_fn,
+                              wolfe_ok_step_fn = wolfe_ok_step_fn)
     # Check for termination.
     if (info != 0) {
       # If an unusual termination is to occur, then set step to the best step
@@ -307,7 +326,20 @@ cvsrch <- function(phi, step0, alpha = 1,
 
     # In the first stage we seek a step for which the modified
     # function has a nonpositive value and nonnegative derivative.
-    if (stage1 && armijo_ok_step(step0, step, c1) && step$df >= min(c1, c2) * d0) {
+
+    # In the original MINPACK the following test is:
+    # if (stage1 .and. f .le. ftest1 .and.
+    #    *       dg .ge. min(ftol,gtol)*dginit) stage1
+    # which translates to: step$f <= f0 + alpha * c1 * d0 &&
+    #            step$df >= min(c1, c2) * alpha * d0
+    # The second test is the armijo condition and the third is the
+    # curvature condition but using the smaller of c1 and
+    # c2. This is nearly the standard Wolfe conditions, but because c1 is
+    # always <= c2 for a convergent line search, this means
+    # we would always use c1 for the curvature condition.
+    # I have translated this faithfully, but it seems odd. Using c2 has no
+    # effect on the test function from the More'-Thuente paper
+    if (stage1 && wolfe_ok_step(step0, step, c1, min(c1, c2))) {
       stage1 <- FALSE
     }
 
@@ -316,7 +348,7 @@ cvsrch <- function(phi, step0, alpha = 1,
     # function has a nonpositive function value and nonnegative
     # derivative, and if a lower function value has been
     # obtained but the decrease is not sufficient.
-    if (stage1 && step$f <= stepx$f && !armijo_ok_step(step0, step, c1)) {
+    if (stage1 && step$f <= stepx$f && !armijo_check_fn(step0, step, c1)) {
       # Define the modified function and derivative values.
 
       stepxm <- modify_step(stepx, dgtest)
@@ -425,9 +457,13 @@ unmodify_step <- function(stepm, dgtest) {
 #	  \item \code{5} The step is at the upper bound alpha_max.
 #	  \item \code{6} Rounding errors prevent further progress.
 # }
+# NB dgtest was originally used in testing for min/max alpha test (code 4 and 5)
+# but has been replaced with a call to the curvature test using c1 instead of c2
+# so dgtest is no longer used in the body of the function.
 check_convergence <- function(step0, step, brackt, infoc, stmin, stmax,
-                              alpha_min, alpha_max, c1, c2, dgtest, nfev,
-                              maxfev, xtol) {
+                              alpha_min, alpha_max, c1, c2, nfev,
+                              maxfev, xtol, armijo_check_fn = armijo_ok_step,
+                              wolfe_ok_step_fn = strong_wolfe_ok_step) {
   info <- 0
   if (!is.finite(step$f) || any(is.nan(step$df))) {
     return(6)
@@ -436,11 +472,15 @@ check_convergence <- function(step0, step, brackt, infoc, stmin, stmax,
     # rounding errors prevent further progress
     info <- 6
   }
-  if (step$alpha == alpha_max && armijo_ok_step(step0, step, c1) && step$d <= dgtest) {
+  # use of c1 in curvature check is on purpose (it's in the MINPACK code)
+  if (step$alpha == alpha_max && armijo_check_fn(step0, step, c1) &&
+      !curvature_ok_step(step0, step, c1)) {
     # reached alpha_max
     info <- 5
   }
-  if (step$alpha == alpha_min && (!armijo_ok_step(step0, step, c1) || step$d >= dgtest)) {
+  # use of c1 in curvature check here is also in MINPACK code
+  if (step$alpha == alpha_min && (!armijo_check_fn(step0, step, c1) ||
+                                  curvature_ok_step(step0, step, c1))) {
     # reached alpha_min
     info <- 4
   }
@@ -452,7 +492,7 @@ check_convergence <- function(step0, step, brackt, infoc, stmin, stmax,
     # interval width is below xtol
     info <- 2
   }
-  if (strong_wolfe_ok_step(step0, step, c1, c2)) {
+  if (wolfe_ok_step_fn(step0, step, c1, c2)) {
     # success!
     info <- 1
   }
