@@ -949,3 +949,8 @@ bracket_is_legal <- function(bracket) {
 bracket_props <- function(bracket, prop) {
   unlist(sapply(bracket, `[`, prop))
 }
+
+bracket_size <- function(bracket) {
+  bracket_range <- bracket_props(bracket, 'alpha')
+  abs(bracket_range[2] - bracket_range[1])
+}
