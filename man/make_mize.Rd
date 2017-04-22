@@ -100,11 +100,11 @@ search.}
 during a line search.}
 
 \item{strong_curvature}{(Optional). If \code{TRUE} use the strong
-curvature condition in Wolfe line search. See the 'Convergence' section of
+curvature condition in Wolfe line search. See the 'Line Search' section of
 \code{\link{mize}} for details.}
 
 \item{approx_armijo}{(Optional). If \code{TRUE} use the approximate Armijo
-condition in Wolfe line search. See the 'Convergence' section of
+condition in Wolfe line search. See the 'Line Search' section of
 \code{\link{mize}} for details.}
 
 \item{mom_type}{Momentum type, either \code{"classical"} or

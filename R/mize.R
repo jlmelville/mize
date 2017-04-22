@@ -98,10 +98,10 @@
 #' }
 #'
 #' If using one of the methods: \code{"BFGS"}, \code{"L-BFGS"}, \code{"CG"} or
-#' \code{"NAG"}, one of the Wolfe line searches, \code{"Rasmussen"} or
-#' \code{"More-Thuente"} should be used, otherwise very poor performance is
-#' likely to be encountered. The following parameters can be used to control
-#' the line search:
+#' \code{"NAG"}, one of the Wolfe line searches: \code{"Rasmussen"} or
+#' \code{"More-Thuente"}, \code{"Schmidt"} or \code{"Hager-Zhang"} should be
+#' used, otherwise very poor performance is likely to be encountered. The
+#' following parameters can be used to control the line search:
 #'
 #'  \itemize{
 #'    \item{\code{c1}} The sufficient decrease condition. Normally left at its
@@ -138,7 +138,26 @@
 #'    size of 1, whenever the \code{step_next_init} method suggests an initial
 #'    step size larger than that. On by default for BFGS and L-BFGS, off for
 #'    everything else.
+#'    \item{\code{strong_curvature}} If \code{TRUE}, then the strong curvature
+#'    condition will be used to check termination in Wolfe line search methods.
+#'    If \code{FALSE}, then the standard curvature condition will be used. The
+#'    default is \code{NULL} which lets the different Wolfe line searches choose
+#'    whichever is their default behavior. This option is ignored if not using
+#'    a Wolfe line search method.
+#'    \item{\code{approx_armijo}} If \code{TRUE}, then the approximate Armijo
+#'    sufficient decrease condition (Hager and Zhang, 2005) will be used to
+#'    check termination in Wolfe line search methods. If \code{FALSE}, then the
+#'    exact curvature condition will be used. The default is \code{NULL} which
+#'    lets the different Wolfe line searches choose whichever is their default
+#'    behavior. This option is ignored if not using a Wolfe line search method.
 #' }
+#'
+#' For the Wolfe line searches, the methods of \code{"Rasmussen"},
+#' \code{"Schmidt"} and \code{"More-Thuente"} default to using the strong
+#' curvature condition and the exact Armijo condition to terminate the line
+#' search (i.e. Strong Wolfe conditions). The \code{"Hager-Zhang"} method
+#' defaults to the standard curvature condition and the approximate Armijo
+#' condition (i.e. approximate Wolfe conditions).
 #'
 #' If the \code{"DBD"} is used for the optimization \code{"method"}, then the
 #' \code{line_search} parameter is ignored, because this method controls both
@@ -376,10 +395,10 @@
 #' @param ls_max_fg Maximum number of function or gradient evaluations allowed
 #' during a line search.
 #' @param strong_curvature (Optional). If \code{TRUE} use the strong
-#' curvature condition in Wolfe line search. See the 'Convergence' section
+#' curvature condition in Wolfe line search. See the 'Line Search' section
 #' for details.
 #' @param approx_armijo (Optional). If \code{TRUE} use the approximate Armijo
-#' condition in Wolfe line search. See the 'Convergence' section for details.
+#' condition in Wolfe line search. See the 'Line Search' section for details.
 #' @param mom_type Momentum type, either \code{"classical"} or
 #' \code{"nesterov"}. See 'Details'.
 #' @param mom_schedule Momentum schedule. See 'Details'.
@@ -741,10 +760,10 @@ mize <- function(par, fg,
 #' @param ls_max_fg Maximum number of function or gradient evaluations allowed
 #'   during a line search.
 #' @param strong_curvature (Optional). If \code{TRUE} use the strong
-#'   curvature condition in Wolfe line search. See the 'Convergence' section of
+#'   curvature condition in Wolfe line search. See the 'Line Search' section of
 #'   \code{\link{mize}} for details.
 #' @param approx_armijo (Optional). If \code{TRUE} use the approximate Armijo
-#'   condition in Wolfe line search. See the 'Convergence' section of
+#'   condition in Wolfe line search. See the 'Line Search' section of
 #'   \code{\link{mize}} for details.
 #' @param mom_type Momentum type, either \code{"classical"} or
 #'   \code{"nesterov"}.
