@@ -10,14 +10,15 @@ mize(par, fg, method = "L-BFGS", norm_direction = FALSE, memory = 5,
   step_up_fun = "*", step_down = NULL, dbd_weight = 0.1,
   line_search = "More-Thuente", c1 = 1e-04, c2 = NULL, step0 = NULL,
   step_next_init = NULL, try_newton_step = NULL, ls_max_fn = 20,
-  ls_max_gr = Inf, ls_max_fg = Inf, mom_type = NULL,
-  mom_schedule = NULL, mom_init = NULL, mom_final = NULL,
-  mom_switch_iter = NULL, mom_linear_weight = FALSE, use_init_mom = FALSE,
-  restart = NULL, restart_wait = 10, max_iter = 100, max_fn = Inf,
-  max_gr = Inf, max_fg = Inf, abs_tol = sqrt(.Machine$double.eps),
-  rel_tol = abs_tol, grad_tol = NULL, ginf_tol = NULL,
-  step_tol = sqrt(.Machine$double.eps), check_conv_every = 1,
-  log_every = check_conv_every, verbose = FALSE, store_progress = FALSE)
+  ls_max_gr = Inf, ls_max_fg = Inf, strong_curvature = NULL,
+  approx_armijo = NULL, mom_type = NULL, mom_schedule = NULL,
+  mom_init = NULL, mom_final = NULL, mom_switch_iter = NULL,
+  mom_linear_weight = FALSE, use_init_mom = FALSE, restart = NULL,
+  restart_wait = 10, max_iter = 100, max_fn = Inf, max_gr = Inf,
+  max_fg = Inf, abs_tol = sqrt(.Machine$double.eps), rel_tol = abs_tol,
+  grad_tol = NULL, ginf_tol = NULL, step_tol = sqrt(.Machine$double.eps),
+  check_conv_every = 1, log_every = check_conv_every, verbose = FALSE,
+  store_progress = FALSE)
 }
 \arguments{
 \item{par}{Initial values for the function to be optimized over.}
@@ -101,6 +102,13 @@ line search.}
 
 \item{ls_max_fg}{Maximum number of function or gradient evaluations allowed
 during a line search.}
+
+\item{strong_curvature}{(Optional). If \code{TRUE} use the strong
+curvature condition in Wolfe line search. See the 'Convergence' section
+for details.}
+
+\item{approx_armijo}{(Optional). If \code{TRUE} use the approximate Armijo
+condition in Wolfe line search. See the 'Convergence' section for details.}
 
 \item{mom_type}{Momentum type, either \code{"classical"} or
 \code{"nesterov"}. See 'Details'.}

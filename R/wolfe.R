@@ -17,6 +17,8 @@ more_thuente_ls <- function(c1 = c2 / 2, c2 = 0.1,
                             max_fn = Inf,
                             max_gr = Inf,
                             max_fg = Inf,
+                            approx_armijo = FALSE,
+                            strong_curvature = TRUE,
                             debug = FALSE) {
   if (!is_in_range(c1, 0, 1, lopen = FALSE, ropen = FALSE)) {
     stop("c1 must be between 0 and 1")
@@ -27,7 +29,9 @@ more_thuente_ls <- function(c1 = c2 / 2, c2 = 0.1,
   max_ls_fn <- min(max_fn, max_gr, floor(max_fg / 2))
 
   line_search(more_thuente(c1 = c1, c2 = c2,
-                           max_fn = max_ls_fn),
+                           max_fn = max_ls_fn,
+                           strong_curvature = strong_curvature,
+                           approx_armijo = approx_armijo),
               name = "more-thuente",
               max_alpha_mult = max_alpha_mult,
               min_step_size = min_step_size, stop_at_min = stop_at_min,
@@ -50,6 +54,8 @@ rasmussen_ls <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
                          max_fn = Inf,
                          max_gr = Inf,
                          max_fg = Inf,
+                         strong_curvature = TRUE,
+                         approx_armijo = FALSE,
                          debug = FALSE) {
   if (!is_in_range(c1, 0, 1, lopen = FALSE, ropen = FALSE)) {
     stop("c1 must be between 0 and 1")
@@ -61,7 +67,9 @@ rasmussen_ls <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
   max_ls_fn <- min(max_fn, max_gr, floor(max_fg / 2))
 
   line_search(rasmussen(c1 = c1, c2 = c2, int = int, ext = ext,
-                        max_fn = max_ls_fn),
+                        max_fn = max_ls_fn,
+                        strong_curvature = strong_curvature,
+                        approx_armijo = approx_armijo),
               name = "rasmussen",
               max_alpha_mult = max_alpha_mult,
               min_step_size = min_step_size, stop_at_min = stop_at_min,
@@ -85,6 +93,8 @@ schmidt_ls <- function(c1 = c2 / 2, c2 = 0.1,
                          max_fn = Inf,
                          max_gr = Inf,
                          max_fg = Inf,
+                         strong_curvature = TRUE,
+                         approx_armijo = FALSE,
                          debug = FALSE) {
   if (!is_in_range(c1, 0, 1, lopen = FALSE, ropen = FALSE)) {
     stop("c1 must be between 0 and 1")
@@ -95,7 +105,9 @@ schmidt_ls <- function(c1 = c2 / 2, c2 = 0.1,
 
   max_ls_fn <- min(max_fn, max_gr, floor(max_fg / 2))
 
-  line_search(schmidt(c1 = c1, c2 = c2, max_fn = max_ls_fn),
+  line_search(schmidt(c1 = c1, c2 = c2, max_fn = max_ls_fn,
+                      strong_curvature = strong_curvature,
+                      approx_armijo = approx_armijo),
               name = "schmidt",
               max_alpha_mult = max_alpha_mult,
               min_step_size = min_step_size, stop_at_min = stop_at_min,
@@ -150,6 +162,8 @@ hager_zhang_ls <- function(c1 = c2 / 2, c2 = 0.1,
                            max_fn = Inf,
                            max_gr = Inf,
                            max_fg = Inf,
+                           strong_curvature = FALSE,
+                           approx_armijo = TRUE,
                            debug = FALSE) {
   if (!is_in_range(c1, 0, 1, lopen = FALSE, ropen = FALSE)) {
     stop("c1 must be between 0 and 1")
@@ -160,7 +174,9 @@ hager_zhang_ls <- function(c1 = c2 / 2, c2 = 0.1,
 
   max_ls_fn <- min(max_fn, max_gr, floor(max_fg / 2))
 
-  line_search(hager_zhang(c1 = c1, c2 = c2, max_fn = max_ls_fn),
+  line_search(hager_zhang(c1 = c1, c2 = c2, max_fn = max_ls_fn,
+                          strong_curvature = strong_curvature,
+                          approx_armijo = approx_armijo),
               name = "hager-zhang",
               max_alpha_mult = max_alpha_mult,
               min_step_size = min_step_size, stop_at_min = stop_at_min,

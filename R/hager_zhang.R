@@ -16,7 +16,9 @@
 
 # Adapter -----------------------------------------------------------------
 
-hager_zhang <- function(c1 = c2 / 2, c2 = 0.1, max_fn = Inf) {
+hager_zhang <- function(c1 = c2 / 2, c2 = 0.1, max_fn = Inf,
+                        strong_curvature = TRUE,
+                        approx_armijo = TRUE) {
   if (c2 < c1) {
     stop("hager-zhang line search: c2 < c1")
   }
@@ -32,9 +34,9 @@ hager_zhang <- function(c1 = c2 / 2, c2 = 0.1, max_fn = Inf) {
                                gamma = 0.66,
                                max_fn = maxfev,
                                xtol = 1e-6,
-                               strong_curvature = TRUE,
+                               strong_curvature = strong_curvature,
                                always_check_convergence = TRUE,
-                               approx_armijo = TRUE,
+                               approx_armijo = approx_armijo,
                                verbose = FALSE)
 
     res$ngr = res$nfn

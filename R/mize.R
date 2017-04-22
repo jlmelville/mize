@@ -375,6 +375,11 @@
 #' line search.
 #' @param ls_max_fg Maximum number of function or gradient evaluations allowed
 #' during a line search.
+#' @param strong_curvature (Optional). If \code{TRUE} use the strong
+#' curvature condition in Wolfe line search. See the 'Convergence' section
+#' for details.
+#' @param approx_armijo (Optional). If \code{TRUE} use the approximate Armijo
+#' condition in Wolfe line search. See the 'Convergence' section for details.
 #' @param mom_type Momentum type, either \code{"classical"} or
 #' \code{"nesterov"}. See 'Details'.
 #' @param mom_schedule Momentum schedule. See 'Details'.
@@ -565,6 +570,8 @@ mize <- function(par, fg,
                  ls_max_fn = 20,
                  ls_max_gr = Inf,
                  ls_max_fg = Inf,
+                 strong_curvature = NULL,
+                 approx_armijo = NULL,
                  # Momentum
                  mom_type = NULL,
                  mom_schedule = NULL,
@@ -608,6 +615,8 @@ mize <- function(par, fg,
                    try_newton_step = try_newton_step,
                    ls_max_fn = ls_max_fn, ls_max_gr = ls_max_gr,
                    ls_max_fg = ls_max_fg,
+                   strong_curvature = strong_curvature,
+                   approx_armijo = approx_armijo,
                    mom_type = mom_type,
                    mom_schedule = mom_schedule,
                    mom_init = mom_init,
@@ -731,6 +740,12 @@ mize <- function(par, fg,
 #'   search.
 #' @param ls_max_fg Maximum number of function or gradient evaluations allowed
 #'   during a line search.
+#' @param strong_curvature (Optional). If \code{TRUE} use the strong
+#'   curvature condition in Wolfe line search. See the 'Convergence' section of
+#'   \code{\link{mize}} for details.
+#' @param approx_armijo (Optional). If \code{TRUE} use the approximate Armijo
+#'   condition in Wolfe line search. See the 'Convergence' section of
+#'   \code{\link{mize}} for details.
 #' @param mom_type Momentum type, either \code{"classical"} or
 #'   \code{"nesterov"}.
 #' @param mom_schedule Momentum schedule. See 'Details' of \code{\link{mize}}.
@@ -814,6 +829,8 @@ make_mize <- function(method = "L-BFGS",
                       ls_max_fn = 20,
                       ls_max_gr = Inf,
                       ls_max_fg = Inf,
+                      strong_curvature = NULL,
+                      approx_armijo = NULL,
                       # Momentum
                       mom_type = NULL,
                       mom_schedule = NULL,
@@ -1007,6 +1024,29 @@ make_mize <- function(method = "L-BFGS",
       }
     }
 
+    # Set Wolfe line search termination defaults
+    # Most Wolfe Line Searches use the standard Strong Wolfe conditions
+    if (line_search %in% c("more-thuente", "mt", "rasmussen", "schmidt",
+                           "minfunc")) {
+      if (is.null(strong_curvature)) {
+        strong_curvature <- TRUE
+      }
+      if (is.null(approx_armijo)) {
+        approx_armijo <- FALSE
+      }
+    }
+
+    # Hager-Zhang uses weak Wolfe condtions with an approximation to the
+    # Armijo condition
+    if (line_search %in% c("hager-zhang", "hz")) {
+      if (is.null(strong_curvature)) {
+        strong_curvature <- FALSE
+      }
+      if (is.null(approx_armijo)) {
+        approx_armijo <- TRUE
+      }
+    }
+
     step_type <- switch(line_search,
       mt = more_thuente_ls(c1 = c1, c2 = c2,
                            initializer = tolower(step_next_init),
@@ -1014,21 +1054,27 @@ make_mize <- function(method = "L-BFGS",
                            try_newton_step = try_newton_step,
                            max_fn = ls_max_fn,
                            max_gr = ls_max_gr,
-                           max_fg = ls_max_fg),
+                           max_fg = ls_max_fg,
+                           strong_curvature = strong_curvature,
+                           approx_armijo = approx_armijo),
       "more-thuente" = more_thuente_ls(c1 = c1, c2 = c2,
                                        initializer = tolower(step_next_init),
                                        initial_step_length = step0,
                                        try_newton_step = try_newton_step,
                                        max_fn = ls_max_fn,
                                        max_gr = ls_max_gr,
-                                       max_fg = ls_max_fg),
+                                       max_fg = ls_max_fg,
+                                       strong_curvature = strong_curvature,
+                                       approx_armijo = approx_armijo),
       rasmussen = rasmussen_ls(c1 = c1, c2 = c2,
                               initializer = tolower(step_next_init),
                               initial_step_length = step0,
                               try_newton_step = try_newton_step,
                               max_fn = ls_max_fn,
                               max_gr = ls_max_gr,
-                              max_fg = ls_max_fg),
+                              max_fg = ls_max_fg,
+                              strong_curvature = strong_curvature,
+                              approx_armijo = approx_armijo),
       "bold driver" = bold_driver(inc_mult = step_up, dec_mult = step_down,
                                   max_fn = ls_max_fn),
       constant = constant_step_size(value = step0),
@@ -1038,14 +1084,18 @@ make_mize <- function(method = "L-BFGS",
                            try_newton_step = try_newton_step,
                            max_fn = ls_max_fn,
                            max_gr = ls_max_gr,
-                           max_fg = ls_max_fg),
+                           max_fg = ls_max_fg,
+                           strong_curvature = strong_curvature,
+                           approx_armijo = approx_armijo),
       minfunc = schmidt_ls(c1 = c1, c2 = c2,
                            initializer = tolower(step_next_init),
                            initial_step_length = step0,
                            try_newton_step = try_newton_step,
                            max_fn = ls_max_fn,
                            max_gr = ls_max_gr,
-                           max_fg = ls_max_fg),
+                           max_fg = ls_max_fg,
+                           strong_curvature = strong_curvature,
+                           approx_armijo = approx_armijo),
       backtracking = schmidt_armijo_ls(c1 = c1,
                           initializer = tolower(step_next_init),
                           initial_step_length = step0,
@@ -1060,14 +1110,18 @@ make_mize <- function(method = "L-BFGS",
                                      try_newton_step = try_newton_step,
                                      max_fn = ls_max_fn,
                                      max_gr = ls_max_gr,
-                                     max_fg = ls_max_fg),
+                                     max_fg = ls_max_fg,
+                                     strong_curvature = strong_curvature,
+                                     approx_armijo = approx_armijo),
       hz =  hager_zhang_ls(c1 = c1, c2 = c2,
                            initializer = tolower(step_next_init),
                            initial_step_length = step0,
                            try_newton_step = try_newton_step,
                            max_fn = ls_max_fn,
                            max_gr = ls_max_gr,
-                           max_fg = ls_max_fg)
+                           max_fg = ls_max_fg,
+                           strong_curvature = strong_curvature,
+                           approx_armijo = approx_armijo)
     )
   }
 

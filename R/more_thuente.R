@@ -25,7 +25,6 @@
 more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf, eps = 1e-6,
                          approx_armijo = FALSE,
                          strong_curvature = TRUE) {
-
   if (approx_armijo) {
     armijo_check_fn <- make_approx_armijo_ok_step(eps)
   }
