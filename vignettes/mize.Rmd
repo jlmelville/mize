@@ -502,9 +502,13 @@ res <- mize(rb0, rb_fg, max_iter = 10, method = "MOM",
 ## Line Searches
 
 All the above methods need a line search to find out how far to move in the
-gradient descent (i.e. non-momentum) part. The default for all methods mentioned
-so far is a Wolfe line search that satisfies the strong Wolfe conditions. 
-Specifically, [More-Thuente line search](https://doi.org/10.1145/192115.192132),
+gradient descent (i.e. non-momentum) part.
+
+### Wolfe Line Search
+
+The default for all methods mentioned so far is a Wolfe line search that
+satisfies the strong Wolfe conditions. Specifically,
+[More-Thuente line search](https://doi.org/10.1145/192115.192132), 
 converted from 
 [Dianne O'Leary's Matlab code](https://www.cs.umd.edu/users/oleary/software/).
 This uses cubic interpolation to find a point close to a minimize along the
@@ -513,15 +517,20 @@ evaluation at each candidate point.
 
 If the More-Thuente line search fails to work for some reason, alternative
 Wolfe line search method from Carl Edward Rasmussen's 
-[conjugate gradient routine](http://learning.eng.cam.ac.uk/carl/code/minimize/)
-and Mark Schmidt's 
-[minimization routines](http://www.cs.ubc.ca/~schmidtm/Software/minFunc.html)
+[conjugate gradient routine](http://learning.eng.cam.ac.uk/carl/code/minimize/),
+Mark Schmidt's 
+[minimization routines](http://www.cs.ubc.ca/~schmidtm/Software/minFunc.html),
+and an implementation of [Hager-Zhang](dx.doi.org/10.1137/030601880) line search
 are also available (although they are all quite similar):
 
-```{r use Rasmussen or Schmidt line search}
+```{r other Wolfe line search}
 res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "Rasmussen")
 # Use Mark Schmidt's minFunc line search 
 res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "Schmidt")
+# Hager-Zhang line search  
+res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "Hager-Zhang")
+# Hager-Zhang can be abbreviated to "HZ"
+res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "HZ")
 # You can explicitly set More-Thuente too
 res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "More-Thuente")
 # More-Thuente can be abbreviated to "MT"
@@ -603,6 +612,31 @@ res <- mize(rb0, rb_fg, max_iter = 10, method = "BFGS", try_newton_step = FALSE)
 
 For every other method this is off by default anyway with no particular reason
 to turn it on.
+
+All Wolfe line searches except `Hager-Zhang` use the strong curvature condition
+to determine when to terminate the line search. The Hager-Zhang line search uses
+the standard curvature conditions by default. It also uses an approximation to 
+the Armijo sufficient descent conditions which may prevent premature termination
+of a line search when the minimizer lies close to the initial step size under
+some circumstances. Use of these variations on the Wolfe conditons can be applied
+to any of the Wolfe line searches by supplying the `strong_curvature` and 
+`approx_armijo` options:
+
+```{r alternative Wolfe conditions}
+# Rasmussen line search with standard Wolfe conditions
+res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "Rasmussen",
+            strong_curvature = FALSE)
+# Hager-Zhang with strong Wolfe conditions
+res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "HZ",
+            strong_curvature = TRUE, approx_armijo = FALSE)
+# More-Thuente with approx Armijo conditions
+res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "MT",
+            approx_armijo = TRUE)
+```
+
+It's not obvious to me that any proof of convergence that exists for a given
+line search method will hold up when the curvature and Armijo conditions are
+altered, so be careful when using specifying these options.
 
 ### Other Line Searches
 
