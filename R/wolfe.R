@@ -203,8 +203,11 @@ line_search <- function(ls_fn,
 
   initializer <- match.arg(initializer)
   if (!is.numeric(initial_step_length)) {
-    initial_step_length <- match.arg(tolower(initial_step_length),
+    initializer0 <- match.arg(tolower(initial_step_length),
                                      c("rasmussen", "scipy", "schmidt"))
+  }
+  else {
+    initializer0 <- initial_step_length
   }
 
   make_step_size(list(
@@ -250,7 +253,7 @@ line_search <- function(ls_fn,
         d = dot(opt$cache$gr_curr, pm)
       )
 
-      old_step_length <- sub_stage$value
+      alpha_prev <- sub_stage$value
 
       phi_alpha <- make_phi_alpha(par, fg, pm,
                                   calc_gradient_default = TRUE, debug = debug)
@@ -258,7 +261,7 @@ line_search <- function(ls_fn,
 
       # described on p59 of Nocedal and Wright
       if (initializer == "slope ratio" && !is.null(sub_stage$d0)) {
-        sub_stage$value <- step_slope_ratio(old_step_length, sub_stage$d0,
+        sub_stage$value <- step_slope_ratio(alpha_prev, sub_stage$d0,
                                             step0, eps, max_alpha_mult)
       }
       else if (initializer == "quadratic" && !is.null(sub_stage$f0)) {
@@ -268,10 +271,10 @@ line_search <- function(ls_fn,
       }
 
       if (is.null(sub_stage$value) || sub_stage$value <= 0) {
-        sub_stage$value <- make_step_zero(initial_step_length,
-                                          step0$df,
-                                          step0$d,
-                                          try_newton_step)
+        sub_stage$value <- guess_alpha0(initializer0,
+                                      step0$df,
+                                      step0$d,
+                                      try_newton_step)
       }
 
       sub_stage$alpha0 <- sub_stage$value
@@ -290,6 +293,7 @@ line_search <- function(ls_fn,
       if (!is.null(opt$convergence$max_fg) && is.finite(opt$convergence$max_fg)) {
         max_fg <- opt$convergence$max_fg - (opt$counts$fn + opt$counts$gr)
       }
+
       if (max_fn <= 0 || max_gr <= 0 || max_fg <= 0) {
         sub_stage$value <- 0
         if (is_last_stage(opt, stage)) {
@@ -335,37 +339,8 @@ line_search <- function(ls_fn,
   ))
 }
 
-# Set the initial step length. If initial_step_length is a numeric scalar,
-# then use that as-is. Otherwise, use one of several variations based around
-# the only thing we know (the directional derivative)
-make_step_zero <- function(initial_step_length, gr0, d0,
-                           try_newton_step = FALSE) {
-  if (is.numeric(initial_step_length)) {
-    return(initial_step_length)
-  }
-
-  s <- switch(initial_step_length,
-    # Rasmussen default from minimize.m
-    rasmussen =  1 / (1 - d0),
-    # found in _minimize_bfgs in optimize.py with this comment:
-    # # Sets the initial step guess to dx ~ 1
-    # actually sets f_old to f0 + 0.5 * ||g||2 then uses f_old in the quadratic
-    # update formula. If you do the algebra,  you get -||g||2 / d
-    # Assuming steepest descent for step0, this can be simplified further to
-    # 1 / sqrt(-d0), but may as well not assume that
-    scipy = -norm2(gr0) / d0,
-    # Mark Schmidt's minFunc.m uses reciprocal of the one-norm
-    schmidt = 1 / norm1(gr0)
-  )
-
-  if (try_newton_step) {
-    s <- min(1, 1.01 * s)
-  }
-  s
-}
-
 make_phi_alpha <- function(par, fg, pm,
-                            calc_gradient_default = FALSE, debug = FALSE) {
+                           calc_gradient_default = FALSE, debug = FALSE) {
   # LS functions are responsible for updating fn and gr count
   function(alpha, calc_gradient = calc_gradient_default) {
     y_alpha <- par + (alpha * pm)
@@ -403,19 +378,65 @@ make_phi_alpha <- function(par, fg, pm,
   }
 }
 
+
+# Initial Step Length -----------------------------------------------------
+
+# Set the initial step length. If initial_step_length is a numeric scalar,
+# then use that as-is. Otherwise, use one of several variations based around
+# the only thing we know (the directional derivative)
+guess_alpha0 <- function(initial_step_length, gr0, d0,
+                           try_newton_step = FALSE) {
+  if (is.numeric(initial_step_length)) {
+    return(initial_step_length)
+  }
+
+  s <- switch(initial_step_length,
+    rasmussen = step0_rasmussen(d0),
+    scipy = step0_scipy(gr0, d0),
+    schmidt = 1 / norm1(gr0)
+  )
+
+  if (try_newton_step) {
+    s <- min(1, 1.01 * s)
+  }
+  s
+}
+
+# From minimize.m
+step0_rasmussen <- function(d0) {
+  1 / (1 - d0)
+}
+
+# found in _minimize_bfgs in optimize.py with this comment:
+# # Sets the initial step guess to dx ~ 1
+# actually sets f_old to f0 + 0.5 * ||g||2 then uses f_old in the quadratic
+# update formula. If you do the algebra,  you get -||g||2 / d
+# Assuming steepest descent for step0, this can be simplified further to
+# 1 / sqrt(-d0), but may as well not assume that
+step0_scipy <- function(gr0, d0) {
+  -norm2(gr0) / d0
+}
+
+# Mark Schmidt's minFunc.m uses reciprocal of the one-norm
+step0_schmidt <- function(gr0) {
+  1 / norm1(gr0)
+}
+
+# Next Step Length --------------------------------------------------------
+
 # described on p59 of Nocedal and Wright
 # slope ratio method
-step_slope_ratio <- function(old_step_length, d0, step0, eps, max_alpha_mult) {
+step_slope_ratio <- function(alpha_prev, d0_prev, step0, eps, max_alpha_mult) {
   # NB the p vector must be a descent direction or the directional
   # derivative will be positive => a negative initial step size!
-  slope_ratio <- d0 / (step0$d + eps)
-  s <- old_step_length * min(max_alpha_mult, slope_ratio)
+  slope_ratio <- d0_prev / (step0$d + eps)
+  s <- alpha_prev * min(max_alpha_mult, slope_ratio)
   max(s, eps)
 }
 
 # quadratic interpolation
-step_quad_interp <- function(f0, step0, try_newton_step = FALSE) {
-  s <- 2  * (step0$f - f0) / step0$d
+step_quad_interp <- function(f0_prev, step0, try_newton_step = FALSE) {
+  s <- 2  * (step0$f - f0_prev) / step0$d
   if (try_newton_step) {
     s <- min(1, 1.01 * s)
   }
