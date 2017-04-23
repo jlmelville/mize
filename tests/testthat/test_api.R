@@ -62,9 +62,9 @@ test_that("CG with Schmidt LS", {
 
   expect_equal(res$nf, 10)
   expect_equal(res$ng, 10)
-  expect_equal(res$f, 3.225, tol = 1e-3)
-  expect_equal(res$g2n, 22.34, tol = 1e-3)
-  expect_equal(res$par, c(-0.705, 0.441), tol = 1e-3)
+  expect_equal(res$f, 2.859, tol = 1e-3)
+  expect_equal(res$g2n, 3.650, tol = 1e-3)
+  expect_equal(res$par, c(-0.682, 0.483), tol = 1e-3)
 })
 
 test_that("CG with Rasmussen LS", {

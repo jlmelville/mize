@@ -216,7 +216,7 @@ line_search <- function(ls_fn,
       if (!is_first_stage(opt, stage)) {
         # Requires knowing f at the current location
         # If this step size is part of any stage other than the first
-        # we have to turn eager updating
+        # we have to turn on eager updating
         #message("Wolfe: setting stage updating to eager")
         opt$eager_update <- TRUE
       }
@@ -268,7 +268,9 @@ line_search <- function(ls_fn,
       }
 
       if (is.null(sub_stage$value) || sub_stage$value <= 0) {
-        sub_stage$value <- make_step_zero(initial_step_length, step0$d,
+        sub_stage$value <- make_step_zero(initial_step_length,
+                                          step0$df,
+                                          step0$d,
                                           try_newton_step)
       }
 
@@ -336,7 +338,7 @@ line_search <- function(ls_fn,
 # Set the initial step length. If initial_step_length is a numeric scalar,
 # then use that as-is. Otherwise, use one of several variations based around
 # the only thing we know (the directional derivative)
-make_step_zero <- function(initial_step_length, d0,
+make_step_zero <- function(initial_step_length, gr0, d0,
                            try_newton_step = FALSE) {
   if (is.numeric(initial_step_length)) {
     return(initial_step_length)
@@ -348,11 +350,12 @@ make_step_zero <- function(initial_step_length, d0,
     # found in _minimize_bfgs in optimize.py with this comment:
     # # Sets the initial step guess to dx ~ 1
     # actually sets f_old to f0 + 0.5 * ||g||2 then uses f_old in the quadratic
-    # update formula. If you do the algebra, you get 1 / sqrt(-d)
-    # (2 norm of g is sqrt(d) when starting with steepest descent)
-    scipy = 1 / sqrt(-d0),
+    # update formula. If you do the algebra,  you get -||g||2 / d
+    # Assuming steepest descent for step0, this can be simplified further to
+    # 1 / sqrt(-d0), but may as well not assume that
+    scipy = -norm2(gr0) / d0,
     # Mark Schmidt's minFunc.m uses reciprocal of the one-norm
-    schmidt = 1 / sum(abs(d0))
+    schmidt = 1 / norm1(gr0)
   )
 
   if (try_newton_step) {
@@ -360,7 +363,6 @@ make_step_zero <- function(initial_step_length, d0,
   }
   s
 }
-
 
 make_phi_alpha <- function(par, fg, pm,
                             calc_gradient_default = FALSE, debug = FALSE) {

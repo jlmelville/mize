@@ -70,7 +70,7 @@ delta_bar_delta <- function(kappa = 1.1, kappa_fun = `*`,
 
       if (!is.numeric(sub_stage$epsilon)) {
         d0 <- dot(delta, stage$direction$value)
-        sub_stage$epsilon <- make_step_zero(sub_stage$epsilon, d0,
+        sub_stage$epsilon <- make_step_zero(sub_stage$epsilon, delta, d0,
                                             try_newton_step = FALSE)
       }
 

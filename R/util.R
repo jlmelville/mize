@@ -11,6 +11,11 @@ sqnorm2 <- function(v) {
   dot(v, v)
 }
 
+# l1 norm of a vector
+norm1 <- function(v) {
+  sum(abs(v))
+}
+
 # l2 (Euclidean) norm of a vector
 norm2 <- function(v) {
   sqrt(dot(v, v))
