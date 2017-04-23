@@ -133,7 +133,7 @@
 #'    \itemize{
 #'      \item{\code{"slope ratio"}} Slope ratio method.
 #'      \item{\code{"quadratic"}} Quadratic interpolation method.
-#'      \item{\code{"hz"}} The method of Hager and Zhang (2006) for
+#'      \item{\code{"hz"}} The QuadStep method of Hager and Zhang (2006) for
 #'      the CG_DESCENT software.
 #'    }
 #'    These arguments can be abbreviated. Details on the first two methods
@@ -160,9 +160,14 @@
 #' For the Wolfe line searches, the methods of \code{"Rasmussen"},
 #' \code{"Schmidt"} and \code{"More-Thuente"} default to using the strong
 #' curvature condition and the exact Armijo condition to terminate the line
-#' search (i.e. Strong Wolfe conditions). The \code{"Hager-Zhang"} method
-#' defaults to the standard curvature condition and the approximate Armijo
-#' condition (i.e. approximate Wolfe conditions).
+#' search (i.e. Strong Wolfe conditions). The default step size initialization
+#' methods use the Rasmussen method for the first iteration and quadratic
+#' interpolation for subsequent iterations.
+#'
+#' The \code{"Hager-Zhang"} Wolfe line search method defaults to the standard
+#' curvature condition and the approximate Armijo condition (i.e. approximate
+#' Wolfe conditions). The default step size initialization methods are those
+#' used by Hager and Zhang (2006) in the description of CG_DESCENT.
 #'
 #' If the \code{"DBD"} is used for the optimization \code{"method"}, then the
 #' \code{line_search} parameter is ignored, because this method controls both
@@ -1013,9 +1018,6 @@ make_mize <- function(method = "L-BFGS",
       if (is.null(step0)) {
         step0 <- 1
       }
-      if (is.null(step_next_init)) {
-        step_next_init <- "quad"
-      }
       if (is.null(try_newton_step)) {
         try_newton_step <- TRUE
       }
@@ -1023,12 +1025,6 @@ make_mize <- function(method = "L-BFGS",
     else {
       if (is.null(c2)) {
         c2 <- 0.1
-      }
-      if (is.null(step0)) {
-        step0 <- "rasmussen"
-      }
-      if (is.null(step_next_init)) {
-        step_next_init <- "slope"
       }
       if (is.null(try_newton_step)) {
         try_newton_step <- FALSE
@@ -1041,6 +1037,15 @@ make_mize <- function(method = "L-BFGS",
                                "backtracking", "constant",
                                "schmidt", "minfunc", "armijo",
                                "hager-zhang", "hz"))
+    if (line_search == "hager-zhang") {
+      line_search <- "hz"
+    }
+    if (line_search == "more-thuente") {
+      line_search <- "mt"
+    }
+    if (line_search == "minfunc") {
+      line_search <- "schmidt"
+    }
 
     if (line_search == "bold driver") {
       if (is.null(step_down)) {
@@ -1061,13 +1066,28 @@ make_mize <- function(method = "L-BFGS",
     }
 
     # Hager-Zhang uses weak Wolfe condtions with an approximation to the
-    # Armijo condition
-    if (line_search %in% c("hager-zhang", "hz")) {
+    # Armijo condition. Also use the step initialization methods used in
+    # CG_DESCENT by default
+    if (line_search == "hz") {
       if (is.null(strong_curvature)) {
         strong_curvature <- FALSE
       }
       if (is.null(approx_armijo)) {
         approx_armijo <- TRUE
+      }
+      if (is.null(step_next_init)) {
+        step_next_init <- "hz"
+      }
+      if (is.null(step0)) {
+        step0 <- "hz"
+      }
+    }
+    else {
+      if (is.null(step0)) {
+        step0 <- "rasmussen"
+      }
+      if (is.null(step_next_init)) {
+        step_next_init <- "quad"
       }
     }
 
@@ -1081,15 +1101,6 @@ make_mize <- function(method = "L-BFGS",
                            max_fg = ls_max_fg,
                            strong_curvature = strong_curvature,
                            approx_armijo = approx_armijo),
-      "more-thuente" = more_thuente_ls(c1 = c1, c2 = c2,
-                                       initializer = tolower(step_next_init),
-                                       initial_step_length = step0,
-                                       try_newton_step = try_newton_step,
-                                       max_fn = ls_max_fn,
-                                       max_gr = ls_max_gr,
-                                       max_fg = ls_max_fg,
-                                       strong_curvature = strong_curvature,
-                                       approx_armijo = approx_armijo),
       rasmussen = rasmussen_ls(c1 = c1, c2 = c2,
                               initializer = tolower(step_next_init),
                               initial_step_length = step0,
@@ -1111,15 +1122,6 @@ make_mize <- function(method = "L-BFGS",
                            max_fg = ls_max_fg,
                            strong_curvature = strong_curvature,
                            approx_armijo = approx_armijo),
-      minfunc = schmidt_ls(c1 = c1, c2 = c2,
-                           initializer = tolower(step_next_init),
-                           initial_step_length = step0,
-                           try_newton_step = try_newton_step,
-                           max_fn = ls_max_fn,
-                           max_gr = ls_max_gr,
-                           max_fg = ls_max_fg,
-                           strong_curvature = strong_curvature,
-                           approx_armijo = approx_armijo),
       backtracking = schmidt_armijo_ls(c1 = c1,
                           initializer = tolower(step_next_init),
                           initial_step_length = step0,
@@ -1128,15 +1130,6 @@ make_mize <- function(method = "L-BFGS",
                           max_fn = ls_max_fn,
                           max_gr = ls_max_gr,
                           max_fg = ls_max_fg),
-      "hager-zhang" = hager_zhang_ls(c1 = c1, c2 = c2,
-                                     initializer = tolower(step_next_init),
-                                     initial_step_length = step0,
-                                     try_newton_step = try_newton_step,
-                                     max_fn = ls_max_fn,
-                                     max_gr = ls_max_gr,
-                                     max_fg = ls_max_fg,
-                                     strong_curvature = strong_curvature,
-                                     approx_armijo = approx_armijo),
       hz =  hager_zhang_ls(c1 = c1, c2 = c2,
                            initializer = tolower(step_next_init),
                            initial_step_length = step0,

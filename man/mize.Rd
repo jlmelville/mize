@@ -356,7 +356,7 @@ following parameters can be used to control the line search:
    \itemize{
      \item{\code{"slope ratio"}} Slope ratio method.
      \item{\code{"quadratic"}} Quadratic interpolation method.
-     \item{\code{"hz"}} The method of Hager and Zhang (2006) for
+     \item{\code{"hz"}} The QuadStep method of Hager and Zhang (2006) for
      the CG_DESCENT software.
    }
    These arguments can be abbreviated. Details on the first two methods
@@ -383,9 +383,14 @@ following parameters can be used to control the line search:
 For the Wolfe line searches, the methods of \code{"Rasmussen"},
 \code{"Schmidt"} and \code{"More-Thuente"} default to using the strong
 curvature condition and the exact Armijo condition to terminate the line
-search (i.e. Strong Wolfe conditions). The \code{"Hager-Zhang"} method
-defaults to the standard curvature condition and the approximate Armijo
-condition (i.e. approximate Wolfe conditions).
+search (i.e. Strong Wolfe conditions). The default step size initialization
+methods use the Rasmussen method for the first iteration and quadratic
+interpolation for subsequent iterations.
+
+The \code{"Hager-Zhang"} Wolfe line search method defaults to the standard
+curvature condition and the approximate Armijo condition (i.e. approximate
+Wolfe conditions). The default step size initialization methods are those
+used by Hager and Zhang (2006) in the description of CG_DESCENT.
 
 If the \code{"DBD"} is used for the optimization \code{"method"}, then the
 \code{line_search} parameter is ignored, because this method controls both

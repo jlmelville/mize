@@ -192,7 +192,7 @@ test_that("Terminates semi-gracefully if gradient is non-finite", {
 test_that("Step tolerance is triggered when progress stalls", {
   # NULL abs_tol to stop it from triggering before step_tol
   res <- mize(rb0, rosenbrock_fg, "L-BFGS", memory = 5, abs_tol = NULL,
-              step_tol = .Machine$double.eps)
+              step_tol = .Machine$double.eps, step_next_init = "quad")
   expect_equal(res$nf, 57)
   expect_equal(res$ng, 57)
   expect_equal(res$f, 0, tol = 1e-3)
@@ -213,7 +213,8 @@ test_that("max_fn errs on the side of caution", {
   # this is because we need one function evaluation spare to calculate
   # f for the return value and mize has determined it isn't available
   # for "free" by being calculated during the iteration
-  res <- mize(rb0, rosenbrock_fg, method = "NAG", max_fn = 15)
+  res <- mize(rb0, rosenbrock_fg, method = "NAG", max_fn = 15,
+              step_next_init = "slope")
   expect_equal(res$terminate$what, "max_fn")
   expect_equal(res$terminate$val, 14)
   expect_equal(res$nf, 14)
@@ -221,7 +222,8 @@ test_that("max_fn errs on the side of caution", {
 })
 
 test_that("max_fg also errs on the side of caution", {
-  res <- mize(rb0, rosenbrock_fg, method = "NAG", max_fg = 30)
+  res <- mize(rb0, rosenbrock_fg, method = "NAG", max_fg = 30,
+              step_next_init = "slope")
   expect_equal(res$terminate$what, "max_fg")
   expect_equal(res$terminate$val, 29)
   expect_equal(res$nf, 15)
@@ -265,7 +267,7 @@ test_that("max functions per line search", {
 
 test_that("backtracking line search", {
   res <- mize(rb0, rosenbrock_fg, method = "NAG", line_search = "BACK",
-              max_iter = 3)
+              max_iter = 3, step_next_init = "slope")
   expect_equal(res$nf, 7)
   expect_equal(res$ng, 6)
   expect_equal(res$f, 20.44, tol = 1e-3)

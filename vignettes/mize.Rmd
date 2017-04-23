@@ -562,10 +562,10 @@ res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", cg_update = "HZ+",
 #### Initial Step Size Guess
 
 Another important choice is what step size to start each iteration from. Nocedal
-and Wright suggest two methods based on the result achieved for the previous
+and Wright suggest two methods based on the result achieved for the previous 
 iteration, one involving the ratio of the slopes at consecutive iteratons, and 
-one involving a quadratic interpolation. By default, the quadratic 
-interpolation method is tried. 
+one involving a quadratic interpolation. By default, for Wolfe line searches
+other than `"Hager-Zhang"`, the quadratic interpolation method is tried.
 
 To try the slope ratio method, set `step_next_init = "slope"`.
 
@@ -578,11 +578,12 @@ attempted followed by a quadratic interpolation. If the resulting quadratic is
 strongly convex (for a 1D quadratic $Ax^2 + Bx + c$, this just means $A > 0$),
 then the minimizer of the quadratic is used as the initial guess. Otherwise,
 a multiple of the previous step length is used (in `mize`, the old step length
-is doubled). To try this method, use `step_next_init = "hz"` (or 
-`"hager-zhang"`):
+is doubled). This is the default if `line_search = "hz"` is used. To explicitly
+set it for other methods, use `step_next_init = "hz"` (or `"hager-zhang"`):
 
 ```{r Line search with Hager-Zhang QuadStep}
-res <- mize(rb0, rb_fg, max_iter = 10, step_next_init = "hz")
+res <- mize(rb0, rb_fg, max_iter = 10, step_next_init = "hz", 
+            line_search = "mt")
 ```
 For the budget-conscious, be aware that using this method always incurs an 
 extra function evaluation per iteration, even if the quadratic minimizer isn't
@@ -612,8 +613,9 @@ $\psi_0\frac{\left|f\right|}{\left\|g\right\|_{2}^{2}}$ where $\left|f\right|$
 is the absolute value of the function evaluated at $x$. And if that doesn't 
 work, just use 1.
 
-By default I have arbitrarily plumped for the Rasmussen (presumably it doesn't
-make a huge difference), but you can explicitly choose by passing one of 
+By default, the Hager-Zhang line search uses the CG_DESCENT method. For other 
+Wolfe line searches I have arbitrarily plumped for the Rasmussen method. If you
+think it will make a huge difference you can explicitly choose by passing one of
 `"rasmussen"`, `"scipy"`, `"schmidt"` or `"hz"` to the `step0` argument, e.g.:
 
 ```{r Line search with scipy initialization}
