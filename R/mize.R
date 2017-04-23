@@ -129,13 +129,15 @@
 #'    }
 #'    These arguments can be abbreviated.
 #'    \item{\code{step_next_init}} How to initialize subsequent line searches
-#'    after the first, using results from the previous line search,
-#'    based on two suggestions mentioned by Nocedal and Wright:
+#'    after the first, using results from the previous line search:
 #'    \itemize{
 #'      \item{\code{"slope ratio"}} Slope ratio method.
 #'      \item{\code{"quadratic"}} Quadratic interpolation method.
+#'      \item{\code{"hz"}} The method of Hager and Zhang (2006) for
+#'      the CG_DESCENT software.
 #'    }
-#'    These arguments can be abbreviated.
+#'    These arguments can be abbreviated. Details on the first two methods
+#'    are provided by Nocedal and Wright.
 #'    \item{\code{try_newton_step}} For quasi-Newton methods (\code{"BFGS"} and
 #'    \code{"L-BFGS"}), setting this to \code{TRUE} will try the "natural" step
 #'    size of 1, whenever the \code{step_next_init} method suggests an initial

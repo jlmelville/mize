@@ -559,6 +559,8 @@ res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", cg_update = "HZ+",
             c2 = 0.5, c1 = 0.1)
 ```
 
+#### Initial Step Size Guess
+
 Another important choice is what step size to start each iteration from. Nocedal
 and Wright suggest two methods based on the result achieved for the previous
 iteration, one involving the ratio of the slopes at consecutive iteratons, and 
@@ -570,6 +572,23 @@ To try the slope ratio method, set `step_next_init = "slope"`.
 ```{r Line search with slope ratio}
 res <- mize(rb0, rb_fg, max_iter = 10, step_next_init = "slope")
 ```
+In the [CG_DESCENT](http://dx.doi.org/10.1145/1132973.1132979) software, Hager
+and Zhang suggest using a "QuadStep" method. In this case, a small trial step is
+attempted followed by a quadratic interpolation. If the resulting quadratic is
+strongly convex (for a 1D quadratic $Ax^2 + Bx + c$, this just means $A > 0$),
+then the minimizer of the quadratic is used as the initial guess. Otherwise,
+a multiple of the previous step length is used (in `mize`, the old step length
+is doubled). To try this method, use `step_next_init = "hz"` (or 
+`"hager-zhang"`):
+
+```{r Line search with Hager-Zhang QuadStep}
+res <- mize(rb0, rb_fg, max_iter = 10, step_next_init = "hz")
+```
+For the budget-conscious, be aware that using this method always incurs an 
+extra function evaluation per iteration, even if the quadratic minimizer isn't
+used as the guess.
+
+#### Initial Step Size Guess on First Iteration
 
 This only leaves what to do on the very first iteration, where there is no
 previous iteration to look at. You don't really have much information at that

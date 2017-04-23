@@ -155,8 +155,8 @@ schmidt_armijo_ls <- function(c1 = 0.005,
 hager_zhang_ls <- function(c1 = c2 / 2, c2 = 0.1,
                            max_alpha_mult = 10,
                            min_step_size = .Machine$double.eps,
-                           initializer = "s",
-                           initial_step_length = "schmidt",
+                           initializer = "hz",
+                           initial_step_length = "hz",
                            try_newton_step = FALSE,
                            stop_at_min = TRUE, eps = .Machine$double.eps,
                            max_fn = Inf,
@@ -192,7 +192,7 @@ hager_zhang_ls <- function(c1 = c2 / 2, c2 = 0.1,
 
 line_search <- function(ls_fn,
                         name,
-                        initializer = c("slope ratio", "quadratic"),
+                        initializer = "slope ratio",
                         try_newton_step = FALSE,
                         initial_step_length = 1,
                         max_alpha_mult = 10,
@@ -201,11 +201,19 @@ line_search <- function(ls_fn,
                         debug = FALSE,
                         eps = .Machine$double.eps) {
 
-  initializer <- match.arg(initializer)
+  initializer <- match.arg(tolower(initializer),
+                           c("slope ratio", "quadratic", "hz", "hager-zhang"))
+  if (initializer == "hager-zhang") {
+    initializer <- "hz"
+  }
+
   if (!is.numeric(initial_step_length)) {
     initializer0 <- match.arg(tolower(initial_step_length),
                                      c("rasmussen", "scipy", "schmidt",
                                        "hz", "hager-zhang"))
+    if (initializer0 == "hager-zhang") {
+      initializer0 <- "hz"
+    }
   }
   else {
     initializer0 <- initial_step_length
@@ -262,13 +270,18 @@ line_search <- function(ls_fn,
 
       # described on p59 of Nocedal and Wright
       if (initializer == "slope ratio" && !is.null(sub_stage$d0)) {
-        sub_stage$value <- step_slope_ratio(alpha_prev, sub_stage$d0,
+        sub_stage$value <- step_next_slope_ratio(alpha_prev, sub_stage$d0,
                                             step0, eps, max_alpha_mult)
       }
       else if (initializer == "quadratic" && !is.null(sub_stage$f0)) {
         # quadratic interpolation
-        sub_stage$value <- step_quad_interp(sub_stage$f0, step0,
+        sub_stage$value <- step_next_quad_interp(sub_stage$f0, step0,
                                             try_newton_step = try_newton_step)
+      }
+      else if (initializer == "hz" && !is.null(alpha_prev)) {
+        step_next_res <- step_next_hz(phi_alpha, alpha_prev, step0)
+        sub_stage$value <- step_next_res$alpha
+        opt$counts$fn <- opt$counts$fn + step_next_res$fn
       }
 
       if (is.null(sub_stage$value) || sub_stage$value <= 0) {
@@ -393,9 +406,6 @@ guess_alpha0 <- function(guess_type, x0, f0, gr0, d0,
     return(guess_type)
   }
 
-  if (guess_type == "hager-zhang") {
-    guess_type <- "hz"
-  }
   s <- switch(guess_type,
     rasmussen = step0_rasmussen(d0),
     scipy = step0_scipy(gr0, d0),
@@ -455,7 +465,8 @@ step0_hz <- function(x0, f0, gr0, psi0 = 0.01) {
 
 # described on p59 of Nocedal and Wright
 # slope ratio method
-step_slope_ratio <- function(alpha_prev, d0_prev, step0, eps, max_alpha_mult) {
+step_next_slope_ratio <- function(alpha_prev, d0_prev, step0, eps,
+                                  max_alpha_mult) {
   # NB the p vector must be a descent direction or the directional
   # derivative will be positive => a negative initial step size!
   slope_ratio <- d0_prev / (step0$d + eps)
@@ -464,7 +475,7 @@ step_slope_ratio <- function(alpha_prev, d0_prev, step0, eps, max_alpha_mult) {
 }
 
 # quadratic interpolation
-step_quad_interp <- function(f0_prev, step0, try_newton_step = FALSE) {
+step_next_quad_interp <- function(f0_prev, step0, try_newton_step = FALSE) {
   s <- 2  * (step0$f - f0_prev) / step0$d
   if (try_newton_step) {
     s <- min(1, 1.01 * s)
@@ -472,7 +483,30 @@ step_quad_interp <- function(f0_prev, step0, try_newton_step = FALSE) {
   s
 }
 
+# steps I1-2 in the routine 'initial' of the CG_DESCENT paper
+step_next_hz <- function(phi, alpha_prev, step0, psi1 = 0.1, psi2 = 2) {
+  # I2: use if QuadStep fails
+  alpha <- alpha_prev * psi2
+  nfn <- 0
+  # I1: QuadStep
+  # If function is reduced at the initial guess, carry out a quadratic
+  # interpolation. If the resulting quadratic is strongly convex, use the
+  # minimizer of the quadratic. Otherwise, use I2.
+  step_psi <- phi(alpha_prev * psi1, calc_gradient = FALSE)
+  nfn <- 1
 
+  if (step_psi$f <= step0$f) {
+    alpha_q <- quadratic_interpolate_step(step0, step_psi)
+    # A 1D quadratic Ax^2 + Bx + C is strongly convex if A > 0. Second clause in
+    # if statement is A expressed in terms of the minimizer (this is easy to
+    # derive by looking at Nocedal & Wright 2nd Edition, equations 3.57 and
+    # 3.58)
+    if (alpha_q > 0 && -step0$d / (2 * alpha_q) > 0) {
+      alpha <- alpha_q
+    }
+  }
+  list(alpha = alpha, fn = nfn)
+}
 
 # Line Search Checks -------------------------------------------------------
 

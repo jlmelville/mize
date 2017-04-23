@@ -82,19 +82,20 @@ test_that("CG with Rasmussen LS", {
   expect_equal(res$par, c(-0.785, 0.558), tol = 1e-3)
 })
 
-test_that("CG with HZ LS", {
-  # Also use HZ suggestions for initial step guess
+test_that("HZ CG with HZ LS", {
+  # Also use HZ suggestions for initial step guess and next step guess
+  # (the latter of which costs an extra fn evaluation per iteration)
   res <- mize(rb0, rosenbrock_fg, method = "cg",
-              cg_update = "hz",
+              cg_update = "hz+",
               max_iter = 3,
               line_search = "hz", c1 = 5e-10, c2 = 1e-9, step0 = "hz",
-              step_next_init = "slope", grad_tol = 1e-5)
+              step_next_init = "hz", grad_tol = 1e-5)
 
-  expect_equal(res$nf, 9)
-  expect_equal(res$ng, 9)
-  expect_equal(res$f, 4.11, tol = 1e-3)
-  expect_equal(res$g2n, 2.379, tol = 1e-3)
-  expect_equal(res$par, c(-1.024, 1.061), tol = 1e-3)
+  expect_equal(res$nf, 10)
+  expect_equal(res$ng, 8)
+  expect_equal(res$f, 4.09, tol = 1e-3)
+  expect_equal(res$g2n, 1.789, tol = 1e-3)
+  expect_equal(res$par, c(-1.020, 1.050), tol = 1e-3)
 })
 
 
