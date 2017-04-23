@@ -574,21 +574,28 @@ res <- mize(rb0, rb_fg, max_iter = 10, step_next_init = "slope")
 This only leaves what to do on the very first iteration, where there is no
 previous iteration to look at. You don't really have much information at that
 point apart from the gradient, so all the implementations I've seen use a step 
-size that is effectively inversely proportional to the length of the gradient:
+size that is effectively inversely proportional to a norm of the gradient:
 
 * Carl Edward Rasmussen's 
 [conjugate gradient routine](http://learning.eng.cam.ac.uk/carl/code/minimize/)
-uses $\frac{1}{1+\left|| g \right||_2^2}$ (the square of the 2-norm of the 
-gradient)
+uses $\frac{1}{1+\left\| g \right\|_2^2}$
 * [SciPy](https://www.scipy.org/)'s `optimize.py` uses
-$\frac{1}{\left|| g \right||_2}$ (the 2-norm of the gradient)
+$\frac{1}{\left\| g \right\|_2}$
 * Mark Schmidt's 
 [minimization routines](http://www.cs.ubc.ca/~schmidtm/Software/minFunc.html)
-uses $\frac{1}{1+\left|| g \right||_1}$ (the 1-norm of the gradient)
+uses $\frac{1}{1+\left\| g \right\|_1}$
+* Hager and Zhang use a slightly more complicated procedure for their 
+[CG_DESCENT](http://dx.doi.org/10.1145/1132973.1132979) software: 
+use $\psi_0\frac{\left\|x\right\|_\infty}{\left\|g\right\|_\infty}$, where $x$
+is the initial parameter vector and $\psi_0$ is a small positive value (e.g.
+0.01), or if that doesn't produce a finite positive value, use 
+$\psi_0\frac{\left|f\right|}{\left\|g\right\|_{2}^{2}}$ where $\left|f\right|$ 
+is the absolute value of the function evaluated at $x$. And if that doesn't 
+work, just use 1.
 
 By default I have arbitrarily plumped for the Rasmussen (presumably it doesn't
 make a huge difference), but you can explicitly choose by passing one of 
-`"rasmussen"`, `"scipy"` or `"schmidt"` to the `step0` argument, e.g.:
+`"rasmussen"`, `"scipy"`, `"schmidt"` or `"hz"` to the `step0` argument, e.g.:
 
 ```{r Line search with scipy initialization}
 res <- mize(rb0, rb_fg, max_iter = 10, step0 = "scipy")

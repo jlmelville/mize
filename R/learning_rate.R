@@ -70,8 +70,12 @@ delta_bar_delta <- function(kappa = 1.1, kappa_fun = `*`,
 
       if (!is.numeric(sub_stage$epsilon)) {
         d0 <- dot(delta, stage$direction$value)
-        sub_stage$epsilon <- guess_alpha0(sub_stage$epsilon, delta, d0,
-                                        try_newton_step = FALSE)
+        sub_stage$epsilon <- guess_alpha0(sub_stage$epsilon,
+                                          x0 = NULL,
+                                          f0 = NULL,
+                                          gr0 = delta,
+                                          d0 = d0,
+                                          try_newton_step = FALSE)
       }
 
       if (use_momentum && !is.null(opt$cache$update_old)) {

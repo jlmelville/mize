@@ -204,7 +204,8 @@ line_search <- function(ls_fn,
   initializer <- match.arg(initializer)
   if (!is.numeric(initial_step_length)) {
     initializer0 <- match.arg(tolower(initial_step_length),
-                                     c("rasmussen", "scipy", "schmidt"))
+                                     c("rasmussen", "scipy", "schmidt",
+                                       "hz", "hager-zhang"))
   }
   else {
     initializer0 <- initial_step_length
@@ -272,9 +273,11 @@ line_search <- function(ls_fn,
 
       if (is.null(sub_stage$value) || sub_stage$value <= 0) {
         sub_stage$value <- guess_alpha0(initializer0,
-                                      step0$df,
-                                      step0$d,
-                                      try_newton_step)
+                                        par,
+                                        step0$f,
+                                        step0$df,
+                                        step0$d,
+                                        try_newton_step)
       }
 
       sub_stage$alpha0 <- sub_stage$value
@@ -384,16 +387,20 @@ make_phi_alpha <- function(par, fg, pm,
 # Set the initial step length. If initial_step_length is a numeric scalar,
 # then use that as-is. Otherwise, use one of several variations based around
 # the only thing we know (the directional derivative)
-guess_alpha0 <- function(initial_step_length, gr0, d0,
+guess_alpha0 <- function(guess_type, x0, f0, gr0, d0,
                            try_newton_step = FALSE) {
-  if (is.numeric(initial_step_length)) {
-    return(initial_step_length)
+  if (is.numeric(guess_type)) {
+    return(guess_type)
   }
 
-  s <- switch(initial_step_length,
+  if (guess_type == "hager-zhang") {
+    guess_type <- "hz"
+  }
+  s <- switch(guess_type,
     rasmussen = step0_rasmussen(d0),
     scipy = step0_scipy(gr0, d0),
-    schmidt = 1 / norm1(gr0)
+    schmidt = step0_schmidt(gr0),
+    hz = step0_hz(x0, f0, gr0, psi0 = 0.01)
   )
 
   if (try_newton_step) {
@@ -420,6 +427,28 @@ step0_scipy <- function(gr0, d0) {
 # Mark Schmidt's minFunc.m uses reciprocal of the one-norm
 step0_schmidt <- function(gr0) {
   1 / norm1(gr0)
+}
+
+# I0 in the 'initial' routine in CG_DESCENT paper
+step0_hz <- function(x0, f0, gr0, psi0 = 0.01) {
+  alpha <- 1
+  if (is.null(x0)) {
+    return(alpha)
+  }
+  ginf_norm <- norm_inf(gr0)
+  if (ginf_norm != 0) {
+    xinf_norm <- norm_inf(x0)
+    if (xinf_norm != 0) {
+      alpha <- psi0 * (xinf_norm / ginf_norm)
+    }
+    else if (is_finite_numeric(f0) && f0 != 0) {
+      g2_norm2 <- sqnorm2(gr0)
+      if (is_finite_numeric(g2_norm2) && g2_norm2 != 0) {
+        alpha <- psi0 * (abs(f0) / ginf_norm ^ 2)
+      }
+    }
+  }
+  alpha
 }
 
 # Next Step Length --------------------------------------------------------

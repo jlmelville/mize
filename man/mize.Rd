@@ -337,7 +337,8 @@ following parameters can be used to control the line search:
    \item{\code{step0}} Initial value for the line search on the first step.
    If a positive numeric value is passed as an argument, that value is used
    as-is. Otherwise, by passing a string as an argument, a guess is made
-   based on the gradient at the starting point:
+   based on values of the gradient, function or parameters, at the starting
+   point:
    \itemize{
      \item{\code{"rasmussen"}} As used by Rasmussen in \code{minimize.m}:
      \deqn{\frac{1}{1+\left|g\right|^2}}{1 / 1 + (|g|^2)}
@@ -346,6 +347,8 @@ following parameters can be used to control the line search:
      \item{\code{"schmidt"}} As used by Schmidt in \code{minFunc.m}
      (the reciprocal of the l1 norm of g)
      \deqn{\frac{1}{\left|g\right|_1}}{1 / |g|1}
+     \item{\code{"hz"}} The method suggested by Hager and Zhang (2006) for
+     the CG_DESCENT software.
    }
    These arguments can be abbreviated.
    \item{\code{step_next_init}} How to initialize subsequent line searches

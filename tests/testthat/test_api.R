@@ -82,6 +82,22 @@ test_that("CG with Rasmussen LS", {
   expect_equal(res$par, c(-0.785, 0.558), tol = 1e-3)
 })
 
+test_that("CG with HZ LS", {
+  # Also use HZ suggestions for initial step guess
+  res <- mize(rb0, rosenbrock_fg, method = "cg",
+              cg_update = "hz",
+              max_iter = 3,
+              line_search = "hz", c1 = 5e-10, c2 = 1e-9, step0 = "hz",
+              step_next_init = "slope", grad_tol = 1e-5)
+
+  expect_equal(res$nf, 9)
+  expect_equal(res$ng, 9)
+  expect_equal(res$f, 4.11, tol = 1e-3)
+  expect_equal(res$g2n, 2.379, tol = 1e-3)
+  expect_equal(res$par, c(-1.024, 1.061), tol = 1e-3)
+})
+
+
 test_that("CG with Rasmussen LS and max_fn termination", {
   res <- mize(rb0, rosenbrock_fg, method = "cg",
               cg_update = "pr+",
