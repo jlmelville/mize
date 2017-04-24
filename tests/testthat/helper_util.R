@@ -1,5 +1,121 @@
 # Functions used only for testing
 
+# Step Size Expectation ---------------------------------------------------
+
+expect_step <- function(actual, x, f, df, alpha = x, nfev, tolerance = 1e-4) {
+  expect_equal(actual$step$par, x, tolerance = tolerance)
+  expect_equal(actual$step$f, f, tolerance = tolerance)
+  expect_equal(actual$step$df, df, tolerance = tolerance)
+  expect_equal(actual$step$alpha, alpha, tolerance = tolerance)
+  expect_equal(actual$nfn, nfev)
+}
+
+# Finite Difference -------------------------------------------------------
+
+gfd <- function(par, fn, rel_eps = sqrt(.Machine$double.eps)) {
+  g <- rep(0, length(par))
+  for (i in 1:length(par)) {
+    oldx <- par[i]
+    if (oldx != 0) {
+      eps <- oldx * rel_eps
+    }
+    else {
+      eps <- 1e-3
+    }
+    par[i] <- oldx + eps
+    fplus <- fn(par)
+
+    par[i] <- oldx - eps
+    fminus <- fn(par)
+    par[i] <- oldx
+
+    g[i] <- (fplus - fminus) / (2 * eps)
+  }
+  g
+}
+
+make_gfd <- function(fn, eps = 1.e-3) {
+  function(par) {
+    gfd(par, fn, eps)
+  }
+}
+
+hfd <- function(par, fn, eps =  1.e-3) {
+  hs <- matrix(0, nrow = length(par), ncol = length(par))
+  for (i in 1:length(par)) {
+    for (j in i:length(par)) {
+      if (i != j) {
+        oldxi <- par[i]
+        oldxj <- par[j]
+
+        par[i] <- par[i] + eps
+        par[j] <- par[j] + eps
+        fpp <- fn(par)
+
+        par[j] <- oldxj - eps
+        fpm <- fn(par)
+
+        par[i] <- oldxi - eps
+        par[j] <- oldxj + eps
+        fmp <- fn(par)
+
+        par[j] <- oldxj - eps
+        fmm <- fn(par)
+
+        par[i] <- oldxi
+        par[j] <- oldxj
+
+        val <- (fpp - fpm - fmp + fmm) / (4 * eps * eps)
+
+        hs[i, j] <- val
+        hs[j, i] <- val
+      }
+      else {
+        f <- fn(par)
+        oldxi <- par[i]
+
+        par[i] <- oldxi + 2 * eps
+        fpp <- fn(par)
+
+        par[i] <- oldxi + eps
+        fp <- fn(par)
+
+        par[i] <- oldxi - 2 * eps
+        fmm <- fn(par)
+
+        par[i] <- oldxi - eps
+        fm <- fn(par)
+
+        par[i] <- oldxi
+
+        hs[i, i] <- (-fpp + 16 * fp - 30 * f + 16 * fm - fmm) / (12 * eps * eps)
+      }
+    }
+  }
+  hs
+}
+
+make_hfd <- function(fn, eps = 1.e-3) {
+  function(par) {
+    hfd(par, fn, eps)
+  }
+}
+
+make_fg <- function(fn, gr = NULL, hs = NULL) {
+  if (is.null(gr)) {
+    gr <- make_gfd(fn)
+  }
+  if (is.null(hs)) {
+    hs <- make_hfd(fn)
+  }
+  list(
+    fn = fn,
+    gr = gr,
+    hs = hs
+  )
+}
+
+
 # Rosenbrock ---------------------------------------------------------------
 
 rb0 <- c(-1.2, 1)
@@ -251,96 +367,3 @@ f4 <- list(fn = fn4, gr = gr4)
 f5 <- list(fn = fn5, gr = gr5)
 f6 <- list(fn = fn6, gr = gr6)
 
-# Finite Difference -------------------------------------------------------
-
-gfd <- function(par, fn, eps =  1.e-3) {
-  g <- rep(0, length(par))
-  for (i in 1:length(par)) {
-    oldx <- par[i]
-
-    par[i] <- oldx + eps
-    fplus <- fn(par)
-
-    par[i] <- oldx - eps
-    fminus <- fn(par)
-    par[i] <- oldx
-
-    g[i] <- (fplus - fminus) / (2 * eps)
-  }
-  g
-}
-
-make_gfd <- function(fn, eps = 1.e-3) {
-  function(par) {
-    gfd(par, fn, eps)
-  }
-}
-
-hfd <- function(par, fn, eps =  1.e-3) {
-  hs <- matrix(0, nrow = length(par), ncol = length(par))
-  for (i in 1:length(par)) {
-    for (j in i:length(par)) {
-      if (i != j) {
-        oldxi <- par[i]
-        oldxj <- par[j]
-
-        par[i] <- par[i] + eps
-        par[j] <- par[j] + eps
-        fpp <- fn(par)
-
-        par[j] <- oldxj - eps
-        fpm <- fn(par)
-
-        par[i] <- oldxi - eps
-        par[j] <- oldxj + eps
-        fmp <- fn(par)
-
-        par[j] <- oldxj - eps
-        fmm <- fn(par)
-
-        par[i] <- oldxi
-        par[j] <- oldxj
-
-        val <- (fpp - fpm - fmp + fmm) / (4 * eps * eps)
-
-        hs[i, j] <- val
-        hs[j, i] <- val
-      }
-      else {
-        f <- fn(par)
-        oldxi <- par[i]
-
-        par[i] <- oldxi + 2 * eps
-        fpp <- fn(par)
-
-        par[i] <- oldxi + eps
-        fp <- fn(par)
-
-        par[i] <- oldxi - 2 * eps
-        fmm <- fn(par)
-
-        par[i] <- oldxi - eps
-        fm <- fn(par)
-
-        par[i] <- oldxi
-
-        hs[i, i] <- (-fpp + 16 * fp - 30 * f + 16 * fm - fmm) / (12 * eps * eps)
-      }
-    }
-  }
-  hs
-}
-
-make_hfd <- function(fn, eps = 1.e-3) {
-  function(par) {
-    hfd(par, fn, eps)
-  }
-}
-
-expect_step <- function(actual, x, f, df, alpha = x, nfev, tolerance = 1e-4) {
-  expect_equal(actual$step$par, x, tolerance = tolerance)
-  expect_equal(actual$step$f, f, tolerance = tolerance)
-  expect_equal(actual$step$df, df, tolerance = tolerance)
-  expect_equal(actual$step$alpha, alpha, tolerance = tolerance)
-  expect_equal(actual$nfn, nfev)
-}
