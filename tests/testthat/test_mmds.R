@@ -44,7 +44,7 @@ make_mmds_fg <- function(distmat) {
 set.seed(42)
 ed0 <- rnorm(attr(datasets::eurodist, 'Size') * 2)
 res <- mize(par = ed0, fg = make_mmds_fg(datasets::eurodist), method = "L-BFGS",
-            rel_tol = 1e-8, step_next_init = "quad")
+            rel_tol = 1e-8, step0 = 1, step_next_init = "quad")
 
 # coordinates are abritrary, but hopefully repeatable thanks to set.seed
 coords <- c(1735, 2143, 624.2, -768.1, -406.7, 50.9, -493.4, -126.8,
