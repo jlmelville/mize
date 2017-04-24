@@ -1015,9 +1015,6 @@ make_mize <- function(method = "L-BFGS",
       if (is.null(c2)) {
         c2 <- 0.9
       }
-      if (is.null(step0)) {
-        step0 <- 1
-      }
       if (is.null(try_newton_step)) {
         try_newton_step <- TRUE
       }
