@@ -890,8 +890,9 @@ Here, reducing the wait time to 1 had a great effect on gradient restarting
 On the other hand, function restarting more often (the blue line) led to worse 
 performance.
 
-There is also a `"speed"` restart type, related to a restart strategy 
-introduced by [Su and co-workers](https://papers.nips.cc/paper/5322-a-differential-equation-for-modeling-nesterovs-accelerated-gradient-method-theory-and-insights), which restarts if the update vector doesn't
-increase in length (as measured by Euclidean 2-norm) between iterations.
-This seems less performant in their experiments than gradient-based restarting,
-but might provide more stability under some circumstances.
+There is also a `"speed"` restart type, related to a restart strategy introduced
+by [Su and co-workers](https://papers.nips.cc/paper/5322-a-differential-equation-for-modeling-nesterovs-accelerated-gradient-method-theory-and-insights),
+which restarts if the update vector doesn't increase in length (as measured by
+Euclidean 2-norm) between iterations. This seems less performant in their
+experiments than gradient-based restarting, but might provide more stability
+under some circumstances.
