@@ -40,14 +40,20 @@ make_gfd <- function(fn, eps = 1.e-3) {
   }
 }
 
-hfd <- function(par, fn, eps =  1.e-3) {
+hfd <- function(par, fn, rel_eps = sqrt(.Machine$double.eps)) {
   hs <- matrix(0, nrow = length(par), ncol = length(par))
   for (i in 1:length(par)) {
     for (j in i:length(par)) {
-      if (i != j) {
-        oldxi <- par[i]
-        oldxj <- par[j]
+      oldxi <- par[i]
+      oldxj <- par[j]
 
+      if (oldxi != 0 && oldxj != 0) {
+        eps <- min(oldxi, oldxj) * rel_eps
+      }
+      else {
+        eps <- 1e-3
+      }
+      if (i != j) {
         par[i] <- par[i] + eps
         par[j] <- par[j] + eps
         fpp <- fn(par)
