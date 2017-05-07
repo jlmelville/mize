@@ -94,6 +94,9 @@ ras_ls <- function(phi, alpha, step0, c1 = 0.1, c2 = 0.1 / 2, ext = 3.0,
 
   # extrapolate from initial alpha until either curvature condition is met
   # or the armijo condition is NOT met
+  if (verbose) {
+    message("Bracketing with initial step size = ", formatC(alpha))
+  }
   ex_result <- extrapolate_step_size(phi, alpha, step0, c1, c2, ext, int,
                                      max_fn, armijo_check_fn)
 
@@ -105,7 +108,7 @@ ras_ls <- function(phi, alpha, step0, c1 = 0.1, c2 = 0.1 / 2, ext = 3.0,
   }
 
   if (verbose) {
-    message("Bracket: ", format_bracket(list(step0, step)))
+    message("Bracket: ", format_bracket(list(step0, step)), " fn = ", nfn)
   }
   # interpolate until the Strong Wolfe conditions are met
   int_result <- interpolate_step_size(phi, step0, step, c1, c2, int, max_fn,
