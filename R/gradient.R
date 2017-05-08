@@ -69,7 +69,7 @@ cg_direction <- function(ortho_check = FALSE, nu = 0.1,
         beta <- sub_stage$cg_update(gm, gm_old, pm_old, sub_stage$eps)
         pm <- pm + (beta * pm_old)
         descent <- dot(gm, pm)
-        if (descent > 0) {
+        if (descent >= 0) {
           #message("Next CG direction is not a descent direction, resetting to SD")
           pm <- -gm
         }
@@ -227,7 +227,7 @@ bfgs_direction <- function(eps =  .Machine$double.eps,
         pm <- as.vector(-sub_stage$hm %*% gm)
 
         descent <- dot(gm, pm)
-        if (descent > 0) {
+        if (descent >= 0) {
           pm <- -gm
         }
       }
@@ -319,7 +319,7 @@ lbfgs_direction <- function(memory = 5, scale_inverse = FALSE,
         pm <- -pm
 
         descent <- dot(gm, pm)
-        if (descent > 0) {
+        if (descent >= 0) {
           pm <- -gm
         }
 
@@ -381,7 +381,7 @@ newton_direction <- function() {
         pm <- hessian_solve(rm, gm)
 
         descent <- dot(gm, pm)
-        if (descent > 0) {
+        if (descent >= 0) {
           pm <- -gm
         }
       }
@@ -407,7 +407,7 @@ partial_hessian_direction <- function() {
       pm <- hessian_solve(rm, gm)
 
       descent <- dot(gm, pm)
-      if (descent > 0) {
+      if (descent >= 0) {
         pm <- -gm
       }
       sub_stage$value <- pm
