@@ -192,7 +192,7 @@ test_that("Terminates semi-gracefully if gradient is non-finite", {
 test_that("Step tolerance is triggered when progress stalls", {
   # NULL abs_tol to stop it from triggering before step_tol
   res <- mize(rb0, rosenbrock_fg, "L-BFGS", memory = 5, abs_tol = NULL,
-              step_tol = .Machine$double.eps, step_next_init = "quad",
+              step_tol = 1e-7, step_next_init = "quad",
               step0 = 1)
   expect_equal(res$nf, 57)
   expect_equal(res$ng, 57)
