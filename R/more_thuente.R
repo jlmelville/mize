@@ -260,9 +260,9 @@ cvsrch <- function(phi, step0, alpha = 1,
     stop("Parameter errors detected: ", problems)
   }
 
-  # Check that pv is a descent direction.
+  # Check that pv is a descent direction: if not, return a zero step.
   if (step0$d >= 0.0) {
-    stop("Not a descent direction")
+    return(list(step = step0, info = 6, nfn = 0))
   }
   dgtest <- c1 * step0$d
 
