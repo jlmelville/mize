@@ -237,7 +237,7 @@ line_search <- function(ls_fn,
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
 
       pm <- stage$direction$value
-      if (norm2(pm) < sqrt(sub_stage$eps)) {
+      if (norm2(pm) < .Machine$double.eps) {
         sub_stage$value <- 0
         if (is_last_stage(opt, stage)) {
           opt <- set_fn_new(opt, opt$cache$fn_curr, iter)
