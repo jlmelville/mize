@@ -137,12 +137,14 @@ WolfeLineSearch <-
         message('Switching to Armijo line-search')
       }
       alpha <- mean(bracket_props(bracket_step, 'alpha'))
-
       # Do Armijo
       armijo_res <- ArmijoBacktrack(alpha, step0$f, step0$df, step0$d,
-                                    c1, LS_interp, LS_multi,
-                                    funObj, NULL, pnorm_inf,
-                                    progTol, debug)
+                                    c1 = c1, LS_interp = LS_interp,
+                                    LS_multi = LS_multi,
+                                    maxLS = maxLS - LSiter,
+                                    funObj = funObj, varargin = NULL,
+                                    pnorm_inf = pnorm_inf,
+                                    progTol = progTol, debug = debug)
 
       armijo_res$nfn <- armijo_res$nfn + funEvals
       return(armijo_res)
