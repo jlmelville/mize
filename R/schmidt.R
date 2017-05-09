@@ -464,14 +464,12 @@ ArmijoBacktrack <-
 
     while (funEvals < maxLS && (f_new > f + c1 * step * gtd || !is.finite(f_new))) {
       temp <- step
-
       if (LS_interp == 0 || !is.finite(f_new)) {
         # Ignore value of new point
         if (debug) {
           message('Fixed BT')
         }
         step <- step_down * step
-
       }
       else if (LS_interp == 1 || !is.finite(g_new)) {
         # Use function value at new point, but not its derivative
@@ -482,7 +480,6 @@ ArmijoBacktrack <-
           }
           step <- polyinterp(point_matrix(c(0, step), c(f, f_new), c(gtd, NA)),
                              0, step)
-
         }
         else {
           # Backtracking w/ cubic interpolation based on three points
@@ -523,6 +520,7 @@ ArmijoBacktrack <-
           if (debug) {
             message('Grad-Quintic BT')
           }
+
           step <- polyinterp(point_matrix(
             c(0, step, t_prev),
             c(f, f_new, f_prev),
@@ -531,6 +529,10 @@ ArmijoBacktrack <-
         }
       }
 
+
+      if (!is_finite_numeric(step)) {
+        step <- temp * 0.6
+      }
       # Adjust if change in step is too small/large
       if (step < temp * 1e-3) {
         if (debug) {
