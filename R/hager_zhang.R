@@ -77,7 +77,6 @@ line_search_hz <- function(alpha, step0, phi, c1 = 0.1, c2 = 0.9,
                            always_check_convergence = TRUE,
                            approx_armijo = TRUE,
                            verbose = FALSE) {
-
   ls_max_fn <- max_fn
   if (max_fn == 0) {
     return(list(step = step0, nfn = 0))
@@ -87,6 +86,7 @@ line_search_hz <- function(alpha, step0, phi, c1 = 0.1, c2 = 0.9,
   eps_k <- eps * abs(step0$f)
 
   step_c <- phi(alpha)
+
   nfn <- 1
   if (always_check_convergence && hz_ok_step(step_c, step0, c1, c2, eps_k,
                                              strong_curvature = strong_curvature,
@@ -141,6 +141,13 @@ line_search_hz <- function(alpha, step0, phi, c1 = 0.1, c2 = 0.9,
 
     # do some of S1 here in case it's already an ok step
     alpha_c <- secant_hz(old_bracket[[1]], old_bracket[[2]])
+
+    if (!is_finite_numeric(alpha_c)) {
+      # probably only an issue when tolerances are very low and approx armijo
+      # is off: can get NaN when bracket size approaches zero
+      LOpos <- which.min(bracket_props(bracket, 'f'))
+      return(list(step = bracket[[LOpos]], nfn = nfn))
+    }
     step_c <- phi(alpha_c)
     nfn <- nfn + 1
     if (verbose) {
