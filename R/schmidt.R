@@ -311,29 +311,31 @@ schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
     alpha_max <- max(bracket_alphas)
     alpha_min <- min(bracket_alphas)
     alpha_range <- alpha_max - alpha_min
-    if (min(alpha_max - alpha, alpha - alpha_min) / alpha_range < 0.1) {
-      if (debug) {
-        message('Interpolation close to boundary')
-      }
-
-      if (insufProgress || alpha >= alpha_max || alpha <= alpha_min) {
+    if (alpha_range > 0) {
+      if (min(alpha_max - alpha, alpha - alpha_min) / alpha_range < 0.1) {
         if (debug) {
-          message('Evaluating at 0.1 away from boundary')
+          message('Interpolation close to boundary')
         }
-        if (abs(alpha - alpha_max) < abs(alpha - alpha_min)) {
-          alpha <- alpha_max - 0.1 * alpha_range
+
+        if (insufProgress || alpha >= alpha_max || alpha <= alpha_min) {
+          if (debug) {
+            message('Evaluating at 0.1 away from boundary')
+          }
+          if (abs(alpha - alpha_max) < abs(alpha - alpha_min)) {
+            alpha <- alpha_max - 0.1 * alpha_range
+          }
+          else {
+            alpha <- alpha_min + 0.1 * alpha_range
+          }
+          insufProgress <- FALSE
         }
         else {
-          alpha <- alpha_min + 0.1 * alpha_range
+          insufProgress <- TRUE
         }
-        insufProgress <- FALSE
       }
       else {
-        insufProgress <- TRUE
+        insufProgress <- FALSE
       }
-    }
-    else {
-      insufProgress <- FALSE
     }
 
     # Evaluate new point
@@ -785,21 +787,16 @@ polyinterp <- function(points,
     g1 <- points[minPos, 3]
     g2 <- points[notMinPos, 3]
 
-    d1 <- g1 + g2 - 3 * (f1 - f2) / (x1 - x2)
-    # d1 <- points[minPos, 3] + points[notMinPos, 3] - 3 *
-    #   (points[minPos, 2] - points[notMinPos, 2]) /
-    #   (points[minPos, 1] - points[notMinPos, 1])
+    if (x1 - x2 == 0) {
+      return(x1)
+    }
 
-    #d2sq <- d1 ^ 2 - points[minPos, 3] * points[notMinPos, 3]
+    d1 <- g1 + g2 - 3 * (f1 - f2) / (x1 - x2)
     d2sq <- d1 ^ 2 - g1 * g2
 
-    if (d2sq >= 0) {
+    if (is_finite_numeric(d2sq) && d2sq >= 0) {
       d2 <- sqrt(d2sq)
 
-      # x <- points[notMinPos, 1] -
-      #   (points[notMinPos, 1] - points[minPos, 1]) *
-      #   ((points[notMinPos, 3] + d2 - d1) /
-      #      (points[notMinPos, 3] - points[minPos, 3] + 2 * d2))
       x <- x2 - (x2 - x1) * ((g2 + d2 - d1) / (g2 - g1 + 2 * d2))
       if (debug) { message("d2 is real ", formatC(d2), " x = ", formatC(x)) }
 
@@ -810,6 +807,7 @@ polyinterp <- function(points,
 
       minPos <- (xmaxBound + xminBound) / 2
     }
+
     return(minPos)
   }
 

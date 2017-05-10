@@ -487,6 +487,10 @@ step_next_quad_interp <- function(f0_prev, step0, try_newton_step = FALSE) {
 # Also safeguard the maximum absolute value of alpha.
 step_next_hz <- function(phi, alpha_prev, step0, psi1 = 0.1, psi2 = 2,
                          max_alpha = 10) {
+  if (alpha_prev < .Machine$double.eps) {
+    return(list(alpha = .Machine$double.eps, fn = 0))
+  }
+
   # I2: use if QuadStep fails
   alpha <- alpha_prev * psi2
   nfn <- 0
@@ -509,7 +513,7 @@ step_next_hz <- function(phi, alpha_prev, step0, psi1 = 0.1, psi2 = 2,
   }
 
   # safeguard alpha so it's not too large in absolute terms
-  alpha <- min(alpha, max_alpha)
+  alpha <- max(.Machine$double.eps, min(alpha, max_alpha))
 
   list(alpha = alpha, fn = nfn)
 }
