@@ -85,9 +85,13 @@ line_search_hz <- function(alpha, step0, phi, c1 = 0.1, c2 = 0.9,
   # no C or Q parameters to update
   eps_k <- eps * abs(step0$f)
 
-  step_c <- phi(alpha)
+  # Bisect alpha if needed in case initial alpha guess gives a mad or bad value
+  nfn <- 0
+  result <- find_finite(phi, alpha, max_fn, min_alpha = 0)
+  nfn <- nfn + result$nfn
+  max_fn <- max_fn - result$nfn
+  step_c <- result$step
 
-  nfn <- 1
   if (always_check_convergence && hz_ok_step(step_c, step0, c1, c2, eps_k,
                                              strong_curvature = strong_curvature,
                                              approx_armijo = approx_armijo)) {

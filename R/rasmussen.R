@@ -122,34 +122,6 @@ ras_ls <- function(phi, alpha, step0, c1 = 0.1, c2 = 0.1 / 2, ext = 3.0,
   int_result
 }
 
-# Ensure Valid Step Size
-#
-# Given an initial step size, if either the function value or the directional
-# derivative is non-finite (NaN or infinite), reduce the step size until
-# finite values are found.
-#
-# @param phi Line function.
-# @param alpha Initial step size.
-# @param min_alpha Minimum step size.
-# @param max_fn Maximum number of function evaluations allowed.
-# @return List containing:
-# \itemize{
-#   \item step Valid step size or the last step size evaluated.
-#   \item nfn Number of function evaluations.
-# }
-find_finite <- function(phi, alpha, min_alpha = 0, max_fn = 20) {
-  nfn <- 0
-  while (nfn < max_fn && alpha > min_alpha) {
-    step <- phi(alpha)
-    nfn <- nfn + 1
-    if (is.finite(step$f) && is.finite(step$df)) {
-      break
-    }
-    alpha <- (min_alpha + alpha) / 2
-  }
-  list(step = step, nfn = nfn)
-}
-
 # Increase Step Size
 #
 # @param phi Line function.

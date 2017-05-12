@@ -394,6 +394,34 @@ make_phi_alpha <- function(par, fg, pm,
   }
 }
 
+# Ensure Valid Step Size
+#
+# Given an initial step size, if either the function value or the directional
+# derivative is non-finite (NaN or infinite), reduce the step size until
+# finite values are found.
+#
+# @param phi Line function.
+# @param alpha Initial step size.
+# @param min_alpha Minimum step size.
+# @param max_fn Maximum number of function evaluations allowed.
+# @return List containing:
+# \itemize{
+#   \item step Valid step size or the last step size evaluated.
+#   \item nfn Number of function evaluations.
+# }
+find_finite <- function(phi, alpha, min_alpha = 0, max_fn = 20) {
+  nfn <- 0
+  while (nfn < max_fn && alpha > min_alpha) {
+    step <- phi(alpha)
+    nfn <- nfn + 1
+    if (is.finite(step$f) && is.finite(step$df)) {
+      break
+    }
+    alpha <- (min_alpha + alpha) / 2
+  }
+  list(step = step, nfn = nfn)
+}
+
 
 # Initial Step Length -----------------------------------------------------
 
@@ -486,7 +514,7 @@ step_next_quad_interp <- function(f0_prev, step0, try_newton_step = FALSE) {
 # steps I1-2 in the routine 'initial' of the CG_DESCENT paper
 # Also safeguard the maximum absolute value of alpha.
 step_next_hz <- function(phi, alpha_prev, step0, psi1 = 0.1, psi2 = 2,
-                         max_alpha = 10) {
+                         max_alpha = 100) {
   if (alpha_prev < .Machine$double.eps) {
     return(list(alpha = .Machine$double.eps, fn = 0))
   }
@@ -512,8 +540,7 @@ step_next_hz <- function(phi, alpha_prev, step0, psi1 = 0.1, psi2 = 2,
     }
   }
 
-  # safeguard alpha so it's not too large in absolute terms
-  alpha <- max(.Machine$double.eps, min(alpha, max_alpha))
+  alpha <- max(.Machine$double.eps, alpha)
 
   list(alpha = alpha, fn = nfn)
 }
