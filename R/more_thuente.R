@@ -24,7 +24,8 @@
 #  \href{https://www.cs.umd.edu/users/oleary/software/}{Dianne O'Leary}.
 more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf, eps = 1e-6,
                          approx_armijo = FALSE,
-                         strong_curvature = TRUE) {
+                         strong_curvature = TRUE,
+                         verbose = FALSE) {
   if (approx_armijo) {
     armijo_check_fn <- make_approx_armijo_ok_step(eps)
   }
@@ -46,7 +47,7 @@ more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf, eps = 1e-6,
     res <- cvsrch(phi, step0, alpha = alpha, c1 = c1, c2 = c2,
                   maxfev = maxfev,
                   armijo_check_fn = armijo_check_fn,
-                  wolfe_ok_step_fn = wolfe_ok_step_fn)
+                  wolfe_ok_step_fn = wolfe_ok_step_fn, verbose = verbose)
     list(step = res$step, nfn = res$nfn, ngr = res$nfn)
   }
 }
@@ -218,8 +219,10 @@ cvsrch <- function(phi, step0, alpha = 1,
                    alpha_min = 0, alpha_max = Inf,
                    maxfev = Inf, delta = 0.66,
                    armijo_check_fn = armijo_ok_step,
-                   wolfe_ok_step_fn = strong_wolfe_ok_step) {
+                   wolfe_ok_step_fn = strong_wolfe_ok_step,
+                   verbose = FALSE) {
 
+  # increase width by this amount during zoom phase
   xtrapf <- 4
   infoc <- 1
 
@@ -267,6 +270,7 @@ cvsrch <- function(phi, step0, alpha = 1,
   dgtest <- c1 * step0$d
 
   # Initialize local variables.
+  bracketed <- FALSE
   brackt <- FALSE
   stage1 <- TRUE
   nfev <- 0
@@ -303,6 +307,11 @@ cvsrch <- function(phi, step0, alpha = 1,
     step$alpha <- max(step$alpha, alpha_min)
     step$alpha <- min(step$alpha, alpha_max)
 
+    if (verbose) {
+    message("Bracket: [", formatC(stmin), ", ", formatC(stmax),
+            "] alpha = ", formatC(step$alpha))
+    }
+
     # Evaluate the function and gradient at alpha
     # and compute the directional derivative.
     step <- phi(step$alpha)
@@ -312,13 +321,17 @@ cvsrch <- function(phi, step0, alpha = 1,
                               alpha_min, alpha_max, c1, c2, nfev,
                               maxfev, xtol,
                               armijo_check_fn = armijo_check_fn,
-                              wolfe_ok_step_fn = wolfe_ok_step_fn)
+                              wolfe_ok_step_fn = wolfe_ok_step_fn,
+                              verbose = verbose)
     # Check for termination.
     if (info != 0) {
       # If an unusual termination is to occur, then set step to the best step
       # found
       if (info == 2 || info == 3 || info == 6) {
         step <- stepx
+      }
+      if (verbose) {
+        message("alpha = ", formatC(step$alpha))
       }
       return(list(step = step, info = info, nfn = nfev))
     }
@@ -349,12 +362,12 @@ cvsrch <- function(phi, step0, alpha = 1,
     # obtained but the decrease is not sufficient.
     if (stage1 && step$f <= stepx$f && !armijo_check_fn(step0, step, c1)) {
       # Define the modified function and derivative values.
-
       stepxm <- modify_step(stepx, dgtest)
       stepym <- modify_step(stepy, dgtest)
       stepm <- modify_step(step, dgtest)
 
-      step_result <- cstep(stepxm, stepym, stepm, brackt, stmin, stmax)
+      step_result <- cstep(stepxm, stepym, stepm, brackt, stmin, stmax,
+                           verbose = verbose)
 
       brackt <- step_result$brackt
       infoc <- step_result$info
@@ -369,7 +382,8 @@ cvsrch <- function(phi, step0, alpha = 1,
     } else {
       # Call cstep to update the interval of uncertainty
       # and to compute the new step.
-      step_result <- cstep(stepx, stepy, step, brackt, stmin, stmax)
+      step_result <- cstep(stepx, stepy, step, brackt, stmin, stmax,
+                           verbose = verbose)
       brackt <- step_result$brackt
       infoc <- step_result$info
       stepx <- step_result$stepx
@@ -377,12 +391,21 @@ cvsrch <- function(phi, step0, alpha = 1,
       step <- step_result$step
     }
 
+    if (!bracketed && brackt) {
+      bracketed <- TRUE
+      if (verbose) {
+        message("Bracketed")
+      }
+    }
     # Force a sufficient decrease in the size of the interval of uncertainty.
     if (brackt) {
       # if the length of I does not decrease by a factor of delta < 1
       # then use a bisection step for the next trial alpha
       width_new <- abs(stepy$alpha - stepx$alpha)
       if (width_new >= delta * width_old) {
+        if (verbose) {
+          message("Interval did not decrease sufficiently: bisecting")
+        }
         step$alpha <- stepx$alpha + 0.5 * (stepy$alpha - stepx$alpha)
       }
       width_old <- width
@@ -462,12 +485,20 @@ unmodify_step <- function(stepm, dgtest) {
 check_convergence <- function(step0, step, brackt, infoc, stmin, stmax,
                               alpha_min, alpha_max, c1, c2, nfev,
                               maxfev, xtol, armijo_check_fn = armijo_ok_step,
-                              wolfe_ok_step_fn = strong_wolfe_ok_step) {
+                              wolfe_ok_step_fn = strong_wolfe_ok_step,
+                              verbose = FALSE) {
   info <- 0
   if (!is.finite(step$f) || any(is.nan(step$df))) {
+    if (verbose) {
+      message("f/g problems")
+    }
     return(6)
   }
   if ((brackt && (step$alpha <= stmin || step$alpha >= stmax)) || infoc == 0) {
+    if (verbose) {
+      message("Rounding errors prevent further progress: stmin = ",
+            formatC(stmin), " stmax = ", formatC(stmax))
+    }
     # rounding errors prevent further progress
     info <- 6
   }
@@ -476,24 +507,43 @@ check_convergence <- function(step0, step, brackt, infoc, stmin, stmax,
       !curvature_ok_step(step0, step, c1)) {
     # reached alpha_max
     info <- 5
+    if (verbose) {
+      message("Alpha max")
+    }
+
   }
   # use of c1 in curvature check here is also in MINPACK code
   if (step$alpha == alpha_min && (!armijo_check_fn(step0, step, c1) ||
                                   curvature_ok_step(step0, step, c1))) {
     # reached alpha_min
     info <- 4
+    if (verbose) {
+      message("Alpha min")
+    }
+
   }
   if (nfev >= maxfev) {
     # maximum number of function evaluations reached
     info <- 3
+    if (verbose) {
+      message("exceeded fev")
+    }
+
   }
   if (brackt && stmax - stmin <= xtol * stmax) {
     # interval width is below xtol
     info <- 2
+    if (verbose) {
+      message("interval width is below xtol")
+    }
+
   }
   if (wolfe_ok_step_fn(step0, step, c1, c2)) {
     # success!
     info <- 1
+    if (verbose) {
+      message("Success!")
+    }
   }
   info
 }
@@ -597,7 +647,8 @@ check_convergence <- function(step0, step, brackt, infoc, stmin, stmax,
 #     Jorge J. More', David J. Thuente
 #
 #     **********
-cstep <-  function(stepx, stepy, step, brackt, stpmin, stpmax) {
+cstep <-  function(stepx, stepy, step, brackt, stpmin, stpmax,
+                   verbose = FALSE) {
 
   stx <- stepx$alpha
   fx <- stepx$f
@@ -772,6 +823,9 @@ cstep <-  function(stepx, stepy, step, brackt, stpmin, stpmax) {
   if (brackt && bound) {
     # if the new step is too close to an end point
     # replace with a (weighted) bisection (delta = 0.66 in the paper)
+    if (verbose) {
+      message("Step too close to end point, weighted bisection")
+    }
     stb <- stx + delta * (sty - stx)
     if (sty > stx) {
       stp <- min(stb, stp)

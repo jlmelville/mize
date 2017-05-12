@@ -91,7 +91,6 @@ ras_ls <- function(phi, alpha, step0, c1 = 0.1, c2 = 0.1 / 2, ext = 3.0,
   if (c2 < c1) {
     stop("Rasmussen line search: c2 < c1")
   }
-
   # extrapolate from initial alpha until either curvature condition is met
   # or the armijo condition is NOT met
   if (verbose) {
@@ -116,6 +115,9 @@ ras_ls <- function(phi, alpha, step0, c1 = 0.1, c2 = 0.1 / 2, ext = 3.0,
                                       armijo_check_fn = armijo_check_fn,
                                       wolfe_ok_step_fn = wolfe_ok_step_fn,
                                       verbose = verbose)
+  if (verbose) {
+    message("alpha = ", formatC(int_result$step$alpha))
+  }
   int_result$nfn <- int_result$nfn + nfn
   int_result
 }
@@ -267,7 +269,8 @@ interpolate_step_size <- function(phi, step0, step, c1, c2, int, max_fn = 20,
               " alpha: ", formatC(step3$alpha), " f: ", formatC(step3$f),
               " d: ", formatC(step3$d))
     }
-    step3$alpha <- tweak_interpolation(step3$alpha, step2$alpha, step4$alpha, int)
+    step3$alpha <- tweak_interpolation(step3$alpha, step2$alpha, step4$alpha,
+                                       int)
     step3 <- phi(step3$alpha)
     nfn <- nfn + 1
 
