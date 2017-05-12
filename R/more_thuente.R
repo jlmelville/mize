@@ -490,13 +490,13 @@ check_convergence <- function(step0, step, brackt, infoc, stmin, stmax,
   info <- 0
   if (!is.finite(step$f) || any(is.nan(step$df))) {
     if (verbose) {
-      message("f/g problems")
+      message("MT: f/g problems")
     }
     return(6)
   }
   if ((brackt && (step$alpha <= stmin || step$alpha >= stmax)) || infoc == 0) {
     if (verbose) {
-      message("Rounding errors prevent further progress: stmin = ",
+      message("MT: Rounding errors prevent further progress: stmin = ",
             formatC(stmin), " stmax = ", formatC(stmax))
     }
     # rounding errors prevent further progress
@@ -508,7 +508,7 @@ check_convergence <- function(step0, step, brackt, infoc, stmin, stmax,
     # reached alpha_max
     info <- 5
     if (verbose) {
-      message("Alpha max")
+      message("MT: Reached alpha max")
     }
 
   }
@@ -518,7 +518,7 @@ check_convergence <- function(step0, step, brackt, infoc, stmin, stmax,
     # reached alpha_min
     info <- 4
     if (verbose) {
-      message("Alpha min")
+      message("MT: Reached alpha min")
     }
 
   }
@@ -526,7 +526,7 @@ check_convergence <- function(step0, step, brackt, infoc, stmin, stmax,
     # maximum number of function evaluations reached
     info <- 3
     if (verbose) {
-      message("exceeded fev")
+      message("MT: exceeded fev")
     }
 
   }
@@ -534,7 +534,7 @@ check_convergence <- function(step0, step, brackt, infoc, stmin, stmax,
     # interval width is below xtol
     info <- 2
     if (verbose) {
-      message("interval width is below xtol")
+      message("MT: interval width is <= xtol: ", formatC(xtol * stmax))
     }
 
   }
