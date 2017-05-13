@@ -89,7 +89,6 @@ line_search_hz <- function(alpha, step0, phi, c1 = 0.1, c2 = 0.9,
   nfn <- 0
   result <- find_finite(phi, alpha, max_fn, min_alpha = 0)
   nfn <- nfn + result$nfn
-  max_fn <- max_fn - result$nfn
   step_c <- result$step
 
   if (always_check_convergence && hz_ok_step(step_c, step0, c1, c2, eps_k,
