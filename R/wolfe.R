@@ -387,6 +387,8 @@ make_phi_alpha <- function(par, fg, pm,
       }
     }
 
+    step$par <- y_alpha
+
     if (debug) {
       message(format_list(step))
     }
@@ -414,12 +416,16 @@ find_finite <- function(phi, alpha, min_alpha = 0, max_fn = 20) {
   while (nfn < max_fn && alpha > min_alpha) {
     step <- phi(alpha)
     nfn <- nfn + 1
-    if (is.finite(step$f) && is.finite(step$df)) {
+    if (step_is_finite(step)) {
       break
     }
     alpha <- (min_alpha + alpha) / 2
   }
   list(step = step, nfn = nfn)
+}
+
+step_is_finite <- function(step) {
+  is.finite(step$f) && is.finite(step$df)
 }
 
 
@@ -814,7 +820,7 @@ bracket_props <- function(bracket, prop) {
   unlist(sapply(bracket, `[`, prop))
 }
 
-bracket_size <- function(bracket) {
+bracket_width <- function(bracket) {
   bracket_range <- bracket_props(bracket, 'alpha')
   abs(bracket_range[2] - bracket_range[1])
 }

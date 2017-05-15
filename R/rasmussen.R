@@ -246,9 +246,9 @@ interpolate_step_size <- function(phi, step0, step, c1, c2, int, max_fn = 20,
     step3 <- phi(step3$alpha)
     nfn <- nfn + 1
 
-    if (bracket_size(list(step2, step4)) < xtol * step3$alpha) {
+    if (bracket_width(list(step2, step4)) < xtol * step3$alpha) {
       if (verbose) {
-        message("Bracket size: ", formatC(bracket_size(list(step2, step4))),
+        message("Bracket width: ", formatC(bracket_width(list(step2, step4))),
                 " reduced below tolerance ", formatC(xtol * step3$alpha))
       }
       break
