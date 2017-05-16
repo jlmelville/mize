@@ -97,7 +97,7 @@ ras_ls <- function(phi, alpha, step0, c1 = 0.1, c2 = 0.1 / 2, ext = 3.0,
     message("Bracketing with initial step size = ", formatC(alpha))
   }
   ex_result <- extrapolate_step_size(phi, alpha, step0, c1, c2, ext, int,
-                                     max_fn, armijo_check_fn)
+                                     max_fn, armijo_check_fn, verbose = verbose)
 
   step <- ex_result$step
   nfn <- ex_result$nfn
@@ -151,7 +151,8 @@ ras_ls <- function(phi, alpha, step0, c1 = 0.1, c2 = 0.1 / 2, ext = 3.0,
 # }
 extrapolate_step_size <- function(phi, alpha, step0, c1, c2, ext, int,
                                   max_fn = 20,
-                                  armijo_check_fn = armijo_ok_step) {
+                                  armijo_check_fn = armijo_ok_step,
+                                  verbose = FALSE) {
   # holds the largest finite-valued step
   finite_step <- step0
   ext_alpha <- alpha
@@ -162,9 +163,12 @@ extrapolate_step_size <- function(phi, alpha, step0, c1, c2, ext, int,
     nfn <- nfn + result$nfn
     max_fn <- max_fn - result$nfn
     if (!result$ok) {
-      message("Couldn't find a finite alpha during extrapolation")
+      if (verbose) {
+        message("Couldn't find a finite alpha during extrapolation")
+      }
       break
     }
+
     finite_step <- result$step
 
     if (extrapolation_ok(step0, finite_step, c1, c2, armijo_check_fn)) {
