@@ -823,6 +823,10 @@ bracket_width <- function(bracket) {
   abs(bracket_range[2] - bracket_range[1])
 }
 
+bracket_min_alpha <- function(bracket) {
+  min(bracket_props(bracket, 'alpha'))
+}
+
 best_bracket_step <- function(bracket) {
   LOpos <- which.min(bracket_props(bracket, 'f'))
   bracket[[LOpos]]

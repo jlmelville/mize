@@ -376,7 +376,7 @@ schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
     # hit the bracket, we give up.
     if (!step_is_finite(step_new)) {
       ffin_result <- find_finite(funObj, alpha, maxLS,
-                            min_alpha = min(bracket_props(bracket_step, 'alpha')))
+                            min_alpha = bracket_min_alpha(bracket_step))
       funEvals <- funEvals + ffin_result$nfn
       if (ffin_result$ok) {
         step_new <- ffin_result$step
