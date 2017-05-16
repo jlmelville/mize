@@ -106,9 +106,17 @@ ras_ls <- function(phi, alpha, step0, c1 = 0.1, c2 = 0.1 / 2, ext = 3.0,
     return(ex_result)
   }
 
+  if (!ex_result$ok) {
+    if (verbose) {
+      message("Bracket phase failed, returning best step")
+    }
+    return(list(step = best_bracket_step(list(step0, step))), nfn = nfn)
+  }
+
   if (verbose) {
     message("Bracket: ", format_bracket(list(step0, step)), " fn = ", nfn)
   }
+
   # interpolate until the Strong Wolfe conditions are met
   int_result <- interpolate_step_size(phi, step0, step, c1, c2, int, max_fn,
                                       xtol = xtol,
@@ -144,22 +152,33 @@ ras_ls <- function(phi, alpha, step0, c1 = 0.1, c2 = 0.1 / 2, ext = 3.0,
 extrapolate_step_size <- function(phi, alpha, step0, c1, c2, ext, int,
                                   max_fn = 20,
                                   armijo_check_fn = armijo_ok_step) {
-  step <- list(alpha = alpha)
-
+  # holds the largest finite-valued step
+  finite_step <- step0
+  ext_alpha <- alpha
+  ok <- FALSE
   nfn <- 0
   while (TRUE) {
-    result <- find_finite(phi, step$alpha, max_fn, min_alpha = 0)
+    result <- find_finite(phi, ext_alpha, max_fn, min_alpha = 0)
     nfn <- nfn + result$nfn
     max_fn <- max_fn - result$nfn
-    step <- result$step
-
-    if (extrapolation_ok(step0, step, c1, c2, armijo_check_fn) || max_fn == 0) {
+    if (!result$ok) {
+      message("Couldn't find a finite alpha during extrapolation")
       break
     }
-    step$alpha <- tweaked_extrapolation(step0, step, ext, int)
+    finite_step <- result$step
+
+    if (extrapolation_ok(step0, finite_step, c1, c2, armijo_check_fn)) {
+      ok <- TRUE
+      break
+    }
+    if (max_fn <= 0) {
+      break
+    }
+
+    ext_alpha <- tweaked_extrapolation(step0, finite_step, ext, int)
   }
 
-  list(step = step, nfn = nfn)
+  list(step = finite_step, nfn = nfn, ok = ok)
 }
 
 # Extrapolation Check

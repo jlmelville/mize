@@ -89,6 +89,12 @@ line_search_hz <- function(alpha, step0, phi, c1 = 0.1, c2 = 0.9,
   nfn <- 0
   result <- find_finite(phi, alpha, max_fn, min_alpha = 0)
   nfn <- nfn + result$nfn
+  if (!result$ok) {
+    if (verbose) {
+      message("Unable to create finite initial guess")
+    }
+    return(list(step = step0, nfn = nfn))
+  }
   step_c <- result$step
 
   if (always_check_convergence && hz_ok_step(step_c, step0, c1, c2, eps_k,

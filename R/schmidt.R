@@ -132,11 +132,12 @@ WolfeLineSearch <-
     LSiter <- bracket_res$LSiter
     done <- bracket_res$done
 
-    if (!bracket_is_legal(bracket_step)) {
+    if (!bracket_is_finite(bracket_step)) {
       if (debug) {
         message('Switching to Armijo line-search')
       }
       alpha <- mean(bracket_props(bracket_step, 'alpha'))
+
       # Do Armijo
       armijo_res <- ArmijoBacktrack(alpha, step0$f, step0$df, step0$d,
                                     c1 = c1, LS_interp = LS_interp,
@@ -165,8 +166,7 @@ WolfeLineSearch <-
       bracket_step <- zoom_res$bracket
     }
 
-    LOpos <- which.min(bracket_props(bracket_step, 'f'))
-    list(step = bracket_step[[LOpos]], nfn = funEvals)
+    list(step = best_bracket_step(bracket_step), nfn = funEvals)
   }
 
 schmidt_bracket <- function(alpha, LS_interp, maxLS, funObj, step0, c1, c2,
@@ -179,25 +179,29 @@ schmidt_bracket <- function(alpha, LS_interp, maxLS, funObj, step0, c1, c2,
                    d = fun_obj_res$d)
   funEvals <- 1
 
+  # did we find a bracket
+  ok <- FALSE
+  # did we find a step that already fulfils the line search
   done <- FALSE
 
   LSiter <- 0
   while (LSiter < maxLS) {
 
-    if (!is.finite(step_new$f) || !is.finite(step_new$df)) {
+    if (!step_is_finite(step_new)) {
       if (debug) {
         message('Extrapolated into illegal region, returning')
       }
       bracket_step <- list(step_prev, step_new)
 
       return(list(bracket = bracket_step, done = done,
-                  funEvals = funEvals, LSiter = LSiter))
+                  funEvals = funEvals, LSiter = LSiter, ok = FALSE))
     }
 
     # See if we have found the other side of the bracket
-    if (!armijo_check_fn(step0, step_new, c1) || (LSiter > 1 && step_new$f >= step_prev$f)) {
+    if (!armijo_check_fn(step0, step_new, c1) ||
+        (LSiter > 1 && step_new$f >= step_prev$f)) {
       bracket_step <- list(step_prev, step_new)
-
+      ok <- TRUE
       if (debug) {
         message('Armijo failed or step_new$f >= step_prev$f: bracket is [prev new]')
       }
@@ -205,6 +209,7 @@ schmidt_bracket <- function(alpha, LS_interp, maxLS, funObj, step0, c1, c2,
     }
     else if (curvature_check_fn(step0, step_new, c2)) {
       bracket_step <- list(step_new)
+      ok <- TRUE
       done <- TRUE
 
       if (debug) {
@@ -253,12 +258,21 @@ schmidt_bracket <- function(alpha, LS_interp, maxLS, funObj, step0, c1, c2,
     LSiter <- LSiter + 1
   }
 
-  if (LSiter == maxLS) {
-    bracket_step <- list(step0, step_new)
+  # If we ran out of ls_iters, need to repeat finite check for last iteration
+  if (!ok && !step_is_finite(step_new)) {
+    if (debug) {
+      message('Extrapolated into illegal region, returning')
+    }
   }
 
-  list(bracket = bracket_step, done = done,
-       funEvals = funEvals, LSiter = LSiter)
+  if (LSiter == maxLS && !ok) {
+    if (debug) {
+      message("max_fn reached in bracket step")
+    }
+  }
+
+  list(bracket = bracket_step, done = done, funEvals = funEvals,
+       LSiter = LSiter, ok = ok)
 }
 
 schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
@@ -280,7 +294,10 @@ schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
     HIpos <- -LOpos + 3 # 1 or 2, whichever wasn't the LOpos
 
     # Compute new trial value
-    if (LS_interp <= 1 || !bracket_is_legal(bracket_step)) {
+    if (LS_interp <= 1 || !bracket_is_finite(bracket_step)) {
+      if (!bracket_is_finite(bracket_step)) {
+        message("Bad f/g in bracket - bisecting")
+      }
       alpha <- mean(bracket_props(bracket_step, 'alpha'))
       if (debug) {
         message('Bisecting: trial step = ', formatC(alpha))
@@ -303,6 +320,14 @@ schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
       alpha <- mixedInterp_step(bracket_step, Tpos, oldLO, debug)
       if (debug) {
         message('Mixed Interpolation: trial step = ', formatC(alpha))
+      }
+    }
+
+    # Ensure that alpha is finite
+    if (!is.finite(alpha)) {
+      alpha <- mean(bracket_props(bracket_step, 'alpha'))
+      if (debug) {
+        message("Non-finite trial alpha, bisecting: alpha = ", formatC(alpha))
       }
     }
 
@@ -340,11 +365,33 @@ schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
 
     # Evaluate new point
     fun_obj_res <- funObj(alpha)
-    step_new <- list(alpha = alpha, f = fun_obj_res$f, df = fun_obj_res$df, d = fun_obj_res$d)
+    step_new <- list(alpha = alpha, f = fun_obj_res$f, df = fun_obj_res$df,
+                     d = fun_obj_res$d)
     funEvals <- funEvals + 1
 
+    # code attempts to handle non-finite values but this is easier in Matlab
+    # where NaN can safely be compared with finite values (returning 0 in all
+    # comparisons), whereas R returns NA. Instead, let's attempt to find a
+    # finite value by bisecting repeatedly. If we run out of evaluations or
+    # hit the bracket, we give up.
+    if (!step_is_finite(step_new)) {
+      ffin_result <- find_finite(funObj, alpha, maxLS,
+                            min_alpha = min(bracket_props(bracket_step, 'alpha')))
+      funEvals <- funEvals + ffin_result$nfn
+      if (ffin_result$ok) {
+        step_new <- ffin_result$step
+      }
+      else {
+        if (debug) {
+          message("Failed to find finite legal step size in zoom phase, aborting")
+        }
+        break
+      }
+    }
+
     # Update bracket
-    if (!armijo_check_fn(step0, step_new, c1) || step_new$f >= bracket_step[[LOpos]]$f) {
+    if (!armijo_check_fn(step0, step_new, c1) ||
+        step_new$f >= bracket_step[[LOpos]]$f) {
       if (debug) {
         message("New point becomes new HI")
       }
@@ -387,7 +434,7 @@ schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
 
     LSiter <- LSiter + 1
 
-    if (!done && abs(bracket_step[[1]]$alpha - bracket_step[[2]]$alpha) * pnorm_inf < progTol) {
+    if (!done && bracket_width(bracket_step) * pnorm_inf < progTol) {
       if (debug) {
         message('Line-search bracket has been reduced below progTol')
       }

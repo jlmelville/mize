@@ -254,13 +254,17 @@ cvsrch <- function(phi, step0, alpha = 1,
     problems <- c(problems, paste0("alpha_max ", formatC(alpha_max)
                          , " < alpha_min ", formatC(alpha_min)))
   }
-  if (maxfev <= 0) {
+  if (maxfev < 0) {
     params_ok <- FALSE
-    problems <- c(problems, paste0("maxfev <= 0: ", formatC(maxfev)))
+    problems <- c(problems, paste0("maxfev < 0: ", formatC(maxfev)))
   }
   if (!params_ok) {
     problems <- paste(problems, collapse = "; ")
     stop("Parameter errors detected: ", problems)
+  }
+
+  if (maxfev == 0) {
+    return(list(step = step0, nfn = 0, info = 3))
   }
 
   # Check that pv is a descent direction: if not, return a zero step.
@@ -316,6 +320,28 @@ cvsrch <- function(phi, step0, alpha = 1,
     # and compute the directional derivative.
     step <- phi(step$alpha)
     nfev <- nfev + 1
+
+    # Additional check: bisect new step until a finite value is found
+    # (most important for first iteration)
+    if (!step_is_finite(step)) {
+      if (verbose) {
+        message("MT: f/g problems with alpha = ", formatC(step$alpha))
+      }
+
+      result <- find_finite(phi, step$alpha, maxfev - nfev, min_alpha = stmin)
+      nfev <- nfev + result$nfn
+      if (!result$ok) {
+        if (verbose) {
+          message("Unable to create finite alpha")
+        }
+        return(list(step = step0, nfn = nfev, info = 7))
+      }
+      step <- result$step
+      if (verbose) {
+        message("Finite initial guess = ", formatC(step$alpha))
+      }
+    }
+
     # Test for convergence.
     info <- check_convergence(step0, step, brackt, infoc, stmin, stmax,
                               alpha_min, alpha_max, c1, c2, nfev,
@@ -323,6 +349,7 @@ cvsrch <- function(phi, step0, alpha = 1,
                               armijo_check_fn = armijo_check_fn,
                               wolfe_ok_step_fn = wolfe_ok_step_fn,
                               verbose = verbose)
+
     # Check for termination.
     if (info != 0) {
       # If an unusual termination is to occur, then set step to the best step
@@ -397,6 +424,7 @@ cvsrch <- function(phi, step0, alpha = 1,
         message("Bracketed")
       }
     }
+
     # Force a sufficient decrease in the size of the interval of uncertainty.
     if (brackt) {
       # if the length of I does not decrease by a factor of delta < 1
@@ -488,12 +516,6 @@ check_convergence <- function(step0, step, brackt, infoc, stmin, stmax,
                               wolfe_ok_step_fn = strong_wolfe_ok_step,
                               verbose = FALSE) {
   info <- 0
-  if (!is.finite(step$f) || any(is.nan(step$df))) {
-    if (verbose) {
-      message("MT: f/g problems")
-    }
-    return(6)
-  }
   if ((brackt && (step$alpha <= stmin || step$alpha >= stmax)) || infoc == 0) {
     if (verbose) {
       message("MT: Rounding errors prevent further progress: stmin = ",
@@ -528,7 +550,6 @@ check_convergence <- function(step0, step, brackt, infoc, stmin, stmax,
     if (verbose) {
       message("MT: exceeded fev")
     }
-
   }
   if (brackt && stmax - stmin <= xtol * stmax) {
     # interval width is below xtol
@@ -786,7 +807,7 @@ cstep <-  function(stepx, stepy, step, brackt, stpmin, stpmax,
     if (brackt) {
       stpc <- cubic_interpolate(sty, fy, dy, stp, fp, dp, ignoreWarnings = TRUE)
       if (is.nan(stpc)) {
-        stpf <- (sty + stp) / 2
+        stpc <- (sty + stp) / 2
       }
       stpf <- stpc
     } else if (stp > stx) {

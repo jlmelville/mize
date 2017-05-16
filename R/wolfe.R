@@ -322,7 +322,6 @@ line_search <- function(ls_fn,
                            total_max_fn = max_fn, total_max_gr = max_gr,
                            total_max_fg = max_fg, pm = pm)
         sub_stage$value <- ls_result$step$alpha
-
         opt$counts$fn <- opt$counts$fn + ls_result$nfn
         opt$counts$gr <- opt$counts$gr + ls_result$ngr
 
@@ -413,15 +412,17 @@ make_phi_alpha <- function(par, fg, pm,
 # }
 find_finite <- function(phi, alpha, min_alpha = 0, max_fn = 20) {
   nfn <- 0
+  ok <- FALSE
   while (nfn < max_fn && alpha > min_alpha) {
     step <- phi(alpha)
     nfn <- nfn + 1
     if (step_is_finite(step)) {
+      ok <- TRUE
       break
     }
     alpha <- (min_alpha + alpha) / 2
   }
-  list(step = step, nfn = nfn)
+  list(step = step, nfn = nfn, ok = ok)
 }
 
 step_is_finite <- function(step) {
@@ -534,7 +535,6 @@ step_next_hz <- function(phi, alpha_prev, step0, psi1 = 0.1, psi2 = 2,
   # minimizer of the quadratic. Otherwise, use I2.
   step_psi <- phi(alpha_prev * psi1, calc_gradient = FALSE)
   nfn <- 1
-
   if (step_psi$f <= step0$f) {
     alpha_q <- quadratic_interpolate_step(step0, step_psi)
     # A 1D quadratic Ax^2 + Bx + C is strongly convex if A > 0. Second clause in
@@ -545,9 +545,7 @@ step_next_hz <- function(phi, alpha_prev, step0, psi1 = 0.1, psi2 = 2,
       alpha <- alpha_q
     }
   }
-
   alpha <- max(.Machine$double.eps, alpha)
-
   list(alpha = alpha, fn = nfn)
 }
 
@@ -808,7 +806,7 @@ approx_armijo_ok_step <- function(step0, step, c1) {
 
 # Bracket -----------------------------------------------------------------
 
-bracket_is_legal <- function(bracket) {
+bracket_is_finite <- function(bracket) {
   all(is.finite(c(bracket_props(bracket, c('f', 'd')))))
 }
 
@@ -824,6 +822,12 @@ bracket_width <- function(bracket) {
   bracket_range <- bracket_props(bracket, 'alpha')
   abs(bracket_range[2] - bracket_range[1])
 }
+
+best_bracket_step <- function(bracket) {
+  LOpos <- which.min(bracket_props(bracket, 'f'))
+  bracket[[LOpos]]
+}
+
 
 is_in_bracket <- function(bracket, alpha) {
   is_in_range(alpha, bracket[[1]]$alpha, bracket[[2]]$alpha)
