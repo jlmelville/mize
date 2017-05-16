@@ -264,6 +264,22 @@ interpolate_step_size <- function(phi, step0, step, c1, c2, int, max_fn = 20,
                                        int)
     step3 <- phi(step3$alpha)
     nfn <- nfn + 1
+    # Check interpolated step is finite, and bisect if not, as in extrapolation
+    # stage
+    if (!step_is_finite(step3)) {
+      result <- find_finite(phi, step3$alpha, max_fn,
+                            min_alpha = bracket_min_alpha(list(step2, step4)))
+      nfn <- nfn + result$nfn
+      max_fn <- max_fn - result$nfn
+      if (!result$ok) {
+        if (verbose) {
+          message("Couldn't find a finite alpha during interpolation, aborting")
+        }
+
+        step3 <- best_bracket_step(list(step2, step4))
+        break
+      }
+    }
 
     if (bracket_width(list(step2, step4)) < xtol * step3$alpha) {
       if (verbose) {
