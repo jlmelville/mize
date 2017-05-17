@@ -364,30 +364,22 @@ schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
     }
 
     # Evaluate new point
-    fun_obj_res <- funObj(alpha)
-    step_new <- list(alpha = alpha, f = fun_obj_res$f, df = fun_obj_res$df,
-                     d = fun_obj_res$d)
-    funEvals <- funEvals + 1
 
     # code attempts to handle non-finite values but this is easier in Matlab
     # where NaN can safely be compared with finite values (returning 0 in all
     # comparisons), whereas R returns NA. Instead, let's attempt to find a
     # finite value by bisecting repeatedly. If we run out of evaluations or
     # hit the bracket, we give up.
-    if (!step_is_finite(step_new)) {
-      ffin_result <- find_finite(funObj, alpha, maxLS,
-                            min_alpha = bracket_min_alpha(bracket_step))
-      funEvals <- funEvals + ffin_result$nfn
-      if (ffin_result$ok) {
-        step_new <- ffin_result$step
+    ffin_result <- find_finite(funObj, alpha, maxLS,
+                               min_alpha = bracket_min_alpha(bracket_step))
+    funEvals <- funEvals + ffin_result$nfn
+    if (!ffin_result$ok) {
+      if (debug) {
+        message("Failed to find finite legal step size in zoom phase, aborting")
       }
-      else {
-        if (debug) {
-          message("Failed to find finite legal step size in zoom phase, aborting")
-        }
-        break
-      }
+      break
     }
+    step_new <- ffin_result$step
 
     # Update bracket
     if (!armijo_check_fn(step0, step_new, c1) ||
