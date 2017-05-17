@@ -70,8 +70,11 @@ The Wolfe line searches use conversion of Mark Schmidt's
 Carl Edward Rasmussen's
 [Matlab code](http://learning.eng.cam.ac.uk/carl/code/minimize/) and Dianne 
 O'Leary's Matlab translation of the 
-[More'-Thuente line search](https://www.cs.umd.edu/users/oleary/software/)
+[Moré-Thuente line search](https://www.cs.umd.edu/users/oleary/software/)
 algorithm from [MINPACK](http://www.netlib.org/minpack/).
+
+I also maintain the [funconstrain](https://github.com/jlmelville/funconstrain) package, which contains a large number of test 
+problems for numerical optimization.
 
 ## License
 
