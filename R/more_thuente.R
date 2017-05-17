@@ -318,29 +318,18 @@ cvsrch <- function(phi, step0, alpha = 1,
 
     # Evaluate the function and gradient at alpha
     # and compute the directional derivative.
-    step <- phi(step$alpha)
-    nfev <- nfev + 1
-
-    # Additional check: bisect new step until a finite value is found
+    # Additional check: bisect (if needed) until a finite value is found
     # (most important for first iteration)
-    if (!step_is_finite(step)) {
+    ffres <- find_finite(phi, step$alpha, maxfev - nfev, min_alpha = stmin)
+    nfev <- nfev + ffres$nfn
+    if (!ffres$ok) {
       if (verbose) {
-        message("MT: f/g problems with alpha = ", formatC(step$alpha))
+        message("Unable to create finite alpha")
       }
 
-      result <- find_finite(phi, step$alpha, maxfev - nfev, min_alpha = stmin)
-      nfev <- nfev + result$nfn
-      if (!result$ok) {
-        if (verbose) {
-          message("Unable to create finite alpha")
-        }
-        return(list(step = step0, nfn = nfev, info = 7))
-      }
-      step <- result$step
-      if (verbose) {
-        message("Finite initial guess = ", formatC(step$alpha))
-      }
+      return(list(step = step0, nfn = nfev, info = 7))
     }
+    step <- ffres$step
 
     # Test for convergence.
     info <- check_convergence(step0, step, brackt, infoc, stmin, stmax,
