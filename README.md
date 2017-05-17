@@ -73,6 +73,9 @@ O'Leary's Matlab translation of the
 [Moré-Thuente line search](https://www.cs.umd.edu/users/oleary/software/)
 algorithm from [MINPACK](http://www.netlib.org/minpack/).
 
+I also maintain the [funconstrain](https://github.com/jlmelville/funconstrain) package, which contains a large number of test 
+problems for numerical optimization.
+
 ## License
 
 [BSD 2-Clause](https://opensource.org/licenses/BSD-2-Clause).
