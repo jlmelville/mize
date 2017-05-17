@@ -169,14 +169,17 @@ line_search_hz <- function(alpha, step0, phi, c1 = 0.1, c2 = 0.9,
       }
       return(list(step = bracket[[LOpos]], nfn = nfn))
     }
-    step_c <- phi(alpha_c)
-    nfn <- nfn + 1
-    if (!step_is_finite(step_c)) {
+    fsec_res <- find_finite(phi, alpha_c, ls_max_fn,
+                            min_alpha = bracket_min_alpha(old_bracket))
+    nfn <- nfn + fsec_res$nfn
+    ls_max_fn <- max_fn - nfn
+    if (!fsec_res$ok) {
       if (verbose) {
-        message("bad secant step f/g, aborting line search")
+        message("No finite alpha during secant bisection, aborting line search")
       }
       break
     }
+    step_c <- fsec_res$step
 
     if (verbose) {
       message("S1: secant step_c alpha = ", formatC(alpha_c))
@@ -261,17 +264,18 @@ line_search_hz <- function(alpha, step0, phi, c1 = 0.1, c2 = 0.9,
       }
       # bracket size wasn't decreased sufficiently: bisection step
       alpha_c <- mean(new_range)
-      step_c <- phi(alpha_c)
-      nfn <- nfn + 1
-
-      if (!step_is_finite(step_c)) {
+      bisec_res <- find_finite(phi, alpha_c, ls_max_fn,
+                               min_alpha = bracket_min_alpha(bracket))
+      nfn <- nfn + bisec_res$nfn
+      ls_max_fn <- max_fn - nfn
+      if (!bisec_res$ok) {
         if (verbose) {
-          message("Bisected bracket step was not finite, aborting")
+          message("No finite alpha during bisection, aborting line search")
         }
         break
       }
+      step_c <- bisec_res$step
 
-      ls_max_fn <- max_fn - nfn
       if (ls_max_fn <= 0) {
         if (verbose) {
           message("Reached max_fn, returning")
@@ -330,6 +334,7 @@ bracket_hz <- function(step_c, step0, phi, eps, max_fn, theta = 0.5, rho = 5,
   # used only if bracket step fails (hit max_fn or non-finite f/g)
   step_c_old_old <- step0
 
+  ls_max_fn <- max_fn
   nfn <- 0
 
   # step_c is the latest attempt at a bracketed point
@@ -354,7 +359,7 @@ bracket_hz <- function(step_c, step0, phi, eps, max_fn, theta = 0.5, rho = 5,
         message("B2: f > phi0 + eps")
       }
 
-      if (max_fn <= 0) {
+      if (ls_max_fn <= 0) {
         # avoid returning step_c in this case, which might be outside the
         # current minimizer "basin"
         return(list(bracket = list(step_c_old_old, step_c_old), nfn = nfn,
@@ -365,7 +370,7 @@ bracket_hz <- function(step_c, step0, phi, eps, max_fn, theta = 0.5, rho = 5,
       # but HZ paper specifies step0
       bracket_sub = list(step0, step_c)
       bisect_res <- update_bracket_bisect_hz(bracket_sub, step0, phi, eps,
-                                             max_fn, theta,
+                                             ls_max_fn, theta,
                                              xtol = xtol,
                                              verbose = verbose)
       bisect_res$nfn <- bisect_res$nfn + nfn
@@ -374,7 +379,7 @@ bracket_hz <- function(step_c, step0, phi, eps, max_fn, theta = 0.5, rho = 5,
     }
 
     # B3: slope is -ve and f < f0, so we haven't passed the minimum yet
-    if (max_fn <= 0) {
+    if (ls_max_fn <= 0) {
       return(list(bracket = list(step_c_old, step_c), nfn = nfn, ok = FALSE))
     }
 
@@ -382,18 +387,19 @@ bracket_hz <- function(step_c, step0, phi, eps, max_fn, theta = 0.5, rho = 5,
     step_c_old_old <- step_c_old
     step_c_old <- step_c
     alpha <- step_c$alpha * rho
-    step_c <- phi(alpha)
-    nfn <- nfn + 1
-    if (!step_is_finite(step_c)) {
+
+    fext_res <- find_finite(phi, alpha, ls_max_fn,
+                             min_alpha = step_c$alpha)
+    nfn <- nfn + fext_res$nfn
+    ls_max_fn <- max_fn - nfn
+    if (!fext_res$ok) {
       if (verbose) {
-        message("Bad f/g during bracket extrapolation phase")
+        message("No finite alpha during extrapolation bisection, aborting line search")
       }
-      # return previous two values as bracket
       return(list(bracket = list(step_c_old_old, step_c_old), nfn = nfn,
                   ok = FALSE))
     }
-
-    max_fn <- max_fn - nfn
+    step_c <- fext_res$step
   }
 }
 
@@ -495,8 +501,8 @@ update_bracket_bisect_hz <- function(bracket, step0, phi, eps, max_fn,
       break
     }
 
-    max_fn <- ls_max_fn - nfn
-    if (max_fn <= 0) {
+    ls_max_fn <- max_fn - nfn
+    if (ls_max_fn <= 0) {
       if (verbose) {
         message("max_fn reached, aborting bisection bracket update")
       }
@@ -505,13 +511,17 @@ update_bracket_bisect_hz <- function(bracket, step0, phi, eps, max_fn,
 
     # U3a new point is (weighted) bisection of current bracket
     alpha <- (1 - theta) * res[[1]]$alpha + theta * res[[2]]$alpha
-    step_d <- phi(alpha)
-    nfn <- nfn + 1
-    if (!step_is_finite(step_d)) {
-      message("Non-finite f/g found at alpha = ", formatC(alpha),
-              " aborting bisection bracket update")
+    fwbi_res <- find_finite(phi, alpha, ls_max_fn,
+                            min_alpha = bracket_min_alpha(res))
+    nfn <- nfn + fwbi_res$nfn
+    ls_max_fn <- max_fn - nfn
+    if (!fwbi_res$ok) {
+      if (verbose) {
+        message("No finite alpha during weighted bisection, aborting line search")
+      }
       break
     }
+    step_d <- fwbi_res$step
 
     if (step_d$d >= 0) {
       # d is on +ve slope, make it the new hi and return
