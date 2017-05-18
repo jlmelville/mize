@@ -407,13 +407,16 @@ make_phi_alpha <- function(par, fg, pm,
 # @param max_fn Maximum number of function evaluations allowed.
 # @return List containing:
 # \itemize{
-#   \item step Valid step size or the last step size evaluated.
+#   \item step Valid step size or the last step size evaluated, or NULL if
+#     max_fn == 0.
 #   \item nfn Number of function evaluations.
+#   \item ok If a valid step was found
 # }
 find_finite <- function(phi, alpha, min_alpha = 0, max_fn = 20) {
   nfn <- 0
   ok <- FALSE
-  while (nfn < max_fn && alpha > min_alpha) {
+  step <- NULL
+  while (nfn < max_fn && alpha >= min_alpha) {
     step <- phi(alpha)
     nfn <- nfn + 1
     if (step_is_finite(step)) {
