@@ -97,7 +97,7 @@ schmidt_armijo_backtrack <- function(c1 = 0.05, step_down = NULL, max_fn = Inf) 
 #   c2: curvature parameter
 #   debug: display debugging information
 #   LS_interp: type of interpolation
-#   maxLS: maximum number of iterations
+#   maxLS: maximum number of funEvals (changed from matlab original)
 #   progTol: minimum allowable step length
 #   funObj: objective function
 #   varargin: parameters of objective function
@@ -129,7 +129,6 @@ WolfeLineSearch <-
                                    debug)
     bracket_step <- bracket_res$bracket
     funEvals <- bracket_res$funEvals
-    LSiter <- bracket_res$LSiter
     done <- bracket_res$done
 
     if (!bracket_is_finite(bracket_step)) {
@@ -142,7 +141,7 @@ WolfeLineSearch <-
       armijo_res <- ArmijoBacktrack(alpha, step0$f, step0$df, step0$d,
                                     c1 = c1, LS_interp = LS_interp,
                                     LS_multi = LS_multi,
-                                    maxLS = maxLS - LSiter,
+                                    maxLS = maxLS - funEvals,
                                     funObj = funObj, varargin = NULL,
                                     pnorm_inf = pnorm_inf,
                                     progTol = progTol, debug = debug)
@@ -156,7 +155,7 @@ WolfeLineSearch <-
     # surrounding a point satisfying the criteria
     # Refine the bracket until we find a point satisfying the criteria
     if (!done) {
-      maxLS <- maxLS - LSiter
+      maxLS <- maxLS - funEvals
       zoom_res <- schmidt_zoom(bracket_step, LS_interp, maxLS, funObj,
                                step0, c1, c2, pnorm_inf, progTol,
                                armijo_check_fn, curvature_check_fn,
@@ -169,32 +168,33 @@ WolfeLineSearch <-
     list(step = best_bracket_step(bracket_step), nfn = funEvals)
   }
 
+# Change from original: maxLS refers to maximum allowed funEvals, not LS iters
 schmidt_bracket <- function(alpha, LS_interp, maxLS, funObj, step0, c1, c2,
                             armijo_check_fn, curvature_check_fn, debug) {
   step_prev <- step0
 
-  # Evaluate the Objective and Gradient at the Initial Step
-  fun_obj_res <- funObj(alpha)
-  step_new <- list(alpha = alpha, f = fun_obj_res$f, df = fun_obj_res$df,
-                   d = fun_obj_res$d)
-  funEvals <- 1
 
   # did we find a bracket
   ok <- FALSE
   # did we find a step that already fulfils the line search
   done <- FALSE
 
-  LSiter <- 0
-  while (LSiter < maxLS) {
+  # Evaluate the Objective and Gradient at the Initial Step
+  ff_res <- find_finite(funObj, alpha, maxLS, min_alpha = 0)
+  funEvals <- ff_res$nfn
+  step_new <- ff_res$step
 
-    if (!step_is_finite(step_new)) {
+  LSiter <- 0
+  while (funEvals < maxLS) {
+
+    if (!ff_res$ok) {
       if (debug) {
         message('Extrapolated into illegal region, returning')
       }
       bracket_step <- list(step_prev, step_new)
 
       return(list(bracket = bracket_step, done = done,
-                  funEvals = funEvals, LSiter = LSiter, ok = FALSE))
+                  funEvals = funEvals, ok = FALSE))
     }
 
     # See if we have found the other side of the bracket
@@ -250,31 +250,30 @@ schmidt_bracket <- function(alpha, LS_interp, maxLS, funObj, step0, c1, c2,
 
     step_prev <- step_new
 
-    fun_obj_res <- funObj(alpha_new)
-    step_new <- list(alpha = alpha_new, f = fun_obj_res$f,
-                     df = fun_obj_res$df, d = fun_obj_res$d)
-    funEvals <- funEvals + 1
+    ff_res <- find_finite(funObj, alpha_new, maxLS - funEvals, min_alpha = 0)
+    funEvals <- funEvals + ff_res$nfn
+    step_new <- ff_res$step
 
     LSiter <- LSiter + 1
   }
 
-  # If we ran out of ls_iters, need to repeat finite check for last iteration
-  if (!ok && !step_is_finite(step_new)) {
+  # If we ran out of fun_evals, need to repeat finite check for last iteration
+  if (!ok && !ff_res$ok) {
     if (debug) {
       message('Extrapolated into illegal region, returning')
     }
   }
 
-  if (LSiter == maxLS && !ok) {
+  if (funEvals >= maxLS && !ok) {
     if (debug) {
       message("max_fn reached in bracket step")
     }
   }
 
-  list(bracket = bracket_step, done = done, funEvals = funEvals,
-       LSiter = LSiter, ok = ok)
+  list(bracket = bracket_step, done = done, funEvals = funEvals, ok = ok)
 }
 
+# Change from original: maxLS refers to max allowed funEvals not LSiters
 schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
                          step0, c1, c2, pnorm_inf, progTol, armijo_check_fn,
                          curvature_check_fn,
@@ -287,8 +286,7 @@ schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
   funEvals <- 0
 
   done <- FALSE
-  LSiter <- 0
-  while (!done && LSiter < maxLS) {
+  while (!done && funEvals < maxLS) {
     # Find High and Low Points in bracket
     LOpos <- which.min(bracket_props(bracket_step, 'f'))
     HIpos <- -LOpos + 3 # 1 or 2, whichever wasn't the LOpos
@@ -370,7 +368,7 @@ schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
     # comparisons), whereas R returns NA. Instead, let's attempt to find a
     # finite value by bisecting repeatedly. If we run out of evaluations or
     # hit the bracket, we give up.
-    ffin_result <- find_finite(funObj, alpha, maxLS,
+    ffin_result <- find_finite(funObj, alpha, maxLS - funEvals,
                                min_alpha = bracket_min_alpha(bracket_step))
     funEvals <- funEvals + ffin_result$nfn
     if (!ffin_result$ok) {
@@ -424,8 +422,6 @@ schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
       Tpos <- LOpos
     }
 
-    LSiter <- LSiter + 1
-
     if (!done && bracket_width(bracket_step) * pnorm_inf < progTol) {
       if (debug) {
         message('Line-search bracket has been reduced below progTol')
@@ -433,9 +429,9 @@ schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
       break
     }
   } # end of while loop
-  if (LSiter == maxLS) {
+  if (funEvals >= maxLS) {
     if (debug) {
-      message('Line Search Exceeded Maximum Line Search Iterations')
+      message('Line Search Exceeded Maximum Function Evaluations')
     }
   }
   list(bracket = bracket_step, funEvals = funEvals)
