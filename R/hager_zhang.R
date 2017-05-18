@@ -388,8 +388,7 @@ bracket_hz <- function(step_c, step0, phi, eps, max_fn, theta = 0.5, rho = 5,
     step_c_old <- step_c
     alpha <- step_c$alpha * rho
 
-    fext_res <- find_finite(phi, alpha, ls_max_fn,
-                             min_alpha = step_c$alpha)
+    fext_res <- find_finite(phi, alpha, ls_max_fn, min_alpha = step_c$alpha)
     nfn <- nfn + fext_res$nfn
     ls_max_fn <- max_fn - nfn
     if (!fext_res$ok) {

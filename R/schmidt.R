@@ -171,13 +171,12 @@ WolfeLineSearch <-
 # Change from original: maxLS refers to maximum allowed funEvals, not LS iters
 schmidt_bracket <- function(alpha, LS_interp, maxLS, funObj, step0, c1, c2,
                             armijo_check_fn, curvature_check_fn, debug) {
-  step_prev <- step0
-
-
   # did we find a bracket
   ok <- FALSE
   # did we find a step that already fulfils the line search
   done <- FALSE
+
+  step_prev <- step0
 
   # Evaluate the Objective and Gradient at the Initial Step
   ff_res <- find_finite(funObj, alpha, maxLS, min_alpha = 0)
@@ -250,7 +249,8 @@ schmidt_bracket <- function(alpha, LS_interp, maxLS, funObj, step0, c1, c2,
 
     step_prev <- step_new
 
-    ff_res <- find_finite(funObj, alpha_new, maxLS - funEvals, min_alpha = 0)
+    ff_res <- find_finite(funObj, alpha_new, maxLS - funEvals,
+                          min_alpha = step_prev$alpha)
     funEvals <- funEvals + ff_res$nfn
     step_new <- ff_res$step
 
@@ -368,16 +368,16 @@ schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
     # comparisons), whereas R returns NA. Instead, let's attempt to find a
     # finite value by bisecting repeatedly. If we run out of evaluations or
     # hit the bracket, we give up.
-    ffin_result <- find_finite(funObj, alpha, maxLS - funEvals,
-                               min_alpha = bracket_min_alpha(bracket_step))
-    funEvals <- funEvals + ffin_result$nfn
-    if (!ffin_result$ok) {
+    ff_res <- find_finite(funObj, alpha, maxLS - funEvals,
+                          min_alpha = bracket_min_alpha(bracket_step))
+    funEvals <- funEvals + ff_res$nfn
+    if (!ff_res$ok) {
       if (debug) {
         message("Failed to find finite legal step size in zoom phase, aborting")
       }
       break
     }
-    step_new <- ffin_result$step
+    step_new <- ff_res$step
 
     # Update bracket
     if (!armijo_check_fn(step0, step_new, c1) ||
