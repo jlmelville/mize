@@ -519,12 +519,11 @@ step_next_quad_interp <- function(f0_prev, step0, try_newton_step = FALSE) {
     s <- min(1, 1.01 * s)
   }
   s
+  max(.Machine$double.eps, s)
 }
 
 # steps I1-2 in the routine 'initial' of the CG_DESCENT paper
-# Also safeguard the maximum absolute value of alpha.
-step_next_hz <- function(phi, alpha_prev, step0, psi1 = 0.1, psi2 = 2,
-                         max_alpha = 100) {
+step_next_hz <- function(phi, alpha_prev, step0, psi1 = 0.1, psi2 = 2) {
   if (alpha_prev < .Machine$double.eps) {
     return(list(alpha = .Machine$double.eps, fn = 0))
   }
