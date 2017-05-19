@@ -1158,7 +1158,7 @@ test_that("NAG with approximate convex momentum and mu = 0.5 at t = 1", {
     make_stages(
       gradient_stage(
         direction = sd_direction(),
-        step_size = more_thuente_ls(c2 = 1.e-9)),
+        step_size = more_thuente_ls(c2 = 1.e-9, max_alpha_mult = 10)),
       momentum_stage(
         direction = nesterov_momentum_direction(),
         step_size = nesterov_convex_approx_step(use_init_mu = TRUE)
@@ -1197,7 +1197,8 @@ test_that("Polak Ribiere CG with Rasmussen LS", {
     make_stages(
       gradient_stage(
         direction = cg_direction(cg_update = pr_update),
-        step_size = rasmussen_ls(initial_step_length = "r")),
+        step_size = rasmussen_ls(initial_step_length = "r",
+                                 max_alpha_mult = 10)),
       verbose = FALSE))
   opt$count_res_fg <- FALSE
 

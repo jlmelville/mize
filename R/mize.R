@@ -404,6 +404,9 @@
 #' line search.
 #' @param ls_max_fg Maximum number of function or gradient evaluations allowed
 #' during a line search.
+#' @param ls_max_alpha_mult Maximum multiplier for alpha between iterations.
+#' Only applies for Wolfe-type line searches and if \code{step_next_init} is
+#' set to \code{"slope"}
 #' @param strong_curvature (Optional). If \code{TRUE} use the strong
 #' curvature condition in Wolfe line search. See the 'Line Search' section
 #' for details.
@@ -599,6 +602,7 @@ mize <- function(par, fg,
                  ls_max_fn = 20,
                  ls_max_gr = Inf,
                  ls_max_fg = Inf,
+                 ls_max_alpha_mult = Inf,
                  strong_curvature = NULL,
                  approx_armijo = NULL,
                  # Momentum
@@ -644,6 +648,7 @@ mize <- function(par, fg,
                    try_newton_step = try_newton_step,
                    ls_max_fn = ls_max_fn, ls_max_gr = ls_max_gr,
                    ls_max_fg = ls_max_fg,
+                   ls_max_alpha_mult = ls_max_alpha_mult,
                    strong_curvature = strong_curvature,
                    approx_armijo = approx_armijo,
                    mom_type = mom_type,
@@ -769,6 +774,9 @@ mize <- function(par, fg,
 #'   search.
 #' @param ls_max_fg Maximum number of function or gradient evaluations allowed
 #'   during a line search.
+#' @param ls_max_alpha_mult Maximum multiplier for alpha between iterations.
+#'   Only applies for Wolfe-type line searches and if \code{step_next_init} is
+#'   set to \code{"slope"}
 #' @param strong_curvature (Optional). If \code{TRUE} use the strong
 #'   curvature condition in Wolfe line search. See the 'Line Search' section of
 #'   \code{\link{mize}} for details.
@@ -858,6 +866,7 @@ make_mize <- function(method = "L-BFGS",
                       ls_max_fn = 20,
                       ls_max_gr = Inf,
                       ls_max_fg = Inf,
+                      ls_max_alpha_mult = Inf,
                       strong_curvature = NULL,
                       approx_armijo = NULL,
                       # Momentum
@@ -911,6 +920,9 @@ make_mize <- function(method = "L-BFGS",
   }
   if (ls_max_fg < 0) {
     stop("ls_max_fg must be non-negative")
+  }
+  if (ls_max_alpha_mult <= 0) {
+    stop("ls_max_alpha_mult must be positive")
   }
   if (restart_wait < 1) {
     stop("restart_wait must be a positive integer")
@@ -1096,6 +1108,7 @@ make_mize <- function(method = "L-BFGS",
                            max_fn = ls_max_fn,
                            max_gr = ls_max_gr,
                            max_fg = ls_max_fg,
+                           max_alpha_mult = ls_max_alpha_mult,
                            strong_curvature = strong_curvature,
                            approx_armijo = approx_armijo),
       rasmussen = rasmussen_ls(c1 = c1, c2 = c2,
@@ -1105,6 +1118,7 @@ make_mize <- function(method = "L-BFGS",
                               max_fn = ls_max_fn,
                               max_gr = ls_max_gr,
                               max_fg = ls_max_fg,
+                              max_alpha_mult = ls_max_alpha_mult,
                               strong_curvature = strong_curvature,
                               approx_armijo = approx_armijo),
       "bold driver" = bold_driver(inc_mult = step_up, dec_mult = step_down,
@@ -1117,6 +1131,7 @@ make_mize <- function(method = "L-BFGS",
                            max_fn = ls_max_fn,
                            max_gr = ls_max_gr,
                            max_fg = ls_max_fg,
+                           max_alpha_mult = ls_max_alpha_mult,
                            strong_curvature = strong_curvature,
                            approx_armijo = approx_armijo),
       backtracking = schmidt_armijo_ls(c1 = c1,
@@ -1126,7 +1141,8 @@ make_mize <- function(method = "L-BFGS",
                           step_down = step_down,
                           max_fn = ls_max_fn,
                           max_gr = ls_max_gr,
-                          max_fg = ls_max_fg),
+                          max_fg = ls_max_fg,
+                          max_alpha_mult = ls_max_alpha_mult),
       hz =  hager_zhang_ls(c1 = c1, c2 = c2,
                            initializer = tolower(step_next_init),
                            initial_step_length = step0,
@@ -1134,6 +1150,7 @@ make_mize <- function(method = "L-BFGS",
                            max_fn = ls_max_fn,
                            max_gr = ls_max_gr,
                            max_fg = ls_max_fg,
+                           max_alpha_mult = ls_max_alpha_mult,
                            strong_curvature = strong_curvature,
                            approx_armijo = approx_armijo)
     )

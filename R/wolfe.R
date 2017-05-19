@@ -8,7 +8,7 @@
 
 # More-Thuente ------------------------------------------------------------
 more_thuente_ls <- function(c1 = c2 / 2, c2 = 0.1,
-                            max_alpha_mult = 10,
+                            max_alpha_mult = Inf,
                             min_step_size = .Machine$double.eps,
                             initializer = "s",
                             initial_step_length = 1,
@@ -45,7 +45,7 @@ more_thuente_ls <- function(c1 = c2 / 2, c2 = 0.1,
 # Rasmussen ---------------------------------------------------------------
 
 rasmussen_ls <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
-                         max_alpha_mult = 10,
+                         max_alpha_mult = Inf,
                          min_step_size = .Machine$double.eps,
                          initializer = "s",
                          initial_step_length = 1,
@@ -84,7 +84,7 @@ rasmussen_ls <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
 # Schmidt (minfunc) -------------------------------------------------------
 
 schmidt_ls <- function(c1 = c2 / 2, c2 = 0.1,
-                         max_alpha_mult = 10,
+                         max_alpha_mult = Inf,
                          min_step_size = .Machine$double.eps,
                          initializer = "s",
                          initial_step_length = "schmidt",
@@ -120,7 +120,7 @@ schmidt_ls <- function(c1 = c2 / 2, c2 = 0.1,
 
 
 schmidt_armijo_ls <- function(c1 = 0.005,
-                       max_alpha_mult = 10,
+                       max_alpha_mult = Inf,
                        min_step_size = .Machine$double.eps,
                        initializer = "s",
                        initial_step_length = "schmidt",
@@ -153,7 +153,7 @@ schmidt_armijo_ls <- function(c1 = 0.005,
 # Hager-Zhang -------------------------------------------------------------
 
 hager_zhang_ls <- function(c1 = c2 / 2, c2 = 0.1,
-                           max_alpha_mult = 10,
+                           max_alpha_mult = Inf,
                            min_step_size = .Machine$double.eps,
                            initializer = "hz",
                            initial_step_length = "hz",
@@ -195,7 +195,7 @@ line_search <- function(ls_fn,
                         initializer = "slope ratio",
                         try_newton_step = FALSE,
                         initial_step_length = 1,
-                        max_alpha_mult = 10,
+                        max_alpha_mult = Inf,
                         min_step_size = .Machine$double.eps,
                         stop_at_min = TRUE,
                         debug = FALSE,

@@ -16,7 +16,8 @@ test_that("CG gives same results as minimize.m webpage", {
     make_stages(
       gradient_stage(
         direction = cg_direction(cg_update = pr_update),
-        step_size = rasmussen_ls(initial_step_length = "r")),
+        step_size = rasmussen_ls(initial_step_length = "r",
+                                 max_alpha_mult = 10)),
       verbose = FALSE))
   opt$count_res_fg <- FALSE
 
@@ -56,7 +57,8 @@ test_that("CG without fg helper function gives same results", {
     make_stages(
       gradient_stage(
         direction = cg_direction(cg_update = pr_update),
-        step_size = rasmussen_ls(initial_step_length = "r")),
+        step_size = rasmussen_ls(initial_step_length = "r",
+                                 max_alpha_mult = 10)),
       verbose = FALSE))
   opt$count_res_fg <- FALSE
 

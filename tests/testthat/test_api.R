@@ -58,7 +58,8 @@ test_that("CG with Schmidt LS", {
               cg_update = "pr+",
               max_iter = 3,
               line_search = "schmidt", c1 = 1e-4, c2 = 0.1, step0 = "schmidt",
-              step_next_init = "slope", grad_tol = 1e-5)
+              step_next_init = "slope", ls_max_alpha_mult = 10,
+              grad_tol = 1e-5)
 
   expect_equal(res$nf, 10)
   expect_equal(res$ng, 10)
@@ -70,10 +71,11 @@ test_that("CG with Schmidt LS", {
 test_that("CG with Rasmussen LS", {
   # lower case names should be ok for method, cg_update, step0 etc.
   res <- mize(rb0, rosenbrock_fg, method = "cg",
-               cg_update = "pr+",
-               max_iter = 3,
-               line_search = "ras", c1 = 5e-10, c2 = 1e-9, step0 = "ras",
-               step_next_init = "slope", grad_tol = 1e-5)
+              cg_update = "pr+",
+              max_iter = 3,
+              line_search = "ras", c1 = 5e-10, c2 = 1e-9, step0 = "ras",
+              step_next_init = "slope", ls_max_alpha_mult = 10,
+              grad_tol = 1e-5)
 
   expect_equal(res$nf, 27)
   expect_equal(res$ng, 27)
@@ -102,7 +104,7 @@ test_that("HZ CG with HZ LS", {
 test_that("CG with Rasmussen LS and max_fn termination", {
   res <- mize(rb0, rosenbrock_fg, method = "cg",
               cg_update = "pr+",
-              max_iter = 3, max_fn = 20,
+              max_iter = 3, max_fn = 20, ls_max_alpha_mult = 10,
               line_search = "ras", c1 = 5e-10, c2 = 1e-9, step0 = "ras",
               step_next_init = "slope", grad_tol = 1e-5)
 
@@ -116,11 +118,12 @@ test_that("CG with Rasmussen LS and max_fn termination", {
 
 test_that("NAG with Rasmussen LS", {
   res <- mize(rb0, rosenbrock_fg, method = "NAG",
-               nest_convex_approx = FALSE, nest_q = 0, nest_burn_in = 0,
-               max_iter = 3,
-               line_search = "rasmussen", c1 = 5e-10, c2 = 1e-9,
-               step0 = "rasmussen",
-               step_next_init = "slope", grad_tol = 1e-5)
+              nest_convex_approx = FALSE, nest_q = 0, nest_burn_in = 0,
+              max_iter = 3,
+              line_search = "rasmussen", c1 = 5e-10, c2 = 1e-9,
+              step0 = "rasmussen",
+              step_next_init = "slope", ls_max_alpha_mult = 10,
+              grad_tol = 1e-5)
 
   expect_equal(res$nf, 29)
   expect_equal(res$ng, 29)
@@ -215,7 +218,8 @@ test_that("max_fn errs on the side of caution", {
   # f for the return value and mize has determined it isn't available
   # for "free" by being calculated during the iteration
   res <- mize(rb0, rosenbrock_fg, method = "NAG", max_fn = 15,
-              step_next_init = "slope")
+              step_next_init = "slope",
+              ls_max_alpha_mult = 10)
   expect_equal(res$terminate$what, "max_fn")
   expect_equal(res$terminate$val, 14)
   expect_equal(res$nf, 14)
@@ -224,7 +228,7 @@ test_that("max_fn errs on the side of caution", {
 
 test_that("max_fg also errs on the side of caution", {
   res <- mize(rb0, rosenbrock_fg, method = "NAG", max_fg = 30,
-              step_next_init = "slope")
+              step_next_init = "slope", ls_max_alpha_mult = 10)
   expect_equal(res$terminate$what, "max_fg")
   expect_equal(res$terminate$val, 29)
   expect_equal(res$nf, 15)

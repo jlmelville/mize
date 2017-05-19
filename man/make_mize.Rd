@@ -10,13 +10,13 @@ make_mize(method = "L-BFGS", norm_direction = FALSE, scale_hess = TRUE,
   step_down = NULL, dbd_weight = 0.1, line_search = "More-Thuente",
   c1 = 1e-04, c2 = NULL, step0 = NULL, step_next_init = NULL,
   try_newton_step = NULL, ls_max_fn = 20, ls_max_gr = Inf,
-  ls_max_fg = Inf, strong_curvature = NULL, approx_armijo = NULL,
-  mom_type = NULL, mom_schedule = NULL, mom_init = NULL,
-  mom_final = NULL, mom_switch_iter = NULL, mom_linear_weight = FALSE,
-  use_init_mom = FALSE, restart = NULL, restart_wait = 10, par = NULL,
-  fg = NULL, max_iter = 100, max_fn = Inf, max_gr = Inf, max_fg = Inf,
-  abs_tol = NULL, rel_tol = abs_tol, grad_tol = NULL, ginf_tol = NULL,
-  step_tol = NULL)
+  ls_max_fg = Inf, ls_max_alpha_mult = Inf, strong_curvature = NULL,
+  approx_armijo = NULL, mom_type = NULL, mom_schedule = NULL,
+  mom_init = NULL, mom_final = NULL, mom_switch_iter = NULL,
+  mom_linear_weight = FALSE, use_init_mom = FALSE, restart = NULL,
+  restart_wait = 10, par = NULL, fg = NULL, max_iter = 100,
+  max_fn = Inf, max_gr = Inf, max_fg = Inf, abs_tol = NULL,
+  rel_tol = abs_tol, grad_tol = NULL, ginf_tol = NULL, step_tol = NULL)
 }
 \arguments{
 \item{method}{Optimization method. See 'Details' of \code{\link{mize}}.}
@@ -98,6 +98,10 @@ search.}
 
 \item{ls_max_fg}{Maximum number of function or gradient evaluations allowed
 during a line search.}
+
+\item{ls_max_alpha_mult}{Maximum multiplier for alpha between iterations.
+Only applies for Wolfe-type line searches and if \code{step_next_init} is
+set to \code{"slope"}}
 
 \item{strong_curvature}{(Optional). If \code{TRUE} use the strong
 curvature condition in Wolfe line search. See the 'Line Search' section of
