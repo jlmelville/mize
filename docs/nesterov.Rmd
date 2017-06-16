@@ -2,7 +2,12 @@
 title: "Nesterov Accelerated Gradient and Momentum"
 author: "James Melville"
 date: "December 31, 2016"
-output: html_document
+output:
+  html_document:
+    theme: cosmo
+    toc: true
+    toc_float:
+      collapsed: false
 ---
 
 ```{r setup, include=FALSE}
