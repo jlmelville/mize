@@ -10,7 +10,7 @@ test_that("can solve Ax = b", {
 
 posdef_quad_fg <- function(n = 500, min_eig = 0.001, max_eig = 1,
                            bmean = 0, bvar = 25) {
-  b <- stats::rnorm(n = n, mean = 0, sd = sqrt(bvar))
+  b <- stats::rnorm(n = n, mean = bmean, sd = sqrt(bvar))
   A <- rposdef(n = n, ev = stats::runif(n = n, min = min_eig, max = max_eig))
   quad_matrix_fg(A, b)
 }
