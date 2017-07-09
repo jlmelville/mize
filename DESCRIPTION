@@ -2,7 +2,7 @@ Package: mize
 Type: Package
 Title: Unconstrained Numerical Optimization Algorithms
 Version: 0.0.0.9000
-Authors@R: person("Melville", "James", email = "jlmelville@gmail.com",
+Authors@R: person("James", "Melville", email = "jlmelville@gmail.com",
     role = c("aut", "cre"))
 Description: Optimization algorithms implemented in R, including
     conjugate gradient (CG), Broyden-Fletcher-Goldfarb-Shanno (BFGS) and the
