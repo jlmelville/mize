@@ -1,5 +1,7 @@
 # mize
 
+[![Travis-CI Build Status](https://travis-ci.org/jlmelville/mize.svg?branch=master)](https://travis-ci.org/jlmelville/mize)
+
 Unconstrained Numerical Optimization Algorithms.
 
 `mize` can be used as a standalone function like the `stats::optim` function, 
