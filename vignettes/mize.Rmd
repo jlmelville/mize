@@ -510,7 +510,7 @@ The default for all methods mentioned so far is a Wolfe line search that
 satisfies the strong Wolfe conditions. Specifically,
 [More-Thuente line search](https://doi.org/10.1145/192115.192132), 
 converted from 
-[Dianne O'Leary's Matlab code](https://www.cs.umd.edu/users/oleary/software/).
+[Dianne O'Leary's Matlab code](http://www.cs.umd.edu/users/oleary/software/).
 This uses cubic interpolation to find a point close to a minimize along the
 search direction for each iteration. This requires a function and gradient
 evaluation at each candidate point.
