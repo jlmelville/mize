@@ -21,7 +21,7 @@
 # 286-307.
 # @seealso This code is based on a translation of the original MINPACK code
 #  for Matlab by
-#  \href{https://www.cs.umd.edu/users/oleary/software/}{Dianne O'Leary}.
+#  \href{http://www.cs.umd.edu/users/oleary/software/}{Dianne O'Leary}.
 more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf, eps = 1e-6,
                          approx_armijo = FALSE,
                          strong_curvature = TRUE,
