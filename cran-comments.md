@@ -1,6 +1,7 @@
 ## Test environments
 * ubuntu 12.04 (on travis-ci), R 3.4.0
-* win-builder (devel and release)
+* local Windows 10 build, R 3.4.1
+* win-builder (devel)
 
 ## R CMD check results
 There were no ERRORs or WARNINGs.
