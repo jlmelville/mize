@@ -235,7 +235,7 @@ parameter. This should consist of:
 \item{\code{gr}}. The gradient of the function. Takes a vector of parameters
 and returns a vector with the same length as the input parameter vector.
 \item{\code{fg}}. Optional function which calculates the function and
-gradient in thesame routine. Takes a vector of parameters and returns a list
+gradient in the same routine. Takes a vector of parameters and returns a list
 containing the function result as \code{fn} and the gradient result as
 \code{gr}.
 }
@@ -524,13 +524,13 @@ The following parameters control various stopping criteria:
   \code{par} an iteration, \code{step_tol} will not be triggered.
 }
 
-Convergence is checked between specific interations. How often is determined
+Convergence is checked between specific iterations. How often is determined
 by the \code{check_conv_every} parameter, which specifies the number of
 iterations between each check. By default, this is set for every iteration.
 
 Be aware that if \code{abs_tol} or \code{rel_tol} are non-\code{NULL}, this
 requires the function to have been evaluated at the current position at the
-end of each iteration. If the function at that  position hasn't been
+end of each iteration. If the function at that position has not been
 calculated, it will be calculated and will contribute to the total reported
 in the \code{counts} list in the return value. The calculated function value
 is cached for use by the optimizer in the next iteration, so if the optimizer
@@ -558,7 +558,7 @@ Other ways for the optimization to terminate is if an iteration generates a
 non-finite (i.e. \code{Inf} or \code{NaN}) gradient or function value.
 Some, but not all, line-searches will try to recover from the latter, by
 reducing the step size, but a non-finite gradient calculation during the
-gradient descent portion of opimization is considered catastrosphic by mizer,
+gradient descent portion of optimization is considered catastrophic by mize,
 and it will give up. Termination under non-finite gradient or function
 conditions will result in \code{terminate$what} being \code{"gr_inf"} or
 \code{"fn_inf"} respectively. Unlike the convergence criteria, the
@@ -571,7 +571,7 @@ during the optimization. As discussed above however, determining which set
 of parameters requires a function evaluation at the end of each iteration,
 which only happens if either the optimization method calculates it as part
 of its own operation or if a convergence check is being carried out during
-this iteration. Therefore, if your method doesn't carry out function
+this iteration. Therefore, if your method does not carry out function
 evaluations and \code{check_conv_every} is set to be so large that no
 convergence calculation is carried out before \code{max_iter} is reached,
 then the returned value of \code{par} is the last value encountered.

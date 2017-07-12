@@ -13,7 +13,7 @@ mize_init(opt, par, fg, max_iter = Inf, max_fn = Inf, max_gr = Inf,
 
 \item{par}{Vector of initial values for the function to be optimized over.}
 
-\item{fg}{Function and gradient list. See the documentaion of
+\item{fg}{Function and gradient list. See the documentation of
 \code{\link{mize}}.}
 
 \item{max_iter}{(Optional). Maximum number of iterations. See the

@@ -16,7 +16,7 @@ check_mize_convergence(mize_step_info)
 }
 \description{
 Updates the optimizer with information about convergence or termination,
-signalling if the optimization process should stop.
+signaling if the optimization process should stop.
 }
 \details{
 On returning from this function, the updated value of \code{opt} will

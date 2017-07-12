@@ -13,14 +13,14 @@ mize_step_summary(opt, par, fg, par_old = NULL, calc_fn = NULL)
 \item{par}{Vector of parameters at the end of the iteration, from return value
 of \code{\link{mize_step}}.}
 
-\item{fg}{Function and gradient list. See the documentaion of
+\item{fg}{Function and gradient list. See the documentation of
 \code{\link{mize}}.}
 
 \item{par_old}{(Optional). Vector of parameters at the end of the previous
 iteration. Used to calculate step size.}
 
 \item{calc_fn}{(Optional). If \code{TRUE}, force calculation of function if
-not already cached in \code{opt}, even if it wouldn't be needed for
+not already cached in \code{opt}, even if it would not be needed for
 convergence checking.}
 }
 \value{

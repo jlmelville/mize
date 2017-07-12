@@ -2,7 +2,7 @@
 
 # This is the actual Nesterov Accelerated Gradient scheme, rather than
 # the version discussed by Sutskever and popular in the deep learning community,
-# although that is also available in Mizer.
+# although that is also available in Mize.
 #
 # NAG can be considered to be an optimization consisting of:
 # 1. A steepest descent step;

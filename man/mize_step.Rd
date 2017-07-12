@@ -11,7 +11,7 @@ mize_step(opt, par, fg)
 
 \item{par}{Vector of initial values for the function to be optimized over.}
 
-\item{fg}{Function and gradient list. See the documentaion of
+\item{fg}{Function and gradient list. See the documentation of
 \code{\link{mize}}.}
 }
 \value{
