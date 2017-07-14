@@ -1,3 +1,3 @@
-# mize 0.1.0
+# mize 0.1.1
 
 Initial release.
