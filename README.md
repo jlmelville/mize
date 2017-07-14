@@ -85,3 +85,8 @@ problems for numerical optimization.
 ## License
 
 [BSD 2-Clause](https://opensource.org/licenses/BSD-2-Clause).
+
+## Acknowledgements
+
+I am grateful to Hans Werner Borchers, who provided assistance and 
+encouragement in getting mize onto CRAN.
