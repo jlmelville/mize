@@ -1,6 +1,6 @@
 # mize
 
-[![Travis-CI Build Status](https://travis-ci.org/jlmelville/mize.svg?branch=master)](https://travis-ci.org/jlmelville/mize)
+[![Travis-CI Build Status](https://travis-ci.org/jlmelville/mize.svg?branch=master)](https://travis-ci.org/jlmelville/mize) [![CRAN\_Status\_Badge](http://www.r-pkg.org/badges/version/mize)](https://cran.r-project.org/package=mize)
 
 Unconstrained Numerical Optimization Algorithms.
 
@@ -15,6 +15,10 @@ Nesterov Accelerated Gradient (NAG) and momentum-based methods, among others.
 ## Installing
 
 ```R
+# Install from CRAN:
+install.packages("ggplot2")
+
+# Or install the development version from GitHub:
 # install.packages("devtools")
 devtools::install_github("jlmelville/mize")
 ```
