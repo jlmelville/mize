@@ -1,12 +1,14 @@
 Package: mize
 Type: Package
 Title: Unconstrained Numerical Optimization Algorithms
-Version: 0.1.0
+Version: 0.1.1
 Authors@R: person("James", "Melville", email = "jlmelville@gmail.com",
     role = c("aut", "cre"))
 Description: Optimization algorithms implemented in R, including
     conjugate gradient (CG), Broyden-Fletcher-Goldfarb-Shanno (BFGS) and the
-    limited memory BFGS (L-BFGS) methods.
+    limited memory BFGS (L-BFGS) methods. Most internal parameters can be set 
+    through the call interface. The solvers hold up quite well for 
+    higher-dimensional problems.
 License: BSD 2-clause License + file LICENSE
 Encoding: UTF-8
 LazyData: true
