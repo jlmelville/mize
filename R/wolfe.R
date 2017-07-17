@@ -435,8 +435,9 @@ find_finite <- function(phi, alpha, min_alpha = 0, max_fn = 20) {
   list(step = step, nfn = nfn, ok = ok)
 }
 
+# Is the function and directional derivative a sane value?
 step_is_finite <- function(step) {
-  is.finite(step$f) && is.finite(step$df)
+  is.finite(step$f) && is.finite(step$d)
 }
 
 
