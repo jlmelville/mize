@@ -17,6 +17,10 @@ make_direction <- function(sub_stage) {
 sd_direction <- function(normalize = FALSE) {
 
   make_direction(list(
+    init = function(opt, stage, sub_stage, par, fg, iter) {
+      opt$cache$gr_curr <- NULL
+      list(opt = opt)
+    },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
       sub_stage$value <- -opt$cache$gr_curr
 
@@ -53,7 +57,11 @@ cg_direction <- function(ortho_check = FALSE, nu = 0.1,
     init = function(opt, stage, sub_stage, par, fg, iter) {
       sub_stage$value <- rep(0, length(par))
       sub_stage$pm_old <- rep(0, length(par))
-      list(sub_stage = sub_stage)
+
+      opt$cache$gr_curr <- NULL
+      opt$cache$gr_old <- NULL
+
+      list(opt = opt, sub_stage = sub_stage)
     },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
       gm <- opt$cache$gr_curr
@@ -193,7 +201,11 @@ bfgs_direction <- function(eps =  .Machine$double.eps,
       n <- length(par)
       sub_stage$value <- rep(0, n)
       sub_stage$hm <- diag(1, n)
-      list(sub_stage = sub_stage)
+
+      opt$cache$gr_curr <- NULL
+      opt$cache$gr_old <- NULL
+
+      list(opt = opt, sub_stage = sub_stage)
     },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
       gm <- opt$cache$gr_curr
@@ -255,6 +267,9 @@ lbfgs_direction <- function(memory = 5, scale_inverse = FALSE,
     k = 0,
     eps = eps,
     init = function(opt, stage, sub_stage, par, fg, iter) {
+      opt$cache$gr_curr <- NULL
+      opt$cache$gr_old <- NULL
+
       n <- length(par)
       sub_stage$value <- rep(0, n)
 
@@ -262,8 +277,7 @@ lbfgs_direction <- function(memory = 5, scale_inverse = FALSE,
       sub_stage$sms <- c()
       sub_stage$yms <- c()
 
-      list(sub_stage = sub_stage)
-
+      list(opt = opt, sub_stage = sub_stage)
     },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
       gm <- opt$cache$gr_curr
@@ -342,6 +356,10 @@ lbfgs_direction <- function(memory = 5, scale_inverse = FALSE,
 # Newton method. Requires the Hessian to be calculated, via a function hs in fg.
 newton_direction <- function() {
   make_direction(list(
+    init = function(opt, stage, sub_stage, par, fg, iter) {
+      opt$cache$gr_curr <- NULL
+      list(opt = opt)
+    },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
       gm <- opt$cache$gr_curr
       if (is.null(fg$hs)) {
