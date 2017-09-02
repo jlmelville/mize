@@ -16,7 +16,7 @@ Nesterov Accelerated Gradient (NAG) and momentum-based methods, among others.
 
 ```R
 # Install from CRAN:
-install.packages("ggplot2")
+install.packages("mize")
 
 # Or install the development version from GitHub:
 # install.packages("devtools")
