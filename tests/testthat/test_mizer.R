@@ -1234,7 +1234,7 @@ test_that("BFGS with More-Thuente LS", {
       verbose = FALSE))
   opt$count_res_fg <- FALSE
 
-  res <- opt_loop(opt, rb0, rosenbrock_fg, 3,
+  res <- opt_loop(opt, rb0, rosen_no_hess, 3,
                  store_progress = TRUE, verbose = FALSE, grad_tol = 1e-5)
 
   nfs <- c(0, 6, 11, 17)

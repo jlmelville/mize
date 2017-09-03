@@ -10,10 +10,19 @@
 #'   and returns a scalar.
 #' \item{\code{gr}}. The gradient of the function. Takes a vector of parameters
 #' and returns a vector with the same length as the input parameter vector.
-#' \item{\code{fg}}. Optional function which calculates the function and
+#' \item{\code{fg}}. (Optional) function which calculates the function and
 #' gradient in the same routine. Takes a vector of parameters and returns a list
 #' containing the function result as \code{fn} and the gradient result as
 #' \code{gr}.
+#' \item{\code{hs}}. (Optional) Hessian of the function. Takes a vector of
+#' parameters and returns a square matrix with dimensions the same as the length
+#' of the input vector, containing the second derivatives. Only required to be
+#' present if using the \code{"NEWTON"} method. If present, it will be used
+#' during initialization for the \code{"BFGS"} and \code{"SR1"} quasi-Newton
+#' methods (otherwise, they will use the identity matrix). The quasi-Newton
+#' methods are implemented using the inverse of the Hessian, and rather than
+#' directly invert the provided Hessian matrix, will use the inverse of the
+#' diagonal of the provided Hessian only.
 #' }
 #'
 #' The \code{fg} function is optional, but for some methods (e.g. line search

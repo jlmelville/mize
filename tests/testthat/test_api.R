@@ -40,7 +40,7 @@ test_that("L-BFGS with More-Thuente LS", {
 })
 
 test_that("BFGS with More-Thuente LS", {
-  res <- mize(rb0, rosenbrock_fg, method = "BFGS", max_iter = 3,
+  res <- mize(rb0, rosen_no_hess, method = "BFGS", max_iter = 3,
                line_search = "more-thuente", c1 = 5e-10, c2 = 1e-9,
               step0 = "sci",
                step_next_init = "quad", scale_hess = FALSE, grad_tol = 1e-5)
@@ -53,7 +53,7 @@ test_that("BFGS with More-Thuente LS", {
 })
 
 test_that("SR1 with More-Thuente LS", {
-  res <- mize(rb0, rosenbrock_fg, method = "SR1", max_iter = 3,
+  res <- mize(rb0, rosen_no_hess, method = "SR1", max_iter = 3,
               line_search = "more-thuente", c1 = 1e-4, c2 = 0.9,
               step0 = "sci",
               step_next_init = "quad", scale_hess = FALSE, grad_tol = 1e-5)
@@ -63,6 +63,19 @@ test_that("SR1 with More-Thuente LS", {
   expect_equal(res$f, 3.47, tol = 1e-3)
   expect_equal(res$g2n, 17.87, tol = 1e-3)
   expect_equal(res$par, c(-0.824, 0.641), tol = 1e-3)
+})
+
+test_that("SR1 with approx Hessian init", {
+  res <- mize(rb0, rosenbrock_fg, method = "SR1", max_iter = 3,
+              line_search = "more-thuente", c1 = 1e-4, c2 = 0.9,
+              step0 = "sci",
+              step_next_init = "quad", scale_hess = FALSE, grad_tol = 1e-5)
+
+  expect_equal(res$nf, 5)
+  expect_equal(res$ng, 5)
+  expect_equal(res$f, 4.124, tol = 1e-3)
+  expect_equal(res$g2n, 1.776, tol = 1e-3)
+  expect_equal(res$par, c(-1.029, 1.067), tol = 1e-3)
 })
 
 test_that("CG with Schmidt LS", {

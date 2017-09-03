@@ -200,7 +200,21 @@ bfgs_direction <- function(eps = .Machine$double.eps,
     init = function(opt, stage, sub_stage, par, fg, iter) {
       n <- length(par)
       sub_stage$value <- rep(0, n)
-      sub_stage$hm <- diag(1, n)
+      if (!is.null(fg$hs)) {
+        # we need an approximation to the inverse of the Hessian
+        # If the Hessian is provided, rather than invert it, we'll take the
+        # diagonal only, so that the inverse is just 1/diag
+        inv_hess <- 1 / (fg$hs(par) + eps)
+        # convert to a vector, discarding off diagonal elements
+        if (class(inv_hess) == "matrix") {
+          inv_hess <- diag(inv_hess)
+        }
+        # convert to matrix (can also provide vector as hs)
+        sub_stage$hm <- diag(inv_hess)
+      }
+      else {
+        sub_stage$hm <- diag(1, n)
+      }
 
       opt$cache$gr_curr <- NULL
       opt$cache$gr_old <- NULL
@@ -286,7 +300,21 @@ sr1_direction <- function(eps = .Machine$double.eps,
     init = function(opt, stage, sub_stage, par, fg, iter) {
       n <- length(par)
       sub_stage$value <- rep(0, n)
-      sub_stage$hm <- diag(1, n)
+      if (!is.null(fg$hs)) {
+        # we need an approximation to the inverse of the Hessian
+        # If the Hessian is provided, rather than invert it, we'll take the
+        # diagonal only, so that the inverse is just 1/diag
+        inv_hess <- 1 / (fg$hs(par) + eps)
+        # convert to a vector, discarding off diagonal elements
+        if (class(inv_hess) == "matrix") {
+          inv_hess <- diag(inv_hess)
+        }
+        # convert to matrix (can also provide vector as hs)
+        sub_stage$hm <- diag(inv_hess)
+      }
+      else {
+        sub_stage$hm <- diag(1, n)
+      }
 
       opt$cache$gr_curr <- NULL
       opt$cache$gr_old <- NULL
@@ -484,7 +512,7 @@ newton_direction <- function() {
         # FP Brissette, M Khalili, R Leconte, Journal of Hydrology, 2007,
         # Efficient stochastic generation of multi-site synthetic precipitation data
         # https://www.etsmtl.ca/getattachment/Unites-de-recherche/Drame/Publications/Brissette_al07---JH.pdf
-        # Rebonato, R., & Jäckel, P. (2011).
+        # Rebonato, R., & Jaeckel, P. (2011).
         # The most general methodology to create a valid correlation matrix for risk management and option pricing purposes.
         # doi 10.21314/JOR.2000.023
         # Also O(N^3)

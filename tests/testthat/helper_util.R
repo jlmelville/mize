@@ -161,6 +161,9 @@ rosenbrock_fg <- list(
   n = 2
 )
 
+rosen_no_hess <- rosenbrock_fg
+rosen_no_hess$hs <- NULL
+
 # log-sum-exp -------------------------------------------------------------
 
 # http://papers.nips.cc/paper/5322-a-differential-equation-for-modeling-nesterovs-accelerated-gradient-method-theory-and-insights.pdf
