@@ -31,6 +31,14 @@
 #' method. This stores an approximation to the inverse of the Hessian of the
 #' function being minimized, which requires storage proportional to the
 #' square of the length of \code{par}, so is unsuitable for large problems.
+#' \item \code{"SR1"} is the Symmetric Rank 1 quasi-Newton method, incorporating
+#' the safeguard given by Nocedal and Wright. Even with the safeguard, the SR1
+#' method is not guaranteed to produce a descent direction. If this happens, the
+#' BFGS update is used for that iteration instead. Note that I have not done any
+#' research into the theoretical justification for combining BFGS with SR1 like
+#' this, but empirically (comparing to BFGS results with the datasets in the
+#' funconstrain package \url{https://github.com/jlmelville/funconstrain}), it
+#' works competitively with BFGS, particularly with a loose line search.
 #' \item \code{"L-BFGS"} is the Limited memory Broyden-Fletcher-Goldfarb-Shanno
 #' quasi-Newton method. This does not store the inverse Hessian approximation
 #' directly and so can scale to larger-sized problems than \code{"BFGS"}. The
@@ -931,7 +939,7 @@ make_mize <- function(method = "L-BFGS",
   # Gradient Descent Direction configuration
   dir_type <- NULL
   method <- match.arg(tolower(method), c("sd", "newton", "phess", "cg", "bfgs",
-                                "l-bfgs", "nag", "momentum", "dbd"))
+                                "sr1", "l-bfgs", "nag", "momentum", "dbd"))
   switch(method,
     sd = {
       dir_type <- sd_direction(normalize = norm_direction)
@@ -968,6 +976,12 @@ make_mize <- function(method = "L-BFGS",
     },
     bfgs = {
       dir_type <- bfgs_direction(scale_inverse = scale_hess)
+      if (is.null(try_newton_step)) {
+        try_newton_step <- TRUE
+      }
+    },
+    sr1 = {
+      dir_type <- sr1_direction(scale_inverse = scale_hess)
       if (is.null(try_newton_step)) {
         try_newton_step <- TRUE
       }

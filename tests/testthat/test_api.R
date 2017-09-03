@@ -52,6 +52,19 @@ test_that("BFGS with More-Thuente LS", {
   expect_equal(res$par, c(-0.785, 0.558), tol = 1e-3)
 })
 
+test_that("SR1 with More-Thuente LS", {
+  res <- mize(rb0, rosenbrock_fg, method = "SR1", max_iter = 3,
+              line_search = "more-thuente", c1 = 1e-4, c2 = 0.9,
+              step0 = "sci",
+              step_next_init = "quad", scale_hess = FALSE, grad_tol = 1e-5)
+
+  expect_equal(res$nf, 6)
+  expect_equal(res$ng, 6)
+  expect_equal(res$f, 3.47, tol = 1e-3)
+  expect_equal(res$g2n, 17.87, tol = 1e-3)
+  expect_equal(res$par, c(-0.824, 0.641), tol = 1e-3)
+})
+
 test_that("CG with Schmidt LS", {
   # lower case names should be ok for method, cg_update, step0 etc.
   res <- mize(rb0, rosenbrock_fg, method = "cg",

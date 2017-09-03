@@ -193,7 +193,7 @@ cg_restart <- function(g_new, g_old, nu = 0.1) {
 # The Broyden Fletcher Goldfarb Shanno method
 # scale_inverse - if TRUE, scale the inverse Hessian approximation on the first
 #   step.
-bfgs_direction <- function(eps =  .Machine$double.eps,
+bfgs_direction <- function(eps = .Machine$double.eps,
                            scale_inverse = FALSE) {
   make_direction(list(
     eps = eps,
@@ -250,6 +250,112 @@ bfgs_direction <- function(eps =  .Machine$double.eps,
   ))
 }
 
+
+bfgs_update <- function(hm, sm, ym, eps) {
+  rho <- 1 / (dot(ym, sm) + eps)
+  im <- diag(1, nrow(hm))
+
+  rss <- rho * outer(sm, sm)
+  irsy <- im - rho * outer(sm, ym)
+  irys <- im - rho * outer(ym, sm)
+
+  (irsy %*% (hm %*% irys)) + rss
+}
+
+# SR1 ---------------------------------------------------------------------
+
+# The Symmetric-Rank-1 Update. See section 6.2 of Nocedal and Wright.
+# A Broyden-class Quasi Newton method, like BFGS, but using a rank-1 matrix
+# to update the inverse Hessian approximation (i.e. the outer product of a
+# vector).
+# The good news: SR1 updates are sometimes better approximations to the Hessian
+#  than BFGS (according to Nocedal and Wright).
+# The bad news: SR1 updates can contain a division by zero.
+# The less-bad news: we can detect this and use the last Hessian approximation
+#  in these cases.
+# The bad news 2: SR1 updates are not guaranteed to result in a positive
+#  definite Hessian, i.e. you won't always get a descent direction. As a result,
+#  Nocedal & Wright suggest using it with a trust-region approach rather than
+#  line search. Here we simply replace the SR1 update with the BFGS version to
+#  ensure a descent direction.
+sr1_direction <- function(eps = .Machine$double.eps,
+                          scale_inverse = FALSE, skip_bad_update = TRUE,
+                          tol = 1e-8, try_bfgs = TRUE) {
+  make_direction(list(
+    eps = eps,
+    init = function(opt, stage, sub_stage, par, fg, iter) {
+      n <- length(par)
+      sub_stage$value <- rep(0, n)
+      sub_stage$hm <- diag(1, n)
+
+      opt$cache$gr_curr <- NULL
+      opt$cache$gr_old <- NULL
+
+      list(opt = opt, sub_stage = sub_stage)
+    },
+    calculate = function(opt, stage, sub_stage, par, fg, iter) {
+      gm <- opt$cache$gr_curr
+      gm_old <- opt$cache$gr_old
+      if (is.null(gm_old)) {
+        pm <- -gm
+      }
+      else {
+        sm <- opt$cache$update_old
+        hm <- sub_stage$hm
+
+        ym <- gm - gm_old
+
+        if (iter == 2 && scale_inverse) {
+          # Nocedal suggests this heuristic for scaling the first
+          # approximation in Chapter 6 Section "Implementation" for BFGS
+          # Also used in the definition of L-BFGS
+          gamma <- dot(sm, ym) / dot(ym, ym)
+          hm <- gamma * hm
+        }
+
+        shy <- as.vector(sm - hm %*% ym)
+        up_den <- dot(shy, ym)
+
+        # Skip rule based on 6.26 in Nocedal & Wright
+        # Their version uses strict < rather than <=, but we want to catch
+        # the case where one of shy or ym is exactly zero
+        if (skip_bad_update && abs(up_den) <= tol * norm2(shy) * norm2(ym)) {
+          # message("SR1: skipping bad update")
+          sub_stage$hm <- hm
+        }
+        else {
+          sub_stage$hm <- hm + outer(shy, shy) / up_den
+        }
+
+        pm <- as.vector(-sub_stage$hm %*% gm)
+
+        descent <- dot(gm, pm)
+        if (descent >= 0) {
+          if (try_bfgs) {
+            # message("SR1 iter ", iter, " not a descent direction, trying BFGS")
+            hm_bfgs <- bfgs_update(hm, sm, ym, sub_stage$eps)
+            pm <- as.vector(-hm_bfgs %*% gm)
+            descent <- dot(gm, pm)
+            if (descent >= 0) {
+              # This should never happen: BFGS H should always be pd.
+              pm <- -gm
+            }
+            else {
+              # Only store the BFGS H for next iteration if it's a descent
+              sub_stage$hm <- hm_bfgs
+            }
+          }
+          else {
+            pm <- -gm
+          }
+        }
+      }
+      sub_stage$value <- pm
+      list(sub_stage = sub_stage)
+    }
+    , depends = c("gradient_old", "update_old")
+  ))
+}
 
 # L-BFGS ------------------------------------------------------------------
 
