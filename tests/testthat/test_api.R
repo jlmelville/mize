@@ -71,11 +71,11 @@ test_that("SR1 with approx Hessian init", {
               step0 = "sci",
               step_next_init = "quad", scale_hess = FALSE, grad_tol = 1e-5)
 
-  expect_equal(res$nf, 5)
-  expect_equal(res$ng, 5)
-  expect_equal(res$f, 4.124, tol = 1e-3)
-  expect_equal(res$g2n, 1.776, tol = 1e-3)
-  expect_equal(res$par, c(-1.029, 1.067), tol = 1e-3)
+  expect_equal(res$nf, 4)
+  expect_equal(res$ng, 4)
+  expect_equal(res$f, 4.432, tol = 1e-3)
+  expect_equal(res$g2n, 5.289, tol = 1e-3)
+  expect_equal(res$par, c(-1.105, 1.219), tol = 1e-3)
 })
 
 test_that("CG with Schmidt LS", {

@@ -201,16 +201,21 @@ bfgs_direction <- function(eps = .Machine$double.eps,
       n <- length(par)
       sub_stage$value <- rep(0, n)
       if (!is.null(fg$hs)) {
-        # we need an approximation to the inverse of the Hessian
+        bm <- fg$hs(par)
+        # we need an approximation to the inverse of the Hessian, H, not B
         # If the Hessian is provided, rather than invert it, we'll take the
         # diagonal only, so that the inverse is just 1/diag
-        inv_hess <- 1 / (fg$hs(par) + eps)
-        # convert to a vector, discarding off diagonal elements
-        if (class(inv_hess) == "matrix") {
-          inv_hess <- diag(inv_hess)
+        if (class(bm) == "matrix") {
+          # We allow hs to return only the diagonal of the Hessian, so
+          # we check here if we have a full-fat matrix take the diagonal of the
+          # matrix
+          bm <- diag(bm)
         }
-        # convert to matrix (can also provide vector as hs)
-        sub_stage$hm <- diag(inv_hess)
+
+        # invert
+        hm <- 1 / (bm + eps)
+        hm <- diag(hm)
+        sub_stage$hm <- hm
       }
       else {
         sub_stage$hm <- diag(1, n)
@@ -224,10 +229,7 @@ bfgs_direction <- function(eps = .Machine$double.eps,
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
       gm <- opt$cache$gr_curr
       gm_old <- opt$cache$gr_old
-      if (is.null(gm_old)) {
-        pm <- -gm
-      }
-      else {
+      if (!is.null(gm_old)) {
         sm <- opt$cache$update_old
         hm <- sub_stage$hm
 
@@ -249,14 +251,14 @@ bfgs_direction <- function(eps = .Machine$double.eps,
         irys <- im - rho * outer(ym, sm)
 
         sub_stage$hm <- (irsy %*% (hm %*% irys)) + rss
-
-        pm <- as.vector(-sub_stage$hm %*% gm)
-
-        descent <- dot(gm, pm)
-        if (descent >= 0) {
-          pm <- -gm
-        }
       }
+      pm <- as.vector(-sub_stage$hm %*% gm)
+
+      descent <- dot(gm, pm)
+      if (descent >= 0) {
+        pm <- -gm
+      }
+
       sub_stage$value <- pm
       list(sub_stage = sub_stage)
     }
@@ -324,10 +326,7 @@ sr1_direction <- function(eps = .Machine$double.eps,
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
       gm <- opt$cache$gr_curr
       gm_old <- opt$cache$gr_old
-      if (is.null(gm_old)) {
-        pm <- -gm
-      }
-      else {
+      if (!is.null(gm_old)) {
         sm <- opt$cache$update_old
         hm <- sub_stage$hm
 
@@ -354,30 +353,30 @@ sr1_direction <- function(eps = .Machine$double.eps,
         else {
           sub_stage$hm <- hm + outer(shy, shy) / up_den
         }
+      }
+      pm <- as.vector(-sub_stage$hm %*% gm)
 
-        pm <- as.vector(-sub_stage$hm %*% gm)
-
-        descent <- dot(gm, pm)
-        if (descent >= 0) {
-          if (try_bfgs) {
-            # message("SR1 iter ", iter, " not a descent direction, trying BFGS")
-            hm_bfgs <- bfgs_update(hm, sm, ym, sub_stage$eps)
-            pm <- as.vector(-hm_bfgs %*% gm)
-            descent <- dot(gm, pm)
-            if (descent >= 0) {
-              # This should never happen: BFGS H should always be pd.
-              pm <- -gm
-            }
-            else {
-              # Only store the BFGS H for next iteration if it's a descent
-              sub_stage$hm <- hm_bfgs
-            }
-          }
-          else {
+      descent <- dot(gm, pm)
+      if (descent >= 0) {
+        if (try_bfgs) {
+          # message("SR1 iter ", iter, " not a descent direction, trying BFGS")
+          hm_bfgs <- bfgs_update(hm, sm, ym, sub_stage$eps)
+          pm <- as.vector(-hm_bfgs %*% gm)
+          descent <- dot(gm, pm)
+          if (descent >= 0) {
+            # This should never happen: BFGS H should always be pd.
             pm <- -gm
           }
+          else {
+            # Only store the BFGS H for next iteration if it's a descent
+            sub_stage$hm <- hm_bfgs
+          }
+        }
+        else {
+          pm <- -gm
         }
       }
+
       sub_stage$value <- pm
       list(sub_stage = sub_stage)
     }
@@ -581,6 +580,8 @@ upper_solve <- function(um, bm) {
 # Given the upper triangular cholesky decomposition of the hessian (or an
 # approximation), U, and the gradient vector, g, solve Up = -g
 hessian_solve <- function(um, gm) {
+  # This monkeying with dimensions is a tiny hack for the case of a repeated
+  # block diagonal Hessian, so that you only need to provide the N x N block.
   nucol <- ncol(um)
   ngcol <- length(gm) / nucol
   dim(gm) <- c(nucol, ngcol)
