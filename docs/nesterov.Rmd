@@ -18,7 +18,7 @@ A way to express Nesterov Accelerated Gradient in terms of a regular momentum
 update was noted by 
 [Sutskever and co-workers](http://www.jmlr.org/proceedings/papers/v28/sutskever13.html),
 and perhaps more importantly, when it came to training neural networks, it 
-seemed to work better than classial momentum schemes. This was further
+seemed to work better than classical momentum schemes. This was further
 confirmed by [Bengio and co-workers](https://arxiv.org/abs/1212.0901), who
 provided an alternative formulation that might be easier to integrate into
 existing software.
