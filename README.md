@@ -54,18 +54,19 @@ res <- mize(rb0, rosenbrock_fg, method = "L-BFGS")
 
 # Or create an optimizer and then loop manually
 opt <- make_mize(method = "L-BFGS")
-opt <- mize_init(opt, rb0, rosebrock_fg)
+opt <- mize_init(opt, rb0, rosenbrock_fg)
 
 par <- rb0
 done <- FALSE
 iter <- 0
 while (!done) {
   iter <- iter + 1
-  res <- mize_step(opt, par, rosenbrock_fg, iter)
+  res <- mize_step(opt, par, rosenbrock_fg)
   par <- res$par
   opt <- res$opt
   # Look at res$f for current function value
   # you get to (i.e. have to) decide when to stop
+  done <- iter > 30
 }
 ```
 
