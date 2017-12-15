@@ -421,8 +421,13 @@
 #' line search.
 #' @param ls_max_fg Maximum number of function or gradient evaluations allowed
 #' during a line search.
-#' @param ls_max_alpha_mult Maximum multiplier for alpha between iterations.
-#' Only applies for Wolfe-type line searches.
+#' @param ls_max_alpha Maximum value of alpha allowed during line search. Only
+#'   applies for \code{line_search = "more-thuente"}.
+#' @param ls_max_alpha_mult The maximum value that can be attained by the ratio
+#'   of the initial guess for alpha for the current line search, to the final
+#'   value of alpha of the previous line search. Used to stop line searches
+#'   diverging due to very large initial guesses. Only applies for Wolfe-type
+#'   line searches.
 #' @param strong_curvature (Optional). If \code{TRUE} use the strong
 #' curvature condition in Wolfe line search. See the 'Line Search' section
 #' for details.
@@ -619,6 +624,7 @@ mize <- function(par, fg,
                  ls_max_gr = Inf,
                  ls_max_fg = Inf,
                  ls_max_alpha_mult = Inf,
+                 ls_max_alpha = Inf,
                  strong_curvature = NULL,
                  approx_armijo = NULL,
                  # Momentum
@@ -665,6 +671,7 @@ mize <- function(par, fg,
                    ls_max_fn = ls_max_fn, ls_max_gr = ls_max_gr,
                    ls_max_fg = ls_max_fg,
                    ls_max_alpha_mult = ls_max_alpha_mult,
+                   ls_max_alpha = ls_max_alpha,
                    strong_curvature = strong_curvature,
                    approx_armijo = approx_armijo,
                    mom_type = mom_type,
@@ -790,8 +797,13 @@ mize <- function(par, fg,
 #'   search.
 #' @param ls_max_fg Maximum number of function or gradient evaluations allowed
 #'   during a line search.
-#' @param ls_max_alpha_mult Maximum multiplier for alpha between iterations.
-#'   Only applies for Wolfe-type line searches.
+#' @param ls_max_alpha Maximum value of alpha allowed during line search. Only
+#'   applies for \code{line_search = "more-thuente"}.
+#' @param ls_max_alpha_mult The maximum value that can be attained by the ratio
+#'   of the initial guess for alpha for the current line search, to the final
+#'   value of alpha of the previous line search. Used to stop line searches
+#'   diverging due to very large initial guesses. Only applies for Wolfe-type
+#'   line searches.
 #' @param strong_curvature (Optional). If \code{TRUE} use the strong
 #'   curvature condition in Wolfe line search. See the 'Line Search' section of
 #'   \code{\link{mize}} for details.
@@ -882,6 +894,7 @@ make_mize <- function(method = "L-BFGS",
                       ls_max_gr = Inf,
                       ls_max_fg = Inf,
                       ls_max_alpha_mult = Inf,
+                      ls_max_alpha = Inf,
                       strong_curvature = NULL,
                       approx_armijo = NULL,
                       # Momentum
@@ -938,6 +951,9 @@ make_mize <- function(method = "L-BFGS",
   }
   if (ls_max_alpha_mult <= 0) {
     stop("ls_max_alpha_mult must be positive")
+  }
+  if (ls_max_alpha <= 0) {
+    stop("ls_max_alpha must be positive")
   }
   if (restart_wait < 1) {
     stop("restart_wait must be a positive integer")
@@ -1129,6 +1145,7 @@ make_mize <- function(method = "L-BFGS",
                            max_fn = ls_max_fn,
                            max_gr = ls_max_gr,
                            max_fg = ls_max_fg,
+                           max_alpha = ls_max_alpha,
                            max_alpha_mult = ls_max_alpha_mult,
                            strong_curvature = strong_curvature,
                            approx_armijo = approx_armijo),

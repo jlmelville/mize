@@ -23,6 +23,7 @@
 #  for Matlab by
 #  \href{http://www.cs.umd.edu/users/oleary/software/}{Dianne O'Leary}.
 more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf, eps = 1e-6,
+                         alpha_max = Inf,
                          approx_armijo = FALSE,
                          strong_curvature = TRUE,
                          verbose = FALSE) {
@@ -45,7 +46,7 @@ more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf, eps = 1e-6,
       return(list(step = step0, nfn = 0, ngr = 0))
     }
     res <- cvsrch(phi, step0, alpha = alpha, c1 = c1, c2 = c2,
-                  maxfev = maxfev,
+                  maxfev = maxfev, alpha_max = alpha_max,
                   armijo_check_fn = armijo_check_fn,
                   wolfe_ok_step_fn = wolfe_ok_step_fn, verbose = verbose)
     list(step = res$step, nfn = res$nfn, ngr = res$nfn)

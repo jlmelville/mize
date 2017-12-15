@@ -8,6 +8,7 @@
 
 # More-Thuente ------------------------------------------------------------
 more_thuente_ls <- function(c1 = c2 / 2, c2 = 0.1,
+                            max_alpha = Inf,
                             max_alpha_mult = Inf,
                             min_step_size = .Machine$double.eps,
                             initializer = "s",
@@ -29,6 +30,7 @@ more_thuente_ls <- function(c1 = c2 / 2, c2 = 0.1,
   max_ls_fn <- min(max_fn, max_gr, floor(max_fg / 2))
 
   line_search(more_thuente(c1 = c1, c2 = c2,
+                           alpha_max = max_alpha,
                            max_fn = max_ls_fn,
                            strong_curvature = strong_curvature,
                            approx_armijo = approx_armijo),
