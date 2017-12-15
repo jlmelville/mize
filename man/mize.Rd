@@ -104,8 +104,7 @@ line search.}
 during a line search.}
 
 \item{ls_max_alpha_mult}{Maximum multiplier for alpha between iterations.
-Only applies for Wolfe-type line searches and if \code{step_next_init} is
-set to \code{"slope"}}
+Only applies for Wolfe-type line searches.}
 
 \item{strong_curvature}{(Optional). If \code{TRUE} use the strong
 curvature condition in Wolfe line search. See the 'Line Search' section

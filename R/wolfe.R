@@ -275,21 +275,28 @@ line_search <- function(ls_fn,
                                   calc_gradient_default = TRUE, debug = debug)
 
 
-      # described on p59 of Nocedal and Wright
+      alpha_next <- 0
       if (initializer == "slope ratio" && !is.null(sub_stage$d0)) {
-        sub_stage$value <- step_next_slope_ratio(alpha_prev, sub_stage$d0,
-                                            step0, eps, max_alpha_mult)
+        # described on p59 of Nocedal and Wright
+        alpha_next <- step_next_slope_ratio(alpha_prev, sub_stage$d0,
+                                            step0, eps)
       }
       else if (initializer == "quadratic" && !is.null(sub_stage$f0)) {
         # quadratic interpolation
-        sub_stage$value <- step_next_quad_interp(sub_stage$f0, step0,
+        alpha_next <- step_next_quad_interp(sub_stage$f0, step0,
                                             try_newton_step = try_newton_step)
       }
       else if (initializer == "hz" && !is.null(alpha_prev)) {
         step_next_res <- step_next_hz(phi_alpha, alpha_prev, step0)
-        sub_stage$value <- step_next_res$alpha
+        alpha_next <- step_next_res$alpha
         opt$counts$fn <- opt$counts$fn + step_next_res$fn
       }
+
+      # Prevent the next step initial guess being too large
+      if (!is.null(alpha_prev) && alpha_next / alpha_prev > max_alpha_mult) {
+        alpha_next <- alpha_prev * max_alpha_mult
+      }
+      sub_stage$value <- alpha_next
 
       if (is.null(sub_stage$value) || sub_stage$value <= 0) {
         sub_stage$value <- guess_alpha0(initializer0,
@@ -511,12 +518,11 @@ step0_hz <- function(x0, f0, gr0, psi0 = 0.01) {
 
 # described on p59 of Nocedal and Wright
 # slope ratio method
-step_next_slope_ratio <- function(alpha_prev, d0_prev, step0, eps,
-                                  max_alpha_mult) {
+step_next_slope_ratio <- function(alpha_prev, d0_prev, step0, eps) {
   # NB the p vector must be a descent direction or the directional
   # derivative will be positive => a negative initial step size!
   slope_ratio <- d0_prev / (step0$d + eps)
-  s <- alpha_prev * min(max_alpha_mult, slope_ratio)
+  s <- alpha_prev * slope_ratio
   max(s, eps)
 }
 
