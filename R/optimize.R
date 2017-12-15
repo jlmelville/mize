@@ -205,6 +205,10 @@ opt_report <- function(step_info, print_time = FALSE, print_par = FALSE,
                 , " step = ", formatC(step_info$step)
   )
 
+  if (!is.null(step_info$alpha)) {
+    msg <- paste0(msg, " alpha = ", formatC(step_info$alpha))
+  }
+
   if (print_time) {
     msg <- paste(format(Sys.time(), "%H:%M:%S"), msg, collapse = " ")
   }
