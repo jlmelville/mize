@@ -203,10 +203,12 @@ line_search <- function(ls_fn,
                         debug = FALSE,
                         eps = .Machine$double.eps) {
 
-  initializer <- match.arg(tolower(initializer),
+  if (!is.numeric(initializer)) {
+    initializer <- match.arg(tolower(initializer),
                            c("slope ratio", "quadratic", "hz", "hager-zhang"))
-  if (initializer == "hager-zhang") {
-    initializer <- "hz"
+    if (initializer == "hager-zhang") {
+      initializer <- "hz"
+    }
   }
 
   if (!is.numeric(initial_step_length)) {
@@ -278,7 +280,10 @@ line_search <- function(ls_fn,
 
 
       alpha_next <- 0
-      if (initializer == "slope ratio" && !is.null(sub_stage$d0)) {
+      if (is.numeric(initializer)) {
+        alpha_next <- initializer
+      }
+      else if (initializer == "slope ratio" && !is.null(sub_stage$d0)) {
         # described on p59 of Nocedal and Wright
         alpha_next <- step_next_slope_ratio(alpha_prev, sub_stage$d0,
                                             step0, eps)

@@ -145,13 +145,16 @@
 #'      the CG_DESCENT software.
 #'    }
 #'    These arguments can be abbreviated.
-#'    \item{\code{step_next_init}} How to initialize subsequent line searches
-#'    after the first, using results from the previous line search:
+#'    \item{\code{step_next_init}} How to initialize alpha value of subsequent
+#'    line searches after the first, using results from the previous line search:
 #'    \itemize{
 #'      \item{\code{"slope ratio"}} Slope ratio method.
 #'      \item{\code{"quadratic"}} Quadratic interpolation method.
 #'      \item{\code{"hz"}} The QuadStep method of Hager and Zhang (2006) for
 #'      the CG_DESCENT software.
+#'      \item{scalar numeric} Set to a numeric value (e.g.
+#'      \code{step_next_init = 1}) to explicitly set alpha to this value
+#'      initially.
 #'    }
 #'    These arguments can be abbreviated. Details on the first two methods
 #'    are provided by Nocedal and Wright.
@@ -958,6 +961,9 @@ make_mize <- function(method = "L-BFGS",
   if (restart_wait < 1) {
     stop("restart_wait must be a positive integer")
   }
+  if (is.numeric(step_next_init) && step_next_init <= 0) {
+    stop("numeric argument for step_next_init must be positive")
+  }
 
   # Gradient Descent Direction configuration
   dir_type <- NULL
@@ -1137,9 +1143,12 @@ make_mize <- function(method = "L-BFGS",
       }
     }
 
+    if (!is.numeric(step_next_init)) {
+      step_next_init <- tolower(step_next_init)
+    }
     step_type <- switch(line_search,
       mt = more_thuente_ls(c1 = c1, c2 = c2,
-                           initializer = tolower(step_next_init),
+                           initializer = step_next_init,
                            initial_step_length = step0,
                            try_newton_step = try_newton_step,
                            max_fn = ls_max_fn,
@@ -1150,7 +1159,7 @@ make_mize <- function(method = "L-BFGS",
                            strong_curvature = strong_curvature,
                            approx_armijo = approx_armijo),
       rasmussen = rasmussen_ls(c1 = c1, c2 = c2,
-                              initializer = tolower(step_next_init),
+                              initializer = step_next_init,
                               initial_step_length = step0,
                               try_newton_step = try_newton_step,
                               max_fn = ls_max_fn,
@@ -1163,7 +1172,7 @@ make_mize <- function(method = "L-BFGS",
                                   max_fn = ls_max_fn),
       constant = constant_step_size(value = step0),
       schmidt = schmidt_ls(c1 = c1, c2 = c2,
-                           initializer = tolower(step_next_init),
+                           initializer = step_next_init,
                            initial_step_length = step0,
                            try_newton_step = try_newton_step,
                            max_fn = ls_max_fn,
@@ -1173,7 +1182,7 @@ make_mize <- function(method = "L-BFGS",
                            strong_curvature = strong_curvature,
                            approx_armijo = approx_armijo),
       backtracking = schmidt_armijo_ls(c1 = c1,
-                          initializer = tolower(step_next_init),
+                          initializer = step_next_init,
                           initial_step_length = step0,
                           try_newton_step = try_newton_step,
                           step_down = step_down,
@@ -1182,7 +1191,7 @@ make_mize <- function(method = "L-BFGS",
                           max_fg = ls_max_fg,
                           max_alpha_mult = ls_max_alpha_mult),
       hz =  hager_zhang_ls(c1 = c1, c2 = c2,
-                           initializer = tolower(step_next_init),
+                           initializer = step_next_init,
                            initial_step_length = step0,
                            try_newton_step = try_newton_step,
                            max_fn = ls_max_fn,
