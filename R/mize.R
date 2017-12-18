@@ -684,6 +684,10 @@ mize <- function(par, fg,
                    mom_switch_iter = mom_switch_iter,
                    mom_linear_weight = mom_linear_weight,
                    max_iter = max_iter,
+                   max_fn = max_fn, max_gr = max_gr, max_fg = max_fg,
+                   abs_tol = abs_tol, rel_tol = rel_tol,
+                   grad_tol = grad_tol, ginf_tol = ginf_tol,
+                   step_tol = step_tol,
                    restart = restart,
                    restart_wait = restart_wait)
   if (max_iter < 0) {
@@ -1288,13 +1292,21 @@ make_mize <- function(method = "L-BFGS",
     }
   }
 
+  opt$convergence <- list(
+    max_iter = max_iter,
+    max_fn = max_fn,
+    max_gr = max_gr,
+    max_fg = max_fg,
+    abs_tol = abs_tol,
+    rel_tol = rel_tol,
+    grad_tol = grad_tol,
+    ginf_tol = ginf_tol,
+    step_tol = step_tol
+  )
+
   # Initialize for specific dataset if par and fg are provided
   if (!is.null(par) && !is.null(fg)) {
-    opt <- mize_init(opt, par, fg, max_iter = max_iter,
-                     max_fn = max_fn, max_gr = max_gr, max_fg = max_fg,
-                     abs_tol = abs_tol, rel_tol = rel_tol,
-                     grad_tol = grad_tol, ginf_tol = ginf_tol,
-                     step_tol = step_tol)
+    opt <- mize_init(opt, par, fg)
   }
 
   opt
@@ -1530,17 +1542,36 @@ mize_init <- function(opt, par, fg,
   opt <- register_hooks(opt)
   opt$iter <- 0
   opt <- life_cycle_hook("opt", "init", opt, par, fg, opt$iter)
-  opt$convergence <- list(
-    max_iter = max_iter,
-    max_fn = max_fn,
-    max_gr = max_gr,
-    max_fg = max_fg,
-    abs_tol = abs_tol,
-    rel_tol = rel_tol,
-    grad_tol = grad_tol,
-    ginf_tol = ginf_tol,
-    step_tol = step_tol
-  )
+  if (is.null(opt$convergence)) {
+    opt$convergence <- list()
+  }
+  if (is.null(opt$convergence$max_iter)) {
+    opt$convergence$max_iter <- max_iter
+  }
+  if (is.null(opt$convergence$max_fn)) {
+    opt$convergence$max_fn <- max_fn
+  }
+  if (is.null(opt$convergence$max_gr)) {
+    opt$convergence$max_gr <- max_gr
+  }
+  if (is.null(opt$convergence$max_fg)) {
+    opt$convergence$max_fg <- max_fg
+  }
+  if (is.null(opt$convergence$abs_tol)) {
+    opt$convergence$abs_tol <- abs_tol
+  }
+  if (is.null(opt$convergence$rel_tol)) {
+    opt$convergence$rel_tol <- rel_tol
+  }
+  if (is.null(opt$convergence$grad_tol)) {
+    opt$convergence$grad_tol <- grad_tol
+  }
+  if (is.null(opt$convergence$ginf_tol)) {
+    opt$convergence$ginf_tol <- ginf_tol
+  }
+  if (is.null(opt$convergence$step_tol)) {
+    opt$convergence$step_tol <- step_tol
+  }
   opt <- opt_clear_cache(opt)
   opt$is_initialized <- TRUE
   opt
