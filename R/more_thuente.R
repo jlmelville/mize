@@ -26,6 +26,7 @@ more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf, eps = 1e-6,
                          alpha_max = Inf,
                          approx_armijo = FALSE,
                          strong_curvature = TRUE,
+                         safeguard_cubic = FALSE,
                          verbose = FALSE) {
   if (approx_armijo) {
     armijo_check_fn <- make_approx_armijo_ok_step(eps)
@@ -48,7 +49,9 @@ more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf, eps = 1e-6,
     res <- cvsrch(phi, step0, alpha = alpha, c1 = c1, c2 = c2,
                   maxfev = maxfev, alpha_max = alpha_max,
                   armijo_check_fn = armijo_check_fn,
-                  wolfe_ok_step_fn = wolfe_ok_step_fn, verbose = verbose)
+                  wolfe_ok_step_fn = wolfe_ok_step_fn,
+                  safeguard_cubic = safeguard_cubic,
+                  verbose = verbose)
     list(step = res$step, nfn = res$nfn, ngr = res$nfn)
   }
 }
@@ -221,6 +224,7 @@ cvsrch <- function(phi, step0, alpha = 1,
                    maxfev = Inf, delta = 0.66,
                    armijo_check_fn = armijo_ok_step,
                    wolfe_ok_step_fn = strong_wolfe_ok_step,
+                   safeguard_cubic = FALSE,
                    verbose = FALSE) {
 
   # increase width by this amount during zoom phase
@@ -384,6 +388,7 @@ cvsrch <- function(phi, step0, alpha = 1,
       stepm <- modify_step(step, dgtest)
 
       step_result <- cstep(stepxm, stepym, stepm, brackt, stmin, stmax,
+                           safeguard_cubic = safeguard_cubic,
                            verbose = verbose)
 
       brackt <- step_result$brackt
@@ -400,6 +405,7 @@ cvsrch <- function(phi, step0, alpha = 1,
       # Call cstep to update the interval of uncertainty
       # and to compute the new step.
       step_result <- cstep(stepx, stepy, step, brackt, stmin, stmax,
+                           safeguard_cubic = safeguard_cubic,
                            verbose = verbose)
       brackt <- step_result$brackt
       infoc <- step_result$info
@@ -659,6 +665,7 @@ check_convergence <- function(step0, step, brackt, infoc, stmin, stmax,
 #
 #     **********
 cstep <-  function(stepx, stepy, step, brackt, stpmin, stpmax,
+                   safeguard_cubic = FALSE,
                    verbose = FALSE) {
 
   stx <- stepx$alpha
@@ -708,7 +715,7 @@ cstep <-  function(stepx, stepy, step, brackt, stpmin, stpmax,
     }
     else {
       if (abs(stpc - stx) < abs(stpq - stx)) {
-        stpf <- stpc
+        stpf <- ifelse(safeguard_cubic, ensure_min_alpha(stpc, stx, sty), stpc)
       } else {
         stpf <- stpc + (stpq - stpc) / 2
       }
@@ -730,7 +737,7 @@ cstep <-  function(stepx, stepy, step, brackt, stpmin, stpmax,
     }
     else {
       if (abs(stpc - stp) > abs(stpq - stp)) {
-        stpf <- stpc
+        stpf <- ifelse(safeguard_cubic, ensure_min_alpha(stpc, stx, sty), stpc)
       } else {
         stpf <- stpq
       }
@@ -799,7 +806,7 @@ cstep <-  function(stepx, stepy, step, brackt, stpmin, stpmax,
       if (is.nan(stpc)) {
         stpc <- (sty + stp) / 2
       }
-      stpf <- stpc
+      stpf <- ifelse(safeguard_cubic, ensure_min_alpha(stpc, stx, sty), stpc)
     } else if (stp > stx) {
       stpf <- stpmax
     } else {
@@ -849,4 +856,32 @@ cstep <-  function(stepx, stepy, step, brackt, stpmin, stpmax,
     stepy = list(alpha = sty, f = fy, d = dy, df = dfy),
     step = list(alpha = stp, f = fp, d = dp, df = dfp),
     brackt = brackt, info = info)
+}
+
+
+# Line search modification to prevent cubic interpolant being too close to the
+# lower bound, suggested in:
+#
+# Xie, D., & Schlick, T. (2002).
+# A more lenient stopping rule for line search algorithms.
+# Optimization Methods and Software, 17(4), 683-700.
+#
+# (where it is credited to a personal communication from More') and also in:
+#
+# Jiang, L., Byrd, R. H., Eskow, E., & Schnabel, R. B. (2004).
+# A preconditioned L-BFGS algorithm with application to molecular energy
+# minimization
+# (No. CU-CS-982-04).
+# Colorado Univ At Boulder Dept Of Computer Science.
+#
+# alpha - suggested step size
+# x - one end of the interval (can be upper or lower)
+# y - other end of the interval
+# minshrink - minumum fraction of the current interval range that alpha can
+# increase by.
+# Return modified alpha if it's too close to x or y
+ensure_min_alpha <- function(alpha, x, y, minshrink = 0.001) {
+  l <- min(x, y)
+  len <- abs(x - y)
+  max(l + minshrink * len, alpha)
 }
