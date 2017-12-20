@@ -11,11 +11,11 @@ make_mize(method = "L-BFGS", norm_direction = FALSE, scale_hess = TRUE,
   c1 = 1e-04, c2 = NULL, step0 = NULL, step_next_init = NULL,
   try_newton_step = NULL, ls_max_fn = 20, ls_max_gr = Inf,
   ls_max_fg = Inf, ls_max_alpha_mult = Inf, ls_max_alpha = Inf,
-  strong_curvature = NULL, approx_armijo = NULL, mom_type = NULL,
-  mom_schedule = NULL, mom_init = NULL, mom_final = NULL,
-  mom_switch_iter = NULL, mom_linear_weight = FALSE, use_init_mom = FALSE,
-  restart = NULL, restart_wait = 10, par = NULL, fg = NULL,
-  max_iter = 100, max_fn = Inf, max_gr = Inf, max_fg = Inf,
+  ls_safe_cubic = FALSE, strong_curvature = NULL, approx_armijo = NULL,
+  mom_type = NULL, mom_schedule = NULL, mom_init = NULL,
+  mom_final = NULL, mom_switch_iter = NULL, mom_linear_weight = FALSE,
+  use_init_mom = FALSE, restart = NULL, restart_wait = 10, par = NULL,
+  fg = NULL, max_iter = 100, max_fn = Inf, max_gr = Inf, max_fg = Inf,
   abs_tol = NULL, rel_tol = abs_tol, grad_tol = NULL, ginf_tol = NULL,
   step_tol = NULL)
 }
@@ -108,6 +108,10 @@ line searches.}
 
 \item{ls_max_alpha}{Maximum value of alpha allowed during line search. Only
 applies for \code{line_search = "more-thuente"}.}
+
+\item{ls_safe_cubic}{(Optional). If \code{TRUE}, check that cubic
+interpolation in the Wolfe line search does not produce too small a value.
+Only applies for \code{line_search = "more-thuente"}.}
 
 \item{strong_curvature}{(Optional). If \code{TRUE} use the strong
 curvature condition in Wolfe line search. See the 'Line Search' section of

@@ -20,6 +20,7 @@ more_thuente_ls <- function(c1 = c2 / 2, c2 = 0.1,
                             max_fg = Inf,
                             approx_armijo = FALSE,
                             strong_curvature = TRUE,
+                            safeguard_cubic = FALSE,
                             debug = FALSE) {
   if (!is_in_range(c1, 0, 1, lopen = FALSE, ropen = FALSE)) {
     stop("c1 must be between 0 and 1")
@@ -33,7 +34,8 @@ more_thuente_ls <- function(c1 = c2 / 2, c2 = 0.1,
                            alpha_max = max_alpha,
                            max_fn = max_ls_fn,
                            strong_curvature = strong_curvature,
-                           approx_armijo = approx_armijo),
+                           approx_armijo = approx_armijo,
+                           safeguard_cubic = safeguard_cubic),
               name = "more-thuente",
               max_alpha_mult = max_alpha_mult,
               min_step_size = min_step_size, stop_at_min = stop_at_min,

@@ -431,6 +431,10 @@
 #'   value of alpha of the previous line search. Used to stop line searches
 #'   diverging due to very large initial guesses. Only applies for Wolfe-type
 #'   line searches.
+#' @param ls_safe_cubic (Optional). If \code{TRUE}, check that cubic
+#'   interpolation in the Wolfe line search does not produce too small a value,
+#'   using method of Xie and Schlick (2002). Only applies for
+#'   \code{line_search = "more-thuente"}.
 #' @param strong_curvature (Optional). If \code{TRUE} use the strong
 #' curvature condition in Wolfe line search. See the 'Line Search' section
 #' for details.
@@ -573,6 +577,10 @@
 #' On the importance of initialization and momentum in deep learning.
 #' In \emph{Proceedings of the 30th international conference on machine learning (ICML-13)}
 #' (pp. 1139-1147).
+#'
+#' Xie, D., & Schlick, T. (2002).
+#' A more lenient stopping rule for line search algorithms.
+#' \emph{Optimization Methods and Software}, \emph{17}(4), 683-700.
 #' @examples
 #' # Function to optimize and starting point defined after creating optimizer
 #' rosenbrock_fg <- list(
@@ -628,6 +636,7 @@ mize <- function(par, fg,
                  ls_max_fg = Inf,
                  ls_max_alpha_mult = Inf,
                  ls_max_alpha = Inf,
+                 ls_safe_cubic = FALSE,
                  strong_curvature = NULL,
                  approx_armijo = NULL,
                  # Momentum
@@ -675,6 +684,7 @@ mize <- function(par, fg,
                    ls_max_fg = ls_max_fg,
                    ls_max_alpha_mult = ls_max_alpha_mult,
                    ls_max_alpha = ls_max_alpha,
+                   ls_safe_cubic = ls_safe_cubic,
                    strong_curvature = strong_curvature,
                    approx_armijo = approx_armijo,
                    mom_type = mom_type,
@@ -811,6 +821,9 @@ mize <- function(par, fg,
 #'   value of alpha of the previous line search. Used to stop line searches
 #'   diverging due to very large initial guesses. Only applies for Wolfe-type
 #'   line searches.
+#' @param ls_safe_cubic (Optional). If \code{TRUE}, check that cubic
+#'   interpolation in the Wolfe line search does not produce too small a value.
+#'   Only applies for \code{line_search = "more-thuente"}.
 #' @param strong_curvature (Optional). If \code{TRUE} use the strong
 #'   curvature condition in Wolfe line search. See the 'Line Search' section of
 #'   \code{\link{mize}} for details.
@@ -902,6 +915,7 @@ make_mize <- function(method = "L-BFGS",
                       ls_max_fg = Inf,
                       ls_max_alpha_mult = Inf,
                       ls_max_alpha = Inf,
+                      ls_safe_cubic = FALSE,
                       strong_curvature = NULL,
                       approx_armijo = NULL,
                       # Momentum
@@ -1161,7 +1175,8 @@ make_mize <- function(method = "L-BFGS",
                            max_alpha = ls_max_alpha,
                            max_alpha_mult = ls_max_alpha_mult,
                            strong_curvature = strong_curvature,
-                           approx_armijo = approx_armijo),
+                           approx_armijo = approx_armijo,
+                           safeguard_cubic = ls_safe_cubic),
       rasmussen = rasmussen_ls(c1 = c1, c2 = c2,
                               initializer = step_next_init,
                               initial_step_length = step0,

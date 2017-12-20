@@ -11,13 +11,13 @@ mize(par, fg, method = "L-BFGS", norm_direction = FALSE, memory = 5,
   line_search = "More-Thuente", c1 = 1e-04, c2 = NULL, step0 = NULL,
   step_next_init = NULL, try_newton_step = NULL, ls_max_fn = 20,
   ls_max_gr = Inf, ls_max_fg = Inf, ls_max_alpha_mult = Inf,
-  ls_max_alpha = Inf, strong_curvature = NULL, approx_armijo = NULL,
-  mom_type = NULL, mom_schedule = NULL, mom_init = NULL,
-  mom_final = NULL, mom_switch_iter = NULL, mom_linear_weight = FALSE,
-  use_init_mom = FALSE, restart = NULL, restart_wait = 10,
-  max_iter = 100, max_fn = Inf, max_gr = Inf, max_fg = Inf,
-  abs_tol = sqrt(.Machine$double.eps), rel_tol = abs_tol, grad_tol = NULL,
-  ginf_tol = NULL, step_tol = sqrt(.Machine$double.eps),
+  ls_max_alpha = Inf, ls_safe_cubic = FALSE, strong_curvature = NULL,
+  approx_armijo = NULL, mom_type = NULL, mom_schedule = NULL,
+  mom_init = NULL, mom_final = NULL, mom_switch_iter = NULL,
+  mom_linear_weight = FALSE, use_init_mom = FALSE, restart = NULL,
+  restart_wait = 10, max_iter = 100, max_fn = Inf, max_gr = Inf,
+  max_fg = Inf, abs_tol = sqrt(.Machine$double.eps), rel_tol = abs_tol,
+  grad_tol = NULL, ginf_tol = NULL, step_tol = sqrt(.Machine$double.eps),
   check_conv_every = 1, log_every = check_conv_every, verbose = FALSE,
   store_progress = FALSE)
 }
@@ -112,6 +112,11 @@ line searches.}
 
 \item{ls_max_alpha}{Maximum value of alpha allowed during line search. Only
 applies for \code{line_search = "more-thuente"}.}
+
+\item{ls_safe_cubic}{(Optional). If \code{TRUE}, check that cubic
+interpolation in the Wolfe line search does not produce too small a value,
+using method of Xie and Schlick (2002). Only applies for
+\code{line_search = "more-thuente"}.}
 
 \item{strong_curvature}{(Optional). If \code{TRUE} use the strong
 curvature condition in Wolfe line search. See the 'Line Search' section
@@ -681,4 +686,8 @@ Sutskever, I., Martens, J., Dahl, G., & Hinton, G. (2013).
 On the importance of initialization and momentum in deep learning.
 In \emph{Proceedings of the 30th international conference on machine learning (ICML-13)}
 (pp. 1139-1147).
+
+Xie, D., & Schlick, T. (2002).
+A more lenient stopping rule for line search algorithms.
+\emph{Optimization Methods and Software}, \emph{17}(4), 683-700.
 }

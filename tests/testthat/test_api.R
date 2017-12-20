@@ -345,3 +345,18 @@ test_that("backtracking line search", {
   expect_equal(res$f, 20.44, tol = 1e-3)
   expect_equal(res$par, c(-1.184, 1.006), tol = 1e-3)
 })
+
+test_that("MT safeguard cubic", {
+  # Chosen only because I couldn't find a simpler example that yielded a
+  # difference
+  res <- mize(rb0, rosenbrock_fg, method = "CG", c2 = 0.9, grad_tol = 0.1,
+              max_iter = 11, ls_safe_cubic = TRUE)
+  # These three should be different from ls_safe_cubic = FALSE
+  expect_equal(res$nf, 25) # 24 otherwise
+  expect_equal(res$ng, 25)
+  expect_equal(res$g2n, 4.604, tol = 1e-3) # approx 4.627 otherwise
+
+  # These are the same within tolerance
+  expect_equal(res$f, 2.8, tol = 1e-3)
+  expect_equal(res$par, c(-0.6605, 0.4568), tol = 1e-3)
+})
