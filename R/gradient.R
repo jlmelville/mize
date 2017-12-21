@@ -405,7 +405,25 @@ lbfgs_direction <- function(memory = 5, scale_inverse = FALSE,
       gm_old <- opt$cache$gr_old
 
       if (is.null(gm_old)) {
-        pm <- -gm
+        # Choose estimate of inverse Hessian approximation
+        if (!is.null(fg$hi)) {
+          hm <- fg$hi(par)
+          if (methods::is(hm, "matrix")) {
+            # Full matrix: not necessarily a great idea for memory usage
+            pm <- hm %*% -gm
+          }
+          else {
+            # It's a vector representing a diagonal matrix
+            pm <- hm * -gm
+          }
+          descent <- dot(gm, pm)
+          if (descent >= 0) {
+            pm <- -gm
+          }
+        }
+        else {
+          pm <- -gm
+        }
       }
       else {
         rhos <- sub_stage$rhos
@@ -441,7 +459,7 @@ lbfgs_direction <- function(memory = 5, scale_inverse = FALSE,
         if (!is.null(fg$hi)) {
           hm <- fg$hi(par)
           if (methods::is(hm, "matrix")) {
-            # Fill matrix: not a great idea for memory usage
+            # Full matrix: not necessarily a great idea for memory usage
             pm <- hm %*% qm
           }
           else {
