@@ -487,7 +487,7 @@ lbfgs_direction <- function(memory = 5, scale_inverse = FALSE,
 # Newton Method -----------------------------------------------------------
 
 # Newton method. Requires the Hessian to be calculated, via a function hs in fg.
-newton_direction <- function() {
+newton_direction <- function(try_safe_chol = FALSE) {
   make_direction(list(
     init = function(opt, stage, sub_stage, par, fg, iter) {
       opt$cache$gr_curr <- NULL
@@ -495,46 +495,59 @@ newton_direction <- function() {
     },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
       gm <- opt$cache$gr_curr
-      if (is.null(fg$hs)) {
-        stop("No Hessian function 'hs', defined for fg")
-      }
-      hm <- fg$hs(par)
 
-      chol_result <- try({
-        # O(N^3)
-          rm <- chol(hm)
-        },
-        silent = TRUE)
-      if (class(chol_result) == "try-error") {
-        # Suggested by https://www.r-bloggers.com/fixing-non-positive-definite-correlation-matrices-using-r-2/
-        # Refs:
-        # FP Brissette, M Khalili, R Leconte, Journal of Hydrology, 2007,
-        # Efficient stochastic generation of multi-site synthetic precipitation data
-        # https://www.etsmtl.ca/getattachment/Unites-de-recherche/Drame/Publications/Brissette_al07---JH.pdf
-        # Rebonato, R., & Jaeckel, P. (2011).
-        # The most general methodology to create a valid correlation matrix for risk management and option pricing purposes.
-        # doi 10.21314/JOR.2000.023
-        # Also O(N^3)
-        eig <- eigen(hm)
-        eig$values[eig$values < 0] <- 1e-10
-        hm <- eig$vectors %*% (eig$values * diag(nrow(hm))) %*% t(eig$vectors)
-        chol_result <- try({
-          rm <- chol(hm)
-        }, silent = TRUE)
+      if (!is.null(fg$hs)) {
+        # B, an approximation to the (or the exact) Hessian
+        # We now need to solve Bp = -g for p
+        bm <- fg$hs(par)
+
+        if (methods::is(bm, "matrix")) {
+          if (try_safe_chol) {
+            rm <- safe_chol(bm)
+          }
+          else {
+            chol_result <- try({
+              # O(N^3)
+              rm <- chol(bm)
+            },
+            silent = TRUE)
+            if (class(chol_result) == "try-error") {
+              rm <- NULL
+            }
+          }
+
+          if (is.null(rm)) {
+            # message("Hessian is not positive-definite, resetting to SD")
+            pm <- -gm
+          }
+          else {
+            # Forward and back solving is "only" O(N^2)
+            pm <- hessian_solve(rm, gm)
+          }
+        }
+        else {
+          # vector: assume it's a diagonal approximation of B
+          pm <- -(1 / bm) * gm
+        }
       }
-      if (class(chol_result) == "try-error") {
-        # we gave it a good go, but let's just do steepest descent this time
-        #message("Hessian is not positive-definite, resetting to SD")
-        pm <- -gm
+      else if (!is.null(fg$hi)) {
+        # H, an approximation to (or exact) inverse of the Hessian
+        hm <- fg$hs(par)
+        if (methods::is(hm, "matrix")) {
+          pm <- -hm %*% gm
+        }
+        else {
+          # vector: assume it's a diagonal approximation of H
+          pm <- -hm * gm
+        }
       }
       else {
-        # Forward and back solving is "only" O(N^2)
-        pm <- hessian_solve(rm, gm)
+        stop("No hi or hs function available for Hessian information")
+      }
 
-        descent <- dot(gm, pm)
-        if (descent >= 0) {
-          pm <- -gm
-        }
+      descent <- dot(gm, pm)
+      if (descent >= 0) {
+        pm <- -gm
       }
       sub_stage$value <- pm
       list(sub_stage = sub_stage)
@@ -545,14 +558,21 @@ newton_direction <- function() {
 # A Partial Hessian approach: calculates the Cholesky decomposition of the
 # Hessian (or some approximation) on the first iteration only. Future steps
 # solve using this Hessian and the current gradient.
-partial_hessian_direction <- function() {
+partial_hessian_direction <- function(hessian_every = 0) {
   make_direction(list(
     init = function(opt, stage, sub_stage, par, fg, iter) {
-      hm <- fg$hs(par)
-      sub_stage$rm <- chol(hm)
+      if (hessian_every == 0) {
+        hm <- fg$hs(par)
+        sub_stage$rm <- chol(hm)
+      }
       list(sub_stage = sub_stage)
     },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
+      if (hessian_every > 0 && iter %% hessian_every == 0) {
+        hm <- fg$hs(par)
+        sub_stage$rm <- chol(hm)
+      }
+
       gm <- opt$cache$gr_curr
       rm <- sub_stage$rm
       pm <- hessian_solve(rm, gm)
@@ -588,6 +608,43 @@ hessian_solve <- function(um, gm) {
   pm <- upper_solve(um, -gm)
   dim(pm) <- NULL
   pm
+}
+
+
+# Attempts to ensure a safe Cholesky decomposition of a Hessian by detecting
+# a failure, rebuilding the Hessian by setting negative eigenvalues to a small
+# positive value and then trying again. Not a fast procedure!
+#
+# Suggested by
+# https://www.r-bloggers.com/fixing-non-positive-definite-correlation-matrices-using-r-2/
+# Refs:
+# Brissette, F. P., Khalili, M., & Leconte, R. (2007).
+# Efficient stochastic generation of multi-site synthetic precipitation data.
+# Journal of Hydrology, 345(3), 121-133.
+# https://www.etsmtl.ca/getattachment/Unites-de-recherche/Drame/Publications/Brissette_al07---JH.pdf
+#
+# Rebonato, R., & Jaeckel, P. (2011).
+# The most general methodology to create a valid correlation matrix for risk
+# management and option pricing purposes.
+# doi 10.21314/JOR.2000.023
+safe_chol <- function(hm, eps = 1e-10) {
+  rm <- NULL
+  chol_result <- try({
+    # O(N^3)
+    rm <- chol(hm)
+  },
+  silent = TRUE)
+  if (class(chol_result) == "try-error") {
+
+    # Also O(N^3)
+    eig <- eigen(hm)
+    eig$values[eig$values < 0] <- 1e-10
+    hm <- eig$vectors %*% (eig$values * diag(nrow(hm))) %*% t(eig$vectors)
+    chol_result <- try({
+      rm <- chol(hm)
+    }, silent = TRUE)
+  }
+  rm
 }
 
 # Gradient Dependencies ------------------------------------------------------------
