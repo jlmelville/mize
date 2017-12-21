@@ -12,6 +12,8 @@ Description: Optimization algorithms implemented in R, including
 License: BSD 2-clause License + file LICENSE
 Encoding: UTF-8
 LazyData: true
+Imports:
+    methods
 Suggests:
     testthat,
     knitr,

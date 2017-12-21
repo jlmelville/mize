@@ -145,6 +145,9 @@ rosenbrock_fg <- list(
     yy <- 200
     matrix(c(xx, xy, xy, yy), nrow = 2)
   },
+  hi = function(x) {
+    1 / c(1200 * x[1] * x[1] - 400 * x[2] + 2, 200)
+  },
   fg = function(x) {
     x1 <- x[1]
     x2 <- x[2]
@@ -163,6 +166,7 @@ rosenbrock_fg <- list(
 
 rosen_no_hess <- rosenbrock_fg
 rosen_no_hess$hs <- NULL
+rosen_no_hess$hi <- NULL
 
 # log-sum-exp -------------------------------------------------------------
 

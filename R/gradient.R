@@ -200,21 +200,15 @@ bfgs_direction <- function(eps = .Machine$double.eps,
     init = function(opt, stage, sub_stage, par, fg, iter) {
       n <- length(par)
       sub_stage$value <- rep(0, n)
-      if (!is.null(fg$hs)) {
-        bm <- fg$hs(par)
-        # we need an approximation to the inverse of the Hessian, H, not B
-        # If the Hessian is provided, rather than invert it, we'll take the
-        # diagonal only, so that the inverse is just 1/diag
-        if (class(bm) == "matrix") {
-          # We allow hs to return only the diagonal of the Hessian, so
-          # we check here if we have a full-fat matrix take the diagonal of the
-          # matrix
-          bm <- diag(bm)
-        }
 
-        # invert
-        hm <- 1 / (bm + eps)
-        hm <- diag(hm)
+      if (!is.null(fg$hi)) {
+        hm <- fg$hi(par)
+        if (methods::is(hm, "numeric")) {
+          # Allow for just a vector to be passed, representing a diagonal
+          # approximation to the Hessian inverse. But we'll store it as the
+          # full matrix.
+          hm <- diag(hm)
+        }
         sub_stage$hm <- hm
       }
       else {
@@ -297,17 +291,16 @@ sr1_direction <- function(eps = .Machine$double.eps,
     init = function(opt, stage, sub_stage, par, fg, iter) {
       n <- length(par)
       sub_stage$value <- rep(0, n)
-      if (!is.null(fg$hs)) {
-        # we need an approximation to the inverse of the Hessian
-        # If the Hessian is provided, rather than invert it, we'll take the
-        # diagonal only, so that the inverse is just 1/diag
-        inv_hess <- 1 / (fg$hs(par) + eps)
-        # convert to a vector, discarding off diagonal elements
-        if (class(inv_hess) == "matrix") {
-          inv_hess <- diag(inv_hess)
+
+      if (!is.null(fg$hi)) {
+        hm <- fg$hi(par)
+        if (methods::is(hm, "numeric")) {
+          # Allow for just a vector to be passed, representing a diagonal
+          # approximation to the Hessian inverse. But we'll store it as the
+          # full matrix.
+          hm <- diag(hm)
         }
-        # convert to matrix (can also provide vector as hs)
-        sub_stage$hm <- diag(inv_hess)
+        sub_stage$hm <- hm
       }
       else {
         sub_stage$hm <- diag(1, n)
@@ -444,15 +437,30 @@ lbfgs_direction <- function(memory = 5, scale_inverse = FALSE,
           qm <- qm - alphas[[i]] * yms[[i]]
         }
 
-        if (scale_inverse) {
-          gamma <- dot(sm, ym) / (dot(ym, ym) + sub_stage$eps)
+        # Choose estimate of inverse Hessian approximation
+        if (!is.null(fg$hi)) {
+          hm <- fg$hi(par)
+          if (methods::is(hm, "matrix")) {
+            # Fill matrix: not a great idea for memory usage
+            pm <- hm %*% qm
+          }
+          else {
+            # It's a vector representing a diagonal matrix
+            pm <- hm * qm
+          }
         }
         else {
-          gamma <- 1
+          if (scale_inverse) {
+            # Eqn 7.20 in Nocedal & Wright
+            gamma <- dot(sm, ym) / (dot(ym, ym) + sub_stage$eps)
+          }
+          else {
+            gamma <- 1
+          }
+          hm <- rep(gamma, length(par))
+          pm <- hm * qm
         }
 
-        hm <- rep(gamma, length(par))
-        pm <- hm * qm
         # loop forwards
         for (i in 1:length(rhos)) {
           beta <- rhos[[i]] * dot(yms[[i]], pm)
