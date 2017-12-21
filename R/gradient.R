@@ -235,22 +235,15 @@ bfgs_direction <- function(eps = .Machine$double.eps,
 
         ym <- gm - gm_old
 
+        # Nocedal suggests this heuristic for scaling the first
+        # approximation in Chapter 6 Section "Implementation"
+        # Also used in the definition of L-BFGS
         if (iter == 2 && scale_inverse) {
-          # Nocedal suggests this heuristic for scaling the first
-          # approximation in Chapter 6 Section "Implementation"
-          # Also used in the definition of L-BFGS
           gamma <- dot(sm, ym) / dot(ym, ym)
           hm <- gamma * hm
         }
 
-        rho <- 1 / (dot(ym, sm) + sub_stage$eps)
-        im <- diag(1, nrow(hm))
-
-        rss <- rho * outer(sm, sm)
-        irsy <- im - rho * outer(sm, ym)
-        irys <- im - rho * outer(ym, sm)
-
-        sub_stage$hm <- (irsy %*% (hm %*% irys)) + rss
+        sub_stage$hm <- bfgs_update(hm, sm, ym, eps = sub_stage$eps)
       }
       pm <- as.vector(-sub_stage$hm %*% gm)
 
@@ -266,7 +259,9 @@ bfgs_direction <- function(eps = .Machine$double.eps,
   ))
 }
 
-
+# H - inverse Hessian
+# s - difference in iterates x
+# y - difference in gradient of x
 bfgs_update <- function(hm, sm, ym, eps) {
   rho <- 1 / (dot(ym, sm) + eps)
   im <- diag(1, nrow(hm))
