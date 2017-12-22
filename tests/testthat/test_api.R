@@ -66,6 +66,35 @@ test_that("L-BFGS with More-Thuente LS and max alpha guess increase", {
   expect_equal(res$par, c(-0.785, 0.558), tol = 1e-3)
 })
 
+
+test_that("BFGS with Hessian inverse diagonal", {
+  res <- mize(rb0, rosenbrock_fg, method = "BFGS", max_iter = 3,
+              line_search = "more-thuente", c1 = 5e-10, c2 = 1e-9,
+              step0 = "sci", ls_max_alpha = 0.5,
+              step_next_init = "quad", scale_hess = FALSE, grad_tol = 1e-5)
+
+  expect_equal(res$nf, 4)
+  expect_equal(res$ng, 4)
+  expect_equal(res$f, 4.461, tol = 1e-3)
+  expect_equal(res$g2n, 6.524, tol = 1e-3)
+  expect_equal(res$par, c(-1.112, 1.231), tol = 1e-3)
+})
+
+test_that("BFGS with Hessian inverse matrix", {
+  rb_hi <- rosenbrock_fg
+  rb_hi$hi <- function(par) { solve(rosenbrock_fg$hs(par)) }
+  res <- mize(rb0, rb_hi, method = "BFGS", max_iter = 3,
+              line_search = "more-thuente", c1 = 5e-10, c2 = 1e-9,
+              step0 = "sci", ls_max_alpha = 0.5,
+              step_next_init = "quad", scale_hess = FALSE, grad_tol = 1e-5)
+
+  expect_equal(res$nf, 4)
+  expect_equal(res$ng, 4)
+  expect_equal(res$f, 4.968, tol = 1e-3)
+  expect_equal(res$g2n, 31.81, tol = 1e-3)
+  expect_equal(res$par, c(-1.160, 1.290), tol = 1e-3)
+})
+
 test_that("BFGS with More-Thuente LS and max alpha", {
   res <- mize(rb0, rosen_no_hess, method = "BFGS", max_iter = 3,
               line_search = "more-thuente", c1 = 5e-10, c2 = 1e-9,
