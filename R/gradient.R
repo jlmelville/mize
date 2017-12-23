@@ -103,12 +103,12 @@ cg_direction <- function(ortho_check = FALSE, nu = 0.1,
 # with very small step sizes and make little progress.
 # The Fletcher-Reeves update.
 fr_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
-  dot(gm, gm) / (dot(gm_old, gm_old) + eps)
+  dot(gm) / (dot(gm_old) + eps)
 }
 
 # Conjugate Descent update due to Fletcher
 cd_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
-  dot(gm, gm) / (dot(pm_old, (gm - gm_old)) + eps)
+  dot(gm) / (dot(pm_old, (gm - gm_old)) + eps)
 }
 
 # The Dai-Yuan update.
@@ -139,7 +139,7 @@ hs_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
 # The Polak-Ribiere method for updating the CG direction. Also known as
 # Polak-Ribiere-Polyak (PRP)
 pr_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
-  dot(gm, gm - gm_old) / (dot(gm_old, gm_old) + eps)
+  dot(gm, gm - gm_old) / (dot(gm_old) + eps)
 }
 
 # The "PR+" update due to Powell. Polak-Ribiere update, but if negative,
@@ -159,7 +159,7 @@ ls_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
 hz_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
   ym <- gm - gm_old
   py <- dot(pm_old, ym)
-  dot(ym - 2 * pm_old * (dot(ym, ym) / (py + eps)), (gm / (py + eps)))
+  dot(ym - 2 * pm_old * (dot(ym) / (py + eps)), (gm / (py + eps)))
 }
 
 # "Restricted" Hager-Zhang update as used in CG_DESCENT to ensure
@@ -169,7 +169,7 @@ hz_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
 hz_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
   beta <- hz_update(gm, gm_old, pm_old, eps)
   eta <- 0.01
-  eta_k <- -1 / (dot(pm_old, pm_old) * min(eta, dot(gm_old, gm_old)))
+  eta_k <- -1 / (dot(pm_old) * min(eta, dot(gm_old)))
   max(eta_k, beta)
 }
 
@@ -182,7 +182,7 @@ cg_restart <- function(g_new, g_old, nu = 0.1) {
   if (is.null(g_old)) {
     return(TRUE)
   }
-  ortho_test <- abs(dot(g_new, g_old)) / dot(g_new, g_new)
+  ortho_test <- abs(dot(g_new, g_old)) / dot(g_new)
   should_restart <- ortho_test >= nu
   should_restart
 }
@@ -233,7 +233,7 @@ bfgs_direction <- function(eps = .Machine$double.eps,
         # approximation in Chapter 6 Section "Implementation"
         # Also used in the definition of L-BFGS
         if (iter == 2 && scale_inverse) {
-          gamma <- dot(sm, ym) / dot(ym, ym)
+          gamma <- dot(sm, ym) / dot(ym)
           hm <- gamma * hm
         }
 
@@ -324,7 +324,7 @@ sr1_direction <- function(eps = .Machine$double.eps,
           # Nocedal suggests this heuristic for scaling the first
           # approximation in Chapter 6 Section "Implementation" for BFGS
           # Also used in the definition of L-BFGS
-          gamma <- dot(sm, ym) / dot(ym, ym)
+          gamma <- dot(sm, ym) / dot(ym)
           hm <- gamma * hm
         }
 
@@ -470,7 +470,7 @@ lbfgs_direction <- function(memory = 5, scale_inverse = FALSE,
         else {
           if (scale_inverse) {
             # Eqn 7.20 in Nocedal & Wright
-            gamma <- dot(sm, ym) / (dot(ym, ym) + sub_stage$eps)
+            gamma <- dot(sm, ym) / (dot(ym) + sub_stage$eps)
           }
           else {
             gamma <- 1
