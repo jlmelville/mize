@@ -303,6 +303,9 @@ parameter allows for different methods for choosing the next direction:
   }
 The \code{"PR+"} and \code{"HZ+"} are likely to be most robust in practice.
 Other updates are available more for curiosity purposes.
+\item \code{"TN"} is the Truncated Newton method, which approximately solves
+the Newton step without explicitly calculating the Hessian (at the expense
+of extra gradient calculations).
 \item \code{"NAG"} is the Nesterov Accelerated Gradient method. The exact
 form of the momentum update in this method can be controlled with the
 following parameters:

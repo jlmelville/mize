@@ -388,3 +388,15 @@ test_that("MT safeguard cubic", {
   expect_equal(res$f, 2.8, tol = 1e-3)
   expect_equal(res$par, c(-0.6605, 0.4568), tol = 1e-3)
 })
+
+test_that("Truncated Newton with constant step size", {
+  res <- mize(rb0, rosenbrock_fg, method = "TN", max_iter = 3,
+              line_search = "const", step0 = 1, grad_tol = 1e-5,
+              check_conv_every = NULL)
+
+  expect_equal(res$nf, 1)
+  expect_equal(res$ng, 8)
+  expect_equal(res$f, 4.118, tol = 1e-3)
+  expect_equal(res$g2n, 4.219, tol = 1e-3)
+  expect_equal(res$par, c(-1.023, 1.062), tol = 1e-3)
+})

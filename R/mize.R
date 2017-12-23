@@ -67,6 +67,9 @@
 #'   }
 #' The \code{"PR+"} and \code{"HZ+"} are likely to be most robust in practice.
 #' Other updates are available more for curiosity purposes.
+#' \item \code{"TN"} is the Truncated Newton method, which approximately solves
+#' the Newton step without explicitly calculating the Hessian (at the expense
+#' of extra gradient calculations).
 #' \item \code{"NAG"} is the Nesterov Accelerated Gradient method. The exact
 #' form of the momentum update in this method can be controlled with the
 #' following parameters:
@@ -986,7 +989,8 @@ make_mize <- function(method = "L-BFGS",
   # Gradient Descent Direction configuration
   dir_type <- NULL
   method <- match.arg(tolower(method), c("sd", "newton", "phess", "cg", "bfgs",
-                                "sr1", "l-bfgs", "nag", "momentum", "dbd"))
+                                "sr1", "l-bfgs", "nag", "momentum", "dbd",
+                                "tn"))
   switch(method,
     sd = {
       dir_type <- sd_direction(normalize = norm_direction)
@@ -1048,6 +1052,9 @@ make_mize <- function(method = "L-BFGS",
     dbd = {
       dir_type <- sd_direction(normalize = norm_direction)
     },
+    tn = {
+      dir_type <- tn_direction()
+    },
     stop("Unknown method: '", method, "'")
   )
 
@@ -1084,7 +1091,7 @@ make_mize <- function(method = "L-BFGS",
                                  use_momentum = !is.null(mom_schedule))
   }
   else {
-    if (method %in% c("newton", "phess", "bfgs", "l-bfgs")) {
+    if (method %in% c("newton", "phess", "bfgs", "l-bfgs", "tn")) {
       if (is.null(c2)) {
         c2 <- 0.9
       }

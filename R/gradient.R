@@ -668,6 +668,83 @@ safe_chol <- function(hm, eps = 1e-10) {
   rm
 }
 
+
+# Truncated Newton --------------------------------------------------------
+
+# Truncated Newton, aka "Line Search Newton-CG"
+# See Nocedal & Wright Chapter 7, algorithm 7.1
+tn_direction <- function() {
+  make_direction(list(
+    init = function(opt, stage, sub_stage, par, fg, iter) {
+      list(sub_stage = sub_stage)
+    },
+    calculate = function(opt, stage, sub_stage, par, fg, iter) {
+      gm <- opt$cache$gr_curr
+      inner_res <- tn_inner_cg(opt, fg, par, gm)
+      opt <- inner_res$opt
+      pm <- inner_res$zm
+
+      descent <- dot(gm, pm)
+      if (descent >= 0) {
+        # message("TN: Not a descent direction")
+        pm <- -gm
+      }
+      sub_stage$value <- pm
+      list(opt = opt, sub_stage = sub_stage)
+    }
+  ))
+}
+
+# Linear CG inner loop of truncated Newton
+# Inner loop from Nocedal & Wright Chapter 7, Algo 7.1
+# Gives up when negative curvature or convergence occurs
+# returns a list with opt (containing updated gradient count)
+# and zm, the final estimate of pm solving Bp = -g (or -g)
+tn_inner_cg <- function(opt, fg, par, gm) {
+  gn <- norm2(gm)
+  eps <- min(0.5, sqrt(gn)) * gn
+
+  j <- 0
+  zm <- 0
+  rm <- gm
+  dm <- -rm
+  while (TRUE) {
+    Bd <- bd_approx(fg, par, dm, gm)
+    opt$counts$gr <- opt$counts$gr + 1
+
+    dBd <- dot(dm, Bd)
+    if (dBd <= 0) {
+      # -ve curvature, bail out
+      if (j == 0) {
+        # Use steepest descent if the initial Bd estimate is unusable
+        zm <- -gm
+      }
+      break
+    }
+
+    dot_rm <- dot(rm)
+    alpha <- dot_rm / dBd
+    zm <- zm + alpha * dm
+    rm <- rm + alpha * Bd
+    if (norm2(rm) < eps) {
+      break
+    }
+    beta <- dot(rm) / dot_rm
+    dm <- beta * dm - rm
+    j <- j + 1
+  }
+
+  list(
+    opt = opt,
+    zm = zm
+  )
+}
+
+bd_approx <- function(fg, par, dm, gm, h = sqrt(.Machine$double.eps)) {
+  g_fwd <- fg$gr(par + h * dm)
+  (g_fwd - gm) / h
+}
+
 # Gradient Dependencies ------------------------------------------------------------
 
 # Calculate the gradient at par.
