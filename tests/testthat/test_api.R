@@ -400,3 +400,18 @@ test_that("Truncated Newton with constant step size", {
   expect_equal(res$g2n, 4.219, tol = 1e-3)
   expect_equal(res$par, c(-1.023, 1.062), tol = 1e-3)
 })
+
+# Ensure TN direction can't exceed gr budget
+test_that("Truncated Newton with max_gr", {
+  res <- mize(rb0, rosenbrock_fg, method = "TN", max_iter = 3,
+              check_conv_every = NULL, line_search = "const", step0 = 1,
+              max_gr = 6)
+
+  # Should give the same f/par results as without max_gr, as we would quit with -ve
+  # curvature anyway
+  expect_equal(res$nf, 1)
+  # If grad_tol or ginf_tol was calculated we would get max_gr + 1
+  expect_equal(res$ng, 6)
+  expect_equal(res$f, 4.118, tol = 1e-3)
+  expect_equal(res$par, c(-1.023, 1.062), tol = 1e-3)
+})

@@ -709,6 +709,13 @@ tn_inner_cg <- function(opt, fg, par, gm) {
   rm <- gm
   dm <- -rm
   while (TRUE) {
+    if (opt$counts$gr >= opt$convergence$max_gr) {
+      if (j == 0) {
+        zm <- -gm
+      }
+      break
+    }
+
     Bd <- bd_approx(fg, par, dm, gm)
     opt$counts$gr <- opt$counts$gr + 1
 
