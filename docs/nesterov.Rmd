@@ -309,7 +309,37 @@ $$
 
 but as this version can't be expressed as the classical momentum form with
 different coefficients, the way the Bengio formulation can be, it probably
-doesn't gain you anything.
+doesn't gain you anything, except you can expand it and rearrange it further to
+give:
+
+$$
+v_{t+1} =  
+\mu_t v_t - \varepsilon_{t-1} \nabla f\left(\theta_{t-1} \right)
++
+\mu_t 
+\left[
+\varepsilon_{t-1} \nabla f \left(\theta_{t-1}\right) 
+-
+\varepsilon_{t} \nabla f \left(\theta_{t}\right)
+\right]
+$$
+where the first two terms look like the classical momentum expression, which 
+suggests we can create a "generalized" momentum update by introducing a parameter
+$\beta$ to give:
+
+$$
+v_{t+1} =  
+\mu_t v_t - \varepsilon_{t-1} \nabla f\left(\theta_{t-1} \right)
++
+\beta_t \mu_t 
+\left[
+\varepsilon_{t-1} \nabla f \left(\theta_{t-1}\right) 
+-
+\varepsilon_{t} \nabla f \left(\theta_{t}\right)
+\right]
+$$
+where setting $\beta_t = 0$ will give classical momentum and $\beta_t = 1$ gives
+Nesterov.
 
 From the look of the expression, it seems that a major downside of this 
 expression is that calculating the parameters for iteration $t+1$ requires 
