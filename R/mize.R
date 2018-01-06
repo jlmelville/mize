@@ -889,7 +889,7 @@ mize <- function(par, fg,
 #' # Create optimizer without initialization
 #' opt <- make_mize(method = "L-BFGS")
 #'
-#' # Need to call mizer_init separately:
+#' # Need to call mize_init separately:
 #' opt <- mize_init(opt, rb0, rosenbrock_fg)
 make_mize <- function(method = "L-BFGS",
                       norm_direction = FALSE,
