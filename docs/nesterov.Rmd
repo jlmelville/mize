@@ -323,8 +323,13 @@ v_{t+1} =
 \varepsilon_{t} \nabla f \left(\theta_{t}\right)
 \right]
 $$
-where the first two terms look like the classical momentum expression, which 
-suggests we can create a "generalized" momentum update by introducing a parameter
+which now resembles the classical momentum expression with an extra momentum 
+term. I haven't found a definitive reference for this expression, or what, if 
+any, extra insight it provides, but user 'denis' uses this expression in an
+[answer on the Cross Validated Stack Exchange](https://stats.stackexchange.com/a/233430),
+and refers to the third form as "gradient momentum".
+
+We can create a "generalized" momentum update by introducing a parameter
 $\beta$ to give:
 
 $$
@@ -339,7 +344,8 @@ v_{t+1} =
 \right]
 $$
 where setting $\beta_t = 0$ will give classical momentum and $\beta_t = 1$ gives
-Nesterov.
+Nesterov. The Stack Exchange answer I mentioned above also suggests allowing
+the two momentum terms to differ from each other.
 
 From the look of the expression, it seems that a major downside of this 
 expression is that calculating the parameters for iteration $t+1$ requires 

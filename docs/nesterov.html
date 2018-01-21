@@ -359,7 +359,8 @@ v_{t+1} =
 -
 \varepsilon_{t} \nabla f \left(\theta_{t}\right)
 \right]
-\]</span> where the first two terms look like the classical momentum expression, which suggests we can create a “generalized” momentum update by introducing a parameter <span class="math inline">\(\beta\)</span> to give:</p>
+\]</span> which now resembles the classical momentum expression with an extra momentum term. I haven’t found a definitive reference for this expression, or what, if any, extra insight it provides, but user ‘denis’ uses this expression in an <a href="https://stats.stackexchange.com/a/233430">answer on the Cross Validated Stack Exchange</a>, and refers to the third form as “gradient momentum”.</p>
+<p>We can create a “generalized” momentum update by introducing a parameter <span class="math inline">\(\beta\)</span> to give:</p>
 <p><span class="math display">\[
 v_{t+1} =  
 \mu_t v_t - \varepsilon_{t-1} \nabla f\left(\theta_{t-1} \right)
@@ -370,7 +371,7 @@ v_{t+1} =
 -
 \varepsilon_{t} \nabla f \left(\theta_{t}\right)
 \right]
-\]</span> where setting <span class="math inline">\(\beta_t = 0\)</span> will give classical momentum and <span class="math inline">\(\beta_t = 1\)</span> gives Nesterov.</p>
+\]</span> where setting <span class="math inline">\(\beta_t = 0\)</span> will give classical momentum and <span class="math inline">\(\beta_t = 1\)</span> gives Nesterov. The Stack Exchange answer I mentioned above also suggests allowing the two momentum terms to differ from each other.</p>
 <p>From the look of the expression, it seems that a major downside of this expression is that calculating the parameters for iteration <span class="math inline">\(t+1\)</span> requires storage of information from not only iteration <span class="math inline">\(t\)</span> but from iteration <span class="math inline">\(t-1\)</span> too. But you don’t necessarily have to do any extra storage with an implementation that used this version of NAG. At the end of an iteration, when saving the velocity vector for the next iteration, you change:</p>
 <p><span class="math display">\[v_{t-1} \leftarrow v_t\]</span> to: <span class="math display">\[v_{t-1} \leftarrow v_t + \varepsilon_{t} \nabla f\left(\theta_t \right)\]</span></p>
 <p>and then when calculating the momentum term, change:</p>
