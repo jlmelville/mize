@@ -81,7 +81,8 @@ O'Leary's Matlab translation of the
 algorithm from [MINPACK](http://www.netlib.org/minpack/).
 
 I also maintain the [funconstrain](https://github.com/jlmelville/funconstrain) package, which contains a large number of test 
-problems for numerical optimization.
+problems for numerical optimization. See this [gist](https://gist.github.com/jlmelville/2cb8905edd0dbc23806d3122a7a05c5d) for functions
+to use mize with funconstrain.
 
 ## License
 
