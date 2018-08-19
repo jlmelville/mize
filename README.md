@@ -1,6 +1,7 @@
 # mize
 
 [![Travis-CI Build Status](https://travis-ci.org/jlmelville/mize.svg?branch=master)](https://travis-ci.org/jlmelville/mize)
+[![AppVeyor build status](https://ci.appveyor.com/api/projects/status/github/jlmelville/mize?branch=master&svg=true)](https://ci.appveyor.com/project/jlmelville/mize)
 [![CRAN Status Badge](http://www.r-pkg.org/badges/version/mize)](https://cran.r-project.org/package=mize)
 [![CRAN Monthly Downloads](https://cranlogs.r-pkg.org/badges/mize)](https://cran.r-project.org/package=mize)
 ![CRAN Downloads](http://cranlogs.r-pkg.org/badges/grand-total/mize)
