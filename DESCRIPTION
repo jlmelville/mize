@@ -17,7 +17,8 @@ Imports:
 Suggests:
     testthat,
     knitr,
-    rmarkdown
+    rmarkdown,
+    covr
 RoxygenNote: 6.1.0
 URL: http://github.com/jlmelville/mize
 BugReports: http://github.com/jlmelville/mize/issues
