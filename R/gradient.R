@@ -747,7 +747,18 @@ tn_inner_cg <- function(opt, fg, par, gm) {
   )
 }
 
-bd_approx <- function(fg, par, dm, gm, h = sqrt(.Machine$double.eps)) {
+# Finite difference approximation of the Hessian-vector product, Bd
+# The default step size, h, is suggested by
+# Andrei, N. (2009). Accelerated conjugate gradient algorithm with finite
+# difference Hessian/vector product approximation for unconstrained
+# optimization. Journal of Computational and Applied Mathematics, 230(2),
+# 570-582.
+# Found in:
+# http://timvieira.github.io/blog/post/2014/02/10/gradient-vector-product/
+# Something similar is used in minfunc
+bd_approx <- function(fg, par, dm, gm,
+                      h = 2 * sqrt(.Machine$double.eps) *
+                        (1 + norm2(par)) / norm2(dm)) {
   g_fwd <- fg$gr(par + h * dm)
   (g_fwd - gm) / h
 }
