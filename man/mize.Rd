@@ -401,11 +401,10 @@ following parameters can be used to control the line search:
    }
    These arguments can be abbreviated. Details on the first two methods
    are provided by Nocedal and Wright.
-   \item{\code{try_newton_step}} For quasi-Newton methods (\code{"BFGS"} and
-   \code{"L-BFGS"}), setting this to \code{TRUE} will try the "natural" step
-   size of 1, whenever the \code{step_next_init} method suggests an initial
-   step size larger than that. On by default for BFGS and L-BFGS, off for
-   everything else.
+   \item{\code{try_newton_step}} For quasi-Newton methods (e.g. \code{"TN"},
+   \code{"BFGS"} and \code{"L-BFGS"}), setting this to \code{TRUE} will try
+   the "natural" step size of 1, whenever the \code{step_next_init} method
+   suggests an initial step size larger than that.
    \item{\code{strong_curvature}} If \code{TRUE}, then the strong curvature
    condition will be used to check termination in Wolfe line search methods.
    If \code{FALSE}, then the standard curvature condition will be used. The
