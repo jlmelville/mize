@@ -470,7 +470,7 @@ lbfgs_direction <- function(memory = 5, scale_inverse = FALSE,
         else {
           if (scale_inverse) {
             # Eqn 7.20 in Nocedal & Wright
-            gamma <- dot(sm, ym) / (dot(ym) + sub_stage$eps)
+            gamma <- 1 / (rho * (dot(ym) + sub_stage$eps))
           }
           else {
             gamma <- 1
