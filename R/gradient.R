@@ -708,7 +708,13 @@ tn_inner_cg <- function(opt, fg, par, gm) {
   zm <- 0
   rm <- gm
   dm <- -rm
-  while (TRUE) {
+
+  # Safeguard for pathological situations.
+  # In exact arithmetic CG will converge in N iterations.
+  # The point of TN is to stop way earlier, but I've seen it get stuck,
+  # presumably due to numerical issues.
+  max_j <- length(par)
+  while (j < max_j) {
     if (opt$counts$gr >= opt$convergence$max_gr) {
       if (j == 0) {
         zm <- -gm
