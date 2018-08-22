@@ -708,6 +708,7 @@ tn_inner_cg <- function(opt, fg, par, gm) {
   zm <- 0
   rm <- gm
   dm <- -rm
+  dot_rm <- dot(rm)
 
   # Safeguard for pathological situations.
   # In exact arithmetic CG will converge in N iterations.
@@ -735,15 +736,18 @@ tn_inner_cg <- function(opt, fg, par, gm) {
       break
     }
 
-    dot_rm <- dot(rm)
     alpha <- dot_rm / dBd
     zm <- zm + alpha * dm
     rm <- rm + alpha * Bd
     if (norm2(rm) < eps) {
       break
     }
-    beta <- dot(rm) / dot_rm
+
+    dot_rm_new <- dot(rm)
+    beta <- dot_rm_new / dot_rm
+
     dm <- beta * dm - rm
+    dot_rm <- dot_rm_new
     j <- j + 1
   }
 
