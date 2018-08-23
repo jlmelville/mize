@@ -374,6 +374,107 @@ sr1_direction <- function(eps = .Machine$double.eps,
 
 # L-BFGS ------------------------------------------------------------------
 
+# Initial guess for solving Bp = q for p by using an approximation
+# for H, the inverse of B, and calculating Hq directly.
+# You can provide the inverse hessian function fg$hi and par, which can return
+# either a matrix (although if it's dense that's not a great idea), or a vector
+# in which case it's assumed to represent a diagonal matrix.
+# Or you can set scale_inverse to TRUE and the usual L-BFGS guess for H as
+# given by Nocedal and Wright is used. rho and eps may not be NULL in that case.
+# Or you can set scale_inverse = FALSE and you will get q back directly, i.e.
+# Assume use H = I, which is also used when scale_inverse = TRUE on the first
+# iteration anyway
+lbfgs_guess <- function(qm, scale_inverse = TRUE,
+                        rho = NULL, ym = NULL, eps = NULL,
+                        fg = NULL, par = NULL) {
+  # User-defined hessian inverse approximations
+  if (!is.null(fg) && !is.null(fg$hi)) {
+    hm <- fg$hi(par)
+    if (methods::is(hm, "matrix")) {
+      # Full matrix: not necessarily a great idea for memory usage
+      pm <- hm %*% qm
+    }
+    else {
+      # It's a vector representing a diagonal matrix
+      pm <- hm * qm
+    }
+  }
+  else {
+    # The usual L-BFGS guess
+    if (!is.null(rho) && !is.null(ym) && scale_inverse) {
+      # Eqn 7.20 in Nocedal & Wright
+      gamma <- 1 / (rho * (dot(ym) + eps))
+      hm <- rep(gamma, length(par))
+      pm <- hm * qm
+    }
+    else {
+      # Effectively H = I
+      # This will happen on the first iteration
+      pm <- qm
+    }
+  }
+  pm
+}
+
+# Solve Bp = q for p by the two-loop recursion. If fn and par are non NULL
+# and fg has the Hessian inverse function hi defined, it will be used to
+# initialize the inital guess for p. Otherwise, if scale_inverse = TRUE, the
+# usual L-BFGS guess is used. Otherwise, q is used.
+lbfgs_solve <- function(qm, lbfgs_state, scale_inverse, eps,
+                        fg = NULL, par = NULL) {
+  sms <- lbfgs_state$sms
+  yms <- lbfgs_state$yms
+  rhos <- lbfgs_state$rhos
+
+  alphas <- rep(0, length(rhos))
+  # loop backwards latest values first
+  for (i in length(rhos):1) {
+    alphas[i] <- rhos[[i]] * dot(sms[[i]], qm)
+    qm <- qm - alphas[[i]] * yms[[i]]
+  }
+
+  # Choose estimate of inverse Hessian approximation
+  pm <- lbfgs_guess(qm, scale_inverse, rhos[[length(rhos)]], yms[[length(yms)]],
+                    eps, fg, par)
+
+  # loop forwards
+  for (i in 1:length(rhos)) {
+    beta <- rhos[[i]] * dot(yms[[i]], pm)
+    pm <- pm + sms[[i]] * (alphas[[i]] - beta)
+  }
+
+  pm
+}
+
+# Update lbfgs_state with new ym, sm, rho, removing old values if we've
+# reached the memory limit
+# One real calculation (rho), otherwise just lots of boring housekeeping
+lbfgs_memory_update <- function(lbfgs_state, ym, sm, eps) {
+  rho <- 1 / (dot(ym, sm) + eps)
+
+  rhos <- lbfgs_state$rhos
+  sms <- lbfgs_state$sms
+  yms <- lbfgs_state$yms
+
+  # discard oldest values if we've reached memory limit
+  if (length(sms) == lbfgs_state$memory) {
+    sms <- sms[2:length(sms)]
+    yms <- yms[2:length(yms)]
+    rhos <- rhos[2:length(rhos)]
+  }
+
+  # append latest values to memory
+  sms <- c(sms, list(sm))
+  yms <- c(yms, list(ym))
+  rhos <- c(rhos, list(rho))
+
+  lbfgs_state$sms <- sms
+  lbfgs_state$yms <- yms
+  lbfgs_state$rhos <- rhos
+
+  lbfgs_state
+}
+
 # The Limited Memory BFGS method
 #
 # memory - The number of previous updates to store.
@@ -405,105 +506,32 @@ lbfgs_direction <- function(memory = 5, scale_inverse = FALSE,
       gm_old <- opt$cache$gr_old
 
       if (is.null(gm_old)) {
-        # Choose estimate of inverse Hessian approximation
-        if (!is.null(fg$hi)) {
-          hm <- fg$hi(par)
-          if (methods::is(hm, "matrix")) {
-            # Full matrix: not necessarily a great idea for memory usage
-            pm <- hm %*% -gm
-          }
-          else {
-            # It's a vector representing a diagonal matrix
-            pm <- hm * -gm
-          }
-          descent <- dot(gm, pm)
-          if (descent >= 0) {
-            pm <- -gm
-          }
-        }
-        else {
-          pm <- -gm
-        }
+        # First iteration do steepest descent unless we have home-brew
+        # H approximation in fg
+        pm <- lbfgs_guess(-gm, fg = fg, par = par)
       }
       else {
-        rhos <- sub_stage$rhos
-        sms <- sub_stage$sms
-        yms <- sub_stage$yms
-
-        # discard oldest values if we've reached memory limit
-        if (length(sms) == sub_stage$memory) {
-          sms <- sms[2:length(sms)]
-          yms <- yms[2:length(yms)]
-          rhos <- rhos[2:length(rhos)]
-        }
-
-        # y_{k-1}, s_{k-1}, rho_{k-1} using notation in Nocedal
+        # Update the memory
+        # y_{k-1}, s_{k-1} using notation in Nocedal and Wright
         ym <- gm - gm_old
         sm <- opt$cache$update_old
-        rho <- 1 / (dot(ym, sm) + sub_stage$eps)
+        sub_stage <- lbfgs_memory_update(sub_stage, ym, sm, sub_stage$eps)
 
-        # append latest values to memory
-        sms <- c(sms, list(sm))
-        yms <- c(yms, list(ym))
-        rhos <- c(rhos, list(rho))
-
-        qm <- gm
-        alphas <- rep(0, length(rhos))
-        # loop backwards latest values first
-        for (i in length(rhos):1) {
-          alphas[i] <- rhos[[i]] * dot(sms[[i]], qm)
-          qm <- qm - alphas[[i]] * yms[[i]]
-        }
-
-        # Choose estimate of inverse Hessian approximation
-        if (!is.null(fg$hi)) {
-          hm <- fg$hi(par)
-          if (methods::is(hm, "matrix")) {
-            # Full matrix: not necessarily a great idea for memory usage
-            pm <- hm %*% qm
-          }
-          else {
-            # It's a vector representing a diagonal matrix
-            pm <- hm * qm
-          }
-        }
-        else {
-          if (scale_inverse) {
-            # Eqn 7.20 in Nocedal & Wright
-            gamma <- 1 / (rho * (dot(ym) + sub_stage$eps))
-          }
-          else {
-            gamma <- 1
-          }
-          hm <- rep(gamma, length(par))
-          pm <- hm * qm
-        }
-
-        # loop forwards
-        for (i in 1:length(rhos)) {
-          beta <- rhos[[i]] * dot(yms[[i]], pm)
-          pm <- pm + sms[[i]] * (alphas[[i]] - beta)
-        }
-        pm <- -pm
-
-        descent <- dot(gm, pm)
-        if (descent >= 0) {
-          pm <- -gm
-        }
-
-        sub_stage$value <- pm
-        sub_stage$sms <- sms
-        sub_stage$yms <- yms
-        sub_stage$rhos <- rhos
-
+        # Solve Bp = -g with updated memory
+        pm <- lbfgs_solve(-gm, sub_stage, scale_inverse, sub_stage$eps, fg, par)
       }
+
+      descent <- dot(gm, pm)
+      if (descent >= 0) {
+        pm <- -gm
+      }
+
       sub_stage$value <- pm
       list(sub_stage = sub_stage)
     }
     , depends = c("gradient_old", "update_old")
   ))
 }
-
 
 # Newton Method -----------------------------------------------------------
 
