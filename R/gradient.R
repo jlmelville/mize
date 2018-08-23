@@ -725,19 +725,27 @@ tn_direction <- function() {
 
 # Linear CG inner loop of truncated Newton
 # Inner loop from Nocedal & Wright Chapter 7, Algo 7.1
+# with modification for preconditioner as in Chapter 5, Algo 5.3
 # Gives up when negative curvature or convergence occurs
 # returns a list with opt (containing updated gradient count)
 # and zm, the final estimate of pm solving Bp = -g (or -g)
-tn_inner_cg <- function(opt, fg, par, gm) {
+tn_inner_cg <- function(opt, fg, par, gm, preconditioner = NULL) {
   gn <- norm2(gm)
   eps <- min(0.5, sqrt(gn)) * gn
 
-  j <- 0
   zm <- 0
   rm <- gm
-  dm <- -rm
-  dot_rm <- dot(rm)
+  if (!is.null(preconditioner)) {
+    ym <- preconditioner(rm)
+  }
+  else {
+    ym <- rm
+  }
 
+  dm <- -ym
+  dot_rm_ym <- dot(rm, ym)
+
+  j <- 0
   # Safeguard for pathological situations.
   # In exact arithmetic CG will converge in N iterations.
   # The point of TN is to stop way earlier, but I've seen it get stuck,
@@ -764,18 +772,25 @@ tn_inner_cg <- function(opt, fg, par, gm) {
       break
     }
 
-    alpha <- dot_rm / dBd
+    alpha <- dot_rm_ym / dBd
     zm <- zm + alpha * dm
     rm <- rm + alpha * Bd
     if (norm2(rm) < eps) {
       break
     }
 
-    dot_rm_new <- dot(rm)
-    beta <- dot_rm_new / dot_rm
+    if (!is.null(preconditioner)) {
+      ym <- preconditioner(rm)
+    }
+    else {
+      ym <- rm
+    }
 
-    dm <- beta * dm - rm
-    dot_rm <- dot_rm_new
+    dot_rm_ym_new <- dot(rm, ym)
+    beta <- dot_rm_ym_new / dot_rm_ym
+
+    dm <- beta * dm - ym
+    dot_rm_ym <- dot_rm_ym_new
     j <- j + 1
   }
 
