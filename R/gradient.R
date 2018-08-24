@@ -374,6 +374,19 @@ sr1_direction <- function(eps = .Machine$double.eps,
 
 # L-BFGS ------------------------------------------------------------------
 
+lbfgs_init <- function(opt, stage, sub_stage, par, fg, iter) {
+  opt$cache$gr_curr <- NULL
+  opt$cache$gr_old <- NULL
+
+  n <- length(par)
+  sub_stage$value <- rep(0, n)
+
+  sub_stage$rhos <- c()
+  sub_stage$sms <- c()
+  sub_stage$yms <- c()
+
+  list(opt = opt, sub_stage = sub_stage)
+}
 # Initial guess for solving Bp = q for p by using an approximation
 # for H, the inverse of B, and calculating Hq directly.
 # You can provide the inverse hessian function fg$hi and par, which can return
@@ -488,19 +501,7 @@ lbfgs_direction <- function(memory = 5, scale_inverse = FALSE,
     memory = memory,
     k = 0,
     eps = eps,
-    init = function(opt, stage, sub_stage, par, fg, iter) {
-      opt$cache$gr_curr <- NULL
-      opt$cache$gr_old <- NULL
-
-      n <- length(par)
-      sub_stage$value <- rep(0, n)
-
-      sub_stage$rhos <- c()
-      sub_stage$sms <- c()
-      sub_stage$yms <- c()
-
-      list(opt = opt, sub_stage = sub_stage)
-    },
+    init = lbfgs_init,
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
       gm <- opt$cache$gr_curr
       gm_old <- opt$cache$gr_old
