@@ -702,14 +702,36 @@ safe_chol <- function(hm, eps = 1e-10) {
 
 # Truncated Newton, aka "Line Search Newton-CG"
 # See Nocedal & Wright Chapter 7, algorithm 7.1
-tn_direction <- function() {
-  make_direction(list(
+tn_direction <- function(preconditioner = "", memory = 5,
+                         eps = .Machine$double.eps) {
+  tn <- make_direction(list(
     init = function(opt, stage, sub_stage, par, fg, iter) {
+      if (preconditioner == "l-bfgs") {
+        res <- lbfgs_init(opt, stage, sub_stage, par, fg, iter)
+        res$sub_stage$memory <- memory
+        res$sub_stage$eps <- eps
+        sub_stage$preconditioner <- res$sub_stage
+      }
+
       list(sub_stage = sub_stage)
     },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
       gm <- opt$cache$gr_curr
-      inner_res <- tn_inner_cg(opt, fg, par, gm)
+
+      precondition_fn <- NULL
+      if (preconditioner == "l-bfgs" && !is.null(opt$cache$gr_old)) {
+        lbfgs <- sub_stage$preconditioner
+        ym <- gm - opt$cache$gr_old
+        sm <- opt$cache$update_old
+        lbfgs <- lbfgs_memory_update(lbfgs, ym, sm, lbfgs$eps)
+        precondition_fn <- function(rm) {
+          lbfgs_solve(-rm, lbfgs, scale_inverse = TRUE, eps = lbfgs$eps)
+        }
+
+        sub_stage$preconditioner <- lbfgs
+      }
+
+      inner_res <- tn_inner_cg(opt, fg, par, gm, precondition_fn)
       opt <- inner_res$opt
       pm <- inner_res$zm
 
@@ -722,6 +744,12 @@ tn_direction <- function() {
       list(opt = opt, sub_stage = sub_stage)
     }
   ))
+
+  if (preconditioner == "l-bfgs") {
+    tn$depends <- append(tn$depends, c("gradient_old", "update_old"))
+  }
+
+  tn
 }
 
 # Linear CG inner loop of truncated Newton

@@ -20,20 +20,19 @@ expect_equal(res$progress$f,
                3.50106e-01),
              tol = 1e-5)
 
-# Need one less gradient evaluation if we always try Newton step
 res <- mize(c(0 ,0), rosenbrock_fg, method = "TN", c1 = 1e-10, c2 = 1e-9,
-            store_progress = TRUE, max_fn = 26, try_newton_step = TRUE)
+            store_progress = TRUE, max_fn = 30, preconditioner = "L-BFGS")
 
-expect_equal(res$nf, 26)
-expect_equal(res$ng, 33)
-expect_equal(res$f, 0.35, tol = 1e-3)
-expect_equal(res$par, c(0.4446, 0.1772), tol = 1e-3)
+expect_equal(res$nf, 30)
+expect_equal(res$ng, 38)
+expect_equal(res$f, 0.136, tol = 1e-3)
+expect_equal(res$par, c(0.680, 0.444), tol = 1e-3)
 
 expect_equal(res$progress$alpha,
-             c(0, 1.61262e-01, 1.00000e+00, 1.79967e-01, 1.00453e+00,
-               2.73325e-01),
+             c(0, 1.61262e-01, 1.52249e+00, 1.00440e+00, 1.58637e-01,
+               1.56767e+00),
              tol = 1e-5)
 expect_equal(res$progress$f,
-             c(1, 7.71110e-01, 7.03481e-01, 5.24969e-01, 4.81177e-01,
-               3.50106e-01),
+             c(1, 7.71110e-01, 4.83501e-01, 3.92254e-01, 2.70259e-01,
+               1.36470e-01),
              tol = 1e-5)

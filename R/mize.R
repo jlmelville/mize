@@ -385,6 +385,10 @@
 #' \code{"PR+"} (Polak-Ribiere with a reset to steepest descent), \code{"HS"}
 #' (Hestenes-Stiefel), or \code{"DY"} (Dai-Yuan). Ignored if \code{method} is
 #' not \code{"CG"}.
+#' @param preconditioner Type of preconditioner to use in Truncated Newton.
+#' Leave blank or set to  \code{"L-BFGS"} to use a limited memory BFGS
+#' preconditioner. Use the \code{"memory"} parameter to control the number of
+#' updates to store. Applies only if \code{method = "TN"}, ignored otherwise.
 #' @param nest_q Strong convexity parameter for the NAG
 #' momentum term. Must take a value between 0 (strongly convex) and 1
 #' (zero momentum). Only applies using the NAG method or a momentum method with
@@ -617,6 +621,8 @@ mize <- function(par, fg,
                  scale_hess = TRUE,
                  # CG
                  cg_update = "PR+",
+                 # Preconditioning
+                 preconditioner = "",
                  # NAG
                  nest_q = 0, # 1 - SD,
                  nest_convex_approx = FALSE,
@@ -672,6 +678,7 @@ mize <- function(par, fg,
                    scale_hess = scale_hess,
                    memory = memory,
                    cg_update = cg_update,
+                   preconditioner = preconditioner,
                    nest_q = nest_q, nest_convex_approx = nest_convex_approx,
                    nest_burn_in = nest_burn_in,
                    use_init_mom = use_init_mom,
@@ -773,6 +780,10 @@ mize <- function(par, fg,
 #'   (Polak-Ribiere with a reset to steepest descent), \code{"HS"}
 #'   (Hestenes-Stiefel), or \code{"DY"} (Dai-Yuan). Ignored if \code{method} is
 #'   not \code{"CG"}.
+#' @param preconditioner Type of preconditioner to use in Truncated Newton.
+#'   Leave blank or set to  \code{"L-BFGS"} to use a limited memory BFGS
+#'   preconditioner. Use the \code{"memory"} parameter to control the number of
+#'   updates to store. Applies only if \code{method = "TN"}, ignored otherwise.
 #' @param nest_q Strong convexity parameter for the \code{"NAG"} method's
 #'   momentum term. Must take a value between 0 (strongly convex) and 1 (results
 #'   in steepest descent).Ignored unless the \code{method} is \code{"NAG"} and
@@ -897,6 +908,7 @@ make_mize <- function(method = "L-BFGS",
                       memory = 5,
                       # CG
                       cg_update = "PR+",
+                      preconditioner = "",
                       # NAG
                       nest_q = 0,
                       nest_convex_approx = FALSE,
@@ -990,6 +1002,8 @@ make_mize <- function(method = "L-BFGS",
   method <- match.arg(tolower(method), c("sd", "newton", "phess", "cg", "bfgs",
                                 "sr1", "l-bfgs", "nag", "momentum", "dbd",
                                 "tn"))
+  preconditioner <- tolower(preconditioner)
+
   switch(method,
     sd = {
       dir_type <- sd_direction(normalize = norm_direction)
@@ -1052,7 +1066,7 @@ make_mize <- function(method = "L-BFGS",
       dir_type <- sd_direction(normalize = norm_direction)
     },
     tn = {
-      dir_type <- tn_direction()
+      dir_type <- tn_direction(preconditioner = preconditioner, memory = memory)
       if (is.null(try_newton_step)) {
         try_newton_step <- TRUE
       }
