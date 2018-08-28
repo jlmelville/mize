@@ -433,6 +433,8 @@ lbfgs_guess <- function(qm, scale_inverse = TRUE,
 # and fg has the Hessian inverse function hi defined, it will be used to
 # initialize the inital guess for p. Otherwise, if scale_inverse = TRUE, the
 # usual L-BFGS guess is used. Otherwise, q is used.
+# Note that we usually want to find p = -Hg, so usually take the negative of
+# the return value
 lbfgs_solve <- function(qm, lbfgs_state, scale_inverse, eps,
                         fg = NULL, par = NULL) {
   sms <- lbfgs_state$sms
@@ -519,7 +521,8 @@ lbfgs_direction <- function(memory = 5, scale_inverse = FALSE,
         sub_stage <- lbfgs_memory_update(sub_stage, ym, sm, sub_stage$eps)
 
         # Solve Bp = -g with updated memory
-        pm <- lbfgs_solve(-gm, sub_stage, scale_inverse, sub_stage$eps, fg, par)
+        # lbfgs_solve returns Hg, so take negative of result
+        pm <- -lbfgs_solve(gm, sub_stage, scale_inverse, sub_stage$eps, fg, par)
       }
 
       descent <- dot(gm, pm)
@@ -719,13 +722,19 @@ tn_direction <- function(preconditioner = "", memory = 5,
       gm <- opt$cache$gr_curr
 
       precondition_fn <- NULL
+      # In the context of non-linear CG, Hager and Zhang (2006) mention
+      # using the approximation of the inverse Hessian as a preconditioner P
+      # replacing g with Pg and using L-BFGS specifically.
+      # In linear CG, use r instead of g
       if (preconditioner == "l-bfgs" && !is.null(opt$cache$gr_old)) {
         lbfgs <- sub_stage$preconditioner
         ym <- gm - opt$cache$gr_old
         sm <- opt$cache$update_old
         lbfgs <- lbfgs_memory_update(lbfgs, ym, sm, lbfgs$eps)
         precondition_fn <- function(rm) {
-          lbfgs_solve(-rm, lbfgs, scale_inverse = TRUE, eps = lbfgs$eps)
+          # This solves Bp = r for p => p = Hr which is what we want,
+          # don't take negative as needed for L-BFGS direction
+          lbfgs_solve(rm, lbfgs, scale_inverse = TRUE, eps = lbfgs$eps)
         }
 
         sub_stage$preconditioner <- lbfgs
