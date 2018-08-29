@@ -6,10 +6,10 @@
 \usage{
 mize(par, fg, method = "L-BFGS", norm_direction = FALSE, memory = 5,
   scale_hess = TRUE, cg_update = "PR+", preconditioner = "",
-  nest_q = 0, nest_convex_approx = FALSE, nest_burn_in = 0,
-  step_up = 1.1, step_up_fun = "*", step_down = NULL,
-  dbd_weight = 0.1, line_search = "More-Thuente", c1 = 1e-04,
-  c2 = NULL, step0 = NULL, step_next_init = NULL,
+  tn_init = 0, nest_q = 0, nest_convex_approx = FALSE,
+  nest_burn_in = 0, step_up = 1.1, step_up_fun = "*",
+  step_down = NULL, dbd_weight = 0.1, line_search = "More-Thuente",
+  c1 = 1e-04, c2 = NULL, step0 = NULL, step_next_init = NULL,
   try_newton_step = NULL, ls_max_fn = 20, ls_max_gr = Inf,
   ls_max_fg = Inf, ls_max_alpha_mult = Inf, ls_max_alpha = Inf,
   ls_safe_cubic = FALSE, strong_curvature = NULL,
@@ -53,6 +53,12 @@ not \code{"CG"}.}
 Leave blank or set to  \code{"L-BFGS"} to use a limited memory BFGS
 preconditioner. Use the \code{"memory"} parameter to control the number of
 updates to store. Applies only if \code{method = "TN"}, ignored otherwise.}
+
+\item{tn_init}{Type of initialization to use in inner loop of Truncated
+Newton. Use \code{0} to use the zero vector (the usual TN initialization),
+or \code{"previous"} to use the final result from the previous iteration,
+as suggested by Martens (2010). Applies only if \code{method = "TN"},
+ignored otherwise.}
 
 \item{nest_q}{Strong convexity parameter for the NAG
 momentum term. Must take a value between 0 (strongly convex) and 1
@@ -662,6 +668,11 @@ Shocking: An approach to stabilize backprop training with greedy adaptive
 learning rates.
 In \emph{1998 IEEE International Joint Conference on Neural Networks Proceedings.}
 (Vol. 3, pp. 2218-2223). IEEE.
+
+Martens, J. (2010, June).
+Deep learning via Hessian-free optimization.
+In \emph{Proceedings of the International Conference on Machine Learning.}
+(Vol. 27, pp. 735-742).
 
 More', J. J., & Thuente, D. J. (1994).
 Line search algorithms with guaranteed sufficient decrease.

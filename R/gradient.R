@@ -705,7 +705,9 @@ safe_chol <- function(hm, eps = 1e-10) {
 
 # Truncated Newton, aka "Line Search Newton-CG"
 # See Nocedal & Wright Chapter 7, algorithm 7.1
-tn_direction <- function(preconditioner = "", memory = 5,
+# L-BFGS preconditioner suggested e.g. by Hager & Zhang (2006)
+# also implemented in minfunc
+tn_direction <- function(init = 0, preconditioner = "", memory = 5,
                          eps = .Machine$double.eps) {
   tn <- make_direction(list(
     init = function(opt, stage, sub_stage, par, fg, iter) {
@@ -733,14 +735,40 @@ tn_direction <- function(preconditioner = "", memory = 5,
         lbfgs <- lbfgs_memory_update(lbfgs, ym, sm, lbfgs$eps)
         precondition_fn <- function(rm) {
           # This solves Bp = r for p => p = Hr which is what we want,
-          # don't take negative as needed for L-BFGS direction
+          # so don't take negative (as needed for L-BFGS solution of pm)
           lbfgs_solve(rm, lbfgs, scale_inverse = TRUE, eps = lbfgs$eps)
         }
 
         sub_stage$preconditioner <- lbfgs
       }
 
-      inner_res <- tn_inner_cg(opt, fg, par, gm, precondition_fn)
+      if (init == 0) {
+        # Standard initialization. Saves on a finite difference gradient
+        # calculation because we know the residual is g
+        zm <- 0
+      }
+      else if (init == "l-bfgs" && preconditioner == "l-bfgs") {
+        # Use the L-BFGS guess as we've done a lot of the work already
+        # A potentially bad idea of my own invention
+        if (!is.null(opt$cache$gr_old)) {
+          lbfgs <- sub_stage$preconditioner
+          zm <- -lbfgs_solve(gm, lbfgs, scale_inverse = TRUE, eps = lbfgs$eps)
+        }
+        else {
+          zm <- 0
+        }
+      }
+      else {
+        # "previous", i.e. use the result from the last iteration
+        # Martens (2010)
+        if (!is.null(sub_stage$value)) {
+          zm <- sub_stage$value
+        }
+        else {
+          zm <- 0
+        }
+      }
+      inner_res <- tn_inner_cg(opt, fg, par, gm, precondition_fn, zm = zm)
       opt <- inner_res$opt
       pm <- inner_res$zm
 
@@ -766,13 +794,23 @@ tn_direction <- function(preconditioner = "", memory = 5,
 # with modification for preconditioner as in Chapter 5, Algo 5.3
 # Gives up when negative curvature or convergence occurs
 # returns a list with opt (containing updated gradient count)
-# and zm, the final estimate of pm solving Bp = -g (or -g)
-tn_inner_cg <- function(opt, fg, par, gm, preconditioner = NULL) {
+# and zm, the final estimate of pm solving Bp = -g
+tn_inner_cg <- function(opt, fg, par, gm, preconditioner = NULL, zm = 0) {
   gn <- norm2(gm)
   eps <- min(0.5, sqrt(gn)) * gn
 
-  zm <- 0
-  rm <- gm
+  if (length(zm) == 1 && zm == 0) {
+    rm <- gm
+  }
+  else {
+    if (opt$counts$gr >= opt$convergence$max_gr) {
+
+    }
+    Bd <- bd_approx(fg, par, zm, gm)
+    opt$counts$gr <- opt$counts$gr + 1
+
+    rm <- Bd + gm
+  }
   if (!is.null(preconditioner)) {
     ym <- preconditioner(rm)
   }
@@ -794,7 +832,10 @@ tn_inner_cg <- function(opt, fg, par, gm, preconditioner = NULL) {
       if (j == 0) {
         zm <- -gm
       }
-      break
+      return(list(
+        opt = opt,
+        zm = zm)
+      )
     }
 
     Bd <- bd_approx(fg, par, dm, gm)

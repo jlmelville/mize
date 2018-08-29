@@ -6,20 +6,20 @@
 \usage{
 make_mize(method = "L-BFGS", norm_direction = FALSE,
   scale_hess = TRUE, memory = 5, cg_update = "PR+",
-  preconditioner = "", nest_q = 0, nest_convex_approx = FALSE,
-  nest_burn_in = 0, step_up = 1.1, step_up_fun = c("*", "+"),
-  step_down = NULL, dbd_weight = 0.1, line_search = "More-Thuente",
-  c1 = 1e-04, c2 = NULL, step0 = NULL, step_next_init = NULL,
-  try_newton_step = NULL, ls_max_fn = 20, ls_max_gr = Inf,
-  ls_max_fg = Inf, ls_max_alpha_mult = Inf, ls_max_alpha = Inf,
-  ls_safe_cubic = FALSE, strong_curvature = NULL,
-  approx_armijo = NULL, mom_type = NULL, mom_schedule = NULL,
-  mom_init = NULL, mom_final = NULL, mom_switch_iter = NULL,
-  mom_linear_weight = FALSE, use_init_mom = FALSE, restart = NULL,
-  restart_wait = 10, par = NULL, fg = NULL, max_iter = 100,
-  max_fn = Inf, max_gr = Inf, max_fg = Inf, abs_tol = NULL,
-  rel_tol = abs_tol, grad_tol = NULL, ginf_tol = NULL,
-  step_tol = NULL)
+  preconditioner = "", tn_init = 0, nest_q = 0,
+  nest_convex_approx = FALSE, nest_burn_in = 0, step_up = 1.1,
+  step_up_fun = c("*", "+"), step_down = NULL, dbd_weight = 0.1,
+  line_search = "More-Thuente", c1 = 1e-04, c2 = NULL,
+  step0 = NULL, step_next_init = NULL, try_newton_step = NULL,
+  ls_max_fn = 20, ls_max_gr = Inf, ls_max_fg = Inf,
+  ls_max_alpha_mult = Inf, ls_max_alpha = Inf, ls_safe_cubic = FALSE,
+  strong_curvature = NULL, approx_armijo = NULL, mom_type = NULL,
+  mom_schedule = NULL, mom_init = NULL, mom_final = NULL,
+  mom_switch_iter = NULL, mom_linear_weight = FALSE,
+  use_init_mom = FALSE, restart = NULL, restart_wait = 10,
+  par = NULL, fg = NULL, max_iter = 100, max_fn = Inf,
+  max_gr = Inf, max_fg = Inf, abs_tol = NULL, rel_tol = abs_tol,
+  grad_tol = NULL, ginf_tol = NULL, step_tol = NULL)
 }
 \arguments{
 \item{method}{Optimization method. See 'Details' of \code{\link{mize}}.}
@@ -47,6 +47,12 @@ not \code{"CG"}.}
 Leave blank or set to  \code{"L-BFGS"} to use a limited memory BFGS
 preconditioner. Use the \code{"memory"} parameter to control the number of
 updates to store. Applies only if \code{method = "TN"}, ignored otherwise.}
+
+\item{tn_init}{Type of initialization to use in inner loop of Truncated
+Newton. Use \code{0} to use the zero vector (the usual TN initialization),
+or \code{"previous"} to use the final result from the previous iteration,
+as suggested by Martens (2010). Applies only if \code{method = "TN"},
+ignored otherwise.}
 
 \item{nest_q}{Strong convexity parameter for the \code{"NAG"} method's
 momentum term. Must take a value between 0 (strongly convex) and 1 (results

@@ -36,3 +36,16 @@ expect_equal(res$progress$f,
              c(1, 7.71110e-01, 4.83501e-01, 3.92254e-01, 2.70259e-01,
                1.36470e-01),
              tol = 1e-5)
+
+
+res <- mize(c(0 ,0), rosenbrock_fg, method = "TN", c1 = 1e-4, c2 = 0.1,
+            store_progress = TRUE, max_iter = 5, tn_init = "prev")
+expect_equal(res$nf, 21)
+expect_equal(res$ng, 31)
+expect_equal(res$f, 0.0134, tol = 1e-4)
+expect_equal(res$par, c(0.919, 0.836), tol = 1e-3)
+expect_equal(res$progress$alpha,
+             c(0, 0.1585, 1.385, 2.048, 2.323, 1.718),
+             tol = 1e-3)
+expect_equal(res$progress$f,
+             c(1, 0.771, 0.497, 0.226, 0.0603, 0.0134), tol = 1e-3)

@@ -389,6 +389,11 @@
 #' Leave blank or set to  \code{"L-BFGS"} to use a limited memory BFGS
 #' preconditioner. Use the \code{"memory"} parameter to control the number of
 #' updates to store. Applies only if \code{method = "TN"}, ignored otherwise.
+#' @param tn_init Type of initialization to use in inner loop of Truncated
+#' Newton. Use \code{0} to use the zero vector (the usual TN initialization),
+#' or \code{"previous"} to use the final result from the previous iteration,
+#' as suggested by Martens (2010). Applies only if \code{method = "TN"},
+#' ignored otherwise.
 #' @param nest_q Strong convexity parameter for the NAG
 #' momentum term. Must take a value between 0 (strongly convex) and 1
 #' (zero momentum). Only applies using the NAG method or a momentum method with
@@ -551,6 +556,11 @@
 #' In \emph{1998 IEEE International Joint Conference on Neural Networks Proceedings.}
 #' (Vol. 3, pp. 2218-2223). IEEE.
 #'
+#' Martens, J. (2010, June).
+#' Deep learning via Hessian-free optimization.
+#' In \emph{Proceedings of the International Conference on Machine Learning.}
+#' (Vol. 27, pp. 735-742).
+#'
 #' More', J. J., & Thuente, D. J. (1994).
 #' Line search algorithms with guaranteed sufficient decrease.
 #' \emph{ACM Transactions on Mathematical Software (TOMS)}, \emph{20}(3), 286-307.
@@ -623,6 +633,8 @@ mize <- function(par, fg,
                  cg_update = "PR+",
                  # Preconditioning
                  preconditioner = "",
+                 # TN
+                 tn_init = 0,
                  # NAG
                  nest_q = 0, # 1 - SD,
                  nest_convex_approx = FALSE,
@@ -679,6 +691,7 @@ mize <- function(par, fg,
                    memory = memory,
                    cg_update = cg_update,
                    preconditioner = preconditioner,
+                   tn_init = tn_init,
                    nest_q = nest_q, nest_convex_approx = nest_convex_approx,
                    nest_burn_in = nest_burn_in,
                    use_init_mom = use_init_mom,
@@ -784,6 +797,11 @@ mize <- function(par, fg,
 #'   Leave blank or set to  \code{"L-BFGS"} to use a limited memory BFGS
 #'   preconditioner. Use the \code{"memory"} parameter to control the number of
 #'   updates to store. Applies only if \code{method = "TN"}, ignored otherwise.
+#' @param tn_init Type of initialization to use in inner loop of Truncated
+#'   Newton. Use \code{0} to use the zero vector (the usual TN initialization),
+#'   or \code{"previous"} to use the final result from the previous iteration,
+#'   as suggested by Martens (2010). Applies only if \code{method = "TN"},
+#'   ignored otherwise.
 #' @param nest_q Strong convexity parameter for the \code{"NAG"} method's
 #'   momentum term. Must take a value between 0 (strongly convex) and 1 (results
 #'   in steepest descent).Ignored unless the \code{method} is \code{"NAG"} and
@@ -909,6 +927,8 @@ make_mize <- function(method = "L-BFGS",
                       # CG
                       cg_update = "PR+",
                       preconditioner = "",
+                      # TN
+                      tn_init = 0,
                       # NAG
                       nest_q = 0,
                       nest_convex_approx = FALSE,
@@ -1066,7 +1086,11 @@ make_mize <- function(method = "L-BFGS",
       dir_type <- sd_direction(normalize = norm_direction)
     },
     tn = {
-      dir_type <- tn_direction(preconditioner = preconditioner, memory = memory)
+      if (is.character(tn_init)) {
+        tn_init <- tolower(tn_init)
+      }
+      dir_type <- tn_direction(init = tn_init,
+                               preconditioner = preconditioner, memory = memory)
       if (is.null(try_newton_step)) {
         try_newton_step <- TRUE
       }
