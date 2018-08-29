@@ -707,7 +707,8 @@ safe_chol <- function(hm, eps = 1e-10) {
 # See Nocedal & Wright Chapter 7, algorithm 7.1
 # L-BFGS preconditioner suggested e.g. by Hager & Zhang (2006)
 # also implemented in minfunc
-tn_direction <- function(init = 0, preconditioner = "", memory = 5,
+tn_direction <- function(init = 0, exit_criterion = "curvature",
+                         preconditioner = "", memory = 5,
                          eps = .Machine$double.eps) {
   tn <- make_direction(list(
     init = function(opt, stage, sub_stage, par, fg, iter) {
@@ -768,7 +769,8 @@ tn_direction <- function(init = 0, preconditioner = "", memory = 5,
           zm <- 0
         }
       }
-      inner_res <- tn_inner_cg(opt, fg, par, gm, precondition_fn, zm = zm)
+      inner_res <- tn_inner_cg(opt, fg, par, gm, precondition_fn, zm = zm,
+                               exit_criterion = exit_criterion)
       opt <- inner_res$opt
       pm <- inner_res$zm
 
@@ -795,7 +797,14 @@ tn_direction <- function(init = 0, preconditioner = "", memory = 5,
 # Gives up when negative curvature or convergence occurs
 # returns a list with opt (containing updated gradient count)
 # and zm, the final estimate of pm solving Bp = -g
-tn_inner_cg <- function(opt, fg, par, gm, preconditioner = NULL, zm = 0) {
+# max_iter Maximum number of iterations for the inner CG loop. With exact
+#  arithmetic, we would expect the loop to terminate in N steps at most,
+#  but rounding errors can prevent that and we want to stop way before that
+#  anyway. Default is from TNPACK (Xie and Schlick 1999).
+# exit_criterion: either "curvature" (check negative curvature) or "descent",
+#  a comparison of descent direction used in TNPACK (Xie and Schlick 1999)
+tn_inner_cg <- function(opt, fg, par, gm, preconditioner = NULL, zm = 0,
+                        exit_criterion = "curvature", max_iter = 40) {
   gn <- norm2(gm)
   eps <- min(0.5, sqrt(gn)) * gn
 
@@ -804,7 +813,11 @@ tn_inner_cg <- function(opt, fg, par, gm, preconditioner = NULL, zm = 0) {
   }
   else {
     if (opt$counts$gr >= opt$convergence$max_gr) {
-
+      zm <- -gm
+      return(list(
+        opt = opt,
+        zm = zm)
+      )
     }
     Bd <- bd_approx(fg, par, zm, gm)
     opt$counts$gr <- opt$counts$gr + 1
@@ -822,12 +835,7 @@ tn_inner_cg <- function(opt, fg, par, gm, preconditioner = NULL, zm = 0) {
   dot_rm_ym <- dot(rm, ym)
 
   j <- 0
-  # Safeguard for pathological situations.
-  # In exact arithmetic CG will converge in N iterations.
-  # The point of TN is to stop way earlier, but I've seen it get stuck,
-  # presumably due to numerical issues.
-  max_j <- length(par)
-  while (j < max_j) {
+  while (j < max_iter) {
     if (opt$counts$gr >= opt$convergence$max_gr) {
       if (j == 0) {
         zm <- -gm
@@ -842,17 +850,35 @@ tn_inner_cg <- function(opt, fg, par, gm, preconditioner = NULL, zm = 0) {
     opt$counts$gr <- opt$counts$gr + 1
 
     dBd <- dot(dm, Bd)
-    if (dBd <= 0) {
-      # -ve curvature, bail out
-      if (j == 0) {
-        # Use steepest descent if the initial Bd estimate is unusable
-        zm <- -gm
+    if (exit_criterion == "curvature") {
+      if (dBd <= 0) {
+        # -ve curvature, bail out
+        if (j == 0) {
+          # Use steepest descent if the initial Bd estimate is unusable
+          zm <- -gm
+        }
+        break
       }
-      break
     }
 
     alpha <- dot_rm_ym / dBd
+    # only used in the strong curvature criterion
+    zm_old <- zm
     zm <- zm + alpha * dm
+    if (exit_criterion == "strong") {
+      # alternative exit criterion used in TNPACK
+      if (dot(gm, zm) >= dot(gm, zm_old) + 1e-15) {
+        if (j == 0) {
+          zm <- -gm
+        }
+        else {
+          zm <- zm_old
+        }
+
+        break
+      }
+    }
+
     rm <- rm + alpha * Bd
     if (norm2(rm) < eps) {
       break

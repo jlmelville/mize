@@ -394,6 +394,11 @@
 #' or \code{"previous"} to use the final result from the previous iteration,
 #' as suggested by Martens (2010). Applies only if \code{method = "TN"},
 #' ignored otherwise.
+#' @param tn_exit Type of exit criterion to use when terminating the inner CG
+#' loop of Truncated Newton method. Either \code{"curvature"} to use the
+#' standard negative curvature test, or \code{"strong"} to use the modified
+#' "strong" curvature test in TNPACK (Xie and Schlick, 1999). Applies only
+#' if \code{method = "TN"}, ignored otherwise.
 #' @param nest_q Strong convexity parameter for the NAG
 #' momentum term. Must take a value between 0 (strongly convex) and 1
 #' (zero momentum). Only applies using the NAG method or a momentum method with
@@ -594,6 +599,10 @@
 #' In \emph{Proceedings of the 30th international conference on machine learning (ICML-13)}
 #' (pp. 1139-1147).
 #'
+#' Xie, D., & Schlick, T. (1999).
+#' Remark on Algorithm 702—The updated truncated Newton minimization package.
+#' \emph{ACM Transactions on Mathematical Software (TOMS)}, \emph{25}(1), 108-122.
+#'
 #' Xie, D., & Schlick, T. (2002).
 #' A more lenient stopping rule for line search algorithms.
 #' \emph{Optimization Methods and Software}, \emph{17}(4), 683-700.
@@ -635,6 +644,7 @@ mize <- function(par, fg,
                  preconditioner = "",
                  # TN
                  tn_init = 0,
+                 tn_exit = "curvature",
                  # NAG
                  nest_q = 0, # 1 - SD,
                  nest_convex_approx = FALSE,
@@ -691,7 +701,7 @@ mize <- function(par, fg,
                    memory = memory,
                    cg_update = cg_update,
                    preconditioner = preconditioner,
-                   tn_init = tn_init,
+                   tn_init = tn_init, tn_exit = tn_exit,
                    nest_q = nest_q, nest_convex_approx = nest_convex_approx,
                    nest_burn_in = nest_burn_in,
                    use_init_mom = use_init_mom,
@@ -802,6 +812,11 @@ mize <- function(par, fg,
 #'   or \code{"previous"} to use the final result from the previous iteration,
 #'   as suggested by Martens (2010). Applies only if \code{method = "TN"},
 #'   ignored otherwise.
+#' @param tn_exit Type of exit criterion to use when terminating the inner CG
+#'   loop of Truncated Newton method. Either \code{"curvature"} to use the
+#'   standard negative curvature test, or \code{"strong"} to use the modified
+#'   "strong" curvature test in TNPACK (Xie and Schlick, 1999). Applies only
+#'   if \code{method = "TN"}, ignored otherwise.
 #' @param nest_q Strong convexity parameter for the \code{"NAG"} method's
 #'   momentum term. Must take a value between 0 (strongly convex) and 1 (results
 #'   in steepest descent).Ignored unless the \code{method} is \code{"NAG"} and
@@ -929,6 +944,7 @@ make_mize <- function(method = "L-BFGS",
                       preconditioner = "",
                       # TN
                       tn_init = 0,
+                      tn_exit = "curvature",
                       # NAG
                       nest_q = 0,
                       nest_convex_approx = FALSE,
@@ -1089,7 +1105,10 @@ make_mize <- function(method = "L-BFGS",
       if (is.character(tn_init)) {
         tn_init <- tolower(tn_init)
       }
-      dir_type <- tn_direction(init = tn_init,
+      tn_exit <- match.arg(tolower(tn_exit),
+                c("curvature", "strong"))
+
+      dir_type <- tn_direction(init = tn_init, exit_criterion = tn_exit,
                                preconditioner = preconditioner, memory = memory)
       if (is.null(try_newton_step)) {
         try_newton_step <- TRUE
