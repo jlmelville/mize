@@ -99,14 +99,16 @@ cg_direction <- function(ortho_check = FALSE, nu = 0.1,
 
 # CG update formulae, grouped according to their numerators similar to the
 # discussion in Hager and Zhang's survey paper
+#
 # The FR, CD and DY updates are all susceptible to "jamming": they can end up
 # with very small step sizes and make little progress.
-# The Fletcher-Reeves update.
+
+# Fletcher-Reeves update.
 fr_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
   dot(gm) / (dot(gm_old) + eps)
 }
 
-# Conjugate Descent update due to Fletcher
+# Conjugate Descent update due to Fletcher.
 cd_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
   dot(gm) / (dot(pm_old, (gm - gm_old)) + eps)
 }
@@ -122,7 +124,8 @@ dy_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
 
 # The Hestenes-Stiefel update.
 hs_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
-  -(dot(gm, gm_old) - dot(gm, gm_old)) / (dot(pm_old, (gm - gm_old)) + eps)
+  ym <- gm - gm_old
+  dot(ym, gm) / (dot(pm_old, ym) + eps)
 }
 
 # An "HS+" modification of Hestenes-Stiefel, in analogy to the "PR+" variant of
