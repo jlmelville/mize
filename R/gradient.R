@@ -110,12 +110,13 @@ fr_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
 
 # Conjugate Descent update due to Fletcher.
 cd_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
-  dot(gm) / (dot(pm_old, (gm - gm_old)) + eps)
+  -dot(gm) / (dot(pm_old, gm_old) + eps)
 }
 
 # The Dai-Yuan update.
 dy_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
-  -cd_update(gm, gm_old, pm_old, eps)
+  ym <- gm - gm_old
+  dot(gm) / (dot(pm_old, ym) + eps)
 }
 
 # HS, PR and LS share a numerator. According to Hager and Zhang, they
@@ -142,7 +143,8 @@ hs_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
 # The Polak-Ribiere method for updating the CG direction. Also known as
 # Polak-Ribiere-Polyak (PRP)
 pr_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
-  dot(gm, gm - gm_old) / (dot(gm_old) + eps)
+  ym <- gm - gm_old
+  dot(gm, ym) / (dot(gm_old) + eps)
 }
 
 # The "PR+" update due to Powell. Polak-Ribiere update, but if negative,
@@ -155,7 +157,8 @@ pr_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
 
 # Liu-Storey update
 ls_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
-  -hs_update(gm, gm_old, pm_old, eps)
+  ym <- gm - gm_old
+  -dot(ym, gm) / (dot(pm_old, gm_old) + eps)
 }
 
 # Hager-Zhang update as used in CG_DESCENT
