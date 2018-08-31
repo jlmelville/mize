@@ -104,19 +104,42 @@ cg_direction <- function(ortho_check = FALSE, nu = 0.1,
 # with very small step sizes and make little progress.
 
 # Fletcher-Reeves update.
-fr_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
-  dot(gm) / (dot(gm_old) + eps)
+fr_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
+                      preconditioner = NULL) {
+  if (!is.null(preconditioner)) {
+    wm <- preconditioner(gm)
+    wm_old <- preconditioner(gm_old)
+  }
+  else {
+    wm <- gm
+    wm_old <- gm_old
+  }
+  dot(gm, wm) / (dot(gm_old, wm_old) + eps)
 }
 
 # Conjugate Descent update due to Fletcher.
-cd_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
-  -dot(gm) / (dot(pm_old, gm_old) + eps)
+cd_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
+                      preconditioner = NULL) {
+  if (!is.null(preconditioner)) {
+    wm <- preconditioner(gm)
+  }
+  else {
+    wm <- gm
+  }
+  dot(-gm, wm) / (dot(pm_old, gm_old) + eps)
 }
 
 # The Dai-Yuan update.
-dy_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
+dy_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
+                      preconditioner = NULL) {
   ym <- gm - gm_old
-  dot(gm) / (dot(pm_old, ym) + eps)
+  if (!is.null(preconditioner)) {
+    wm <- preconditioner(gm)
+  }
+  else {
+    wm <- gm
+  }
+  dot(gm, wm) / (dot(pm_old, ym) + eps)
 }
 
 # HS, PR and LS share a numerator. According to Hager and Zhang, they
@@ -124,9 +147,16 @@ dy_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
 # being known about their provable global convergence properties.
 
 # The Hestenes-Stiefel update.
-hs_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
+hs_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
+                      preconditioner = NULL) {
   ym <- gm - gm_old
-  dot(ym, gm) / (dot(pm_old, ym) + eps)
+  if (!is.null(preconditioner)) {
+    wm <- preconditioner(gm)
+  }
+  else {
+    wm <- gm
+  }
+  dot(ym, wm) / (dot(pm_old, ym) + eps)
 }
 
 # An "HS+" modification of Hestenes-Stiefel, in analogy to the "PR+" variant of
@@ -135,45 +165,73 @@ hs_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
 # Hager, W. W., & Zhang, H. (2006).
 # A survey of nonlinear conjugate gradient methods.
 # \emph{Pacific journal of Optimization}, \emph{2}(1), 35-58.
-hs_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
-  beta <- hs_update(gm, gm_old, pm_old, eps)
+hs_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
+                           preconditioner = NULL) {
+  beta <- hs_update(gm, gm_old, pm_old, eps, preconditioner = preconditioner)
   max(0, beta)
 }
 
 # The Polak-Ribiere method for updating the CG direction. Also known as
 # Polak-Ribiere-Polyak (PRP)
-pr_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
+pr_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
+                      preconditioner = NULL) {
   ym <- gm - gm_old
-  dot(gm, ym) / (dot(gm_old) + eps)
+  if (!is.null(preconditioner)) {
+    wm <- preconditioner(gm)
+    wm_old <- preconditioner(gm_old)
+  }
+  else {
+    wm <- gm
+    wm_old <- gm_old
+  }
+  dot(wm, ym) / (dot(gm_old, wm_old) + eps)
 }
 
 # The "PR+" update due to Powell. Polak-Ribiere update, but if negative,
 # restarts the CG from steepest descent. Prevents a possible lack of
 # convergence when using a Wolfe line search.
-pr_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
-  beta <- pr_update(gm, gm_old, pm_old, eps)
+pr_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
+                           preconditioner = NULL) {
+  beta <- pr_update(gm, gm_old, pm_old, eps, preconditioner = preconditioner)
   max(0, beta)
 }
 
 # Liu-Storey update
-ls_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
+ls_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
+                      preconditioner = NULL) {
   ym <- gm - gm_old
-  -dot(ym, gm) / (dot(pm_old, gm_old) + eps)
+  if (!is.null(preconditioner)) {
+    wm <- preconditioner(gm)
+  }
+  else {
+    wm <- gm
+  }
+  -dot(ym, wm) / (dot(pm_old, gm_old) + eps)
 }
 
-# Hager-Zhang update as used in CG_DESCENT
-hz_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
+# Hager-Zhang update as used in CG_DESCENT, theta = 2
+hz_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
+                      preconditioner = NULL) {
   ym <- gm - gm_old
-  py <- dot(pm_old, ym)
-  dot(ym - 2 * pm_old * (dot(ym) / (py + eps)), (gm / (py + eps)))
+  if (!is.null(preconditioner)) {
+    vm <- preconditioner(ym)
+    wm <- preconditioner(gm)
+  }
+  else {
+    vm <- ym
+    wm <- gm
+  }
+  ipy <- 1 / (dot(pm_old, ym) + eps)
+  (dot(ym, wm) * ipy) - 2 * dot(ym, vm) * ipy * dot(pm_old, gm) * ipy
 }
 
 # "Restricted" Hager-Zhang update as used in CG_DESCENT to ensure
 # convergence. Analogous to the PR+ and HS+ updates, but dynamically adjusts
 # the lower bound as convergence occurs. Choice of eta is from the CG_DESCENT
 # paper
-hz_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps) {
-  beta <- hz_update(gm, gm_old, pm_old, eps)
+hz_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
+                           preconditioner = NULL) {
+  beta <- hz_update(gm, gm_old, pm_old, eps, preconditioner = preconditioner)
   eta <- 0.01
   eta_k <- -1 / (dot(pm_old) * min(eta, dot(gm_old)))
   max(eta_k, beta)
