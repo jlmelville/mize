@@ -25,37 +25,37 @@ test_that("CG with different updates", {
   expect_equal(res$g2n, 2.579, tol = 1e-3)
   expect_equal(res$par, c(-1.028, 1.060), tol = 1e-3)
 
-  res <- mize(rb0, rosenbrock_fg, method = "cg", max_iter = 3,
+  res <- mize(rb0, rosenbrock_fg, method = "cg", max_iter = 5,
               cg_update = "hs", grad_tol = 1e-5)
-  expect_equal(res$nf, 13)
-  expect_equal(res$ng, 13)
-  expect_equal(res$f, 3.531, tol = 1e-3)
-  expect_equal(res$g2n, 24.935, tol = 1e-3)
-  expect_equal(res$par, c(-0.785, 0.558), tol = 1e-3)
+  expect_equal(res$nf, 21)
+  expect_equal(res$ng, 21)
+  expect_equal(res$f, 1.829, tol = 1e-3)
+  expect_equal(res$g2n, 3.665, tol = 1e-3)
+  expect_equal(res$par, c(-0.351, 0.118), tol = 1e-3)
 
-  res <- mize(rb0, rosenbrock_fg, method = "cg", max_iter = 3,
+  res <- mize(rb0, rosenbrock_fg, method = "cg", max_iter = 5,
               cg_update = "hs+", grad_tol = 1e-5)
-  expect_equal(res$nf, 13)
-  expect_equal(res$ng, 13)
-  expect_equal(res$f, 3.531, tol = 1e-3)
-  expect_equal(res$g2n, 24.935, tol = 1e-3)
-  expect_equal(res$par, c(-0.785, 0.558), tol = 1e-3)
+  expect_equal(res$nf, 21)
+  expect_equal(res$ng, 21)
+  expect_equal(res$f, 1.728, tol = 1e-3)
+  expect_equal(res$g2n, 2.350, tol = 1e-3)
+  expect_equal(res$par, c(-0.312, 0.106), tol = 1e-3)
 
-  res <- mize(rb0, rosenbrock_fg, method = "cg", max_iter = 3,
+  res <- mize(rb0, rosenbrock_fg, method = "cg", max_iter = 5,
               cg_update = "pr", grad_tol = 1e-5)
-  expect_equal(res$nf, 13)
-  expect_equal(res$ng, 13)
-  expect_equal(res$f, 3.455, tol = 1e-3)
-  expect_equal(res$g2n, 24.32, tol = 1e-3)
-  expect_equal(res$par, c(-0.765, 0.527), tol = 1e-3)
+  expect_equal(res$nf, 21)
+  expect_equal(res$ng, 21)
+  expect_equal(res$f, 1.552, tol = 1e-3)
+  expect_equal(res$g2n, 3.163, tol = 1e-3)
+  expect_equal(res$par, c(-0.245, 0.0547), tol = 1e-3)
 
-  res <- mize(rb0, rosenbrock_fg, method = "cg", max_iter = 3,
+  res <- mize(rb0, rosenbrock_fg, method = "cg", max_iter = 5,
               cg_update = "pr+", grad_tol = 1e-5)
-  expect_equal(res$nf, 13)
-  expect_equal(res$ng, 13)
-  expect_equal(res$f, 3.455, tol = 1e-3)
-  expect_equal(res$g2n, 24.32, tol = 1e-3)
-  expect_equal(res$par, c(-0.765, 0.527), tol = 1e-3)
+  expect_equal(res$nf, 21)
+  expect_equal(res$ng, 21)
+  expect_equal(res$f, 1.475, tol = 1e-3)
+  expect_equal(res$g2n, 2.525, tol = 1e-3)
+  expect_equal(res$par, c(-0.211, 0.054), tol = 1e-3)
 
   res <- mize(rb0, rosenbrock_fg, method = "cg", max_iter = 3,
               cg_update = "ls", grad_tol = 1e-5)
