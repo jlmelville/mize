@@ -237,6 +237,27 @@ hz_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
   max(eta_k, beta)
 }
 
+# The PR-FR update suggested by Gilbert and Nocedal (1992)
+prfr_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
+                       preconditioner = NULL) {
+  bpr <- pr_update(gm, gm_old, pm_old, eps = eps,
+                   preconditioner = preconditioner)
+  bfr <- fr_update(gm, gm_old, pm_old, eps = eps,
+                   preconditioner = preconditioner)
+  if (bpr < -bfr) {
+    beta <- -bfr
+  }
+  else if (abs(bpr) <= bfr) {
+    beta <- bpr
+  }
+  else if (bpr > bfr) {
+    beta <- bfr
+  }
+  else {
+    stop("Problem in PR-FR Update")
+  }
+  beta
+}
 
 # Restart criteria due to Powell
 # Checks that successive gradient vectors are sufficiently orthogonal

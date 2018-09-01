@@ -38,11 +38,9 @@ scaled according to the method described by Nocedal and Wright
 \item{memory}{The number of updates to store if using the \code{L-BFGS}
 method. Ignored otherwise. Must be a positive integer.}
 
-\item{cg_update}{Type of update to use for the \code{CG} method. Can be one
-of \code{"FR"} (Fletcher-Reeves), \code{"PR"} (Polak-Ribiere), \code{"PR+"}
-(Polak-Ribiere with a reset to steepest descent), \code{"HS"}
-(Hestenes-Stiefel), or \code{"DY"} (Dai-Yuan). Ignored if \code{method} is
-not \code{"CG"}.}
+\item{cg_update}{Type of update to use for the \code{"CG"} method. For
+details see the "CG" subsection of the "Optimization Methods" section.
+Ignored if \code{method} is not \code{"CG"}.}
 
 \item{preconditioner}{Type of preconditioner to use in Truncated Newton.
 Leave blank or set to  \code{"L-BFGS"} to use a limited memory BFGS

@@ -81,3 +81,69 @@ test_that("CG with different updates", {
   expect_equal(res$g2n, 16.750, tol = 1e-3)
   expect_equal(res$par, c(-0.407, 0.237), tol = 1e-3)
 })
+
+# Benchmark against minfunc
+test_that("CG with strong line search", {
+  res <- mize(c(0, 0), rosenbrock_fg, method = "cg", max_iter = 4,
+              cg_update = "fr", c1 = 1e-10, c2 = 1e-9,
+              store_progress = TRUE)
+  expect_equal(res$nf, 24)
+  expect_equal(res$ng, 24)
+  expect_equal(res$f, 0.283, tol = 1e-3)
+  expect_equal(res$par, c(0.583, 0.306), tol = 1e-3)
+
+  expect_equal(res$progress$alpha,
+               c(0, 8.06310e-02, 9.72775e-03, 5.16960e-03, 4.74361e-03),
+               tol = 1e-5)
+  expect_equal(res$progress$f,
+               c(1, 7.71110e-01, 6.23690e-01, 4.72437e-01, 2.83017e-01),
+               tol = 1e-5)
+
+  res <- mize(c(0, 0), rosenbrock_fg, method = "cg", max_iter = 4,
+              cg_update = "pr", c1 = 1e-10, c2 = 1e-9,
+              store_progress = TRUE)
+  expect_equal(res$nf, 25)
+  expect_equal(res$ng, 25)
+  expect_equal(res$f, 0.317, tol = 1e-3)
+  expect_equal(res$par, c(0.461, 0.196), tol = 1e-3)
+
+  expect_equal(res$progress$alpha,
+               c(0, 8.06310e-02, 9.72775e-03, 7.00902e-03, 1.94442e-02),
+               tol = 1e-5)
+  expect_equal(res$progress$f,
+               c(1, 7.71110e-01, 6.23690e-01, 4.36448e-01, 3.17284e-01),
+               tol = 1e-5)
+
+  res <- mize(c(0, 0), rosenbrock_fg, method = "cg", max_iter = 4,
+              cg_update = "hs", c1 = 1e-10, c2 = 1e-9,
+              store_progress = TRUE)
+  expect_equal(res$nf, 25)
+  expect_equal(res$ng, 25)
+  expect_equal(res$f, 0.317, tol = 1e-3)
+  expect_equal(res$par, c(0.461, 0.196), tol = 1e-3)
+
+  expect_equal(res$progress$alpha,
+               c(0, 8.06310e-02, 9.72775e-03, 7.00902e-03, 1.94442e-02),
+               tol = 1e-5)
+  expect_equal(res$progress$f,
+               c(1, 7.71110e-01, 6.23690e-01, 4.36448e-01, 3.17284e-01),
+               tol = 1e-5)
+
+  # after modification of "gilbert-nocedal" update to use the usual FR/PR
+  # formulae
+  res <- mize(c(0, 0), rosenbrock_fg, method = "cg", max_iter = 4,
+              cg_update = "prfr", c1 = 1e-10, c2 = 1e-9,
+              store_progress = TRUE)
+  expect_equal(res$nf, 23)
+  expect_equal(res$ng, 23)
+  expect_equal(res$f, 0.406, tol = 1e-3)
+  expect_equal(res$par, c(0.369, 0.127), tol = 1e-3)
+
+  expect_equal(res$progress$alpha,
+               c(0, 8.06310e-02, 9.72775e-03, 7.00902e-03, 6.68088e-03),
+               tol = 1e-5)
+  expect_equal(res$progress$f,
+               c(1, 7.71110e-01, 6.23690e-01, 4.36448e-01, 4.06045e-01),
+               tol = 1e-5)
+})
+

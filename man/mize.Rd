@@ -44,14 +44,12 @@ is scaled according to the method described by Nocedal and Wright
 (where the scaling is applied only during the first step) and \code{L-BFGS}
 (where the scaling is applied during every iteration). Ignored otherwise.}
 
-\item{cg_update}{Type of update to use for the \code{CG} method. Can be
-one of \code{"FR"} (Fletcher-Reeves), \code{"PR"} (Polak-Ribiere),
-\code{"PR+"} (Polak-Ribiere with a reset to steepest descent), \code{"HS"}
-(Hestenes-Stiefel), or \code{"DY"} (Dai-Yuan). Ignored if \code{method} is
-not \code{"CG"}.}
+\item{cg_update}{Type of update to use for the \code{"CG"} method. For
+details see the "CG" subsection of the "Optimization Methods" section.
+Ignored if \code{method} is not \code{"CG"}.}
 
 \item{preconditioner}{Type of preconditioner to use in Truncated Newton.
-Leave blank or set to  \code{"L-BFGS"} to use a limited memory BFGS
+Leave blank or set to \code{"L-BFGS"} to use a limited memory BFGS
 preconditioner. Use the \code{"memory"} parameter to control the number of
 updates to store. Applies only if \code{method = "TN"}, ignored otherwise.}
 
@@ -320,6 +318,8 @@ parameter allows for different methods for choosing the next direction:
     \item \code{"HZ"} The method of Hager and Zhang.
     \item \code{"HZ+"} The method of Hager and Zhang with restart, as used
     in CG_DESCENT.
+    \item \code{"PRFR"} The modified PR-FR method of Gilbert and Nocedal
+    (1992).
   }
 The \code{"PR+"} and \code{"HZ+"} are likely to be most robust in practice.
 Other updates are available more for curiosity purposes.
@@ -657,6 +657,9 @@ res <- mize(rb0, rosenbrock_fg, method = "MOM", mom_type = "nesterov",
              mom_schedule = 0.9, restart = "fn")
 }
 \references{
+Gilbert, J. C., & Nocedal, J. (1992). Global convergence properties of conjugate gradient methods for optimization.
+\emph{SIAM Journal on optimization}, \emph{2}(1), 21-42.
+
 Hager, W. W., & Zhang, H. (2005).
 A new conjugate gradient method with guaranteed descent and an efficient line search.
 \emph{SIAM Journal on Optimization}, \emph{16}(1), 170-192.
