@@ -206,7 +206,7 @@ ls_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
   else {
     wm <- gm
   }
-  -dot(ym, wm) / (dot(pm_old, gm_old) + eps)
+  dot(-ym, wm) / (dot(pm_old, gm_old) + eps)
 }
 
 # Hager-Zhang update as used in CG_DESCENT, theta = 2
