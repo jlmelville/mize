@@ -388,7 +388,8 @@
 #' @param preconditioner Type of preconditioner to use in Truncated Newton.
 #' Leave blank or set to \code{"L-BFGS"} to use a limited memory BFGS
 #' preconditioner. Use the \code{"memory"} parameter to control the number of
-#' updates to store. Applies only if \code{method = "TN"}, ignored otherwise.
+#' updates to store. Applies only if \code{method = "TN"} or \code{"CG"},
+#' ignored otherwise.
 #' @param tn_init Type of initialization to use in inner loop of Truncated
 #' Newton. Use \code{0} to use the zero vector (the usual TN initialization),
 #' or \code{"previous"} to use the final result from the previous iteration,
@@ -807,7 +808,8 @@ mize <- function(par, fg,
 #' @param preconditioner Type of preconditioner to use in Truncated Newton.
 #'   Leave blank or set to  \code{"L-BFGS"} to use a limited memory BFGS
 #'   preconditioner. Use the \code{"memory"} parameter to control the number of
-#'   updates to store. Applies only if \code{method = "TN"}, ignored otherwise.
+#'   updates to store. Applies only if \code{method = "TN"}, or \code{"CG"},
+#'   ignored otherwise.
 #' @param tn_init Type of initialization to use in inner loop of Truncated
 #'   Newton. Use \code{0} to use the zero vector (the usual TN initialization),
 #'   or \code{"previous"} to use the final result from the previous iteration,
@@ -1075,7 +1077,9 @@ make_mize <- function(method = "L-BFGS",
         "hz+" = hz_plus_update,
         prfr = prfr_update
       )
-      dir_type <- cg_direction(cg_update = cg_update_fn)
+      dir_type <- cg_direction(cg_update = cg_update_fn,
+                               preconditioner = preconditioner,
+                               memory = memory)
     },
     bfgs = {
       dir_type <- bfgs_direction(scale_inverse = scale_hess)

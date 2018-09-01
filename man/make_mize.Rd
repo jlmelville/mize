@@ -45,7 +45,8 @@ Ignored if \code{method} is not \code{"CG"}.}
 \item{preconditioner}{Type of preconditioner to use in Truncated Newton.
 Leave blank or set to  \code{"L-BFGS"} to use a limited memory BFGS
 preconditioner. Use the \code{"memory"} parameter to control the number of
-updates to store. Applies only if \code{method = "TN"}, ignored otherwise.}
+updates to store. Applies only if \code{method = "TN"}, or \code{"CG"},
+ignored otherwise.}
 
 \item{tn_init}{Type of initialization to use in inner loop of Truncated
 Newton. Use \code{0} to use the zero vector (the usual TN initialization),

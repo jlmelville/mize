@@ -80,6 +80,14 @@ test_that("CG with different updates", {
   expect_equal(res$f, 2.487, tol = 1e-3)
   expect_equal(res$g2n, 16.750, tol = 1e-3)
   expect_equal(res$par, c(-0.407, 0.237), tol = 1e-3)
+
+  res <- mize(rb0, rosenbrock_fg, method = "cg", max_iter = 5,
+              cg_update = "prfr", grad_tol = 1e-5)
+  expect_equal(res$nf, 19)
+  expect_equal(res$ng, 19)
+  expect_equal(res$f, 2.454, tol = 1e-3)
+  expect_equal(res$g2n, 4.351, tol = 1e-3)
+  expect_equal(res$par, c(-0.553, 0.326), tol = 1e-3)
 })
 
 # Benchmark against minfunc
@@ -147,3 +155,34 @@ test_that("CG with strong line search", {
                tol = 1e-5)
 })
 
+test_that("CG with preconditioning", {
+  res <- mize(c(0, 0), rosenbrock_fg, method = "cg", max_iter = 4,
+              cg_update = "fr", c1 = 1e-10, c2 = 1e-9,
+              preconditioner = "l-bfgs", store_progress = TRUE)
+  expect_equal(res$nf, 22)
+  expect_equal(res$ng, 22)
+  expect_equal(res$f, 0.769, tol = 1e-3)
+  expect_equal(res$par, c(0.182, 0.00150), tol = 1e-3)
+
+  expect_equal(res$progress$alpha,
+               c(0, 8.06310e-02, 8.51466e-03, 5.03384e-03, 4.90653e-03),
+               tol = 1e-5)
+  expect_equal(res$progress$f,
+               c(1, 7.71110e-01, 7.69892e-01, 7.69442e-01, 7.68989e-01),
+               tol = 1e-5)
+
+  res <- mize(c(0, 0), rosenbrock_fg, method = "cg", max_iter = 4,
+              cg_update = "pr", c1 = 1e-10, c2 = 1e-9,
+              preconditioner = "l-bfgs", store_progress = TRUE)
+  expect_equal(res$nf, 25)
+  expect_equal(res$ng, 25)
+  expect_equal(res$f, 0.317, tol = 1e-3)
+  expect_equal(res$par, c(0.461, 0.196), tol = 1e-3)
+
+  expect_equal(res$progress$alpha,
+               c(0, 8.06310e-02, 9.36549e-01, 6.74800e-01, 7.87824e-01),
+               tol = 1e-5)
+  expect_equal(res$progress$f,
+               c(1, 7.71110e-01, 6.23690e-01, 4.36448e-01, 3.17284e-01),
+               tol = 1e-5)
+})
