@@ -164,7 +164,7 @@ the first iteration is non-zero. Otherwise, it's zero. Only applies if
 using a momentum schedule.}
 
 \item{restart}{Momentum restart type. Can be one of "fn", "gr" or "speed".
-See Details'. Ignored if no momentum scheme is being used.}
+See 'Details'. Ignored if no momentum scheme is being used.}
 
 \item{restart_wait}{Number of iterations to wait between restarts. Ignored
 if \code{restart} is \code{NULL}.}
@@ -398,7 +398,8 @@ following parameters can be used to control the line search:
    \itemize{
      \item{\code{"rasmussen"}} As used by Rasmussen in \code{minimize.m}:
      \deqn{\frac{1}{1+\left|g\right|^2}}{1 / 1 + (|g|^2)}
-     \item{\code{"scipy"}} As used in scipy's \code{optimize.py}
+     \item{\code{"scipy"}} As used in \code{optimize.py} in the python
+     library Scipy.
      \deqn{\frac{1}{\left|g\right|}}{1 / |g|}
      \item{\code{"schmidt"}} As used by Schmidt in \code{minFunc.m}
      (the reciprocal of the l1 norm of g)
@@ -566,7 +567,8 @@ The following parameters control various stopping criteria:
   the gradient. Indicated by \code{terminate$what} being \code{"grad_tol"}.
   Note that the gradient norm is not a very reliable stopping criterion
   (see Nocedal and co-workers 2002), but is quite commonly used, so this
-  might be useful for comparison with results from other optimizers.
+  might be useful for comparison with results from other optimization
+  software.
   \item{\code{ginf_tol}} Absolute tolerance of the infinity norm (maximum
   absolute component) of the gradient. Indicated by \code{terminate$what}
   being \code{"ginf_tol"}.
@@ -719,7 +721,7 @@ In \emph{Proceedings of the 30th international conference on machine learning (I
 (pp. 1139-1147).
 
 Xie, D., & Schlick, T. (1999).
-Remark on Algorithm 702—The updated truncated Newton minimization package.
+Remark on Algorithm 702 - The updated truncated Newton minimization package.
 \emph{ACM Transactions on Mathematical Software (TOMS)}, \emph{25}(1), 108-122.
 
 Xie, D., & Schlick, T. (2002).
