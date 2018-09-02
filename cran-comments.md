@@ -1,18 +1,13 @@
 ## Release Summary
 
-This is a resubmission to deal with the following issues:
-
-* The Description field in the DESCRIPTION file has been updated to better
-distinguish it from existing packages.
-
-* In a vignette, a link to a URL has been modified to try and fix a message 
-about it being possibly invalid.
+This is a minor update.
 
 ## Test environments
 
-* ubuntu 12.04 (on travis-ci), R 3.4.0
-* local Antegros Linux, R 3.4.1
-* local Windows 10 build, R 3.4.1
+* ubuntu 14.04 (on travis-ci), R 3.4.4, R 3.5.0, R-devel
+* mac OS X High Sierra (on travis-ci), R 3.4.4, R 3.5.0
+* local Windows 10 build, R 3.5.1
+* Windows Server 2012 (on appveyor) R 3.5.1
 * win-builder (devel)
 
 ## R CMD check results
