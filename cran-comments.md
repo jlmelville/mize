@@ -19,9 +19,6 @@ There was 1 NOTE:
 * checking CRAN incoming feasibility ... NOTE
 Maintainer: 'James Melville <jlmelville@gmail.com>'
 
-This is the first version of the package and the first package I have 
-submitted to CRAN.
-
 There was a message about possibly mis-spelled words in DESCRIPTION:
 
   BFGS (8:64, 9:20, 9:28)
