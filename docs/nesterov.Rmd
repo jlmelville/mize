@@ -309,8 +309,8 @@ $$
 
 but as this version can't be expressed as the classical momentum form with
 different coefficients, the way the Bengio formulation can be, it probably
-doesn't gain you anything, except you can expand it and rearrange it further to
-give:
+doesn't gain you anything in terms of implementation, except you can expand it 
+and rearrange it further to give:
 
 $$
 v_{t+1} =  
@@ -327,10 +327,23 @@ which now resembles the classical momentum expression with an extra momentum
 term. I haven't found a definitive reference for this expression, or what, if 
 any, extra insight it provides, but user 'denis' uses this expression in an
 [answer on the Cross Validated Stack Exchange](https://stats.stackexchange.com/a/233430),
-and refers to the third form as "gradient momentum".
+and refers to the third form as "gradient momentum". Another way to look at this
+is to say that the third term reduces the contribution of the classical momentum 
+component of the update and increases the contribution of the gradient descent, 
+with the degree of weighting controlled by $\mu_{t}$. 
+[Quasi-hyperbolic momentum](https://arxiv.org/abs/1810.06801) effectively uses
+this formulation, but allows the weighting term to be a free parameter ($\nu$),
+decoupled from $\mu$. The Stack Exchange answer given above also suggests that
+the "gradient momentum" term can be set independently of $\mu$ and Denis
+Yarats is one of the authors of the QHM paper, so perhaps we see the origins of
+QHM in this answer. Note that it's a bit hard to see the connection between
+the form of NAG given here and the QHM method, because the QHM equations apply
+the learning rate to both the gradient descent and the momentum step, and
+introduces a discounting term to the gradient descent (i.e. multiplies it by 
+$1 - \mu_{t}$).
 
-We can create a "generalized" momentum update by introducing a parameter
-$\beta$ to give:
+Less radically, we can create a "generalized" momentum update by introducing a 
+parameter $\beta$ to give:
 
 $$
 v_{t+1} =  
@@ -344,8 +357,7 @@ v_{t+1} =
 \right]
 $$
 where setting $\beta_t = 0$ will give classical momentum and $\beta_t = 1$ gives
-Nesterov. The Stack Exchange answer I mentioned above also suggests allowing
-the two momentum terms to differ from each other.
+Nesterov. 
 
 From the look of the expression, it seems that a major downside of this 
 expression is that calculating the parameters for iteration $t+1$ requires 
@@ -899,5 +911,4 @@ I pity anyone tasked with implementing Nesterov momentum and demonstrating
 that they actually got it right. Imagine naively implementing vanilla NAG,
 the Sutskever formulation and the Bengio formulation. Using identical test functions,
 starting points and parameters, their output are all different from each other
-*but they're all correct*! 
-
+*but they're all correct*!
