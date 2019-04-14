@@ -58,7 +58,7 @@ bold_driver <- function(inc_mult = 1.1, dec_mult = 0.5,
 
       # Optionally use the gradient if it's available to give up early
       # if we're not going downhill
-      if (stage == "gradient_descent"
+      if (stage$type == "gradient_descent"
           && has_gr_curr(opt, iter)
           && dot(opt$cache$gr_curr, pm) > 0) {
         sub_stage$value <- sub_stage$min_value
@@ -162,7 +162,7 @@ backtracking <- function(rho = 0.5,
 
       # Optionally use the gradient if it's available to give up early
       # if we're not going downhill
-      if (stage == "gradient_descent"
+      if (stage$type == "gradient_descent"
           && has_gr_curr(opt, iter)
           && dot(opt$cache$gr_curr, pm) > 0) {
         sub_stage$value <- sub_stage$min_value
