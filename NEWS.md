@@ -1,3 +1,12 @@
+# mize 0.2.1
+
+A patch release to fix an incompatibility with R-devel.
+
+## Bug fixes
+
+* Fixed an error with bold driver and back-tracking line search where the
+stage was being incorrectly checked.
+
 # mize 0.2.0
 
 ## New features
