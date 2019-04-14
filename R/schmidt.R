@@ -508,7 +508,7 @@ ArmijoBacktrack <-
         }
         step <- step_down * step
       }
-      else if (LS_interp == 1 || !is.finite(g_new)) {
+      else if (LS_interp == 1 || any(!is.finite(g_new))) {
         # Use function value at new point, but not its derivative
         if (funEvals < 2 || LS_multi == 0 || !is.finite(f_prev)) {
           # Backtracking w/ quadratic interpolation based on two points
@@ -540,7 +540,7 @@ ArmijoBacktrack <-
             point_matrix(c(0, step), c(f, f_new), c(gtd, gtd_new)),
             0, step)
         }
-        else if (!is.finite(g_prev)) {
+        else if (any(!is.finite(g_prev))) {
           # Backtracking w/ quartic interpolation 3 points and derivative
           # of two
           if (debug) {
