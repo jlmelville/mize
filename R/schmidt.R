@@ -265,9 +265,9 @@ schmidt_bracket <- function(alpha, LS_interp, maxLS, funObj, step0, c1, c2,
   }
 
   if (funEvals >= maxLS && !ok) {
-    if (debug) {
-      message("max_fn reached in bracket step")
-    }
+    # if (debug) {
+      stop("ls_max_fn reached in bracket step")
+    # }
   }
 
   list(bracket = bracket_step, done = done, funEvals = funEvals, ok = ok)
