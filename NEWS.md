@@ -8,6 +8,7 @@ A patch release for a bug fix.
 Schmidt line search is exceeded (controlled by the `ls_max_fn` parameter), a 
 `'bracket_step' not found` error could result. Thank you to reporter Charles 
 Driver.
+* Fixed a couple of vignette links that were missing the "http://" at the front.
 
 # mize 0.2.1
 
