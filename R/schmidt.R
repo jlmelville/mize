@@ -182,7 +182,7 @@ schmidt_bracket <- function(alpha, LS_interp, maxLS, funObj, step0, c1, c2,
   ff_res <- find_finite(funObj, alpha, maxLS, min_alpha = 0)
   funEvals <- ff_res$nfn
   step_new <- ff_res$step
-
+  bracket_step <- NULL
   LSiter <- 0
   while (funEvals < maxLS) {
 
@@ -266,7 +266,10 @@ schmidt_bracket <- function(alpha, LS_interp, maxLS, funObj, step0, c1, c2,
 
   if (funEvals >= maxLS && !ok) {
     if (debug) {
-      message("max_fn reached in bracket step")
+      message("ls_max_fn reached in bracket step")
+    }
+    if (is.null(bracket_step)) {
+      bracket_step <- list(step_prev, step_new)
     }
   }
 

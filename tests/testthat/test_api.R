@@ -163,6 +163,22 @@ test_that("CG with Schmidt LS", {
   expect_equal(res$par, c(-0.682, 0.483), tol = 1e-3)
 })
 
+# Tests error referenced in https://github.com/jlmelville/mize/pull/1
+test_that("ls_max_fn", {
+  res <- mize(rb0, rosenbrock_fg, method = "cg",
+              cg_update = "pr+",
+              max_iter = 3,
+              line_search = "schmidt", c1 = 1e-4, c2 = 0.1, step0 = "schmidt",
+              step_next_init = "slope", ls_max_alpha_mult = 10, ls_max_fn = 2,
+              grad_tol = 1e-5)
+  
+  expect_equal(res$nf, 7)
+  expect_equal(res$ng, 7)
+  expect_equal(res$f, 3.947, tol = 1e-3)
+  expect_equal(res$g2n, 1.872, tol = 1e-3)
+  expect_equal(res$par, c(-0.986, 0.978), tol = 1e-3)
+})
+
 test_that("CG with Rasmussen LS", {
   # lower case names should be ok for method, cg_update, step0 etc.
   res <- mize(rb0, rosenbrock_fg, method = "cg",
