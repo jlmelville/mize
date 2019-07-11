@@ -1,3 +1,14 @@
+# mize 0.2.2
+
+A patch release for a bug fix.
+
+## Bug fixes
+
+* Fixed a bug where if the maximum number of function evaluations for the
+Schmidt line search is exceeded (controlled by the `ls_max_fn` parameter), a 
+`'bracket_step' not found` error could result. Thank you to reporter Charles 
+Driver.
+
 # mize 0.2.1
 
 A patch release to fix an incompatibility with R-devel.
