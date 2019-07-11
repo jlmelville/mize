@@ -8,7 +8,7 @@ This is a patch update to fix a user-reported bug.
 * ubuntu 16.04 (on rhub), R 3.6.1
 * fedora 30 (on rhub), R-devel
 * mac OS X High Sierra (on travis-ci), R 3.5.3, R 3.6.1
-* local Windows 10 build, R 3.5.3
+* local Windows 10 build, R 3.5.3, R 3.6.1
 * Windows Server 2008 (on rhub) R-devel
 * Windows Server 2012 (on appveyor) R 3.6.1
 * win-builder (devel)
