@@ -93,7 +93,7 @@ to use mize with funconstrain.
 
 [BSD 2-Clause](https://opensource.org/licenses/BSD-2-Clause).
 
-## Acknowledgements
+## Acknowledgments
 
 I am grateful to Hans Werner Borchers, who provided assistance and 
 encouragement in getting mize onto CRAN.
