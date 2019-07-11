@@ -201,7 +201,7 @@ not store every iteration of convergence information if requested.
 
 The available optimization methods are listed below. I won't be describing the
 algorithms behind them in any depth. For that, you should look in
-the book by [Nocedal and Wright](dx.doi.org/10.1007/978-0-387-40065-5).
+the book by [Nocedal and Wright](http://dx.doi.org/10.1007/978-0-387-40065-5).
 
 Many of these methods can be thought of as coming up with a direction to move
 in, but with the distance to travel in that direction as being someone else's
@@ -520,8 +520,8 @@ Wolfe line search method from Carl Edward Rasmussen's
 [conjugate gradient routine](http://learning.eng.cam.ac.uk/carl/code/minimize/),
 Mark Schmidt's 
 [minimization routines](http://www.cs.ubc.ca/~schmidtm/Software/minFunc.html),
-and an implementation of [Hager-Zhang](dx.doi.org/10.1137/030601880) line search
-are also available (although they are all quite similar):
+and an implementation of [Hager-Zhang](http://dx.doi.org/10.1137/030601880)
+line search are also available (although they are all quite similar):
 
 ```{r other Wolfe line search}
 res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "Rasmussen")
