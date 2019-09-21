@@ -4,6 +4,7 @@
 [![AppVeyor build status](https://ci.appveyor.com/api/projects/status/github/jlmelville/mize?branch=master&svg=true)](https://ci.appveyor.com/project/jlmelville/mize)
 [![Coverage status](https://codecov.io/gh/jlmelville/mize/branch/master/graph/badge.svg)](https://codecov.io/github/jlmelville/mize?branch=master)
 [![CRAN Status Badge](http://www.r-pkg.org/badges/version/mize)](https://cran.r-project.org/package=mize)
+[![Dependencies](https://tinyverse.netlify.com/badge/mize)](https://cran.r-project.org/package=mize)
 [![CRAN Monthly Downloads](https://cranlogs.r-pkg.org/badges/mize)](https://cran.r-project.org/package=mize)
 ![CRAN Downloads](http://cranlogs.r-pkg.org/badges/grand-total/mize)
 
