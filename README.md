@@ -10,12 +10,12 @@
 
 Unconstrained Numerical Optimization Algorithms.
 
-`mize` can be used as a standalone function like the `stats::optim` function, 
-or can be integrated into other packages by creating a stateful optimizer and 
-handling the iterations, convergence, logging and so on externally. 
+`mize` can be used as a standalone function like the `stats::optim` function,
+or can be integrated into other packages by creating a stateful optimizer and
+handling the iterations, convergence, logging and so on externally.
 
-`mize` knows how to do Broyden-Fletcher-Goldfarb-Shanno (BFGS), 
-the limited-memory BFGS (L-BFGS), various flavors of Conjugate Gradient (CG), 
+`mize` knows how to do Broyden-Fletcher-Goldfarb-Shanno (BFGS),
+the limited-memory BFGS (L-BFGS), various flavors of Conjugate Gradient (CG),
 Nesterov Accelerated Gradient (NAG) and momentum-based methods, among others.
 
 ## Installing
@@ -78,15 +78,15 @@ while (!done) {
 
 ## See also
 
-The Wolfe line searches use conversion of Mark Schmidt's 
+The Wolfe line searches use conversion of Mark Schmidt's
 [minFunc routines](http://www.cs.ubc.ca/~schmidtm/Software/minFunc.html),
 Carl Edward Rasmussen's
-[Matlab code](http://learning.eng.cam.ac.uk/carl/code/minimize/) and Dianne 
-O'Leary's Matlab translation of the 
+[Matlab code](http://learning.eng.cam.ac.uk/carl/code/minimize/) and Dianne
+O'Leary's Matlab translation of the
 [Moré-Thuente line search](http://www.cs.umd.edu/users/oleary/software/)
 algorithm from [MINPACK](http://www.netlib.org/minpack/).
 
-I also maintain the [funconstrain](https://github.com/jlmelville/funconstrain) package, which contains a large number of test 
+I also maintain the [funconstrain](https://github.com/jlmelville/funconstrain) package, which contains a large number of test
 problems for numerical optimization. See this [gist](https://gist.github.com/jlmelville/2cb8905edd0dbc23806d3122a7a05c5d) for functions
 to use mize with funconstrain.
 
@@ -96,5 +96,5 @@ to use mize with funconstrain.
 
 ## Acknowledgments
 
-I am grateful to Hans Werner Borchers, who provided assistance and 
+I am grateful to Hans Werner Borchers, who provided assistance and
 encouragement in getting mize onto CRAN.
