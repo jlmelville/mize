@@ -732,7 +732,7 @@ newton_direction <- function(try_safe_chol = FALSE) {
               },
               silent = TRUE
             )
-            if (class(chol_result) == "try-error") {
+            if (methods::is(chol_result, "try-error")) {
               rm <- NULL
             }
           }
@@ -857,7 +857,7 @@ safe_chol <- function(hm, eps = 1e-10) {
     },
     silent = TRUE
   )
-  if (class(chol_result) == "try-error") {
+  if (methods::is(chol_result, "try-error")) {
 
     # Also O(N^3)
     eig <- eigen(hm)

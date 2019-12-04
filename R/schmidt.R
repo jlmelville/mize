@@ -1001,7 +1001,7 @@ polyfit <- function(points) {
   }
   # Find interpolating polynomial
   params <- try(solve(A, b), silent = TRUE)
-  if (class(params) == "numeric") {
+  if (methods::is(params, "numeric")) {
     params <- rev(params)
   }
   else {

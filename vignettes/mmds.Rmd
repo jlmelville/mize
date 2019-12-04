@@ -173,7 +173,7 @@ will plot the `par` results:
 
 ```{r plot results, fig.width=5.5, fig.height=5.5}
 plot_mmds <- function(coords, dist, ...) {
-  if (class(coords) == "numeric") {
+  if (methods::is(coords, "numeric")) {
     coords <- matrix(coords, ncol = 2, byrow = TRUE)
   }
   graphics::plot(coords, type = 'n')
