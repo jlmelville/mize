@@ -30,8 +30,10 @@ adaptive_restart <- function(opt, validation_type, wait = 1) {
     stop("Can't use gradient-based adaptive restart with Nesterov momentum")
   }
   opt$restart_wait <- wait
-  append_depends(opt, "momentum", "direction",
-                 c('adaptive_restart', paste0('validate_', validation_type)))
+  append_depends(
+    opt, "momentum", "direction",
+    c("adaptive_restart", paste0("validate_", validation_type))
+  )
 }
 
 # Function-based adaptive restart
@@ -57,10 +59,10 @@ require_adaptive_restart <- function(opt, par, fg, iter, par0, update) {
   }
   opt
 }
-attr(require_adaptive_restart, 'event') <- 'after step'
+attr(require_adaptive_restart, "event") <- "after step"
 # Should have the same name as normal update old: we want to replace that hook
-attr(require_adaptive_restart, 'name') <- 'update_old'
-attr(require_adaptive_restart, 'depends') <- 'update_old_init'
+attr(require_adaptive_restart, "name") <- "update_old"
+attr(require_adaptive_restart, "depends") <- "update_old_init"
 
 # Add a depend function to one of opt, a stage or sub stage
 append_depends <- function(opt, stage_type = NULL, sub_stage_type = NULL,
@@ -108,4 +110,3 @@ append_depends <- function(opt, stage_type = NULL, sub_stage_type = NULL,
 can_restart <- function(opt, iter) {
   is.null(opt$restart_at) || iter - opt$restart_at > opt$restart_wait
 }
-

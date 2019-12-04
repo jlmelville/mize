@@ -39,7 +39,6 @@ delta_bar_delta <- function(kappa = 1.1, kappa_fun = `*`,
                             min_eps = 0,
                             theta = 0.1,
                             use_momentum = FALSE) {
-
   if (kappa <= 0) {
     stop("kappa must be positive")
   }
@@ -71,11 +70,12 @@ delta_bar_delta <- function(kappa = 1.1, kappa_fun = `*`,
       if (!is.numeric(sub_stage$epsilon)) {
         d0 <- dot(delta, stage$direction$value)
         sub_stage$epsilon <- guess_alpha0(sub_stage$epsilon,
-                                          x0 = NULL,
-                                          f0 = NULL,
-                                          gr0 = delta,
-                                          d0 = d0,
-                                          try_newton_step = FALSE)
+          x0 = NULL,
+          f0 = NULL,
+          gr0 = delta,
+          d0 = d0,
+          try_newton_step = FALSE
+        )
       }
 
       if (use_momentum && !is.null(opt$cache$update_old)) {
@@ -102,11 +102,12 @@ delta_bar_delta <- function(kappa = 1.1, kappa_fun = `*`,
       # signs of delta_bar and delta are the same, increase step size
       # if they're not, decrease.
       gamma <-
-        (kappa_fun(gamma_old,kappa)) * abs(delta_bar_delta) +
+        (kappa_fun(gamma_old, kappa)) * abs(delta_bar_delta) +
         (gamma_old * phi) * abs(!delta_bar_delta)
 
       sub_stage$value <- clamp(sub_stage$epsilon * gamma,
-                               min_val = sub_stage$min_eps)
+        min_val = sub_stage$min_eps
+      )
       if (!use_momentum || is.null(opt$cache$update_old)) {
         theta <- sub_stage$theta
         sub_stage$delta_bar_old <- ((1 - theta) * delta) + (theta * delta_bar_old)

@@ -30,19 +30,22 @@ more_thuente_ls <- function(c1 = c2 / 2, c2 = 0.1,
   }
   max_ls_fn <- min(max_fn, max_gr, floor(max_fg / 2))
 
-  line_search(more_thuente(c1 = c1, c2 = c2,
-                           alpha_max = max_alpha,
-                           max_fn = max_ls_fn,
-                           strong_curvature = strong_curvature,
-                           approx_armijo = approx_armijo,
-                           safeguard_cubic = safeguard_cubic),
-              name = "more-thuente",
-              max_alpha_mult = max_alpha_mult,
-              min_step_size = min_step_size, stop_at_min = stop_at_min,
-              initializer = initializer,
-              initial_step_length = initial_step_length,
-              try_newton_step = try_newton_step,
-              debug = debug)
+  line_search(more_thuente(
+    c1 = c1, c2 = c2,
+    alpha_max = max_alpha,
+    max_fn = max_ls_fn,
+    strong_curvature = strong_curvature,
+    approx_armijo = approx_armijo,
+    safeguard_cubic = safeguard_cubic
+  ),
+  name = "more-thuente",
+  max_alpha_mult = max_alpha_mult,
+  min_step_size = min_step_size, stop_at_min = stop_at_min,
+  initializer = initializer,
+  initial_step_length = initial_step_length,
+  try_newton_step = try_newton_step,
+  debug = debug
+  )
 }
 
 
@@ -70,36 +73,39 @@ rasmussen_ls <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
 
   max_ls_fn <- min(max_fn, max_gr, floor(max_fg / 2))
 
-  line_search(rasmussen(c1 = c1, c2 = c2, int = int, ext = ext,
-                        max_fn = max_ls_fn,
-                        strong_curvature = strong_curvature,
-                        approx_armijo = approx_armijo),
-              name = "rasmussen",
-              max_alpha_mult = max_alpha_mult,
-              min_step_size = min_step_size, stop_at_min = stop_at_min,
-              initializer = initializer,
-              initial_step_length = initial_step_length,
-              try_newton_step = try_newton_step,
-              eps = eps,
-              debug = debug)
+  line_search(rasmussen(
+    c1 = c1, c2 = c2, int = int, ext = ext,
+    max_fn = max_ls_fn,
+    strong_curvature = strong_curvature,
+    approx_armijo = approx_armijo
+  ),
+  name = "rasmussen",
+  max_alpha_mult = max_alpha_mult,
+  min_step_size = min_step_size, stop_at_min = stop_at_min,
+  initializer = initializer,
+  initial_step_length = initial_step_length,
+  try_newton_step = try_newton_step,
+  eps = eps,
+  debug = debug
+  )
 }
 
 
 # Schmidt (minfunc) -------------------------------------------------------
 
 schmidt_ls <- function(c1 = c2 / 2, c2 = 0.1,
-                         max_alpha_mult = Inf,
-                         min_step_size = .Machine$double.eps,
-                         initializer = "s",
-                         initial_step_length = "schmidt",
-                         try_newton_step = FALSE,
-                         stop_at_min = TRUE, eps = .Machine$double.eps,
-                         max_fn = Inf,
-                         max_gr = Inf,
-                         max_fg = Inf,
-                         strong_curvature = TRUE,
-                         approx_armijo = FALSE,
-                         debug = FALSE) {
+                       max_alpha_mult = Inf,
+                       min_step_size = .Machine$double.eps,
+                       initializer = "s",
+                       initial_step_length = "schmidt",
+                       try_newton_step = FALSE,
+                       stop_at_min = TRUE, eps = .Machine$double.eps,
+                       max_fn = Inf,
+                       max_gr = Inf,
+                       max_fg = Inf,
+                       strong_curvature = TRUE,
+                       approx_armijo = FALSE,
+                       debug = FALSE) {
   if (!is_in_range(c1, 0, 1, lopen = FALSE, ropen = FALSE)) {
     stop("c1 must be between 0 and 1")
   }
@@ -109,48 +115,54 @@ schmidt_ls <- function(c1 = c2 / 2, c2 = 0.1,
 
   max_ls_fn <- min(max_fn, max_gr, floor(max_fg / 2))
 
-  line_search(schmidt(c1 = c1, c2 = c2, max_fn = max_ls_fn,
-                      strong_curvature = strong_curvature,
-                      approx_armijo = approx_armijo),
-              name = "schmidt",
-              max_alpha_mult = max_alpha_mult,
-              min_step_size = min_step_size, stop_at_min = stop_at_min,
-              initializer = initializer,
-              initial_step_length = initial_step_length,
-              try_newton_step = try_newton_step,
-              eps = eps,
-              debug = debug)
+  line_search(schmidt(
+    c1 = c1, c2 = c2, max_fn = max_ls_fn,
+    strong_curvature = strong_curvature,
+    approx_armijo = approx_armijo
+  ),
+  name = "schmidt",
+  max_alpha_mult = max_alpha_mult,
+  min_step_size = min_step_size, stop_at_min = stop_at_min,
+  initializer = initializer,
+  initial_step_length = initial_step_length,
+  try_newton_step = try_newton_step,
+  eps = eps,
+  debug = debug
+  )
 }
 
 
 schmidt_armijo_ls <- function(c1 = 0.005,
-                       max_alpha_mult = Inf,
-                       min_step_size = .Machine$double.eps,
-                       initializer = "s",
-                       initial_step_length = "schmidt",
-                       try_newton_step = FALSE,
-                       step_down = NULL,
-                       stop_at_min = TRUE, eps = .Machine$double.eps,
-                       max_fn = Inf,
-                       max_gr = Inf,
-                       max_fg = Inf,
-                       debug = FALSE) {
+                              max_alpha_mult = Inf,
+                              min_step_size = .Machine$double.eps,
+                              initializer = "s",
+                              initial_step_length = "schmidt",
+                              try_newton_step = FALSE,
+                              step_down = NULL,
+                              stop_at_min = TRUE, eps = .Machine$double.eps,
+                              max_fn = Inf,
+                              max_gr = Inf,
+                              max_fg = Inf,
+                              debug = FALSE) {
   if (!is_in_range(c1, 0, 1, lopen = FALSE, ropen = FALSE)) {
     stop("c1 must be between 0 and 1")
   }
 
   max_ls_fn <- min(max_fn, max_gr, floor(max_fg / 2))
 
-  line_search(schmidt_armijo_backtrack(c1 = c1, max_fn = max_ls_fn,
-                                       step_down = step_down),
-              name = "schmidt_armijo",
-              max_alpha_mult = max_alpha_mult,
-              min_step_size = min_step_size, stop_at_min = stop_at_min,
-              initializer = initializer,
-              initial_step_length = initial_step_length,
-              try_newton_step = try_newton_step,
-              eps = eps,
-              debug = debug)
+  line_search(schmidt_armijo_backtrack(
+    c1 = c1, max_fn = max_ls_fn,
+    step_down = step_down
+  ),
+  name = "schmidt_armijo",
+  max_alpha_mult = max_alpha_mult,
+  min_step_size = min_step_size, stop_at_min = stop_at_min,
+  initializer = initializer,
+  initial_step_length = initial_step_length,
+  try_newton_step = try_newton_step,
+  eps = eps,
+  debug = debug
+  )
 }
 
 
@@ -178,18 +190,20 @@ hager_zhang_ls <- function(c1 = c2 / 2, c2 = 0.1,
 
   max_ls_fn <- min(max_fn, max_gr, floor(max_fg / 2))
 
-  line_search(hager_zhang(c1 = c1, c2 = c2, max_fn = max_ls_fn,
-                          strong_curvature = strong_curvature,
-                          approx_armijo = approx_armijo),
-              name = "hager-zhang",
-              max_alpha_mult = max_alpha_mult,
-              min_step_size = min_step_size, stop_at_min = stop_at_min,
-              initializer = initializer,
-              initial_step_length = initial_step_length,
-              try_newton_step = try_newton_step,
-              eps = eps,
-              debug = debug)
-
+  line_search(hager_zhang(
+    c1 = c1, c2 = c2, max_fn = max_ls_fn,
+    strong_curvature = strong_curvature,
+    approx_armijo = approx_armijo
+  ),
+  name = "hager-zhang",
+  max_alpha_mult = max_alpha_mult,
+  min_step_size = min_step_size, stop_at_min = stop_at_min,
+  initializer = initializer,
+  initial_step_length = initial_step_length,
+  try_newton_step = try_newton_step,
+  eps = eps,
+  debug = debug
+  )
 }
 
 # Line Search -------------------------------------------------------------
@@ -204,19 +218,24 @@ line_search <- function(ls_fn,
                         stop_at_min = TRUE,
                         debug = FALSE,
                         eps = .Machine$double.eps) {
-
   if (!is.numeric(initializer)) {
-    initializer <- match.arg(tolower(initializer),
-                           c("slope ratio", "quadratic", "hz", "hager-zhang"))
+    initializer <- match.arg(
+      tolower(initializer),
+      c("slope ratio", "quadratic", "hz", "hager-zhang")
+    )
     if (initializer == "hager-zhang") {
       initializer <- "hz"
     }
   }
 
   if (!is.numeric(initial_step_length)) {
-    initializer0 <- match.arg(tolower(initial_step_length),
-                                     c("rasmussen", "scipy", "schmidt",
-                                       "hz", "hager-zhang"))
+    initializer0 <- match.arg(
+      tolower(initial_step_length),
+      c(
+        "rasmussen", "scipy", "schmidt",
+        "hz", "hager-zhang"
+      )
+    )
     if (initializer0 == "hager-zhang") {
       initializer0 <- "hz"
     }
@@ -229,13 +248,13 @@ line_search <- function(ls_fn,
     name = name,
     eps = eps,
     init = function(opt, stage, sub_stage, par, fg, iter) {
-      #message("Initializing Wolfe line search for ", stage$type)
+      # message("Initializing Wolfe line search for ", stage$type)
 
       if (!is_first_stage(opt, stage)) {
         # Requires knowing f at the current location
         # If this step size is part of any stage other than the first
         # we have to turn on eager updating
-        #message("Wolfe: setting stage updating to eager")
+        # message("Wolfe: setting stage updating to eager")
         opt$eager_update <- TRUE
       }
 
@@ -248,7 +267,6 @@ line_search <- function(ls_fn,
       list(opt = opt, sub_stage = sub_stage)
     },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
-
       pm <- stage$direction$value
       if (norm2(pm) < .Machine$double.eps) {
         sub_stage$value <- 0
@@ -259,7 +277,7 @@ line_search <- function(ls_fn,
       }
 
       if (is_first_stage(opt, stage) && has_fn_curr(opt, iter)) {
-#        message(sub_stage$name, ": fetching fn_curr from cache ", formatC(opt$cache$fn_curr))
+        #        message(sub_stage$name, ": fetching fn_curr from cache ", formatC(opt$cache$fn_curr))
         f0 <- opt$cache$fn_curr
       }
       else {
@@ -267,7 +285,7 @@ line_search <- function(ls_fn,
         f0 <- opt$fn
       }
 
-      #message("gr = ", vec_formatC(opt$cache$gr_curr), " pm = ", vec_formatC(pm))
+      # message("gr = ", vec_formatC(opt$cache$gr_curr), " pm = ", vec_formatC(pm))
       step0 <- list(
         alpha = 0,
         f = f0,
@@ -278,7 +296,8 @@ line_search <- function(ls_fn,
       alpha_prev <- sub_stage$value
 
       phi_alpha <- make_phi_alpha(par, fg, pm,
-                                  calc_gradient_default = TRUE, debug = debug)
+        calc_gradient_default = TRUE, debug = debug
+      )
 
 
       alpha_next <- 0
@@ -287,13 +306,16 @@ line_search <- function(ls_fn,
       }
       else if (initializer == "slope ratio" && !is.null(sub_stage$d0)) {
         # described on p59 of Nocedal and Wright
-        alpha_next <- step_next_slope_ratio(alpha_prev, sub_stage$d0,
-                                            step0, eps)
+        alpha_next <- step_next_slope_ratio(
+          alpha_prev, sub_stage$d0,
+          step0, eps
+        )
       }
       else if (initializer == "quadratic" && !is.null(sub_stage$f0)) {
         # quadratic interpolation
         alpha_next <- step_next_quad_interp(sub_stage$f0, step0,
-                                            try_newton_step = try_newton_step)
+          try_newton_step = try_newton_step
+        )
       }
       else if (initializer == "hz" && !is.null(alpha_prev)) {
         step_next_res <- step_next_hz(phi_alpha, alpha_prev, step0)
@@ -308,12 +330,14 @@ line_search <- function(ls_fn,
       sub_stage$value <- alpha_next
 
       if (is.null(sub_stage$value) || sub_stage$value <= 0) {
-        sub_stage$value <- guess_alpha0(initializer0,
-                                        par,
-                                        step0$f,
-                                        step0$df,
-                                        step0$d,
-                                        try_newton_step)
+        sub_stage$value <- guess_alpha0(
+          initializer0,
+          par,
+          step0$f,
+          step0$df,
+          step0$d,
+          try_newton_step
+        )
       }
 
       sub_stage$alpha0 <- sub_stage$value
@@ -342,8 +366,9 @@ line_search <- function(ls_fn,
       }
       else {
         ls_result <- ls_fn(phi_alpha, step0, sub_stage$value,
-                           total_max_fn = max_fn, total_max_gr = max_gr,
-                           total_max_fg = max_fg, pm = pm)
+          total_max_fn = max_fn, total_max_gr = max_gr,
+          total_max_fg = max_fg, pm = pm
+        )
         sub_stage$value <- ls_result$step$alpha
         opt$counts$fn <- opt$counts$fn + ls_result$nfn
         opt$counts$gr <- opt$counts$gr + ls_result$ngr
@@ -463,7 +488,7 @@ step_is_finite <- function(step) {
 # then use that as-is. Otherwise, use one of several variations based around
 # the only thing we know (the directional derivative)
 guess_alpha0 <- function(guess_type, x0, f0, gr0, d0,
-                           try_newton_step = FALSE) {
+                         try_newton_step = FALSE) {
   if (is.numeric(guess_type)) {
     return(guess_type)
   }
@@ -516,7 +541,7 @@ step0_hz <- function(x0, f0, gr0, psi0 = 0.01) {
     else if (is_finite_numeric(f0) && f0 != 0) {
       g2_norm2 <- sqnorm2(gr0)
       if (is_finite_numeric(g2_norm2) && g2_norm2 != 0) {
-        alpha <- psi0 * (abs(f0) / ginf_norm ^ 2)
+        alpha <- psi0 * (abs(f0) / ginf_norm^2)
       }
     }
   }
@@ -537,7 +562,7 @@ step_next_slope_ratio <- function(alpha_prev, d0_prev, step0, eps) {
 
 # quadratic interpolation
 step_next_quad_interp <- function(f0_prev, step0, try_newton_step = FALSE) {
-  s <- 2  * (step0$f - f0_prev) / step0$d
+  s <- 2 * (step0$f - f0_prev) / step0$d
   if (try_newton_step) {
     s <- min(1, 1.01 * s)
   }
@@ -769,7 +794,6 @@ wolfe_ok_step <- function(step0, step, c1, c2) {
 # exact Armijo condition and weak or strong curvature condition
 make_wolfe_ok_step_fn <- function(approx_armijo = FALSE,
                                   strong_curvature = TRUE, eps = 1e-6) {
-
   approx_armijo_ok_fn <- make_approx_armijo_ok_step(eps)
 
   function(step0, step, c1, c2) {
@@ -832,7 +856,7 @@ approx_armijo_ok_step <- function(step0, step, c1) {
 # Bracket -----------------------------------------------------------------
 
 bracket_is_finite <- function(bracket) {
-  all(is.finite(c(bracket_props(bracket, c('f', 'd')))))
+  all(is.finite(c(bracket_props(bracket, c("f", "d")))))
 }
 
 # extracts all the properties (e.g. 'f', 'df', 'd' or 'alpha') from all members
@@ -844,16 +868,16 @@ bracket_props <- function(bracket, prop) {
 }
 
 bracket_width <- function(bracket) {
-  bracket_range <- bracket_props(bracket, 'alpha')
+  bracket_range <- bracket_props(bracket, "alpha")
   abs(bracket_range[2] - bracket_range[1])
 }
 
 bracket_min_alpha <- function(bracket) {
-  min(bracket_props(bracket, 'alpha'))
+  min(bracket_props(bracket, "alpha"))
 }
 
 best_bracket_step <- function(bracket) {
-  LOpos <- which.min(bracket_props(bracket, 'f'))
+  LOpos <- which.min(bracket_props(bracket, "f"))
   bracket[[LOpos]]
 }
 
@@ -863,6 +887,8 @@ is_in_bracket <- function(bracket, alpha) {
 }
 
 format_bracket <- function(bracket) {
-  paste0("[", formatC(bracket[[1]]$alpha), ", ", formatC(bracket[[2]]$alpha),
-         "]")
+  paste0(
+    "[", formatC(bracket[[1]]$alpha), ", ", formatC(bracket[[2]]$alpha),
+    "]"
+  )
 }

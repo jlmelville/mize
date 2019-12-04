@@ -55,20 +55,27 @@ sclamp <- function(x, min, max) {
 }
 
 vec_formatC <- function(v) {
-  paste(Map(function(x) { formatC(x) }, v), collapse = ", ")
+  paste(Map(function(x) {
+    formatC(x)
+  }, v), collapse = ", ")
 }
 
 # convert a list to a strng
 format_list <- function(ll) {
-  Reduce(function(acc, elem) {
-    paste0(acc,
-           ifelse(nchar(acc) == 0, "", " "),
-           elem,
-           " = ",
-           ifelse(length(ll[[elem]]) == 1,
-                  formatC(ll[[elem]]), vec_formatC(ll[[elem]])))
-  },
-  names(ll), "")
+  Reduce(
+    function(acc, elem) {
+      paste0(
+        acc,
+        ifelse(nchar(acc) == 0, "", " "),
+        elem,
+        " = ",
+        ifelse(length(ll[[elem]]) == 1,
+          formatC(ll[[elem]]), vec_formatC(ll[[elem]])
+        )
+      )
+    },
+    names(ll), ""
+  )
 }
 
 # returns TRUE if x is in the range (left, right). By default, this is
@@ -91,23 +98,26 @@ is_finite_numeric <- function(x) {
 
 
 require_log_vals <- function(opt, stage, par, fg, iter) {
-  message(iter, " ", substr(stage$type, 1, 2)
-          ," par = ", vec_formatC(par)
-          ," p = ", vec_formatC(stage$direction$value)
-          , " a = ", formatC(stage$step_size$value)
-          , " ap = ", vec_formatC(stage$result)
-          , " f = ", formatC(fg$fn(par)))
+  message(
+    iter, " ", substr(stage$type, 1, 2),
+    " par = ", vec_formatC(par),
+    " p = ", vec_formatC(stage$direction$value),
+    " a = ", formatC(stage$step_size$value),
+    " ap = ", vec_formatC(stage$result),
+    " f = ", formatC(fg$fn(par))
+  )
   list(opt = opt)
 }
-attr(require_log_vals, 'name') <- 'log_vals'
-attr(require_log_vals, 'event') <- 'after stage'
+attr(require_log_vals, "name") <- "log_vals"
+attr(require_log_vals, "event") <- "after stage"
 
 require_keep_stage_fs <- function(opt, stage, par, fg, iter) {
-  if (is.null(opt$all_fs)) { opt$all_fs <- c() }
+  if (is.null(opt$all_fs)) {
+    opt$all_fs <- c()
+  }
   f <- fg$fn(par)
   opt$all_fs <- c(opt$all_fs, f)
   list(opt = opt)
 }
-attr(require_keep_stage_fs, 'name') <- 'require_keep_stage_fs'
-attr(require_keep_stage_fs, 'event') <- 'after stage'
-
+attr(require_keep_stage_fs, "name") <- "require_keep_stage_fs"
+attr(require_keep_stage_fs, "event") <- "after stage"

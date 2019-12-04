@@ -2,7 +2,7 @@
 # A zero step is allowed if this is a restart step
 check_step_conv <- function(opt, iter, step = NULL, step_tol = NULL) {
   if (is.null(step) || is.null(step_tol) || is_restart_iter(opt, iter) ||
-      step >= step_tol) {
+    step >= step_tol) {
     return()
   }
   list(what = "step_tol", val = step)
@@ -99,4 +99,3 @@ check_fn_conv <- function(opt, iter, fn_old, fn_new, abs_tol, rel_tol) {
 is_restart_iter <- function(opt, iter) {
   !is.null(opt$restart_at) && opt$restart_at == iter
 }
-

@@ -29,17 +29,19 @@ hager_zhang <- function(c1 = c2 / 2, c2 = 0.1, max_fn = Inf,
     if (maxfev <= 0) {
       return(list(step = step0, nfn = 0, ngr = 0))
     }
-    res <- line_search_hz(alpha, step0, phi, c1 = c1, c2 = c2,
-                               eps = 1e-6, theta = 0.5, rho = 5,
-                               gamma = 0.66,
-                               max_fn = maxfev,
-                               xtol = 1e-6,
-                               strong_curvature = strong_curvature,
-                               always_check_convergence = TRUE,
-                               approx_armijo = approx_armijo,
-                               verbose = FALSE)
+    res <- line_search_hz(alpha, step0, phi,
+      c1 = c1, c2 = c2,
+      eps = 1e-6, theta = 0.5, rho = 5,
+      gamma = 0.66,
+      max_fn = maxfev,
+      xtol = 1e-6,
+      strong_curvature = strong_curvature,
+      always_check_convergence = TRUE,
+      approx_armijo = approx_armijo,
+      verbose = FALSE
+    )
 
-    res$ngr = res$nfn
+    res$ngr <- res$nfn
     res
   }
 }
@@ -98,8 +100,9 @@ line_search_hz <- function(alpha, step0, phi, c1 = 0.1, c2 = 0.9,
   step_c <- result$step
 
   if (always_check_convergence && hz_ok_step(step_c, step0, c1, c2, eps_k,
-                                             strong_curvature = strong_curvature,
-                                             approx_armijo = approx_armijo)) {
+    strong_curvature = strong_curvature,
+    approx_armijo = approx_armijo
+  )) {
     if (verbose) {
       message("initial step OK = ", formatC(step_c$alpha))
     }
@@ -115,14 +118,17 @@ line_search_hz <- function(alpha, step0, phi, c1 = 0.1, c2 = 0.9,
 
   # L0
   br_res <- bracket_hz(step_c, step0, phi, eps_k, ls_max_fn, theta, rho,
-                       xtol = xtol, verbose = verbose)
+    xtol = xtol, verbose = verbose
+  )
   bracket <- br_res$bracket
   nfn <- nfn + br_res$nfn
   if (!br_res$ok) {
-    LOpos <- which.min(bracket_props(bracket, 'f'))
+    LOpos <- which.min(bracket_props(bracket, "f"))
     if (verbose) {
-      message("Failed to create bracket, aborting, alpha = ",
-              formatC(bracket[[LOpos]]$alpha))
+      message(
+        "Failed to create bracket, aborting, alpha = ",
+        formatC(bracket[[LOpos]]$alpha)
+      )
     }
     return(list(step = bracket[[LOpos]], nfn = nfn))
   }
@@ -130,12 +136,15 @@ line_search_hz <- function(alpha, step0, phi, c1 = 0.1, c2 = 0.9,
   # Check for T1/T2
   if (always_check_convergence) {
     LOpos <- hz_ok_bracket_pos(bracket, step0, c1, c2, eps_k,
-                               strong_curvature = strong_curvature,
-                               approx_armijo = approx_armijo)
+      strong_curvature = strong_curvature,
+      approx_armijo = approx_armijo
+    )
     if (LOpos > 0) {
       if (verbose) {
-        message("Bracket OK after bracket phase alpha = ",
-                formatC(bracket[[LOpos]]$alpha))
+        message(
+          "Bracket OK after bracket phase alpha = ",
+          formatC(bracket[[LOpos]]$alpha)
+        )
       }
       return(list(step = bracket[[LOpos]], nfn = nfn))
     }
@@ -145,7 +154,7 @@ line_search_hz <- function(alpha, step0, phi, c1 = 0.1, c2 = 0.9,
     if (verbose) {
       message("max fn reached after bracket phase")
     }
-    LOpos <- which.min(bracket_props(bracket, 'f'))
+    LOpos <- which.min(bracket_props(bracket, "f"))
     return(list(step = bracket[[LOpos]], nfn = nfn))
   }
 
@@ -163,14 +172,15 @@ line_search_hz <- function(alpha, step0, phi, c1 = 0.1, c2 = 0.9,
     if (!is_finite_numeric(alpha_c)) {
       # probably only an issue when tolerances are very low and approx armijo
       # is off: can get NaN when bracket size approaches zero
-      LOpos <- which.min(bracket_props(bracket, 'f'))
+      LOpos <- which.min(bracket_props(bracket, "f"))
       if (verbose) {
         message("bad secant alpha, aborting line search")
       }
       return(list(step = bracket[[LOpos]], nfn = nfn))
     }
     fsec_res <- find_finite(phi, alpha_c, ls_max_fn,
-                            min_alpha = bracket_min_alpha(old_bracket))
+      min_alpha = bracket_min_alpha(old_bracket)
+    )
     nfn <- nfn + fsec_res$nfn
     ls_max_fn <- max_fn - nfn
     if (!fsec_res$ok) {
@@ -185,8 +195,9 @@ line_search_hz <- function(alpha, step0, phi, c1 = 0.1, c2 = 0.9,
       message("S1: secant step_c alpha = ", formatC(alpha_c))
     }
     if (hz_ok_step(step_c, step0, c1, c2, eps_k,
-                   strong_curvature = strong_curvature,
-                   approx_armijo = approx_armijo)) {
+      strong_curvature = strong_curvature,
+      approx_armijo = approx_armijo
+    )) {
       if (verbose) {
         message("step OK after secant alpha = ", formatC(step_c$alpha))
       }
@@ -198,12 +209,14 @@ line_search_hz <- function(alpha, step0, phi, c1 = 0.1, c2 = 0.9,
         message("max fn reached after secant")
       }
       bracket[[3]] <- step_c
-      LOpos <- which.min(bracket_props(bracket, 'f'))
+      LOpos <- which.min(bracket_props(bracket, "f"))
       return(list(step = bracket[[LOpos]], nfn = nfn))
     }
 
     sec2_res <- secant2_hz(old_bracket, step_c, step0, phi, eps_k, ls_max_fn,
-                           theta, verbose = verbose)
+      theta,
+      verbose = verbose
+    )
     bracket <- sec2_res$bracket
     nfn <- nfn + sec2_res$nfn
     if (!sec2_res$ok) {
@@ -215,15 +228,16 @@ line_search_hz <- function(alpha, step0, phi, c1 = 0.1, c2 = 0.9,
     }
     # Check for T1/T2
     LOpos <- hz_ok_bracket_pos(bracket, step0, c1, c2, eps_k,
-                               strong_curvature = strong_curvature,
-                               approx_armijo = approx_armijo)
+      strong_curvature = strong_curvature,
+      approx_armijo = approx_armijo
+    )
     if (LOpos > 0) {
       # if we only allow interpolated steps to count as converged,
       # check that any satisfactory result of secant2 came from a secant step
       # (i.e. wasn't already part of the bracket)
       if (always_check_convergence ||
-          (bracket[[LOpos]]$alpha != old_bracket[[1]]$alpha &&
-           bracket[[LOpos]]$alpha != old_bracket[[2]]$alpha)) {
+        (bracket[[LOpos]]$alpha != old_bracket[[1]]$alpha &&
+          bracket[[LOpos]]$alpha != old_bracket[[2]]$alpha)) {
         if (verbose) {
           message("Bracket OK after secant2 alpha = ", formatC(bracket[[LOpos]]$alpha))
         }
@@ -240,14 +254,16 @@ line_search_hz <- function(alpha, step0, phi, c1 = 0.1, c2 = 0.9,
 
     # L2
     # Ensure the bracket size decreased by a factor of gamma
-    old_range <- bracket_props(old_bracket, 'alpha')
+    old_range <- bracket_props(old_bracket, "alpha")
     old_diff <- abs(old_range[2] - old_range[1])
-    new_range <- bracket_props(bracket, 'alpha')
+    new_range <- bracket_props(bracket, "alpha")
     new_diff <- abs(new_range[2] - new_range[1])
 
     if (verbose) {
-      message("Bracket size = ", formatC(new_diff), " old bracket size = ",
-              formatC(old_diff))
+      message(
+        "Bracket size = ", formatC(new_diff), " old bracket size = ",
+        formatC(old_diff)
+      )
     }
 
     if (new_diff < xtol * max(new_range)) {
@@ -265,7 +281,8 @@ line_search_hz <- function(alpha, step0, phi, c1 = 0.1, c2 = 0.9,
       # bracket size wasn't decreased sufficiently: bisection step
       alpha_c <- mean(new_range)
       bisec_res <- find_finite(phi, alpha_c, ls_max_fn,
-                               min_alpha = bracket_min_alpha(bracket))
+        min_alpha = bracket_min_alpha(bracket)
+      )
       nfn <- nfn + bisec_res$nfn
       ls_max_fn <- max_fn - nfn
       if (!bisec_res$ok) {
@@ -282,12 +299,13 @@ line_search_hz <- function(alpha, step0, phi, c1 = 0.1, c2 = 0.9,
         }
 
         bracket[[3]] <- step_c
-        LOpos <- which.min(bracket_props(bracket, 'f'))
+        LOpos <- which.min(bracket_props(bracket, "f"))
         return(list(step = bracket[[LOpos]], nfn = nfn))
       }
 
       up_res <- update_bracket_hz(bracket, step_c, step0, phi, eps_k, ls_max_fn,
-                                  xtol = xtol, theta)
+        xtol = xtol, theta
+      )
       bracket <- up_res$bracket
       nfn <- nfn + up_res$nfn
       if (!up_res$ok) {
@@ -296,8 +314,9 @@ line_search_hz <- function(alpha, step0, phi, c1 = 0.1, c2 = 0.9,
       # Check for T1/T2
       if (always_check_convergence) {
         LOpos <- hz_ok_bracket_pos(bracket, step0, c1, c2, eps_k,
-                                   strong_curvature = strong_curvature,
-                                   approx_armijo = approx_armijo)
+          strong_curvature = strong_curvature,
+          approx_armijo = approx_armijo
+        )
         if (LOpos > 0) {
           if (verbose) {
             message("Bracket OK after bisection alpha = ", formatC(bracket[[LOpos]]$alpha))
@@ -318,7 +337,7 @@ line_search_hz <- function(alpha, step0, phi, c1 = 0.1, c2 = 0.9,
     old_bracket <- bracket
   }
 
-  LOpos <- which.min(bracket_props(bracket, 'f'))
+  LOpos <- which.min(bracket_props(bracket, "f"))
   list(step = bracket[[LOpos]], nfn = nfn)
 }
 
@@ -362,17 +381,20 @@ bracket_hz <- function(step_c, step0, phi, eps, max_fn, theta = 0.5, rho = 5,
       if (ls_max_fn <= 0) {
         # avoid returning step_c in this case, which might be outside the
         # current minimizer "basin"
-        return(list(bracket = list(step_c_old_old, step_c_old), nfn = nfn,
-                    ok = FALSE))
+        return(list(
+          bracket = list(step_c_old_old, step_c_old), nfn = nfn,
+          ok = FALSE
+        ))
       }
 
       # Probably could use step_c_old as LHS of bracket
       # but HZ paper specifies step0
-      bracket_sub = list(step0, step_c)
+      bracket_sub <- list(step0, step_c)
       bisect_res <- update_bracket_bisect_hz(bracket_sub, step0, phi, eps,
-                                             ls_max_fn, theta,
-                                             xtol = xtol,
-                                             verbose = verbose)
+        ls_max_fn, theta,
+        xtol = xtol,
+        verbose = verbose
+      )
       bisect_res$nfn <- bisect_res$nfn + nfn
       # return bisection result: may have failed
       return(bisect_res)
@@ -395,8 +417,10 @@ bracket_hz <- function(step_c, step0, phi, eps, max_fn, theta = 0.5, rho = 5,
       if (verbose) {
         message("No finite alpha during extrapolation bisection, aborting line search")
       }
-      return(list(bracket = list(step_c_old_old, step_c_old), nfn = nfn,
-                  ok = FALSE))
+      return(list(
+        bracket = list(step_c_old_old, step_c_old), nfn = nfn,
+        ok = FALSE
+      ))
     }
     step_c <- fext_res$step
   }
@@ -414,8 +438,10 @@ update_bracket_hz <- function(bracket, step_c, step0, phi, eps, max_fn,
                               theta = 0.5, xtol = .Machine$double.eps,
                               verbose = FALSE) {
   if (verbose) {
-    message("U: alpha = ", formatC(step_c$alpha),
-            " bracket = ", format_bracket(bracket))
+    message(
+      "U: alpha = ", formatC(step_c$alpha),
+      " bracket = ", format_bracket(bracket)
+    )
   }
   nfn <- 0
   ok <- TRUE
@@ -452,8 +478,10 @@ update_bracket_hz <- function(bracket, step_c, step0, phi, eps, max_fn,
     }
     sub_bracket <- list(bracket[[1]], step_c)
     sub_res <- update_bracket_bisect_hz(sub_bracket, step0, phi, eps, max_fn,
-                                        theta, xtol = xtol,
-                                        verbose = verbose)
+      theta,
+      xtol = xtol,
+      verbose = verbose
+    )
     new_bracket <- sub_res$bracket
     nfn <- sub_res$nfn
     ok <- sub_res$ok
@@ -490,8 +518,10 @@ update_bracket_bisect_hz <- function(bracket, step0, phi, eps, max_fn,
   ok <- FALSE
   while (TRUE) {
     if (verbose) {
-      message("U3: Bracket: ", format_bracket(res), " width = ",
-              bracket_width(res))
+      message(
+        "U3: Bracket: ", format_bracket(res), " width = ",
+        bracket_width(res)
+      )
     }
     if (bracket_width(res) <= xtol * res[[2]]$alpha) {
       if (verbose) {
@@ -511,7 +541,8 @@ update_bracket_bisect_hz <- function(bracket, step0, phi, eps, max_fn,
     # U3a new point is (weighted) bisection of current bracket
     alpha <- (1 - theta) * res[[1]]$alpha + theta * res[[2]]$alpha
     fwbi_res <- find_finite(phi, alpha, ls_max_fn,
-                            min_alpha = bracket_min_alpha(res))
+      min_alpha = bracket_min_alpha(res)
+    )
     nfn <- nfn + fwbi_res$nfn
     ls_max_fn <- max_fn - nfn
     if (!fwbi_res$ok) {
@@ -530,10 +561,12 @@ update_bracket_bisect_hz <- function(bracket, step0, phi, eps, max_fn,
     }
     if (step_d$f <= step0$f + eps) {
       if (verbose) {
-        message("U3b: alpha ", formatC(step_d$alpha),
-                " f = ", formatC(step_d$f),
-                " d  = ", formatC(step_d$d),
-                " closer to minimizer: new lo")
+        message(
+          "U3b: alpha ", formatC(step_d$alpha),
+          " f = ", formatC(step_d$f),
+          " d  = ", formatC(step_d$d),
+          " closer to minimizer: new lo"
+        )
       }
       # U3b: d is on -ve slope but closer to minimizer, make it new lo and loop
       res[[1]] <- step_d
@@ -541,10 +574,12 @@ update_bracket_bisect_hz <- function(bracket, step0, phi, eps, max_fn,
       # U3c: d has -ve slope but still > f0 so still too large a step,
       # make it the new hi and loop
       if (verbose) {
-        message("U3b: alpha ", formatC(step_d$alpha),
-                " f = ", formatC(step_d$f),
-                " d  = ", formatC(step_d$d),
-                " -ve slope but > f0: new hi")
+        message(
+          "U3b: alpha ", formatC(step_d$alpha),
+          " f = ", formatC(step_d$f),
+          " d  = ", formatC(step_d$d),
+          " -ve slope but > f0: new hi"
+        )
       }
       res[[2]] <- step_d
     }
@@ -572,16 +607,19 @@ secant2_hz <- function(bracket, step_c, step0, phi, eps, max_fn,
     message("S1: Creating AB")
   }
   bracket_AB_res <- update_bracket_hz(bracket, step_c, step0, phi, eps, theta,
-                                      xtol = xtol, verbose = verbose)
+    xtol = xtol, verbose = verbose
+  )
   if (!bracket_AB_res$ok) {
     return(list(bracket = bracket, nfn = nfn, ok = FALSE))
   }
   bracket_AB <- bracket_AB_res$bracket
 
   if (verbose) {
-    message("S1: secant alpha = ", formatC(step_c$alpha),
-            " ab = ", format_bracket(bracket),
-            " AB = ", format_bracket(bracket_AB))
+    message(
+      "S1: secant alpha = ", formatC(step_c$alpha),
+      " ab = ", format_bracket(bracket),
+      " AB = ", format_bracket(bracket_AB)
+    )
   }
 
   ok <- TRUE
@@ -591,21 +629,25 @@ secant2_hz <- function(bracket, step_c, step0, phi, eps, max_fn,
     alpha_cbar <- secant_hz(bracket[[2]], bracket_AB[[2]])
 
     if (verbose) {
-      message("S2 c = B: cbar = secant(b, B) = (",
-              formatC(bracket[[2]]$alpha), ", ",
-              formatC(bracket_AB[[2]]$alpha), ") = ",
-              formatC(alpha_cbar))
+      message(
+        "S2 c = B: cbar = secant(b, B) = (",
+        formatC(bracket[[2]]$alpha), ", ",
+        formatC(bracket_AB[[2]]$alpha), ") = ",
+        formatC(alpha_cbar)
+      )
     }
     # update routine would also check that c_bar is in [A,B] but do it manually
     # here to avoid calculating phi(c_bar) if we don't need to
     if (is.finite(alpha_cbar) && is_in_bracket(bracket_AB, alpha_cbar)
-        && max_fn > 0) {
+    && max_fn > 0) {
       step_cbar <- phi(alpha_cbar)
       nfn <- nfn + 1
       max_fn <- ls_max_fn - nfn
 
       res <- update_bracket_hz(bracket_AB, step_cbar, step0, phi, eps, max_fn,
-                               theta, xtol = xtol, verbose = verbose)
+        theta,
+        xtol = xtol, verbose = verbose
+      )
       new_bracket <- res$bracket
       nfn <- nfn + res$nfn
       max_fn <- ls_max_fn - nfn
@@ -622,20 +664,23 @@ secant2_hz <- function(bracket, step_c, step0, phi, eps, max_fn,
     # S3 c == A
     alpha_cbar <- secant_hz(bracket[[1]], bracket_AB[[1]])
     if (verbose) {
-      message("S3 c = A: cbar = secant(a, A) = (",
-              formatC(bracket[[1]]$alpha), ", ",
-              formatC(bracket_AB[[1]]$alpha), ") = ",
-              formatC(alpha_cbar))
+      message(
+        "S3 c = A: cbar = secant(a, A) = (",
+        formatC(bracket[[1]]$alpha), ", ",
+        formatC(bracket_AB[[1]]$alpha), ") = ",
+        formatC(alpha_cbar)
+      )
     }
     if (is.finite(alpha_cbar) && is_in_bracket(bracket_AB, alpha_cbar)
-        && max_fn > 0) {
-
+    && max_fn > 0) {
       step_cbar <- phi(alpha_cbar)
       nfn <- nfn + 1
       max_fn <- ls_max_fn - nfn
 
       res <- update_bracket_hz(bracket_AB, step_cbar, step0, phi, eps, max_fn,
-                               theta, xtol = xtol, verbose = verbose)
+        theta,
+        xtol = xtol, verbose = verbose
+      )
       new_bracket <- res$bracket
       nfn <- nfn + res$nfn
       max_fn <- ls_max_fn - nfn
@@ -687,17 +732,19 @@ hz_ok_step <- function(step, step0, c1, c2, eps, strong_curvature = FALSE,
 }
 
 hz_ok_bracket_pos <- function(bracket, step0, c1, c2, eps,
-                          strong_curvature = FALSE,
-                          approx_armijo = TRUE) {
+                              strong_curvature = FALSE,
+                              approx_armijo = TRUE) {
   ok_pos <- 0
   if (hz_ok_step(bracket[[1]], step0, c1, c2, eps,
-                 strong_curvature = strong_curvature,
-                 approx_armijo = approx_armijo)) {
+    strong_curvature = strong_curvature,
+    approx_armijo = approx_armijo
+  )) {
     ok_pos <- 1
   }
   if (hz_ok_step(bracket[[2]], step0, c1, c2, eps,
-                 strong_curvature = strong_curvature,
-                 approx_armijo = approx_armijo)) {
+    strong_curvature = strong_curvature,
+    approx_armijo = approx_armijo
+  )) {
     # if somehow we've reached a situation where both sides of the bracket
     # meet the conditions, choose the one with the lower function value
     if (ok_pos == 0 || bracket[[2]]$f < bracket[[1]]$f) {
@@ -706,4 +753,3 @@ hz_ok_bracket_pos <- function(bracket, step0, c1, c2, eps,
   }
   ok_pos
 }
-

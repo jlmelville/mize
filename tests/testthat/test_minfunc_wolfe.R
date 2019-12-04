@@ -3,7 +3,7 @@ context("Schmidt (MinFunc) Line Search")
 # Test values produced by running the original minFunc WolfeLineSearch function
 # using Octave 4.2.0
 
-mfls <- function(fg, x, alpha, c1, c2, pv = -fg$gr(x)/abs(fg$gr(x)),
+mfls <- function(fg, x, alpha, c1, c2, pv = -fg$gr(x) / abs(fg$gr(x)),
                  LS_interp = 2, debug = FALSE, eps = 1e-6,
                  approx_armijo = FALSE, strong_curvature = TRUE) {
   step0 <- make_step0(fg, x, pv)
@@ -22,17 +22,19 @@ mfls <- function(fg, x, alpha, c1, c2, pv = -fg$gr(x)/abs(fg$gr(x)),
     curvature_check_fn <- curvature_ok_step
   }
 
-  res <- WolfeLineSearch(alpha = alpha, f = step0$f, g = step0$df,
-                         gtd = step0$d,
-                         c1 = c1, c2 = c2, LS_interp = LS_interp, LS_multi = 0,
-                         maxLS = 10000,
-                         funObj = make_phi_alpha(x, fg, pv, calc_gradient_default = TRUE),
-                         varargin = NULL,
-                         pnorm_inf = max(abs(pv)),
-                         progTol = 1e-9,
-                         debug = debug,
-                         armijo_check_fn = armijo_check_fn,
-                         curvature_check_fn = curvature_check_fn)
+  res <- WolfeLineSearch(
+    alpha = alpha, f = step0$f, g = step0$df,
+    gtd = step0$d,
+    c1 = c1, c2 = c2, LS_interp = LS_interp, LS_multi = 0,
+    maxLS = 10000,
+    funObj = make_phi_alpha(x, fg, pv, calc_gradient_default = TRUE),
+    varargin = NULL,
+    pnorm_inf = max(abs(pv)),
+    progTol = 1e-9,
+    debug = debug,
+    armijo_check_fn = armijo_check_fn,
+    curvature_check_fn = curvature_check_fn
+  )
 
   res$step$par <- x + res$step$alpha * pv
   res
@@ -49,7 +51,7 @@ test_that("Table 1 Grad/Cubic Interpolation", {
   res12 <- mfls(fg = f1, x = 0, alpha = 1e-1, c1 = 0.001, c2 = 0.1, LS_interp = 2)
   expect_step(res12, x = 1.4218, f = -0.35355, df = 0.0013220, nfev = 4)
   res13 <- mfls(fg = f1, x = 0, alpha = 1e1, c1 = 0.001, c2 = 0.1, LS_interp = 2)
-  expect_step(res13, x = 10, f = -0.098039, df =  0.0094195, nfev = 1)
+  expect_step(res13, x = 10, f = -0.098039, df = 0.0094195, nfev = 1)
   # progtol
   res14 <- mfls(fg = f1, x = 0, alpha = 1e3, c1 = 0.001, c2 = 0.1, LS_interp = 2)
   expect_step(res14, x = 333.34, f = -0.0029999, df = 8.9994e-006, nfev = 37)
@@ -76,7 +78,7 @@ test_that("Table 3 Grad/Cubic Interpolation", {
   res33 <- mfls(fg = f3, x = 0, alpha = 1e1, c1 = 0.1, c2 = 0.1, LS_interp = 2)
   expect_step(res33, x = 1.0, f = -0.011160, df = -2.3751e-006, nfev = 9)
   res34 <- mfls(fg = f3, x = 0, alpha = 1e3, c1 = 0.1, c2 = 0.1, LS_interp = 2)
-  expect_step(res34, x = 1.0, f = -0.011160, df =  -4.1259e-006, nfev = 12)
+  expect_step(res34, x = 1.0, f = -0.011160, df = -4.1259e-006, nfev = 12)
 })
 
 # Table 4
@@ -135,7 +137,7 @@ test_that("Table 1 Quadratic/Cubic interpolation", {
   res12 <- mfls(fg = f1, x = 0, alpha = 1e-1, c1 = 0.001, c2 = 0.1, LS_interp = 3)
   expect_step(res12, x = 1.3012, f = -0.35233, df = -0.022500, nfev = 4)
   res13 <- mfls(fg = f1, x = 0, alpha = 1e1, c1 = 0.001, c2 = 0.1, LS_interp = 3)
-  expect_step(res13, x = 10, f = -0.098039, df =  0.0094195, nfev = 1)
+  expect_step(res13, x = 10, f = -0.098039, df = 0.0094195, nfev = 1)
   # progtol (NB differs from Octave implementation due to singular matrices, nfev = 21)
   res14 <- mfls(fg = f1, x = 0, alpha = 1e3, c1 = 0.001, c2 = 0.1, LS_interp = 3)
   expect_step(res14, x = 333.34, f = -0.0029999, df = 8.9994e-006, nfev = 28)
@@ -182,7 +184,7 @@ test_that("Table 5 Quadratic/Cubic interpolation", {
   res53 <- mfls(fg = f5, x = 0, alpha = 1e1, c1 = 0.001, c2 = 0.001, LS_interp = 3)
   expect_step(res53, x = 0.072834, f = 0.99139, df = -3.3384e-004, nfev = 7)
   res54 <- mfls(fg = f5, x = 0, alpha = 1e3, c1 = 0.001, c2 = 0.001, LS_interp = 3)
-  expect_step(res54, x = 0.073825, f = 0.99138, df =  -8.9559e-005, nfev = 13)
+  expect_step(res54, x = 0.073825, f = 0.99138, df = -8.9559e-005, nfev = 13)
 })
 
 test_that("Table 6 Quadratic/Cubic interpolation", {
@@ -218,7 +220,7 @@ test_that("Table 1 Fixed Step Multiplication/Bisection", {
   res12 <- mfls(fg = f1, x = 0, alpha = 1e-1, c1 = 0.001, c2 = 0.1, LS_interp = 1)
   expect_step(res12, x = 1.5626, f = -0.35180, df = 0.022377, nfev = 7)
   res13 <- mfls(fg = f1, x = 0, alpha = 1e1, c1 = 0.001, c2 = 0.1, LS_interp = 1)
-  expect_step(res13, x = 10, f = -0.098039, df =  0.0094195, nfev = 1)
+  expect_step(res13, x = 10, f = -0.098039, df = 0.0094195, nfev = 1)
   # progtol
   res14 <- mfls(fg = f1, x = 0, alpha = 1e3, c1 = 0.001, c2 = 0.1, LS_interp = 1)
   expect_step(res14, x = 500, f = -0.002, df = 3.9999e-6, nfev = 41)

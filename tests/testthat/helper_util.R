@@ -130,14 +130,15 @@ rosenbrock_fg <- list(
   fn = function(x) {
     x1 <- x[1]
     x2 <- x[2]
-    100 * (x2 - x1 * x1) ^ 2 + (1 - x1) ^ 2
+    100 * (x2 - x1 * x1)^2 + (1 - x1)^2
   },
   gr = function(x) {
     x1 <- x[1]
     x2 <- x[2]
     c(
       -400 * x1 * (x2 - x1 * x1) - 2 * (1 - x1),
-      200 *      (x2 - x1 * x1))
+      200 * (x2 - x1 * x1)
+    )
   },
   hs = function(x) {
     xx <- 1200 * x[1] * x[1] - 400 * x[2] + 2
@@ -242,10 +243,10 @@ make_step0 <- function(fg, x, pv, f = fg$fn(x), df = fg$gr(x)) {
 
 # 1 phi(a) = -(a) / (a^2 + b) phi'(a) = (a^2 - b) / (a^2 + b)^2 b = 2
 fn1 <- function(alpha, beta = 2) {
-  -alpha / (alpha ^ 2 + beta)
+  -alpha / (alpha^2 + beta)
 }
 gr1 <- function(alpha, beta = 2) {
-  (alpha ^ 2 - beta) / ((alpha ^ 2 + beta) ^ 2)
+  (alpha^2 - beta) / ((alpha^2 + beta)^2)
 }
 fcn1 <- function(x) {
   list(f = fn1(x), g = gr1(x))
@@ -256,10 +257,10 @@ fcn1 <- function(x) {
 
 # 2 phi(a) = (a + b)^5 - 2(a + b)^4  phi'(a) = (a+b)^3*(5a+5b-8)  b = 0.004
 fn2 <- function(alpha, beta = 0.004) {
-  (alpha + beta) ^ 5 - 2 * (alpha + beta) ^ 4
+  (alpha + beta)^5 - 2 * (alpha + beta)^4
 }
 gr2 <- function(alpha, beta = 0.004) {
-  (alpha + beta) ^ 3 * (5 * alpha + 5 * beta - 8)
+  (alpha + beta)^3 * (5 * alpha + 5 * beta - 8)
 }
 fcn2 <- function(x) {
   list(f = fn2(x), g = gr2(x))
@@ -280,7 +281,7 @@ fn3 <- function(alpha, beta = 0.01, l = 39) {
   } else if (alpha >= 1 + beta) {
     phi_0 <- alpha - 1
   } else {
-    phi_0 <- (alpha - 1) ^ 2 / (2 * beta) + (beta / 2)
+    phi_0 <- (alpha - 1)^2 / (2 * beta) + (beta / 2)
   }
   phi_0 + (2 * (1 - beta) * sin(l * pi * alpha * 0.5)) / (l * pi)
 }
@@ -306,18 +307,18 @@ fcn3 <- function(x) {
 
 # gamma(b) = (1+b^2)^1/2 - b
 yanaig <- function(beta) {
-  sqrt(1 + beta ^ 2) - beta
+  sqrt(1 + beta^2) - beta
 }
 
 yanai1 <- function(alpha, beta) {
-  sqrt((1 - alpha) ^ 2 + beta ^ 2)
+  sqrt((1 - alpha)^2 + beta^2)
 }
 gryanai1 <- function(alpha, beta) {
   (alpha - 1) / yanai1(alpha, beta)
 }
 
 yanai2 <- function(alpha, beta) {
-  sqrt(alpha ^ 2 + beta ^ 2)
+  sqrt(alpha^2 + beta^2)
 }
 gryanai2 <- function(alpha, beta) {
   alpha / yanai2(alpha, beta)
@@ -379,4 +380,3 @@ f3 <- list(fn = fn3, gr = gr3)
 f4 <- list(fn = fn4, gr = gr4)
 f5 <- list(fn = fn5, gr = gr5)
 f6 <- list(fn = fn6, gr = gr6)
-

@@ -3,7 +3,7 @@
 # Constructor -------------------------------------------------------------
 
 make_step_size <- function(sub_stage) {
-  make_sub_stage(sub_stage, 'step_size')
+  make_sub_stage(sub_stage, "step_size")
 }
 
 # Constant ----------------------------------------------------------------
@@ -11,12 +11,12 @@ make_step_size <- function(sub_stage) {
 # A constant step size
 constant_step_size <- function(value = 1) {
   make_step_size(list(
-      name = "constant",
-      calculate = function(opt, stage, sub_stage, par, fg, iter) {
-        list(sub_stage = sub_stage)
-      },
-      value = value
-    ))
+    name = "constant",
+    calculate = function(opt, stage, sub_stage, par, fg, iter) {
+      list(sub_stage = sub_stage)
+    },
+    value = value
+  ))
 }
 
 
@@ -34,16 +34,15 @@ constant_step_size <- function(value = 1) {
 #   an acceptable step size.
 # init_step_size - the initial candidate step size for the first line search.
 bold_driver <- function(inc_mult = 1.1, dec_mult = 0.5,
-                inc_fn = partial(`*`, inc_mult),
-                dec_fn = partial(`*`, dec_mult),
-                init_step_size = 1,
-                min_step_size = sqrt(.Machine$double.eps),
-                max_step_size = NULL,
-                max_fn = Inf) {
+                        inc_fn = partial(`*`, inc_mult),
+                        dec_fn = partial(`*`, dec_mult),
+                        init_step_size = 1,
+                        min_step_size = sqrt(.Machine$double.eps),
+                        max_step_size = NULL,
+                        max_fn = Inf) {
   make_step_size(list(
     name = "bold_driver",
     init = function(opt, stage, sub_stage, par, fg, iter) {
-
       if (!is_first_stage(opt, stage)) {
         # Bold driver requires knowing f at the current location
         # If this step size is part of any stage other than the first
@@ -59,8 +58,8 @@ bold_driver <- function(inc_mult = 1.1, dec_mult = 0.5,
       # Optionally use the gradient if it's available to give up early
       # if we're not going downhill
       if (stage$type == "gradient_descent"
-          && has_gr_curr(opt, iter)
-          && dot(opt$cache$gr_curr, pm) > 0) {
+      && has_gr_curr(opt, iter)
+      && dot(opt$cache$gr_curr, pm) > 0) {
         sub_stage$value <- sub_stage$min_value
       }
       else {
@@ -73,24 +72,27 @@ bold_driver <- function(inc_mult = 1.1, dec_mult = 0.5,
         }
 
         max_fn <- max_fn_per_ls(opt, max_fn)
-      alpha <- sub_stage$value
+        alpha <- sub_stage$value
         para <- par + pm * alpha
         opt <- calc_fn(opt, para, fg$fn)
         num_steps <- 0
         while ((!is.finite(opt$fn) || opt$fn > f0)
-               && alpha > sub_stage$min_value
-               && num_steps < max_fn) {
+        && alpha > sub_stage$min_value
+        && num_steps < max_fn) {
           alpha <- sclamp(sub_stage$dec_fn(alpha),
-                          min = sub_stage$min_value,
-                          max = sub_stage$max_value)
+            min = sub_stage$min_value,
+            max = sub_stage$max_value
+          )
           para <- par + pm * alpha
           opt <- calc_fn(opt, para, fg$fn)
           num_steps <- num_steps + 1
         }
         sub_stage$value <- alpha
         if (!is.finite(opt$fn)) {
-          message(stage$type, " ", sub_stage$name,
-                  " non finite cost found at iter ", iter)
+          message(
+            stage$type, " ", sub_stage$name,
+            " non finite cost found at iter ", iter
+          )
           sub_stage$value <- sub_stage$min_value
           return(list(opt = opt, sub_stage = sub_stage))
         }
@@ -113,8 +115,9 @@ bold_driver <- function(inc_mult = 1.1, dec_mult = 0.5,
       }
 
       sub_stage$value <- sclamp(alpha_new,
-                                min = sub_stage$min_value,
-                                max = sub_stage$max_value)
+        min = sub_stage$min_value,
+        max = sub_stage$max_value
+      )
 
 
       if (opt$ok && is_last_stage(opt, stage) && has_fn_new(opt, iter)) {
@@ -128,7 +131,7 @@ bold_driver <- function(inc_mult = 1.1, dec_mult = 0.5,
     init_value = init_step_size,
     min_value = min_step_size,
     max_value = max_step_size
-    ))
+  ))
 }
 
 
@@ -138,15 +141,14 @@ bold_driver <- function(inc_mult = 1.1, dec_mult = 0.5,
 # reducing, the step size by a factor of rho each time, until the Armijo
 # sufficient decrease condition is satisfied.
 backtracking <- function(rho = 0.5,
-                        init_step_size = 1,
-                        min_step_size = sqrt(.Machine$double.eps),
-                        max_step_size = NULL,
-                        c1 = 1e-4,
-                        max_fn = Inf) {
+                         init_step_size = 1,
+                         min_step_size = sqrt(.Machine$double.eps),
+                         max_step_size = NULL,
+                         c1 = 1e-4,
+                         max_fn = Inf) {
   make_step_size(list(
     name = "backtracking",
     init = function(opt, stage, sub_stage, par, fg, iter) {
-
       if (!is_first_stage(opt, stage)) {
         # Requires knowing f at the current location
         # If this step size is part of any stage other than the first
@@ -163,12 +165,11 @@ backtracking <- function(rho = 0.5,
       # Optionally use the gradient if it's available to give up early
       # if we're not going downhill
       if (stage$type == "gradient_descent"
-          && has_gr_curr(opt, iter)
-          && dot(opt$cache$gr_curr, pm) > 0) {
+      && has_gr_curr(opt, iter)
+      && dot(opt$cache$gr_curr, pm) > 0) {
         sub_stage$value <- sub_stage$min_value
       }
       else {
-
         if (is_first_stage(opt, stage) && has_fn_curr(opt, iter)) {
           f0 <- opt$cache$fn_curr
         }
@@ -177,7 +178,7 @@ backtracking <- function(rho = 0.5,
           f0 <- opt$fn
         }
 
-        d0 = dot(opt$cache$gr_curr, pm)
+        d0 <- dot(opt$cache$gr_curr, pm)
 
         alpha <- sub_stage$value
         para <- par + pm * alpha
@@ -186,19 +187,22 @@ backtracking <- function(rho = 0.5,
         max_fn <- max_fn_per_ls(opt, max_fn)
 
         while ((!is.finite(opt$fn) || !armijo_ok(f0, d0, alpha, opt$fn, c1))
-               && alpha > sub_stage$min_value
-               && opt$counts$fn < max_fn) {
+        && alpha > sub_stage$min_value
+        && opt$counts$fn < max_fn) {
           alpha <- sclamp(alpha * rho,
-                          min = sub_stage$min_value,
-                          max = sub_stage$max_value)
+            min = sub_stage$min_value,
+            max = sub_stage$max_value
+          )
 
           para <- par + pm * alpha
           opt <- calc_fn(opt, para, fg$fn)
         }
         sub_stage$value <- alpha
         if (!is.finite(opt$fn)) {
-          message(stage$type, " ", sub_stage$name,
-                  " non finite cost found at iter ", iter)
+          message(
+            stage$type, " ", sub_stage$name,
+            " non finite cost found at iter ", iter
+          )
           sub_stage$value <- sub_stage$min_value
           return(list(opt = opt, sub_stage = sub_stage))
         }
@@ -211,7 +215,6 @@ backtracking <- function(rho = 0.5,
     },
     after_step = function(opt, stage, sub_stage, par, fg, iter, par0,
                           update) {
-
       if (opt$ok && is_last_stage(opt, stage) && has_fn_new(opt, iter)) {
         opt <- set_fn_curr(opt, opt$cache$fn_new, iter + 1)
       }
@@ -230,8 +233,10 @@ max_fn_per_ls <- function(opt, max_ls_fn = Inf) {
     max_fn <- min(max_fn, opt$convergence$max_fn - opt$counts$fn)
   }
   if (!is.null(opt$convergence$max_fg)) {
-    max_fn <- min(max_fn,
-                  opt$convergence$max_fg - (opt$counts$fn + opt$counts$gr))
+    max_fn <- min(
+      max_fn,
+      opt$convergence$max_fg - (opt$counts$fn + opt$counts$gr)
+    )
   }
   max_fn
 }

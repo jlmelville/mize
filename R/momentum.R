@@ -5,7 +5,6 @@ momentum_direction <- function(normalize = FALSE) {
   make_direction(list(
     name = "classical_momentum",
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
-
       sub_stage$value <- opt$cache$update_old
 
       if (sub_stage$normalize) {
@@ -48,8 +47,9 @@ make_momentum_step <- function(mu_fn,
       else {
         sub_stage$value <-
           sclamp(sub_stage$mu_fn(sub_stage$t, opt$convergence$max_iter),
-                 min = sub_stage$min_value,
-                 max = sub_stage$max_value)
+            min = sub_stage$min_value,
+            max = sub_stage$max_value
+          )
       }
       list(sub_stage = sub_stage)
     },
@@ -96,7 +96,6 @@ make_switch <- function(init_value = 0.5, final_value = 0.8,
 make_ramp <- function(init_value = 0,
                       final_value = 0.9,
                       wait = 0) {
-
   function(iter, max_iter) {
     # actual number of iterations
     iters <- max_iter - 1 - wait
@@ -133,7 +132,7 @@ momentum_correction_direction <- function() {
   make_direction(list(
     name = "momentum_correction_direction",
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
-      #message("Calculating momentum correction direction")
+      # message("Calculating momentum correction direction")
 
       grad_stage <- opt$stages[["gradient_descent"]]
       sub_stage$value <- -grad_stage$direction$value
@@ -148,7 +147,6 @@ momentum_correction_step <- function() {
   make_step_size(list(
     name = "momentum_correction_step",
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
-
       grad_stage <- opt$stages[["gradient_descent"]]
       grad_step <- grad_stage$step_size$value
 
@@ -168,16 +166,14 @@ require_update_old <- function(opt, par, fg, iter, par0, update) {
   opt$cache$update_old <- update
   opt
 }
-attr(require_update_old, 'event') <- 'after step'
-attr(require_update_old, 'name') <- 'update_old'
-attr(require_update_old, 'depends') <- 'update_old_init'
+attr(require_update_old, "event") <- "after step"
+attr(require_update_old, "name") <- "update_old"
+attr(require_update_old, "depends") <- "update_old_init"
 
 # Initialize the old update vector
 require_update_old_init <- function(opt, stage, sub_stage, par, fg, iter) {
   opt$cache$update_old <- rep(0, length(par))
   list(opt = opt)
 }
-attr(require_update_old_init, 'event') <- 'init momentum direction'
-attr(require_update_old_init, 'name') <- 'update_old_init'
-
-
+attr(require_update_old_init, "event") <- "init momentum direction"
+attr(require_update_old_init, "name") <- "update_old_init"

@@ -55,7 +55,7 @@ register_hooks <- function(opt) {
   # Optimizer hook
 
   for (name in names(opt)) {
-    if (!is.null(attr(opt[[name]], 'event'))) {
+    if (!is.null(attr(opt[[name]], "event"))) {
       opt <- register_hook(opt, opt[[name]])
     }
   }
@@ -68,7 +68,7 @@ register_hooks <- function(opt) {
     stage <- opt$stages[[i]]
     for (stage_prop_name in names(stage)) {
       stage_prop <- stage[[stage_prop_name]]
-      if (!is.null(attr(stage_prop, 'event'))) {
+      if (!is.null(attr(stage_prop, "event"))) {
         opt <- register_hook(opt, stage_prop, stage$type)
       }
     }
@@ -82,9 +82,11 @@ register_hooks <- function(opt) {
       sub_stage <- stage[[sub_stage_type]]
       for (sub_stage_prop_name in names(sub_stage)) {
         sub_stage_prop <- sub_stage[[sub_stage_prop_name]]
-        if (!is.null(attr(sub_stage_prop, 'event'))) {
-          opt <- register_hook(opt, sub_stage[[sub_stage_prop_name]],
-                               stage$type, sub_stage_type)
+        if (!is.null(attr(sub_stage_prop, "event"))) {
+          opt <- register_hook(
+            opt, sub_stage[[sub_stage_prop_name]],
+            stage$type, sub_stage_type
+          )
         }
       }
 
@@ -126,9 +128,9 @@ register_hook <- function(opt, hook,
   advice_type <- event_tok[1]
   join_point <- event_tok[2]
   if (join_point == "stage"
-      || join_point == "gradient_descent"
-      || join_point == "momentum"
-      && is.null(stage_type)) {
+  || join_point == "gradient_descent"
+  || join_point == "momentum"
+    && is.null(stage_type)) {
     stage_type <- join_point
   }
 

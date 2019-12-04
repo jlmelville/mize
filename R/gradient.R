@@ -5,7 +5,7 @@
 
 # Creates a direction sub stage
 make_direction <- function(sub_stage) {
-  make_sub_stage(sub_stage, 'direction')
+  make_sub_stage(sub_stage, "direction")
 }
 
 # Steepest Descent
@@ -15,7 +15,6 @@ make_direction <- function(sub_stage) {
 # total step length is purely determined by the line search value, rather than
 # the product of the line search value and the magnitude of the direction.
 sd_direction <- function(normalize = FALSE) {
-
   make_direction(list(
     init = function(opt, stage, sub_stage, par, fg, iter) {
       opt$cache$gr_curr <- NULL
@@ -80,9 +79,8 @@ cg_direction <- function(ortho_check = FALSE, nu = 0.1,
       # wm = Pg or just g if we're not preconditioning
       wm <- gm
       if (!is.null(gm_old)
-          && (!sub_stage$ortho_check
-              || !sub_stage$cg_restart(gm, gm_old, sub_stage$nu))) {
-
+      && (!sub_stage$ortho_check
+        || !sub_stage$cg_restart(gm, gm_old, sub_stage$nu))) {
         precondition_fn <- NULL
         if (preconditioner == "l-bfgs" && !is.null(opt$cache$gr_old)) {
           lbfgs <- sub_stage$preconditioner
@@ -99,12 +97,13 @@ cg_direction <- function(ortho_check = FALSE, nu = 0.1,
           sub_stage$preconditioner <- lbfgs
         }
         beta <- sub_stage$cg_update(gm, gm_old, pm_old, sub_stage$eps,
-                                    wm = wm,
-                                    preconditioner = precondition_fn)
+          wm = wm,
+          preconditioner = precondition_fn
+        )
         pm <- pm + (beta * pm_old)
         descent <- dot(gm, pm)
         if (descent >= 0) {
-          #message("Next CG direction is not a descent direction, resetting to SD")
+          # message("Next CG direction is not a descent direction, resetting to SD")
           pm <- -gm
         }
       }
@@ -112,16 +111,14 @@ cg_direction <- function(ortho_check = FALSE, nu = 0.1,
       sub_stage$value <- pm
 
       list(sub_stage = sub_stage)
-    }
-   , after_step = function(opt, stage, sub_stage, par, fg, iter, par0,
-                         update) {
-     sub_stage$pm_old <- sub_stage$value
-     list(sub_stage = sub_stage)
-   }
-    , depends = c("gradient_old")
-  )
-
-  )
+    },
+    after_step = function(opt, stage, sub_stage, par, fg, iter, par0,
+                          update) {
+      sub_stage$pm_old <- sub_stage$value
+      list(sub_stage = sub_stage)
+    },
+    depends = c("gradient_old")
+  ))
   if (preconditioner == "l-bfgs") {
     cg$depends <- append(cg$depends, c("update_old"))
   }
@@ -225,7 +222,8 @@ hs_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
                            wm = NULL,
                            preconditioner = NULL) {
   beta <- hs_update(gm, gm_old, pm_old, eps,
-                    wm = wm, preconditioner = preconditioner)
+    wm = wm, preconditioner = preconditioner
+  )
   max(0, beta)
 }
 
@@ -257,7 +255,8 @@ pr_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
                            wm = NULL,
                            preconditioner = NULL) {
   beta <- pr_update(gm, gm_old, pm_old, eps,
-                    wm = wm, preconditioner = preconditioner)
+    wm = wm, preconditioner = preconditioner
+  )
   max(0, beta)
 }
 
@@ -306,7 +305,8 @@ hz_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
 hz_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
                            wm = wm, preconditioner = NULL) {
   beta <- hz_update(gm, gm_old, pm_old, eps,
-                    wm = wm, preconditioner = preconditioner)
+    wm = wm, preconditioner = preconditioner
+  )
   eta <- 0.01
   eta_k <- -1 / (dot(pm_old) * min(eta, dot(gm_old)))
   max(eta_k, beta)
@@ -315,10 +315,14 @@ hz_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
 # The PR-FR update suggested by Gilbert and Nocedal (1992)
 prfr_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
                         wm = wm, preconditioner = NULL) {
-  bpr <- pr_update(gm, gm_old, pm_old, eps = eps,
-                   wm = wm, preconditioner = preconditioner)
-  bfr <- fr_update(gm, gm_old, pm_old, eps = eps,
-                   wm = wm, preconditioner = preconditioner)
+  bpr <- pr_update(gm, gm_old, pm_old,
+    eps = eps,
+    wm = wm, preconditioner = preconditioner
+  )
+  bfr <- fr_update(gm, gm_old, pm_old,
+    eps = eps,
+    wm = wm, preconditioner = preconditioner
+  )
   if (bpr < -bfr) {
     beta <- -bfr
   }
@@ -408,8 +412,8 @@ bfgs_direction <- function(eps = .Machine$double.eps,
 
       sub_stage$value <- pm
       list(sub_stage = sub_stage)
-    }
-    , depends = c("gradient_old", "update_old")
+    },
+    depends = c("gradient_old", "update_old")
   ))
 }
 
@@ -527,8 +531,8 @@ sr1_direction <- function(eps = .Machine$double.eps,
 
       sub_stage$value <- pm
       list(sub_stage = sub_stage)
-    }
-    , depends = c("gradient_old", "update_old")
+    },
+    depends = c("gradient_old", "update_old")
   ))
 }
 
@@ -609,8 +613,10 @@ lbfgs_solve <- function(qm, lbfgs_state, scale_inverse, eps,
   }
 
   # Choose estimate of inverse Hessian approximation
-  pm <- lbfgs_guess(qm, scale_inverse, rhos[[length(rhos)]], yms[[length(yms)]],
-                    eps, fg, par)
+  pm <- lbfgs_guess(
+    qm, scale_inverse, rhos[[length(rhos)]], yms[[length(yms)]],
+    eps, fg, par
+  )
 
   # loop forwards
   for (i in 1:length(rhos)) {
@@ -692,8 +698,8 @@ lbfgs_direction <- function(memory = 5, scale_inverse = FALSE,
 
       sub_stage$value <- pm
       list(sub_stage = sub_stage)
-    }
-    , depends = c("gradient_old", "update_old")
+    },
+    depends = c("gradient_old", "update_old")
   ))
 }
 
@@ -719,11 +725,13 @@ newton_direction <- function(try_safe_chol = FALSE) {
             rm <- safe_chol(bm)
           }
           else {
-            chol_result <- try({
-              # O(N^3)
-              rm <- chol(bm)
-            },
-            silent = TRUE)
+            chol_result <- try(
+              {
+                # O(N^3)
+                rm <- chol(bm)
+              },
+              silent = TRUE
+            )
             if (class(chol_result) == "try-error") {
               rm <- NULL
             }
@@ -842,20 +850,25 @@ hessian_solve <- function(um, gm) {
 # doi 10.21314/JOR.2000.023
 safe_chol <- function(hm, eps = 1e-10) {
   rm <- NULL
-  chol_result <- try({
-    # O(N^3)
-    rm <- chol(hm)
-  },
-  silent = TRUE)
+  chol_result <- try(
+    {
+      # O(N^3)
+      rm <- chol(hm)
+    },
+    silent = TRUE
+  )
   if (class(chol_result) == "try-error") {
 
     # Also O(N^3)
     eig <- eigen(hm)
     eig$values[eig$values < 0] <- 1e-10
     hm <- eig$vectors %*% (eig$values * diag(nrow(hm))) %*% t(eig$vectors)
-    chol_result <- try({
-      rm <- chol(hm)
-    }, silent = TRUE)
+    chol_result <- try(
+      {
+        rm <- chol(hm)
+      },
+      silent = TRUE
+    )
   }
   rm
 }
@@ -929,8 +942,10 @@ tn_direction <- function(init = 0, exit_criterion = "curvature",
           zm <- 0
         }
       }
-      inner_res <- tn_inner_cg(opt, fg, par, gm, precondition_fn, zm = zm,
-                               exit_criterion = exit_criterion)
+      inner_res <- tn_inner_cg(opt, fg, par, gm, precondition_fn,
+        zm = zm,
+        exit_criterion = exit_criterion
+      )
       opt <- inner_res$opt
       pm <- inner_res$zm
 
@@ -976,8 +991,8 @@ tn_inner_cg <- function(opt, fg, par, gm, preconditioner = NULL, zm = 0,
       zm <- -gm
       return(list(
         opt = opt,
-        zm = zm)
-      )
+        zm = zm
+      ))
     }
     Bd <- bd_approx(fg, par, zm, gm)
     opt$counts$gr <- opt$counts$gr + 1
@@ -1002,8 +1017,8 @@ tn_inner_cg <- function(opt, fg, par, gm, preconditioner = NULL, zm = 0,
       }
       return(list(
         opt = opt,
-        zm = zm)
-      )
+        zm = zm
+      ))
     }
 
     Bd <- bd_approx(fg, par, dm, gm)
@@ -1099,13 +1114,13 @@ require_gradient <- function(opt, stage, par, fg, iter) {
 
   list(opt = opt)
 }
-attr(require_gradient, 'event') <- 'before gradient_descent'
-attr(require_gradient, 'name') <- 'gradient'
+attr(require_gradient, "event") <- "before gradient_descent"
+attr(require_gradient, "name") <- "gradient"
 
 # Caches the gradient at the current step.
 require_gradient_old <- function(opt, par, fg, iter, par0, update) {
   opt$cache$gr_old <- opt$cache$gr_curr
   opt
 }
-attr(require_gradient_old, 'event') <- 'after step'
-attr(require_gradient_old, 'name') <- 'gradient_old'
+attr(require_gradient_old, "event") <- "after step"
+attr(require_gradient_old, "name") <- "gradient_old"

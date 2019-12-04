@@ -261,9 +261,16 @@ convergence checking.
 \examples{
 # Function to optimize and starting point
 rosenbrock_fg <- list(
-  fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
-  gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
-                         200 *        (x[2] - x[1] * x[1])) })
+  fn = function(x) {
+    100 * (x[2] - x[1] * x[1])^2 + (1 - x[1])^2
+  },
+  gr = function(x) {
+    c(
+      -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+      200 * (x[2] - x[1] * x[1])
+    )
+  }
+)
 rb0 <- c(-1.2, 1)
 
 # Create an optimizer and initialize it for use with the Rosenbrock function

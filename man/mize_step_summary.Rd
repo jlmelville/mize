@@ -70,9 +70,16 @@ also be forced here by setting the \code{calc_fn} and \code{calc_gr}
 }
 \examples{
 rb_fg <- list(
-  fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
-  gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
-                         200 *        (x[2] - x[1] * x[1])) })
+  fn = function(x) {
+    100 * (x[2] - x[1] * x[1])^2 + (1 - x[1])^2
+  },
+  gr = function(x) {
+    c(
+      -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+      200 * (x[2] - x[1] * x[1])
+    )
+  }
+)
 rb0 <- c(-1.2, 1)
 
 opt <- make_mize(method = "BFGS", par = rb0, fg = rb_fg, max_iter = 30)

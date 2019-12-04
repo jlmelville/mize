@@ -8,7 +8,7 @@ context("Hager-Zhang Line Search")
 # # Allow termination after bracket phase and bisection step size generation
 # # Remove the "flat" secant termination check
 
-hzls <- function(fg, x, alpha, c1, c2, pv = -fg$gr(x)/abs(fg$gr(x)),
+hzls <- function(fg, x, alpha, c1, c2, pv = -fg$gr(x) / abs(fg$gr(x)),
                  max_fn = Inf,
                  strong_curvature = TRUE,
                  always_check_convergence = TRUE,
@@ -16,14 +16,16 @@ hzls <- function(fg, x, alpha, c1, c2, pv = -fg$gr(x)/abs(fg$gr(x)),
                  verbose = FALSE) {
   step0 <- make_step0(fg, x, pv)
 
-  res <- line_search_hz(alpha = alpha,
-                        step0 = step0,
-                        phi = make_phi_alpha(x, fg, pv, calc_gradient_default = TRUE),
-                        c1 = c1, c2 = c2, max_fn = max_fn,
-                        strong_curvature = strong_curvature,
-                        always_check_convergence = always_check_convergence,
-                        approx_armijo = approx_armijo,
-                        verbose = verbose)
+  res <- line_search_hz(
+    alpha = alpha,
+    step0 = step0,
+    phi = make_phi_alpha(x, fg, pv, calc_gradient_default = TRUE),
+    c1 = c1, c2 = c2, max_fn = max_fn,
+    strong_curvature = strong_curvature,
+    always_check_convergence = always_check_convergence,
+    approx_armijo = approx_armijo,
+    verbose = verbose
+  )
 
   res$step$par <- x + res$step$alpha * pv
   res$step0 <- step0
@@ -39,7 +41,7 @@ test_that("Table 1", {
   res12 <- hzls(fg = f1, x = 0, alpha = 1e-1, c1 = 0.001, c2 = 0.1)
   expect_step(res12, x = 1.347, f = -0.3531, df = -0.0128, nfev = 5)
   res13 <- hzls(fg = f1, x = 0, alpha = 1e1, c1 = 0.001, c2 = 0.1)
-  expect_step(res13, x = 10, f = -0.098039, df =  0.0094195, nfev = 1)
+  expect_step(res13, x = 10, f = -0.098039, df = 0.0094195, nfev = 1)
   res14 <- hzls(fg = f1, x = 0, alpha = 1e3, c1 = 0.001, c2 = 0.1)
   expect_step(res14, x = 1000, f = -0.001, df = 1e-6, nfev = 1)
 })
@@ -55,8 +57,10 @@ test_that("Table 2", {
   res24 <- hzls(fg = f2, x = 0, alpha = 1e3, c1 = 0.1, c2 = 0.1)
   expect_step(res24, x = 1.5960, f = -2.6214, df = -7.7762e-9, nfev = 28)
 
-  res24_maxfn <- hzls(fg = f2, x = 0, alpha = 1e3, c1 = 0.1, c2 = 0.1,
-                      max_fn = 20)
+  res24_maxfn <- hzls(
+    fg = f2, x = 0, alpha = 1e3, c1 = 0.1, c2 = 0.1,
+    max_fn = 20
+  )
   expect_step(res24_maxfn, x = 1.9531, f = -0.6290, df = 13.3859, nfev = 20)
 })
 
@@ -110,10 +114,13 @@ test_that("MT Function modification", {
   res4m <- hzls(fg = f4, x = 1, alpha = 1, c1 = 0.1, c2 = 0.9)
   expect_step(res4m, x = 0.5, f = 0.999, df = 0, alpha = 0.5, nfev = 2)
   res5m <- hzls(fg = f5, x = 1, alpha = 1, c1 = 0.1, c2 = 0.9)
-  expect_step(res5m, x = 0.49776, f = 0.99461, df = 0.0087509, alpha = 0.50224,
-              nfev = 2)
+  expect_step(res5m,
+    x = 0.49776, f = 0.99461, df = 0.0087509, alpha = 0.50224,
+    nfev = 2
+  )
   res6m <- hzls(fg = f6, x = 1, alpha = 1, c1 = 0.1, c2 = 0.9)
-  expect_step(res6m, x = 0.50224, f = 0.99461, df = -0.0087509, alpha = 0.49776,
-              nfev = 2)
+  expect_step(res6m,
+    x = 0.50224, f = 0.99461, df = -0.0087509, alpha = 0.49776,
+    nfev = 2
+  )
 })
-

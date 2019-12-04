@@ -35,9 +35,11 @@ more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf, eps = 1e-6,
     armijo_check_fn <- armijo_ok_step
   }
 
-  wolfe_ok_step_fn <- make_wolfe_ok_step_fn(strong_curvature = strong_curvature,
-                                            approx_armijo = approx_armijo,
-                                            eps = eps)
+  wolfe_ok_step_fn <- make_wolfe_ok_step_fn(
+    strong_curvature = strong_curvature,
+    approx_armijo = approx_armijo,
+    eps = eps
+  )
 
   function(phi, step0, alpha,
            total_max_fn = Inf, total_max_gr = Inf, total_max_fg = Inf,
@@ -46,12 +48,14 @@ more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf, eps = 1e-6,
     if (maxfev <= 0) {
       return(list(step = step0, nfn = 0, ngr = 0))
     }
-    res <- cvsrch(phi, step0, alpha = alpha, c1 = c1, c2 = c2,
-                  maxfev = maxfev, alpha_max = alpha_max,
-                  armijo_check_fn = armijo_check_fn,
-                  wolfe_ok_step_fn = wolfe_ok_step_fn,
-                  safeguard_cubic = safeguard_cubic,
-                  verbose = verbose)
+    res <- cvsrch(phi, step0,
+      alpha = alpha, c1 = c1, c2 = c2,
+      maxfev = maxfev, alpha_max = alpha_max,
+      armijo_check_fn = armijo_check_fn,
+      wolfe_ok_step_fn = wolfe_ok_step_fn,
+      safeguard_cubic = safeguard_cubic,
+      verbose = verbose
+    )
     list(step = res$step, nfn = res$nfn, ngr = res$nfn)
   }
 }
@@ -126,43 +130,43 @@ more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf, eps = 1e-6,
 #                          alpha_min,alpha_max,maxfev,info,nfev)
 #     where
 #
-#	fcn is the name of the user-supplied subroutine which
+# 	fcn is the name of the user-supplied subroutine which
 #         calculates the function and the gradient.  fcn must
 #      	  be declared in an external statement in the user
 #         calling program, and should be written as follows.
 #
 #         function [f,g] = fcn(n,x) (Matlab)     (10/2010 change in documentation)
-#	  (derived from Fortran subroutine fcn(n,x,f,g) )
+# 	  (derived from Fortran subroutine fcn(n,x,f,g) )
 #         integer n
 #         f
 #         x(n),g(n)
-#	  ---
+# 	  ---
 #         Calculate the function at x and
 #         return this value in the variable f.
 #         Calculate the gradient at x and
 #         return this vector in g.
-#	  ---
-#	  return
-#	  end
+# 	  ---
+# 	  return
+# 	  end
 #
 #       n is a positive integer input variable set to the number
-#	  of variables.
+# 	  of variables.
 #
-#	x is an array of length n. On input it must contain the
-#	  base point for the line search. On output it contains
+# 	x is an array of length n. On input it must contain the
+# 	  base point for the line search. On output it contains
 #         x + alpha*pv.
 #
-#	f is a variable. On input it must contain the value of f
+# 	f is a variable. On input it must contain the value of f
 #         at x. On output it contains the value of f at x + alpha*pv.
 #
-#	g is an array of length n. On input it must contain the
+# 	g is an array of length n. On input it must contain the
 #         gradient of f at x. On output it contains the gradient
 #         of f at x + alpha*pv.
 #
-#	pv is an input array of length n which specifies the
+# 	pv is an input array of length n which specifies the
 #         search direction.
 #
-#	alpha is a nonnegative variable. On input alpha contains an
+# 	alpha is a nonnegative variable. On input alpha contains an
 #         initial estimate of a satisfactory step. On output
 #         alpha contains the final estimate.
 #
@@ -170,34 +174,34 @@ more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf, eps = 1e-6,
 #         occurs when the sufficient decrease condition and the
 #         directional derivative condition are satisfied.
 #
-#	xtol is a nonnegative input variable. Termination occurs
+# 	xtol is a nonnegative input variable. Termination occurs
 #         when the relative width of the interval of uncertainty
-#	  is at most xtol.
+# 	  is at most xtol.
 #
-#	alpha_min and alpha_max are nonnegative input variables which
-#	  specify lower and upper bounds for the step.
+# 	alpha_min and alpha_max are nonnegative input variables which
+# 	  specify lower and upper bounds for the step.
 #
-#	maxfev is a positive integer input variable. Termination
+# 	maxfev is a positive integer input variable. Termination
 #         occurs when the number of calls to fcn is at least
 #         maxfev by the end of an iteration.
 #
-#	info is an integer output variable set as follows:
+# 	info is an integer output variable set as follows:
 #
-#	  info = 0  Improper input parameters.
+# 	  info = 0  Improper input parameters.
 #
-#	  info = 1  The sufficient decrease condition and the
+# 	  info = 1  The sufficient decrease condition and the
 #                   directional derivative condition hold.
 #
-#	  info = 2  Relative width of the interval of uncertainty
-#		    is at most xtol.
+# 	  info = 2  Relative width of the interval of uncertainty
+# 		    is at most xtol.
 #
-#	  info = 3  Number of calls to fcn has reached maxfev.
+# 	  info = 3  Number of calls to fcn has reached maxfev.
 #
-#	  info = 4  The step is at the lower bound alpha_min.
+# 	  info = 4  The step is at the lower bound alpha_min.
 #
-#	  info = 5  The step is at the upper bound alpha_max.
+# 	  info = 5  The step is at the upper bound alpha_max.
 #
-#	  info = 6  Rounding errors prevent further progress.
+# 	  info = 6  Rounding errors prevent further progress.
 #                   There may not be a step which satisfies the
 #                   sufficient decrease and curvature conditions.
 #                   Tolerances may be too small.
@@ -208,11 +212,11 @@ more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf, eps = 1e-6,
 #
 #     Subprograms called
 #
-#	user-supplied......fcn
+# 	user-supplied......fcn
 #
-#	MINPACK-supplied...cstep
+# 	MINPACK-supplied...cstep
 #
-#	FORTRAN-supplied...abs,max,min
+# 	FORTRAN-supplied...abs,max,min
 #
 #     Argonne National Laboratory. MINPACK Project. June 1983
 #     Jorge J. More', David J. Thuente
@@ -256,8 +260,10 @@ cvsrch <- function(phi, step0, alpha = 1,
   }
   if (alpha_max < alpha_min) {
     params_ok <- FALSE
-    problems <- c(problems, paste0("alpha_max ", formatC(alpha_max)
-                         , " < alpha_min ", formatC(alpha_min)))
+    problems <- c(problems, paste0(
+      "alpha_max ", formatC(alpha_max),
+      " < alpha_min ", formatC(alpha_min)
+    ))
   }
   if (maxfev < 0) {
     params_ok <- FALSE
@@ -317,8 +323,10 @@ cvsrch <- function(phi, step0, alpha = 1,
     step$alpha <- min(step$alpha, alpha_max)
 
     if (verbose) {
-    message("Bracket: [", formatC(stmin), ", ", formatC(stmax),
-            "] alpha = ", formatC(step$alpha))
+      message(
+        "Bracket: [", formatC(stmin), ", ", formatC(stmax),
+        "] alpha = ", formatC(step$alpha)
+      )
     }
 
     # Evaluate the function and gradient at alpha
@@ -338,11 +346,12 @@ cvsrch <- function(phi, step0, alpha = 1,
 
     # Test for convergence.
     info <- check_convergence(step0, step, brackt, infoc, stmin, stmax,
-                              alpha_min, alpha_max, c1, c2, nfev,
-                              maxfev, xtol,
-                              armijo_check_fn = armijo_check_fn,
-                              wolfe_ok_step_fn = wolfe_ok_step_fn,
-                              verbose = verbose)
+      alpha_min, alpha_max, c1, c2, nfev,
+      maxfev, xtol,
+      armijo_check_fn = armijo_check_fn,
+      wolfe_ok_step_fn = wolfe_ok_step_fn,
+      verbose = verbose
+    )
 
     # Check for termination.
     if (info != 0) {
@@ -388,8 +397,9 @@ cvsrch <- function(phi, step0, alpha = 1,
       stepm <- modify_step(step, dgtest)
 
       step_result <- cstep(stepxm, stepym, stepm, brackt, stmin, stmax,
-                           safeguard_cubic = safeguard_cubic,
-                           verbose = verbose)
+        safeguard_cubic = safeguard_cubic,
+        verbose = verbose
+      )
 
       brackt <- step_result$brackt
       infoc <- step_result$info
@@ -405,8 +415,9 @@ cvsrch <- function(phi, step0, alpha = 1,
       # Call cstep to update the interval of uncertainty
       # and to compute the new step.
       step_result <- cstep(stepx, stepy, step, brackt, stmin, stmax,
-                           safeguard_cubic = safeguard_cubic,
-                           verbose = verbose)
+        safeguard_cubic = safeguard_cubic,
+        verbose = verbose
+      )
       brackt <- step_result$brackt
       infoc <- step_result$info
       stepx <- step_result$stepx
@@ -496,12 +507,12 @@ unmodify_step <- function(stepm, dgtest) {
 #   \item \code{0} No convergence.
 #   \item \code{1} The sufficient decrease condition and the directional
 #     derivative condition hold.
-#	  \item \code{2} Relative width of the interval of uncertainty
-#		    is at most xtol.
-#	  \item \code{3} Number of calls to fcn has reached maxfev.
-#	  \item \code{4} The step is at the lower bound alpha_min.
-#	  \item \code{5} The step is at the upper bound alpha_max.
-#	  \item \code{6} Rounding errors prevent further progress.
+# 	  \item \code{2} Relative width of the interval of uncertainty
+# 		    is at most xtol.
+# 	  \item \code{3} Number of calls to fcn has reached maxfev.
+# 	  \item \code{4} The step is at the lower bound alpha_min.
+# 	  \item \code{5} The step is at the upper bound alpha_max.
+# 	  \item \code{6} Rounding errors prevent further progress.
 # }
 # NB dgtest was originally used in testing for min/max alpha test (code 4 and 5)
 # but has been replaced with a call to the curvature test using c1 instead of c2
@@ -514,31 +525,31 @@ check_convergence <- function(step0, step, brackt, infoc, stmin, stmax,
   info <- 0
   if ((brackt && (step$alpha <= stmin || step$alpha >= stmax)) || infoc == 0) {
     if (verbose) {
-      message("MT: Rounding errors prevent further progress: stmin = ",
-            formatC(stmin), " stmax = ", formatC(stmax))
+      message(
+        "MT: Rounding errors prevent further progress: stmin = ",
+        formatC(stmin), " stmax = ", formatC(stmax)
+      )
     }
     # rounding errors prevent further progress
     info <- 6
   }
   # use of c1 in curvature check is on purpose (it's in the MINPACK code)
   if (step$alpha == alpha_max && armijo_check_fn(step0, step, c1) &&
-      !curvature_ok_step(step0, step, c1)) {
+    !curvature_ok_step(step0, step, c1)) {
     # reached alpha_max
     info <- 5
     if (verbose) {
       message("MT: Reached alpha max")
     }
-
   }
   # use of c1 in curvature check here is also in MINPACK code
   if (step$alpha == alpha_min && (!armijo_check_fn(step0, step, c1) ||
-                                  curvature_ok_step(step0, step, c1))) {
+    curvature_ok_step(step0, step, c1))) {
     # reached alpha_min
     info <- 4
     if (verbose) {
       message("MT: Reached alpha min")
     }
-
   }
   if (nfev >= maxfev) {
     # maximum number of function evaluations reached
@@ -553,7 +564,6 @@ check_convergence <- function(step0, step, brackt, infoc, stmin, stmax,
     if (verbose) {
       message("MT: interval width is <= xtol: ", formatC(xtol * stmax))
     }
-
   }
   if (wolfe_ok_step_fn(step0, step, c1, c2)) {
     # success!
@@ -664,10 +674,9 @@ check_convergence <- function(step0, step, brackt, infoc, stmin, stmax,
 #     Jorge J. More', David J. Thuente
 #
 #     **********
-cstep <-  function(stepx, stepy, step, brackt, stpmin, stpmax,
-                   safeguard_cubic = FALSE,
-                   verbose = FALSE) {
-
+cstep <- function(stepx, stepy, step, brackt, stpmin, stpmax,
+                  safeguard_cubic = FALSE,
+                  verbose = FALSE) {
   stx <- stepx$alpha
   fx <- stepx$f
   dx <- stepx$d
@@ -687,13 +696,14 @@ cstep <-  function(stepx, stepy, step, brackt, stpmin, stpmax,
   info <- 0
   # Check the input parameters for errors.
   if ((brackt && (stp <= min(stx, sty) ||
-                  stp >= max(stx, sty))) ||
-      dx * (stp - stx) >= 0.0 || stpmax < stpmin) {
+    stp >= max(stx, sty))) ||
+    dx * (stp - stx) >= 0.0 || stpmax < stpmin) {
     list(
       stepx = stepx,
       stepy = stepy,
       step = step,
-      brackt = brackt, info = info)
+      brackt = brackt, info = info
+    )
   }
   # Determine if the derivatives have opposite sign.
   sgnd <- dp * (dx / abs(dx))
@@ -763,7 +773,7 @@ cstep <-  function(stepx, stepy, step, brackt, stpmin, stpmax,
     s <- norm(rbind(theta, dx, dp), "i")
     # The case gamma = 0 only arises if the cubic does not tend
     # to infinity in the direction of the step.
-    gamma <- s * sqrt(max(0.,(theta / s) ^ 2 - (dx / s) * (dp / s)))
+    gamma <- s * sqrt(max(0., (theta / s)^2 - (dx / s) * (dp / s)))
     if (stp > stx) {
       gamma <- -gamma
     }
@@ -855,7 +865,8 @@ cstep <-  function(stepx, stepy, step, brackt, stpmin, stpmax,
     stepx = list(alpha = stx, f = fx, d = dx, df = dfx),
     stepy = list(alpha = sty, f = fy, d = dy, df = dfy),
     step = list(alpha = stp, f = fp, d = dp, df = dfp),
-    brackt = brackt, info = info)
+    brackt = brackt, info = info
+  )
 }
 
 

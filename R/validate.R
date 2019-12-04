@@ -7,9 +7,9 @@ require_validate_fn <- function(opt, par, fg, iter, par0, update) {
   }
   opt
 }
-attr(require_validate_fn, 'name') <- 'validate_fn'
-attr(require_validate_fn, 'event') <- 'during validation'
-attr(require_validate_fn, 'depends') <- 'fn_new fn_curr save_cache_on_failure'
+attr(require_validate_fn, "name") <- "validate_fn"
+attr(require_validate_fn, "event") <- "during validation"
+attr(require_validate_fn, "depends") <- "fn_new fn_curr save_cache_on_failure"
 
 # Checks that the gradient is a descent direction
 # This relies on the gradient being calculated in the "classical" location
@@ -20,9 +20,9 @@ require_validate_gr <- function(opt, par, fg, iter, par0, update) {
   }
   opt
 }
-attr(require_validate_gr, 'name') <- 'validate_gr'
-attr(require_validate_gr, 'event') <- 'during validation'
-attr(require_validate_gr, 'depends') <- 'gradient save_cache_on_failure'
+attr(require_validate_gr, "name") <- "validate_gr"
+attr(require_validate_gr, "event") <- "during validation"
+attr(require_validate_gr, "depends") <- "gradient save_cache_on_failure"
 
 # Checks that the update vector is getting larger
 require_validate_speed <- function(opt, par, fg, iter, par0, update) {
@@ -31,9 +31,9 @@ require_validate_speed <- function(opt, par, fg, iter, par0, update) {
   }
   opt
 }
-attr(require_validate_speed, 'name') <- 'validate_speed'
-attr(require_validate_speed, 'event') <- 'during validation'
-attr(require_validate_speed, 'depends') <- 'save_cache_on_failure'
+attr(require_validate_speed, "name") <- "validate_speed"
+attr(require_validate_speed, "event") <- "during validation"
+attr(require_validate_speed, "depends") <- "save_cache_on_failure"
 
 # Validate Dependencies ------------------------------------------------------------
 
@@ -44,9 +44,9 @@ require_fn_curr <- function(opt, par, fg, iter, par0, update) {
   }
   opt
 }
-attr(require_fn_curr, 'name') <- 'fn_curr'
-attr(require_fn_curr, 'event') <- 'before step'
-attr(require_fn_curr, 'depends') <- 'update_fn_cache'
+attr(require_fn_curr, "name") <- "fn_curr"
+attr(require_fn_curr, "event") <- "before step"
+attr(require_fn_curr, "depends") <- "update_fn_cache"
 
 # Caches the new fn value
 require_fn_new <- function(opt, par, fg, iter, par0, update) {
@@ -55,8 +55,8 @@ require_fn_new <- function(opt, par, fg, iter, par0, update) {
   }
   opt
 }
-attr(require_fn_new, 'name') <- 'fn_new'
-attr(require_fn_new, 'event') <- 'before validation'
+attr(require_fn_new, "name") <- "fn_new"
+attr(require_fn_new, "event") <- "before validation"
 
 # Caches the new fn value as the current value for the next iteration
 require_update_fn_cache <- function(opt, par, fg, iter, par0, update) {
@@ -65,8 +65,8 @@ require_update_fn_cache <- function(opt, par, fg, iter, par0, update) {
   }
   opt
 }
-attr(require_update_fn_cache, 'name') <- 'update_fn_cache'
-attr(require_update_fn_cache, 'event') <- 'after step'
+attr(require_update_fn_cache, "name") <- "update_fn_cache"
+attr(require_update_fn_cache, "event") <- "after step"
 
 # Keep the old cached values around in the event of failure
 require_save_cache_on_failure <- function(opt, par, fg, iter, par0, update) {
@@ -88,5 +88,5 @@ require_save_cache_on_failure <- function(opt, par, fg, iter, par0, update) {
   }
   opt
 }
-attr(require_save_cache_on_failure, 'name') <- 'save_cache_on_failure'
-attr(require_save_cache_on_failure, 'event') <- 'after step'
+attr(require_save_cache_on_failure, "name") <- "save_cache_on_failure"
+attr(require_save_cache_on_failure, "event") <- "after step"

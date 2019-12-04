@@ -17,11 +17,13 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
   }
 
   if (!opt$is_initialized) {
-    opt <- mize_init(opt, par, fg, max_iter = max_iter,
-                     max_fn = max_fn, max_gr = max_gr, max_fg = max_fg,
-                     abs_tol = abs_tol, rel_tol = rel_tol,
-                     grad_tol = grad_tol, ginf_tol = ginf_tol,
-                     step_tol = step_tol)
+    opt <- mize_init(opt, par, fg,
+      max_iter = max_iter,
+      max_fn = max_fn, max_gr = max_gr, max_fg = max_fg,
+      abs_tol = abs_tol, rel_tol = rel_tol,
+      grad_tol = grad_tol, ginf_tol = ginf_tol,
+      step_tol = step_tol
+    )
   }
 
   progress <- data.frame()
@@ -57,7 +59,6 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
   par0 <- par
   if (max_iter > 0) {
     for (iter in 1:max_iter) {
-
       if (invalidate_cache) {
         opt <- opt_clear_cache(opt)
       }
@@ -102,7 +103,6 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
         if (verbose && iter %% log_every == 0) {
           opt_report(step_info, print_time = TRUE, print_par = FALSE)
         }
-
       }
 
       # might not have worked out which criterion to use on iteration 0
@@ -133,8 +133,8 @@ opt_loop <- function(opt, par, fg, max_iter = 10, verbose = FALSE,
 
   # If we were keeping track of the best result and that's not currently par:
   if (!is.null(best_par)
-      && ((best_crit == "fn" && best_fn != opt$cache$fn_curr) ||
-          (best_crit == "gr" && best_grn != norm_inf(opt$cache$gr_curr)))) {
+  && ((best_crit == "fn" && best_fn != opt$cache$fn_curr) ||
+      (best_crit == "gr" && best_grn != norm_inf(opt$cache$gr_curr)))) {
     par <- best_par
     opt <- opt_clear_cache(opt)
     opt <- set_fn_curr(opt, best_fn, iter + 1)
@@ -186,7 +186,6 @@ opt_clear_cache <- function(opt) {
 # Prints information about the current optimization result
 opt_report <- function(step_info, print_time = FALSE, print_par = FALSE,
                        par = NULL) {
-
   fmsg <- ""
   if (!is.null(step_info$f)) {
     fmsg <- paste0(fmsg, " f = ", formatC(step_info$f))
@@ -198,11 +197,12 @@ opt_report <- function(step_info, print_time = FALSE, print_par = FALSE,
     fmsg <- paste0(fmsg, " ginf = ", formatC(step_info$ginfn))
   }
 
-  msg <- paste0("iter ", step_info$iter
-                , fmsg
-                , " nf = ", step_info$nf
-                , " ng = ", step_info$ng
-                , " step = ", formatC(step_info$step)
+  msg <- paste0(
+    "iter ", step_info$iter,
+    fmsg,
+    " nf = ", step_info$nf,
+    " ng = ", step_info$ng,
+    " step = ", formatC(step_info$step)
   )
 
   if (!is.null(step_info$alpha)) {
@@ -223,7 +223,9 @@ opt_report <- function(step_info, print_time = FALSE, print_par = FALSE,
 # Transfers data from the result object to the progress data frame
 update_progress <- function(step_info, progress) {
   res_names <- c("f", "g2n", "ginf", "nf", "ng", "step", "alpha", "mu")
-  res_names <- Filter(function(x) { !is.null(step_info[[x]]) }, res_names)
+  res_names <- Filter(function(x) {
+    !is.null(step_info[[x]])
+  }, res_names)
 
   progress <- rbind(progress, step_info[res_names])
 
@@ -259,8 +261,8 @@ make_opt <- function(stages,
   )
 
   if (!is.null(opt$init)) {
-    attr(opt$init, 'event') <- 'init opt'
-    attr(opt$init, 'name') <- 'handler'
+    attr(opt$init, "event") <- "init opt"
+    attr(opt$init, "name") <- "handler"
   }
   opt
 }
@@ -268,7 +270,6 @@ make_opt <- function(stages,
 # Creates a stage of the optimizer: a gradient_descent or momentum stage
 # normally
 make_stage <- function(type, direction, step_size, depends = NULL) {
-
   stage <- list(
     type = type,
     direction = direction,
@@ -305,20 +306,20 @@ make_stage <- function(type, direction, step_size, depends = NULL) {
   }
 
   if (!is.null(stage$init)) {
-    attr(stage$init, 'event') <- paste0('init ', type)
-    attr(stage$init, 'name') <- 'handler'
+    attr(stage$init, "event") <- paste0("init ", type)
+    attr(stage$init, "name") <- "handler"
   }
   if (!is.null(stage$calculate)) {
-    attr(stage$calculate, 'event') <- paste0('during ', type)
-    attr(stage$calculate, 'name') <- 'handler'
+    attr(stage$calculate, "event") <- paste0("during ", type)
+    attr(stage$calculate, "name") <- "handler"
   }
   if (!is.null(stage$after_stage)) {
-    attr(stage$after_stage, 'event') <- paste0('after ', type)
-    attr(stage$after_stage, 'name') <- 'handler'
+    attr(stage$after_stage, "event") <- paste0("after ", type)
+    attr(stage$after_stage, "name") <- "handler"
   }
   if (!is.null(stage$after_step)) {
-    attr(stage$after_step, 'event') <- 'after step'
-    attr(stage$after_step, 'name') <- paste0(type, ' after step')
+    attr(stage$after_step, "event") <- "after step"
+    attr(stage$after_step, "name") <- paste0(type, " after step")
   }
 
   res <- list()
@@ -330,24 +331,26 @@ make_stage <- function(type, direction, step_size, depends = NULL) {
 make_sub_stage <- function(sub_stage, type) {
   sub_stage$type <- type
   if (!is.null(sub_stage$init)) {
-    attr(sub_stage$init, 'event') <- paste0('init ', sub_stage$type)
-    attr(sub_stage$init, 'name') <- 'handler'
+    attr(sub_stage$init, "event") <- paste0("init ", sub_stage$type)
+    attr(sub_stage$init, "name") <- "handler"
   }
   if (!is.null(sub_stage$calculate)) {
-    attr(sub_stage$calculate, 'event') <- paste0('during ', sub_stage$type)
-    attr(sub_stage$calculate, 'name') <- 'handler'
+    attr(sub_stage$calculate, "event") <- paste0("during ", sub_stage$type)
+    attr(sub_stage$calculate, "name") <- "handler"
   }
   if (!is.null(sub_stage$after_step)) {
-    attr(sub_stage$after_step, 'event') <- 'after step'
-    attr(sub_stage$after_step, 'name') <-  paste0(sub_stage$type, ' after step')
+    attr(sub_stage$after_step, "event") <- "after step"
+    attr(sub_stage$after_step, "name") <- paste0(sub_stage$type, " after step")
   }
   sub_stage
 }
 
 # Creates a gradient_descent stage
 gradient_stage <- function(direction, step_size) {
-  make_stage(type = "gradient_descent", direction, step_size,
-             depends = c('gradient'))
+  make_stage(
+    type = "gradient_descent", direction, step_size,
+    depends = c("gradient")
+  )
 }
 
 # Creates a momentum stage
@@ -359,8 +362,8 @@ momentum_stage <- function(direction = momentum_direction(normalize = FALSE),
 # Creates a momentum "correction" stage. If linear weighting is asked for, then
 # mu * the gradient direction is substracted from the result.
 momentum_correction_stage <- function(
-  direction = momentum_correction_direction(),
-  step_size = momentum_correction_step()) {
+                                      direction = momentum_correction_direction(),
+                                      step_size = momentum_correction_step()) {
   make_stage(type = "momentum_correction", direction, step_size)
 }
 
@@ -492,20 +495,20 @@ grad_is_first_stage <- function(opt) {
 # Has fn_new already been calculated for the specified iteration
 has_fn_new <- function(opt, iter) {
   (!is.null(opt$cache$fn_new)
-   && !is.null(opt$cache$fn_new_iter)
-   && opt$cache$fn_new_iter == iter)
+  && !is.null(opt$cache$fn_new_iter)
+  && opt$cache$fn_new_iter == iter)
 }
 
 # Has fn_curr already been calculated for the specified iteration
 has_fn_curr <- function(opt, iter) {
   (!is.null(opt$cache$fn_curr)
-   && !is.null(opt$cache$fn_curr_iter)
-   && opt$cache$fn_curr_iter == iter)
+  && !is.null(opt$cache$fn_curr_iter)
+  && opt$cache$fn_curr_iter == iter)
 }
 
 # Has gr_curr already been calculated for the specified iteration
 has_gr_curr <- function(opt, iter) {
   (!is.null(opt$cache$gr_curr)
-   && !is.null(opt$cache$gr_curr_iter)
-   && opt$cache$gr_curr_iter == iter)
+  && !is.null(opt$cache$gr_curr_iter)
+  && opt$cache$gr_curr_iter == iter)
 }

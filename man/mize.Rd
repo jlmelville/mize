@@ -672,9 +672,16 @@ then the returned value of \code{par} is the last value encountered.
 \examples{
 # Function to optimize and starting point defined after creating optimizer
 rosenbrock_fg <- list(
-  fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
-  gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
-                         200 *        (x[2] - x[1] * x[1])) })
+  fn = function(x) {
+    100 * (x[2] - x[1] * x[1])^2 + (1 - x[1])^2
+  },
+  gr = function(x) {
+    c(
+      -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+      200 * (x[2] - x[1] * x[1])
+    )
+  }
+)
 rb0 <- c(-1.2, 1)
 
 # Minimize using L-BFGS
@@ -688,12 +695,16 @@ res <- mize(rb0, rosenbrock_fg, method = "MOM", mom_schedule = 0.9)
 
 # Steepest descent with constant momentum in the Nesterov style as described
 # in papers by Sutskever and Bengio
-res <- mize(rb0, rosenbrock_fg, method = "MOM", mom_type = "nesterov",
-             mom_schedule = 0.9)
+res <- mize(rb0, rosenbrock_fg,
+  method = "MOM", mom_type = "nesterov",
+  mom_schedule = 0.9
+)
 
 # Nesterov momentum with adaptive restart comparing function values
-res <- mize(rb0, rosenbrock_fg, method = "MOM", mom_type = "nesterov",
-             mom_schedule = 0.9, restart = "fn")
+res <- mize(rb0, rosenbrock_fg,
+  method = "MOM", mom_type = "nesterov",
+  mom_schedule = 0.9, restart = "fn"
+)
 }
 \references{
 Gilbert, J. C., & Nocedal, J. (1992). Global convergence properties of conjugate gradient methods for optimization.

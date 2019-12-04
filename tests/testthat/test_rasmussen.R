@@ -1,10 +1,9 @@
 context("Rasmussen Line Search")
 
-rls <- function(fg, x, pv = -fg$gr(x)/abs(fg$gr(x)), alpha, c1, c2,
+rls <- function(fg, x, pv = -fg$gr(x) / abs(fg$gr(x)), alpha, c1, c2,
                 xtol = 1e-6, eps = 1e-6, approx_armijo = FALSE,
                 strong_curvature = TRUE,
                 verbose = FALSE) {
-
   if (approx_armijo) {
     armijo_check_fn <- make_approx_armijo_ok_step(eps)
   }
@@ -12,17 +11,21 @@ rls <- function(fg, x, pv = -fg$gr(x)/abs(fg$gr(x)), alpha, c1, c2,
     armijo_check_fn <- armijo_ok_step
   }
 
-  wolfe_ok_step_fn <- make_wolfe_ok_step_fn(strong_curvature = strong_curvature,
-                                            approx_armijo = approx_armijo,
-                                            eps = eps)
+  wolfe_ok_step_fn <- make_wolfe_ok_step_fn(
+    strong_curvature = strong_curvature,
+    approx_armijo = approx_armijo,
+    eps = eps
+  )
 
   step0 <- make_step0(fg, x, pv)
-  res <- ras_ls(phi = make_phi_alpha(x, fg, pv, calc_gradient_default = TRUE),
-         alpha,
-         step0 = step0,
-         max_fn = 10000, xtol = xtol, c1 = c1, c2 = c2,
-         armijo_check_fn = armijo_check_fn,
-         wolfe_ok_step_fn = wolfe_ok_step_fn, verbose = verbose)
+  res <- ras_ls(
+    phi = make_phi_alpha(x, fg, pv, calc_gradient_default = TRUE),
+    alpha,
+    step0 = step0,
+    max_fn = 10000, xtol = xtol, c1 = c1, c2 = c2,
+    armijo_check_fn = armijo_check_fn,
+    wolfe_ok_step_fn = wolfe_ok_step_fn, verbose = verbose
+  )
   res$step$par <- x + res$step$alpha * pv
   res$step0 <- step0
   res
@@ -37,7 +40,7 @@ test_that("Table 1", {
   res12 <- rls(fg = f1, x = 0, alpha = 1e-1, c1 = 0.001, c2 = 0.1)
   expect_step(res12, x = 1.2531, f = -0.35098, df = -0.033723, nfev = 5)
   res13 <- rls(fg = f1, x = 0, alpha = 1e1, c1 = 0.001, c2 = 0.1)
-  expect_step(res13, x = 10, f = -0.098039, df =  0.0094195, nfev = 1)
+  expect_step(res13, x = 10, f = -0.098039, df = 0.0094195, nfev = 1)
   res14 <- rls(fg = f1, x = 0, alpha = 1e3, c1 = 0.001, c2 = 0.1)
   expect_step(res14, x = 37.054, f = -0.026948, df = 7.2516e-004, nfev = 4)
 })

@@ -5,7 +5,7 @@ context("More'-Thuente Line Search")
 # from plugging the input values into Dianne O'Leary's Matlab code (running
 # under GNU Octave).
 
-mtls <- function(fg, x, pv = -fg$gr(x)/abs(fg$gr(x)), alpha, c1, c2,
+mtls <- function(fg, x, pv = -fg$gr(x) / abs(fg$gr(x)), alpha, c1, c2,
                  eps = 1e-6, approx_armijo = FALSE, strong_curvature = TRUE,
                  safeguard_cubic = FALSE) {
   if (approx_armijo) {
@@ -15,15 +15,19 @@ mtls <- function(fg, x, pv = -fg$gr(x)/abs(fg$gr(x)), alpha, c1, c2,
     armijo_check_fn <- armijo_ok_step
   }
 
-  wolfe_ok_step_fn <- make_wolfe_ok_step_fn(strong_curvature = strong_curvature,
-                                            approx_armijo = approx_armijo,
-                                            eps = eps)
-  res <- cvsrch(phi = make_phi_alpha(x, fg, pv, calc_gradient_default = TRUE),
-                alpha,
-                step0 = make_step0(fg, x, pv), c1 = c1, c2 = c2,
-                armijo_check_fn = armijo_check_fn,
-                wolfe_ok_step_fn = wolfe_ok_step_fn,
-                safeguard_cubic = safeguard_cubic)
+  wolfe_ok_step_fn <- make_wolfe_ok_step_fn(
+    strong_curvature = strong_curvature,
+    approx_armijo = approx_armijo,
+    eps = eps
+  )
+  res <- cvsrch(
+    phi = make_phi_alpha(x, fg, pv, calc_gradient_default = TRUE),
+    alpha,
+    step0 = make_step0(fg, x, pv), c1 = c1, c2 = c2,
+    armijo_check_fn = armijo_check_fn,
+    wolfe_ok_step_fn = wolfe_ok_step_fn,
+    safeguard_cubic = safeguard_cubic
+  )
   res$step$par <- x + res$step$alpha * pv
   res
 }
@@ -42,9 +46,9 @@ test_that("Table 1", {
   res12 <- mtls(fg = f1, x = 0, alpha = 1e-1, c1 = 0.001, c2 = 0.1)
   expect_step(res12, x = 1.4414, f = -0.35349, df = 0.0046645, nfev = 3)
   res13 <- mtls(fg = f1, x = 0, alpha = 1e1, c1 = 0.001, c2 = 0.1)
-  expect_step(res13, x = 10, f = -0.098039, df =  0.0094195, nfev = 1)
+  expect_step(res13, x = 10, f = -0.098039, df = 0.0094195, nfev = 1)
   res14 <- mtls(fg = f1, x = 0, alpha = 1e3, c1 = 0.001, c2 = 0.1)
-  expect_step(res14, x =  36.888, f = -0.027070, df = 7.3169e-004, nfev = 4)
+  expect_step(res14, x = 36.888, f = -0.027070, df = 7.3169e-004, nfev = 4)
 })
 
 # Table 2
@@ -114,13 +118,17 @@ test_that("Table 6", {
 # Xie, D., & Schlick, T. (2002).
 # A more lenient stopping rule for line search algorithms.
 # Optimization Methods and Software, 17(4), 683-700.
-test_that("Safeguard Cubic",{
+test_that("Safeguard Cubic", {
   # Only test examples that give different results
-  res32c <- mtls(fg = f3, x = 0, alpha = 1e-1, c1 = 0.1, c2 = 0.1,
-                 safeguard_cubic = TRUE)
+  res32c <- mtls(
+    fg = f3, x = 0, alpha = 1e-1, c1 = 0.1, c2 = 0.1,
+    safeguard_cubic = TRUE
+  )
   expect_step(res32c, x = 1.0, f = -0.011160, df = -1.5842e-10, nfev = 13)
-  res64c <- mtls(fg = f6, x = 0, alpha = 1e3, c1 = 0.001, c2 = 0.001,
-                 safeguard_cubic = TRUE)
+  res64c <- mtls(
+    fg = f6, x = 0, alpha = 1e3, c1 = 0.001, c2 = 0.001,
+    safeguard_cubic = TRUE
+  )
   expect_step(res64c, x = 0.92525, f = 0.99138, df = -1.2989e-4, nfev = 10)
 })
 

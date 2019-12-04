@@ -506,7 +506,7 @@
 #' of the optimization in a data frame, and include it as part of the return
 #' value.
 #' @return A list with components:
-#'\itemize{
+#' \itemize{
 #'  \item{\code{par}} Optimized parameters. Normally, this is the best set of
 #'  parameters seen during optimization, i.e. the set that produced the minimum
 #'  function value. This requires that convergence checking with is carried out,
@@ -542,7 +542,7 @@
 #'  iteration where convergence is checked. Only present if
 #'  \code{store_progress} is set to \code{TRUE}. Could get quite large if the
 #'  optimization is long and the convergence is checked regularly.
-#'}
+#' }
 #' @references
 #'
 #' Gilbert, J. C., & Nocedal, J. (1992). Global convergence properties of conjugate gradient methods for optimization.
@@ -615,9 +615,16 @@
 #' @examples
 #' # Function to optimize and starting point defined after creating optimizer
 #' rosenbrock_fg <- list(
-#'   fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
-#'   gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
-#'                          200 *        (x[2] - x[1] * x[1])) })
+#'   fn = function(x) {
+#'     100 * (x[2] - x[1] * x[1])^2 + (1 - x[1])^2
+#'   },
+#'   gr = function(x) {
+#'     c(
+#'       -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+#'       200 * (x[2] - x[1] * x[1])
+#'     )
+#'   }
+#' )
 #' rb0 <- c(-1.2, 1)
 #'
 #' # Minimize using L-BFGS
@@ -631,12 +638,16 @@
 #'
 #' # Steepest descent with constant momentum in the Nesterov style as described
 #' # in papers by Sutskever and Bengio
-#' res <- mize(rb0, rosenbrock_fg, method = "MOM", mom_type = "nesterov",
-#'              mom_schedule = 0.9)
+#' res <- mize(rb0, rosenbrock_fg,
+#'   method = "MOM", mom_type = "nesterov",
+#'   mom_schedule = 0.9
+#' )
 #'
 #' # Nesterov momentum with adaptive restart comparing function values
-#' res <- mize(rb0, rosenbrock_fg, method = "MOM", mom_type = "nesterov",
-#'              mom_schedule = 0.9, restart = "fn")
+#' res <- mize(rb0, rosenbrock_fg,
+#'   method = "MOM", mom_type = "nesterov",
+#'   mom_schedule = 0.9, restart = "fn"
+#' )
 #' @export
 mize <- function(par, fg,
                  method = "L-BFGS",
@@ -700,44 +711,45 @@ mize <- function(par, fg,
                  log_every = check_conv_every,
                  verbose = FALSE,
                  store_progress = FALSE) {
-
-  opt <- make_mize(method = method,
-                   norm_direction = norm_direction,
-                   scale_hess = scale_hess,
-                   memory = memory,
-                   cg_update = cg_update,
-                   preconditioner = preconditioner,
-                   tn_init = tn_init, tn_exit = tn_exit,
-                   nest_q = nest_q, nest_convex_approx = nest_convex_approx,
-                   nest_burn_in = nest_burn_in,
-                   use_init_mom = use_init_mom,
-                   step_up = step_up,
-                   step_up_fun = step_up_fun,
-                   step_down = step_down,
-                   dbd_weight = dbd_weight,
-                   line_search = line_search, step0 = step0, c1 = c1, c2 = c2,
-                   step_next_init = step_next_init,
-                   try_newton_step = try_newton_step,
-                   ls_max_fn = ls_max_fn, ls_max_gr = ls_max_gr,
-                   ls_max_fg = ls_max_fg,
-                   ls_max_alpha_mult = ls_max_alpha_mult,
-                   ls_max_alpha = ls_max_alpha,
-                   ls_safe_cubic = ls_safe_cubic,
-                   strong_curvature = strong_curvature,
-                   approx_armijo = approx_armijo,
-                   mom_type = mom_type,
-                   mom_schedule = mom_schedule,
-                   mom_init = mom_init,
-                   mom_final = mom_final,
-                   mom_switch_iter = mom_switch_iter,
-                   mom_linear_weight = mom_linear_weight,
-                   max_iter = max_iter,
-                   max_fn = max_fn, max_gr = max_gr, max_fg = max_fg,
-                   abs_tol = abs_tol, rel_tol = rel_tol,
-                   grad_tol = grad_tol, ginf_tol = ginf_tol,
-                   step_tol = step_tol,
-                   restart = restart,
-                   restart_wait = restart_wait)
+  opt <- make_mize(
+    method = method,
+    norm_direction = norm_direction,
+    scale_hess = scale_hess,
+    memory = memory,
+    cg_update = cg_update,
+    preconditioner = preconditioner,
+    tn_init = tn_init, tn_exit = tn_exit,
+    nest_q = nest_q, nest_convex_approx = nest_convex_approx,
+    nest_burn_in = nest_burn_in,
+    use_init_mom = use_init_mom,
+    step_up = step_up,
+    step_up_fun = step_up_fun,
+    step_down = step_down,
+    dbd_weight = dbd_weight,
+    line_search = line_search, step0 = step0, c1 = c1, c2 = c2,
+    step_next_init = step_next_init,
+    try_newton_step = try_newton_step,
+    ls_max_fn = ls_max_fn, ls_max_gr = ls_max_gr,
+    ls_max_fg = ls_max_fg,
+    ls_max_alpha_mult = ls_max_alpha_mult,
+    ls_max_alpha = ls_max_alpha,
+    ls_safe_cubic = ls_safe_cubic,
+    strong_curvature = strong_curvature,
+    approx_armijo = approx_armijo,
+    mom_type = mom_type,
+    mom_schedule = mom_schedule,
+    mom_init = mom_init,
+    mom_final = mom_final,
+    mom_switch_iter = mom_switch_iter,
+    mom_linear_weight = mom_linear_weight,
+    max_iter = max_iter,
+    max_fn = max_fn, max_gr = max_gr, max_fg = max_fg,
+    abs_tol = abs_tol, rel_tol = rel_tol,
+    grad_tol = grad_tol, ginf_tol = ginf_tol,
+    step_tol = step_tol,
+    restart = restart,
+    restart_wait = restart_wait
+  )
   if (max_iter < 0) {
     stop("max_iter must be non-negative")
   }
@@ -755,19 +767,24 @@ mize <- function(par, fg,
   }
 
   res <- opt_loop(opt, par, fg,
-          max_iter = max_iter,
-          max_fn = max_fn, max_gr = max_gr, max_fg = max_fg,
-          abs_tol = abs_tol, rel_tol = rel_tol,
-          grad_tol = grad_tol, ginf_tol = ginf_tol,
-          step_tol = step_tol,
-          check_conv_every = check_conv_every,
-          log_every = log_every,
-          store_progress = store_progress,
-          verbose = verbose)
+    max_iter = max_iter,
+    max_fn = max_fn, max_gr = max_gr, max_fg = max_fg,
+    abs_tol = abs_tol, rel_tol = rel_tol,
+    grad_tol = grad_tol, ginf_tol = ginf_tol,
+    step_tol = step_tol,
+    check_conv_every = check_conv_every,
+    log_every = log_every,
+    store_progress = store_progress,
+    verbose = verbose
+  )
 
-  Filter(Negate(is.null),
-         res[c("f", "g2n", "ginfn", "nf", "ng", "par", "iter", "terminate",
-               "progress")])
+  Filter(
+    Negate(is.null),
+    res[c(
+      "f", "g2n", "ginfn", "nf", "ng", "par", "iter", "terminate",
+      "progress"
+    )]
+  )
 }
 
 #' Create an Optimizer
@@ -926,9 +943,16 @@ mize <- function(par, fg,
 #' @examples
 #' # Function to optimize and starting point
 #' rosenbrock_fg <- list(
-#'   fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
-#'   gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
-#'                          200 *        (x[2] - x[1] * x[1])) })
+#'   fn = function(x) {
+#'     100 * (x[2] - x[1] * x[1])^2 + (1 - x[1])^2
+#'   },
+#'   gr = function(x) {
+#'     c(
+#'       -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+#'       200 * (x[2] - x[1] * x[1])
+#'     )
+#'   }
+#' )
 #' rb0 <- c(-1.2, 1)
 #'
 #' # Create an optimizer and initialize it for use with the Rosenbrock function
@@ -990,7 +1014,6 @@ make_mize <- function(method = "L-BFGS",
                       abs_tol = NULL,
                       rel_tol = abs_tol, grad_tol = NULL, ginf_tol = NULL,
                       step_tol = NULL) {
-
   if (memory < 1) {
     stop("memory must be > 0")
   }
@@ -1040,9 +1063,11 @@ make_mize <- function(method = "L-BFGS",
 
   # Gradient Descent Direction configuration
   dir_type <- NULL
-  method <- match.arg(tolower(method), c("sd", "newton", "phess", "cg", "bfgs",
-                                "sr1", "l-bfgs", "nag", "momentum", "dbd",
-                                "tn"))
+  method <- match.arg(tolower(method), c(
+    "sd", "newton", "phess", "cg", "bfgs",
+    "sr1", "l-bfgs", "nag", "momentum", "dbd",
+    "tn"
+  ))
   preconditioner <- tolower(preconditioner)
 
   switch(method,
@@ -1062,10 +1087,14 @@ make_mize <- function(method = "L-BFGS",
       }
     },
     cg = {
-      cg_update <- match.arg(tolower(cg_update),
-                             c("fr", "cd", "dy",
-                               "hs", "hs+", "pr", "pr+", "ls", "hz", "hz+",
-                               "prfr"))
+      cg_update <- match.arg(
+        tolower(cg_update),
+        c(
+          "fr", "cd", "dy",
+          "hs", "hs+", "pr", "pr+", "ls", "hz", "hz+",
+          "prfr"
+        )
+      )
       cg_update_fn <- switch(cg_update,
         fr = fr_update,
         cd = cd_update,
@@ -1079,9 +1108,11 @@ make_mize <- function(method = "L-BFGS",
         "hz+" = hz_plus_update,
         prfr = prfr_update
       )
-      dir_type <- cg_direction(cg_update = cg_update_fn,
-                               preconditioner = preconditioner,
-                               memory = memory)
+      dir_type <- cg_direction(
+        cg_update = cg_update_fn,
+        preconditioner = preconditioner,
+        memory = memory
+      )
     },
     bfgs = {
       dir_type <- bfgs_direction(scale_inverse = scale_hess)
@@ -1114,11 +1145,15 @@ make_mize <- function(method = "L-BFGS",
       if (is.character(tn_init)) {
         tn_init <- tolower(tn_init)
       }
-      tn_exit <- match.arg(tolower(tn_exit),
-                c("curvature", "strong"))
+      tn_exit <- match.arg(
+        tolower(tn_exit),
+        c("curvature", "strong")
+      )
 
-      dir_type <- tn_direction(init = tn_init, exit_criterion = tn_exit,
-                               preconditioner = preconditioner, memory = memory)
+      dir_type <- tn_direction(
+        init = tn_init, exit_criterion = tn_exit,
+        preconditioner = preconditioner, memory = memory
+      )
       if (is.null(try_newton_step)) {
         try_newton_step <- TRUE
       }
@@ -1153,10 +1188,12 @@ make_mize <- function(method = "L-BFGS",
     if (is.null(step_down)) {
       step_down <- 0.5
     }
-    step_type <- delta_bar_delta(epsilon = eps_init,
-                                 kappa = step_up, kappa_fun = step_up_fun,
-                                 phi = step_down, theta = dbd_weight,
-                                 use_momentum = !is.null(mom_schedule))
+    step_type <- delta_bar_delta(
+      epsilon = eps_init,
+      kappa = step_up, kappa_fun = step_up_fun,
+      phi = step_down, theta = dbd_weight,
+      use_momentum = !is.null(mom_schedule)
+    )
   }
   else {
     if (method %in% c("newton", "phess", "bfgs", "l-bfgs", "tn")) {
@@ -1176,12 +1213,16 @@ make_mize <- function(method = "L-BFGS",
       }
     }
 
-    line_search <- match.arg(tolower(line_search),
-                             c("more-thuente", "mt", "rasmussen",
-                               "bold driver",
-                               "backtracking", "constant",
-                               "schmidt", "minfunc", "armijo",
-                               "hager-zhang", "hz"))
+    line_search <- match.arg(
+      tolower(line_search),
+      c(
+        "more-thuente", "mt", "rasmussen",
+        "bold driver",
+        "backtracking", "constant",
+        "schmidt", "minfunc", "armijo",
+        "hager-zhang", "hz"
+      )
+    )
     if (line_search == "hager-zhang") {
       line_search <- "hz"
     }
@@ -1200,8 +1241,10 @@ make_mize <- function(method = "L-BFGS",
 
     # Set Wolfe line search termination defaults
     # Most Wolfe Line Searches use the standard Strong Wolfe conditions
-    if (line_search %in% c("more-thuente", "mt", "rasmussen", "schmidt",
-                           "minfunc")) {
+    if (line_search %in% c(
+      "more-thuente", "mt", "rasmussen", "schmidt",
+      "minfunc"
+    )) {
       if (is.null(strong_curvature)) {
         strong_curvature <- TRUE
       }
@@ -1240,60 +1283,72 @@ make_mize <- function(method = "L-BFGS",
       step_next_init <- tolower(step_next_init)
     }
     step_type <- switch(line_search,
-      mt = more_thuente_ls(c1 = c1, c2 = c2,
-                           initializer = step_next_init,
-                           initial_step_length = step0,
-                           try_newton_step = try_newton_step,
-                           max_fn = ls_max_fn,
-                           max_gr = ls_max_gr,
-                           max_fg = ls_max_fg,
-                           max_alpha = ls_max_alpha,
-                           max_alpha_mult = ls_max_alpha_mult,
-                           strong_curvature = strong_curvature,
-                           approx_armijo = approx_armijo,
-                           safeguard_cubic = ls_safe_cubic),
-      rasmussen = rasmussen_ls(c1 = c1, c2 = c2,
-                              initializer = step_next_init,
-                              initial_step_length = step0,
-                              try_newton_step = try_newton_step,
-                              max_fn = ls_max_fn,
-                              max_gr = ls_max_gr,
-                              max_fg = ls_max_fg,
-                              max_alpha_mult = ls_max_alpha_mult,
-                              strong_curvature = strong_curvature,
-                              approx_armijo = approx_armijo),
-      "bold driver" = bold_driver(inc_mult = step_up, dec_mult = step_down,
-                                  max_fn = ls_max_fn),
+      mt = more_thuente_ls(
+        c1 = c1, c2 = c2,
+        initializer = step_next_init,
+        initial_step_length = step0,
+        try_newton_step = try_newton_step,
+        max_fn = ls_max_fn,
+        max_gr = ls_max_gr,
+        max_fg = ls_max_fg,
+        max_alpha = ls_max_alpha,
+        max_alpha_mult = ls_max_alpha_mult,
+        strong_curvature = strong_curvature,
+        approx_armijo = approx_armijo,
+        safeguard_cubic = ls_safe_cubic
+      ),
+      rasmussen = rasmussen_ls(
+        c1 = c1, c2 = c2,
+        initializer = step_next_init,
+        initial_step_length = step0,
+        try_newton_step = try_newton_step,
+        max_fn = ls_max_fn,
+        max_gr = ls_max_gr,
+        max_fg = ls_max_fg,
+        max_alpha_mult = ls_max_alpha_mult,
+        strong_curvature = strong_curvature,
+        approx_armijo = approx_armijo
+      ),
+      "bold driver" = bold_driver(
+        inc_mult = step_up, dec_mult = step_down,
+        max_fn = ls_max_fn
+      ),
       constant = constant_step_size(value = step0),
-      schmidt = schmidt_ls(c1 = c1, c2 = c2,
-                           initializer = step_next_init,
-                           initial_step_length = step0,
-                           try_newton_step = try_newton_step,
-                           max_fn = ls_max_fn,
-                           max_gr = ls_max_gr,
-                           max_fg = ls_max_fg,
-                           max_alpha_mult = ls_max_alpha_mult,
-                           strong_curvature = strong_curvature,
-                           approx_armijo = approx_armijo),
-      backtracking = schmidt_armijo_ls(c1 = c1,
-                          initializer = step_next_init,
-                          initial_step_length = step0,
-                          try_newton_step = try_newton_step,
-                          step_down = step_down,
-                          max_fn = ls_max_fn,
-                          max_gr = ls_max_gr,
-                          max_fg = ls_max_fg,
-                          max_alpha_mult = ls_max_alpha_mult),
-      hz =  hager_zhang_ls(c1 = c1, c2 = c2,
-                           initializer = step_next_init,
-                           initial_step_length = step0,
-                           try_newton_step = try_newton_step,
-                           max_fn = ls_max_fn,
-                           max_gr = ls_max_gr,
-                           max_fg = ls_max_fg,
-                           max_alpha_mult = ls_max_alpha_mult,
-                           strong_curvature = strong_curvature,
-                           approx_armijo = approx_armijo)
+      schmidt = schmidt_ls(
+        c1 = c1, c2 = c2,
+        initializer = step_next_init,
+        initial_step_length = step0,
+        try_newton_step = try_newton_step,
+        max_fn = ls_max_fn,
+        max_gr = ls_max_gr,
+        max_fg = ls_max_fg,
+        max_alpha_mult = ls_max_alpha_mult,
+        strong_curvature = strong_curvature,
+        approx_armijo = approx_armijo
+      ),
+      backtracking = schmidt_armijo_ls(
+        c1 = c1,
+        initializer = step_next_init,
+        initial_step_length = step0,
+        try_newton_step = try_newton_step,
+        step_down = step_down,
+        max_fn = ls_max_fn,
+        max_gr = ls_max_gr,
+        max_fg = ls_max_fg,
+        max_alpha_mult = ls_max_alpha_mult
+      ),
+      hz = hager_zhang_ls(
+        c1 = c1, c2 = c2,
+        initializer = step_next_init,
+        initial_step_length = step0,
+        try_newton_step = try_newton_step,
+        max_fn = ls_max_fn,
+        max_gr = ls_max_gr,
+        max_fg = ls_max_fg,
+        max_alpha_mult = ls_max_alpha_mult,
+        strong_curvature = strong_curvature,
+        approx_armijo = approx_armijo
+      )
     )
   }
 
@@ -1302,7 +1357,10 @@ make_mize <- function(method = "L-BFGS",
     make_stages(
       gradient_stage(
         direction = dir_type,
-        step_size = step_type)))
+        step_size = step_type
+      )
+    )
+  )
 
   # Momentum Configuration
   if (is.null(mom_type)) {
@@ -1335,37 +1393,50 @@ make_mize <- function(method = "L-BFGS",
     if (is.numeric(mom_schedule)) {
       mom_step <- make_momentum_step(
         mu_fn = make_constant(value = mom_schedule),
-        use_init_mom = use_init_mom)
+        use_init_mom = use_init_mom
+      )
     }
     else if (is.function(mom_schedule)) {
-      mom_step <- make_momentum_step(mu_fn = mom_schedule,
-                                     use_init_mom = use_init_mom)
+      mom_step <- make_momentum_step(
+        mu_fn = mom_schedule,
+        use_init_mom = use_init_mom
+      )
     }
     else {
-      mom_schedule <- match.arg(tolower(mom_schedule),
-                                c("ramp", "switch", "nsconvex"))
+      mom_schedule <- match.arg(
+        tolower(mom_schedule),
+        c("ramp", "switch", "nsconvex")
+      )
 
       mom_step <- switch(mom_schedule,
         ramp = make_momentum_step(
-          make_ramp(init_value = mom_init,
-                    final_value = mom_final,
-                    wait = ifelse(use_init_mom, 0, 1)),
-          use_init_mom = use_init_mom),
+          make_ramp(
+            init_value = mom_init,
+            final_value = mom_final,
+            wait = ifelse(use_init_mom, 0, 1)
+          ),
+          use_init_mom = use_init_mom
+        ),
         "switch" = make_momentum_step(
           make_switch(
             init_value = mom_init,
             final_value = mom_final,
-            switch_iter = mom_switch_iter),
-          use_init_mom = use_init_mom),
-        nsconvex = nesterov_step(burn_in = nest_burn_in, q = nest_q,
-                                 use_approx = nest_convex_approx,
-                                 use_init_mu = use_init_mom)
+            switch_iter = mom_switch_iter
+          ),
+          use_init_mom = use_init_mom
+        ),
+        nsconvex = nesterov_step(
+          burn_in = nest_burn_in, q = nest_q,
+          use_approx = nest_convex_approx,
+          use_init_mu = use_init_mom
         )
+      )
     }
 
     mom_stage <- momentum_stage(
       direction = mom_direction,
-      step_size = mom_step)
+      step_size = mom_step
+    )
 
     opt <- append_stage(opt, mom_stage)
 
@@ -1402,35 +1473,35 @@ make_mize <- function(method = "L-BFGS",
   opt
 }
 
-#'One Step of Optimization
+#' One Step of Optimization
 #'
-#'Performs one iteration of optimization using a specified optimizer.
+#' Performs one iteration of optimization using a specified optimizer.
 #'
-#'This function returns both the (hopefully) optimized vector of parameters, and
-#'an updated version of the optimizer itself. This is intended to be used when
-#'you want more control over the optimization process compared to the more black
-#'box approach of the \code{\link{mize}} function. In return for having to
-#'manually call this function every time you want the next iteration of
-#'optimization, you gain the ability to do your own checks for convergence,
-#'logging and so on, as well as take other action between iterations, e.g.
-#'visualization.
+#' This function returns both the (hopefully) optimized vector of parameters, and
+#' an updated version of the optimizer itself. This is intended to be used when
+#' you want more control over the optimization process compared to the more black
+#' box approach of the \code{\link{mize}} function. In return for having to
+#' manually call this function every time you want the next iteration of
+#' optimization, you gain the ability to do your own checks for convergence,
+#' logging and so on, as well as take other action between iterations, e.g.
+#' visualization.
 #'
-#'Normally calling this function should return a more optimized vector of
-#'parameters than the input, or at  least leave the parameters unchanged if no
-#'improvement was found, although this is determined by how the optimizer was
-#'configured by \code{\link{make_mize}}. It is very possible to create an
-#'optimizer that can cause a solution to diverge. It is the responsibility of
-#'the caller to check that the result of the optimization step has actually
-#'reduced the value returned from function being optimized.
+#' Normally calling this function should return a more optimized vector of
+#' parameters than the input, or at  least leave the parameters unchanged if no
+#' improvement was found, although this is determined by how the optimizer was
+#' configured by \code{\link{make_mize}}. It is very possible to create an
+#' optimizer that can cause a solution to diverge. It is the responsibility of
+#' the caller to check that the result of the optimization step has actually
+#' reduced the value returned from function being optimized.
 #'
-#'Details of the \code{fg} list can be found in the 'Details' section of
-#'\code{\link{mize}}.
+#' Details of the \code{fg} list can be found in the 'Details' section of
+#' \code{\link{mize}}.
 #'
-#'@param opt Optimizer, created by \code{\link{make_mize}}.
-#'@param par Vector of initial values for the function to be optimized over.
-#'@param fg Function and gradient list. See the documentation of
+#' @param opt Optimizer, created by \code{\link{make_mize}}.
+#' @param par Vector of initial values for the function to be optimized over.
+#' @param fg Function and gradient list. See the documentation of
 #'  \code{\link{mize}}.
-#'@return Result of the current optimization step, a list with components:
+#' @return Result of the current optimization step, a list with components:
 #'  \itemize{
 #'
 #'  \item{\code{opt}}. Updated version of the optimizer passed to the \code{opt}
@@ -1454,31 +1525,35 @@ make_mize <- function(method = "L-BFGS",
 #'  value of \code{par}. Only present if the gradient was calculated as part of
 #'  the optimization step (e.g. during a line search calculation.)}
 #'
-#'@seealso \code{\link{make_mize}} to create a value to pass to \code{opt},
+#' @seealso \code{\link{make_mize}} to create a value to pass to \code{opt},
 #'  \code{\link{mize_init}} to initialize \code{opt} before passing it to this
 #'  function for the first time. \code{\link{mize}} creates an optimizer and
 #'  carries out a full optimization with it.
 #' @examples
 #' rosenbrock_fg <- list(
 #'   fn = function(x) {
-#'     100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2
+#'     100 * (x[2] - x[1] * x[1])^2 + (1 - x[1])^2
 #'   },
 #'   gr = function(x) {
 #'     c(
-#'      -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
-#'       200 *        (x[2] - x[1] * x[1]))
-#'  })
-#'  rb0 <- c(-1.2, 1)
+#'       -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+#'       200 * (x[2] - x[1] * x[1])
+#'     )
+#'   }
+#' )
+#' rb0 <- c(-1.2, 1)
 #'
-#'  opt <- make_mize(method = "SD", line_search = "const", step0 = 0.0001,
-#'                   par = rb0, fg = rosenbrock_fg)
-#'  par <- rb0
-#'  for (iter in 1:3) {
-#'    res <- mize_step(opt, par, rosenbrock_fg)
-#'    par <- res$par
-#'    opt <- res$opt
-#'  }
-#'@export
+#' opt <- make_mize(
+#'   method = "SD", line_search = "const", step0 = 0.0001,
+#'   par = rb0, fg = rosenbrock_fg
+#' )
+#' par <- rb0
+#' for (iter in 1:3) {
+#'   res <- mize_step(opt, par, rosenbrock_fg)
+#'   par <- res$par
+#'   opt <- res$opt
+#' }
+#' @export
 mize_step <- function(opt, par, fg) {
   opt$iter <- opt$iter + 1
   iter <- opt$iter
@@ -1529,10 +1604,14 @@ mize_step <- function(opt, par, fg) {
     }
 
     # intercept whether we want to accept the new solution
-    opt <- life_cycle_hook("validation", "before", opt, par, fg, iter,
-                           par0, step_result)
-    opt <- life_cycle_hook("validation", "during", opt, par, fg, iter,
-                           par0, step_result)
+    opt <- life_cycle_hook(
+      "validation", "before", opt, par, fg, iter,
+      par0, step_result
+    )
+    opt <- life_cycle_hook(
+      "validation", "during", opt, par, fg, iter,
+      par0, step_result
+    )
   }
   # If the this solution was vetoed or the catastrophe happened,
   # roll back to the previous one.
@@ -1541,8 +1620,10 @@ mize_step <- function(opt, par, fg) {
   }
 
   if (is.null(opt$terminate)) {
-    opt <- life_cycle_hook("step", "after", opt, par, fg, iter, par0,
-                         step_result)
+    opt <- life_cycle_hook(
+      "step", "after", opt, par, fg, iter, par0,
+      step_result
+    )
   }
 
   res <- list(opt = opt, par = par, nf = opt$counts$fn, ng = opt$counts$gr)
@@ -1607,9 +1688,16 @@ mize_step <- function(opt, par, fg) {
 #'
 #' # Function to optimize and starting point defined after creating optimizer
 #' rosenbrock_fg <- list(
-#'   fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
-#'   gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
-#'                          200 *        (x[2] - x[1] * x[1])) })
+#'   fn = function(x) {
+#'     100 * (x[2] - x[1] * x[1])^2 + (1 - x[1])^2
+#'   },
+#'   gr = function(x) {
+#'     c(
+#'       -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+#'       200 * (x[2] - x[1] * x[1])
+#'     )
+#'   }
+#' )
 #' rb0 <- c(-1.2, 1)
 #'
 #' # Initialize with function and starting point before commencing optimization
@@ -1622,7 +1710,6 @@ mize_step <- function(opt, par, fg) {
 #'   par <- res$par
 #'   opt <- res$opt
 #' }
-#'
 mize_init <- function(opt, par, fg,
                       max_iter = Inf,
                       max_fn = Inf, max_gr = Inf, max_fg = Inf,
@@ -1667,38 +1754,38 @@ mize_init <- function(opt, par, fg,
   opt
 }
 
-#'Mize Step Summary
+#' Mize Step Summary
 #'
-#'Produces a result summary for an optimization iteration. Information such as
-#'function value, gradient norm and step size may be returned.
+#' Produces a result summary for an optimization iteration. Information such as
+#' function value, gradient norm and step size may be returned.
 #'
-#'By default, convergence tolerance parameters will be used to determine what
-#'function and gradient data is returned. The function value will be returned if
-#'it was already calculated and cached in the optimization iteration. Otherwise,
-#'it will be calculated only if a non-null absolute or relative tolerance value
-#'was asked for. A gradient norm will be returned only if a non-null gradient
-#'tolerance was specified, even if the gradient is available.
+#' By default, convergence tolerance parameters will be used to determine what
+#' function and gradient data is returned. The function value will be returned if
+#' it was already calculated and cached in the optimization iteration. Otherwise,
+#' it will be calculated only if a non-null absolute or relative tolerance value
+#' was asked for. A gradient norm will be returned only if a non-null gradient
+#' tolerance was specified, even if the gradient is available.
 #'
-#'Note that if a function tolerance was specified, but was not calculated for
-#'the relevant value of \code{par}, they will be calculated here and the
-#'calculation does contribute to the total function count (and will be cached
-#'for potential use in the next iteration). The same applies for gradient
-#'tolerances and gradient calculation. Function and gradient calculation can
-#'also be forced here by setting the \code{calc_fn} and \code{calc_gr}
-#'(respectively) parameters to \code{TRUE}.
+#' Note that if a function tolerance was specified, but was not calculated for
+#' the relevant value of \code{par}, they will be calculated here and the
+#' calculation does contribute to the total function count (and will be cached
+#' for potential use in the next iteration). The same applies for gradient
+#' tolerances and gradient calculation. Function and gradient calculation can
+#' also be forced here by setting the \code{calc_fn} and \code{calc_gr}
+#' (respectively) parameters to \code{TRUE}.
 #'
-#'@param opt Optimizer to generate summary for, from return value of
+#' @param opt Optimizer to generate summary for, from return value of
 #'  \code{\link{mize_step}}.
-#'@param par Vector of parameters at the end of the iteration, from return value
+#' @param par Vector of parameters at the end of the iteration, from return value
 #'  of \code{\link{mize_step}}.
-#'@param fg Function and gradient list. See the documentation of
+#' @param fg Function and gradient list. See the documentation of
 #'  \code{\link{mize}}.
-#'@param par_old (Optional). Vector of parameters at the end of the previous
+#' @param par_old (Optional). Vector of parameters at the end of the previous
 #'  iteration. Used to calculate step size.
-#'@param calc_fn (Optional). If \code{TRUE}, force calculation of function if
+#' @param calc_fn (Optional). If \code{TRUE}, force calculation of function if
 #'  not already cached in \code{opt}, even if it would not be needed for
 #'  convergence checking.
-#'@return A list with the following items: \itemize{
+#' @return A list with the following items: \itemize{
 #'
 #'  \item \code{opt} Optimizer with updated state (e.g. function and gradient
 #'  counts).
@@ -1721,12 +1808,19 @@ mize_init <- function(opt, par, fg,
 #'  \item \code{alpha} Step length of the gradient descent part of the step.
 #'
 #'  \item \code{mu} Momentum coefficient for this iteration}
-#'@export
-#'@examples
+#' @export
+#' @examples
 #' rb_fg <- list(
-#'   fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
-#'   gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
-#'                          200 *        (x[2] - x[1] * x[1])) })
+#'   fn = function(x) {
+#'     100 * (x[2] - x[1] * x[1])^2 + (1 - x[1])^2
+#'   },
+#'   gr = function(x) {
+#'     c(
+#'       -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+#'       200 * (x[2] - x[1] * x[1])
+#'     )
+#'   }
+#' )
 #' rb0 <- c(-1.2, 1)
 #'
 #' opt <- make_mize(method = "BFGS", par = rb0, fg = rb_fg, max_iter = 30)
@@ -1734,7 +1828,6 @@ mize_init <- function(opt, par, fg,
 #' # Get info about first step, use rb0 to compare new par with initial value
 #' step_info <- mize_step_summary(mize_res$opt, mize_res$par, rb_fg, rb0)
 mize_step_summary <- function(opt, par, fg, par_old = NULL, calc_fn = NULL) {
-
   iter <- opt$iter
   # An internal flag useful for unit tests: if FALSE, doesn't count any
   # fn/gr calculations towards their counts. Can still get back fn/gr values
@@ -1860,11 +1953,18 @@ mize_step_summary <- function(opt, par, fg, par_old = NULL, calc_fn = NULL) {
 #' @return \code{opt} updated with convergence and termination data. See
 #'   'Details'.
 #' @export
-#'@examples
+#' @examples
 #' rb_fg <- list(
-#'   fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
-#'   gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
-#'                          200 *        (x[2] - x[1] * x[1])) })
+#'   fn = function(x) {
+#'     100 * (x[2] - x[1] * x[1])^2 + (1 - x[1])^2
+#'   },
+#'   gr = function(x) {
+#'     c(
+#'       -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+#'       200 * (x[2] - x[1] * x[1])
+#'     )
+#'   }
+#' )
 #' rb0 <- c(-1.2, 1)
 #'
 #' opt <- make_mize(method = "BFGS", par = rb0, fg = rb_fg, max_iter = 30)
@@ -1873,21 +1973,24 @@ mize_step_summary <- function(opt, par, fg, par_old = NULL, calc_fn = NULL) {
 #' # check convergence by looking at opt$is_terminated
 #' opt <- check_mize_convergence(step_info)
 check_mize_convergence <- function(mize_step_info) {
-
   opt <- mize_step_info$opt
 
   convergence <- opt$convergence
 
-  terminate <- check_counts(opt, convergence$max_fn, convergence$max_gr,
-                            convergence$max_fg)
+  terminate <- check_counts(
+    opt, convergence$max_fn, convergence$max_gr,
+    convergence$max_fg
+  )
   if (!is.null(terminate)) {
     opt$terminate <- terminate
     opt$is_terminated <- TRUE
     return(opt)
   }
 
-  terminate <- check_step_conv(opt, opt$iter, mize_step_info$step,
-                               convergence$step_tol)
+  terminate <- check_step_conv(
+    opt, opt$iter, mize_step_info$step,
+    convergence$step_tol
+  )
   if (!is.null(terminate)) {
     opt$terminate <- terminate
     opt$is_terminated <- TRUE
@@ -1907,8 +2010,10 @@ check_mize_convergence <- function(mize_step_info) {
     convergence$fn_new <- fn_new
     opt$convergence <- convergence
 
-    terminate <- check_fn_conv(opt, opt$iter, fn_old, fn_new,
-                               convergence$abs_tol, convergence$rel_tol)
+    terminate <- check_fn_conv(
+      opt, opt$iter, fn_old, fn_new,
+      convergence$abs_tol, convergence$rel_tol
+    )
     if (!is.null(terminate)) {
       opt$is_terminated <- TRUE
       opt$terminate <- terminate

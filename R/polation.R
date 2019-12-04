@@ -19,7 +19,7 @@ cubic_extrapolate <- function(x1, f1, g1, x2, f2, g2, ignoreWarnings = FALSE) {
   B <- 3 * (f2 - f1) - (2 * g1 + g2) * (x2 - x1)
   if (ignoreWarnings) {
     suppressWarnings(
-      x1 - g1 * (x2 - x1) ^ 2 / (B + sqrt(B * B - A * g1 * (x2 - x1)))
+      x1 - g1 * (x2 - x1)^2 / (B + sqrt(B * B - A * g1 * (x2 - x1)))
     )
   }
 }
@@ -36,7 +36,9 @@ cubic_extrapolate <- function(x1, f1, g1, x2, f2, g2, ignoreWarnings = FALSE) {
 #   function.
 cubic_extrapolate_step <- function(step1, step2) {
   cubic_extrapolate(step1$alpha, step1$f, step1$d, step2$alpha, step2$f,
-                    step2$d, ignoreWarnings = TRUE)
+    step2$d,
+    ignoreWarnings = TRUE
+  )
 }
 
 # Estimate Minimum By Cubic Interpolation
@@ -61,9 +63,9 @@ cubic_interpolate <- function(x1, f1, g1, x2, f2, g2, ignoreWarnings = FALSE) {
   # suppressWarnings(
   #   x1 + (sqrt(B * B - A * g1 * (x2 - x1) ^ 2) -  B) / A
   # )
-#  A <- 6 * (f1 - f2) + 3 * (g2 + g1) * (x2 - x1)
-#  B <- 3 * (f2 - f1) - (2 * g1 + g2) * (x2 - x1)
-#  x1 - g1 * (x2 - x1) ^ 2 / (B + sqrt(B * B - A * g1 * (x2 - x1)))
+  #  A <- 6 * (f1 - f2) + 3 * (g2 + g1) * (x2 - x1)
+  #  B <- 3 * (f2 - f1) - (2 * g1 + g2) * (x2 - x1)
+  #  x1 - g1 * (x2 - x1) ^ 2 / (B + sqrt(B * B - A * g1 * (x2 - x1)))
   d1 <- g1 + g2 - 3 * ((f1 - f2) / (x1 - x2))
 
   if (ignoreWarnings) {
@@ -88,8 +90,10 @@ cubic_interpolate <- function(x1, f1, g1, x2, f2, g2, ignoreWarnings = FALSE) {
 # @return Cubic interpolated estimate of step size which minimizes the line
 #   function.
 cubic_interpolate_step <- function(step1, step2) {
-  cubic_interpolate(step1$alpha, step1$f, step1$d,
-                    step2$alpha, step2$f, step2$d)
+  cubic_interpolate(
+    step1$alpha, step1$f, step1$d,
+    step2$alpha, step2$f, step2$d
+  )
 }
 
 # Estimate Minimum By Quadratic Interpolation With One Gradient
@@ -104,7 +108,7 @@ cubic_interpolate_step <- function(step1, step2) {
 # @param f2 f(x) value at second point.
 # @return Quadratic interpolated estimate of minimum value of x.
 quadratic_interpolate <- function(x1, f1, g1, x2, f2) {
-  x1 - (0.5 * g1 * (x2 - x1) ^ 2) / (f2 - f1 - g1 * (x2 - x1))
+  x1 - (0.5 * g1 * (x2 - x1)^2) / (f2 - f1 - g1 * (x2 - x1))
 }
 
 
@@ -120,8 +124,10 @@ quadratic_interpolate <- function(x1, f1, g1, x2, f2) {
 # @return Quadratic interpolated estimate of step size which minimizes the line
 #   function.
 quadratic_interpolate_step <- function(step1, step2) {
-  quadratic_interpolate(step1$alpha, step1$f, step1$d,
-                        step2$alpha, step2$f)
+  quadratic_interpolate(
+    step1$alpha, step1$f, step1$d,
+    step2$alpha, step2$f
+  )
 }
 
 # Estimate Minimum By Quadratic Interpolation With Two Gradients

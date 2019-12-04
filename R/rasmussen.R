@@ -44,9 +44,11 @@ rasmussen <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
     armijo_check_fn <- armijo_ok_step
   }
 
-  wolfe_ok_step_fn <- make_wolfe_ok_step_fn(strong_curvature = strong_curvature,
-                                            approx_armijo = approx_armijo,
-                                            eps = eps)
+  wolfe_ok_step_fn <- make_wolfe_ok_step_fn(
+    strong_curvature = strong_curvature,
+    approx_armijo = approx_armijo,
+    eps = eps
+  )
 
   function(phi, step0, alpha,
            total_max_fn = Inf, total_max_gr = Inf, total_max_fg = Inf,
@@ -56,9 +58,11 @@ rasmussen <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
       return(list(step = step0, nfn = 0, ngr = 0))
     }
 
-    res <- ras_ls(phi, alpha, step0, c1 = c1, c2 = c2, ext = ext, int = int,
-                  max_fn = maxfev, armijo_check_fn = armijo_check_fn,
-                  wolfe_ok_step_fn = wolfe_ok_step_fn, verbose = verbose)
+    res <- ras_ls(phi, alpha, step0,
+      c1 = c1, c2 = c2, ext = ext, int = int,
+      max_fn = maxfev, armijo_check_fn = armijo_check_fn,
+      wolfe_ok_step_fn = wolfe_ok_step_fn, verbose = verbose
+    )
     list(step = res$step, nfn = res$nfn, ngr = res$nfn)
   }
 }
@@ -97,7 +101,9 @@ ras_ls <- function(phi, alpha, step0, c1 = 0.1, c2 = 0.1 / 2, ext = 3.0,
     message("Bracketing with initial step size = ", formatC(alpha))
   }
   ex_result <- extrapolate_step_size(phi, alpha, step0, c1, c2, ext, int,
-                                     max_fn, armijo_check_fn, verbose = verbose)
+    max_fn, armijo_check_fn,
+    verbose = verbose
+  )
 
   step <- ex_result$step
   nfn <- ex_result$nfn
@@ -119,10 +125,11 @@ ras_ls <- function(phi, alpha, step0, c1 = 0.1, c2 = 0.1 / 2, ext = 3.0,
 
   # interpolate until the Strong Wolfe conditions are met
   int_result <- interpolate_step_size(phi, step0, step, c1, c2, int, max_fn,
-                                      xtol = xtol,
-                                      armijo_check_fn = armijo_check_fn,
-                                      wolfe_ok_step_fn = wolfe_ok_step_fn,
-                                      verbose = verbose)
+    xtol = xtol,
+    armijo_check_fn = armijo_check_fn,
+    wolfe_ok_step_fn = wolfe_ok_step_fn,
+    verbose = verbose
+  )
   if (verbose) {
     message("alpha = ", formatC(int_result$step$alpha))
   }
@@ -260,16 +267,21 @@ interpolate_step_size <- function(phi, step0, step, c1, c2, int, max_fn = 20,
     }
 
     if (verbose) {
-      message("Bracket: ", format_bracket(list(step2, step4)),
-              " alpha: ", formatC(step3$alpha), " f: ", formatC(step3$f),
-              " d: ", formatC(step3$d), " nfn: ", nfn, " max_fn: ", max_fn)
+      message(
+        "Bracket: ", format_bracket(list(step2, step4)),
+        " alpha: ", formatC(step3$alpha), " f: ", formatC(step3$f),
+        " d: ", formatC(step3$d), " nfn: ", nfn, " max_fn: ", max_fn
+      )
     }
-    step3$alpha <- tweak_interpolation(step3$alpha, step2$alpha, step4$alpha,
-                                       int)
+    step3$alpha <- tweak_interpolation(
+      step3$alpha, step2$alpha, step4$alpha,
+      int
+    )
     # Check interpolated step is finite, and bisect if not, as in extrapolation
     # stage
     result <- find_finite(phi, step3$alpha, max_fn - nfn,
-                          min_alpha = bracket_min_alpha(list(step2, step4)))
+      min_alpha = bracket_min_alpha(list(step2, step4))
+    )
     nfn <- nfn + result$nfn
     if (!result$ok) {
       if (verbose) {
@@ -283,12 +295,13 @@ interpolate_step_size <- function(phi, step0, step, c1, c2, int, max_fn = 20,
 
     if (bracket_width(list(step2, step4)) < xtol * step3$alpha) {
       if (verbose) {
-        message("Bracket width: ", formatC(bracket_width(list(step2, step4))),
-                " reduced below tolerance ", formatC(xtol * step3$alpha))
+        message(
+          "Bracket width: ", formatC(bracket_width(list(step2, step4))),
+          " reduced below tolerance ", formatC(xtol * step3$alpha)
+        )
       }
       break
     }
-
   }
   list(step = step3, nfn = nfn)
 }

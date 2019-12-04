@@ -1,6 +1,5 @@
 context("External loop API")
 test_that("steepest descent with constant step size", {
-
   opt <- make_mize(method = "SD", line_search = "const", step0 = 0.0001)
 
   opt <- mize_init(opt, rb0, rosenbrock_fg)
@@ -19,9 +18,10 @@ test_that("steepest descent with constant step size", {
 })
 
 test_that("can initialize in make_mize if par and fg are to hand", {
-
-  opt <- make_mize(method = "SD", line_search = "const", step0 = 0.0001,
-                    par = rb0, fg = rosenbrock_fg)
+  opt <- make_mize(
+    method = "SD", line_search = "const", step0 = 0.0001,
+    par = rb0, fg = rosenbrock_fg
+  )
 
   par <- rb0
   for (iter in 1:3) {

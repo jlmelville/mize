@@ -34,17 +34,19 @@ schmidt <- function(c1 = c2 / 2, c2 = 0.1, max_fn = Inf, eps = 1e-6,
       curvature_check_fn <- curvature_ok_step
     }
 
-    res <- WolfeLineSearch(alpha = alpha, f = step0$f, g = step0$df,
-                           gtd = step0$d,
-                           c1 = c1, c2 = c2, LS_interp = 2, LS_multi = 0,
-                           maxLS = maxfev,
-                           funObj = phi, varargin = NULL,
-                           pnorm_inf = max(abs(pm)),
-                           progTol = 1e-9,
-                           armijo_check_fn = armijo_check_fn,
-                           curvature_check_fn = curvature_check_fn,
-                           debug = FALSE)
-    res$ngr = res$nfn
+    res <- WolfeLineSearch(
+      alpha = alpha, f = step0$f, g = step0$df,
+      gtd = step0$d,
+      c1 = c1, c2 = c2, LS_interp = 2, LS_multi = 0,
+      maxLS = maxfev,
+      funObj = phi, varargin = NULL,
+      pnorm_inf = max(abs(pm)),
+      progTol = 1e-9,
+      armijo_check_fn = armijo_check_fn,
+      curvature_check_fn = curvature_check_fn,
+      debug = FALSE
+    )
+    res$ngr <- res$nfn
     res
   }
 }
@@ -69,13 +71,15 @@ schmidt_armijo_backtrack <- function(c1 = 0.05, step_down = NULL, max_fn = Inf) 
       LS_interp <- 2
     }
 
-    res <- ArmijoBacktrack(step = alpha, f = step0$f, g = step0$df,
-                           gtd = step0$d,
-                           c1 = c1, LS_interp = LS_interp, LS_multi = 0,
-                           maxLS = maxfev, step_down = step_down,
-                           funObj = phi, varargin = NULL,
-                           pnorm_inf = max(abs(pm)),
-                           progTol = 1e-9, debug = FALSE)
+    res <- ArmijoBacktrack(
+      step = alpha, f = step0$f, g = step0$df,
+      gtd = step0$d,
+      c1 = c1, LS_interp = LS_interp, LS_multi = 0,
+      maxLS = maxfev, step_down = step_down,
+      funObj = phi, varargin = NULL,
+      pnorm_inf = max(abs(pm)),
+      progTol = 1e-9, debug = FALSE
+    )
 
     res$ngr <- res$nfn
     res
@@ -124,27 +128,30 @@ WolfeLineSearch <-
     # Wolfe criteria
     step0 <- list(alpha = 0, f = f, df = g, d = gtd)
 
-    bracket_res <- schmidt_bracket(alpha, LS_interp, maxLS, funObj, step0,
-                                   c1, c2, armijo_check_fn, curvature_check_fn,
-                                   debug)
+    bracket_res <- schmidt_bracket(
+      alpha, LS_interp, maxLS, funObj, step0,
+      c1, c2, armijo_check_fn, curvature_check_fn,
+      debug
+    )
     bracket_step <- bracket_res$bracket
     funEvals <- bracket_res$funEvals
     done <- bracket_res$done
 
     if (!bracket_is_finite(bracket_step)) {
       if (debug) {
-        message('Switching to Armijo line-search')
+        message("Switching to Armijo line-search")
       }
-      alpha <- mean(bracket_props(bracket_step, 'alpha'))
+      alpha <- mean(bracket_props(bracket_step, "alpha"))
 
       # Do Armijo
       armijo_res <- ArmijoBacktrack(alpha, step0$f, step0$df, step0$d,
-                                    c1 = c1, LS_interp = LS_interp,
-                                    LS_multi = LS_multi,
-                                    maxLS = maxLS - funEvals,
-                                    funObj = funObj, varargin = NULL,
-                                    pnorm_inf = pnorm_inf,
-                                    progTol = progTol, debug = debug)
+        c1 = c1, LS_interp = LS_interp,
+        LS_multi = LS_multi,
+        maxLS = maxLS - funEvals,
+        funObj = funObj, varargin = NULL,
+        pnorm_inf = pnorm_inf,
+        progTol = progTol, debug = debug
+      )
 
       armijo_res$nfn <- armijo_res$nfn + funEvals
       return(armijo_res)
@@ -156,10 +163,12 @@ WolfeLineSearch <-
     # Refine the bracket until we find a point satisfying the criteria
     if (!done) {
       maxLS <- maxLS - funEvals
-      zoom_res <- schmidt_zoom(bracket_step, LS_interp, maxLS, funObj,
-                               step0, c1, c2, pnorm_inf, progTol,
-                               armijo_check_fn, curvature_check_fn,
-                               debug)
+      zoom_res <- schmidt_zoom(
+        bracket_step, LS_interp, maxLS, funObj,
+        step0, c1, c2, pnorm_inf, progTol,
+        armijo_check_fn, curvature_check_fn,
+        debug
+      )
 
       funEvals <- funEvals + zoom_res$funEvals
       bracket_step <- zoom_res$bracket
@@ -185,24 +194,25 @@ schmidt_bracket <- function(alpha, LS_interp, maxLS, funObj, step0, c1, c2,
   bracket_step <- NULL
   LSiter <- 0
   while (funEvals < maxLS) {
-
     if (!ff_res$ok) {
       if (debug) {
-        message('Extrapolated into illegal region, returning')
+        message("Extrapolated into illegal region, returning")
       }
       bracket_step <- list(step_prev, step_new)
 
-      return(list(bracket = bracket_step, done = done,
-                  funEvals = funEvals, ok = FALSE))
+      return(list(
+        bracket = bracket_step, done = done,
+        funEvals = funEvals, ok = FALSE
+      ))
     }
 
     # See if we have found the other side of the bracket
     if (!armijo_check_fn(step0, step_new, c1) ||
-        (LSiter > 1 && step_new$f >= step_prev$f)) {
+      (LSiter > 1 && step_new$f >= step_prev$f)) {
       bracket_step <- list(step_prev, step_new)
       ok <- TRUE
       if (debug) {
-        message('Armijo failed or step_new$f >= step_prev$f: bracket is [prev new]')
+        message("Armijo failed or step_new$f >= step_prev$f: bracket is [prev new]")
       }
       break
     }
@@ -212,7 +222,7 @@ schmidt_bracket <- function(alpha, LS_interp, maxLS, funObj, step0, c1, c2,
       done <- TRUE
 
       if (debug) {
-        message('Sufficient curvature found: bracket is [new]')
+        message("Sufficient curvature found: bracket is [new]")
       }
       break
     }
@@ -220,7 +230,7 @@ schmidt_bracket <- function(alpha, LS_interp, maxLS, funObj, step0, c1, c2,
       bracket_step <- list(step_prev, step_new)
 
       if (debug) {
-        message('step_new$d >= 0: bracket is [prev, new]')
+        message("step_new$d >= 0: bracket is [prev, new]")
       }
       break
     }
@@ -230,27 +240,32 @@ schmidt_bracket <- function(alpha, LS_interp, maxLS, funObj, step0, c1, c2,
 
     if (LS_interp <= 1) {
       if (debug) {
-        message('Extending Bracket')
+        message("Extending Bracket")
       }
       alpha_new <- maxStep
     }
     else if (LS_interp == 2) {
       if (debug) {
-        message('Cubic Extrapolation')
+        message("Cubic Extrapolation")
       }
-      alpha_new <- polyinterp(point_matrix_step(step_prev, step_new),
-                              minStep, maxStep)
+      alpha_new <- polyinterp(
+        point_matrix_step(step_prev, step_new),
+        minStep, maxStep
+      )
     }
     else {
       # LS_interp == 3
-      alpha_new <- mixedExtrap_step(step_prev, step_new, minStep, maxStep,
-                                    debug)
+      alpha_new <- mixedExtrap_step(
+        step_prev, step_new, minStep, maxStep,
+        debug
+      )
     }
 
     step_prev <- step_new
 
     ff_res <- find_finite(funObj, alpha_new, maxLS - funEvals,
-                          min_alpha = step_prev$alpha)
+      min_alpha = step_prev$alpha
+    )
     funEvals <- funEvals + ff_res$nfn
     step_new <- ff_res$step
 
@@ -260,7 +275,7 @@ schmidt_bracket <- function(alpha, LS_interp, maxLS, funObj, step0, c1, c2,
   # If we ran out of fun_evals, need to repeat finite check for last iteration
   if (!ok && !ff_res$ok) {
     if (debug) {
-      message('Extrapolated into illegal region, returning')
+      message("Extrapolated into illegal region, returning")
     }
   }
 
@@ -291,7 +306,7 @@ schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
   done <- FALSE
   while (!done && funEvals < maxLS) {
     # Find High and Low Points in bracket
-    LOpos <- which.min(bracket_props(bracket_step, 'f'))
+    LOpos <- which.min(bracket_props(bracket_step, "f"))
     HIpos <- -LOpos + 3 # 1 or 2, whichever wasn't the LOpos
 
     # Compute new trial value
@@ -299,17 +314,18 @@ schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
       if (!bracket_is_finite(bracket_step)) {
         message("Bad f/g in bracket - bisecting")
       }
-      alpha <- mean(bracket_props(bracket_step, 'alpha'))
+      alpha <- mean(bracket_props(bracket_step, "alpha"))
       if (debug) {
-        message('Bisecting: trial step = ', formatC(alpha))
+        message("Bisecting: trial step = ", formatC(alpha))
       }
     }
     else if (LS_interp == 2) {
       alpha <- polyinterp(
         point_matrix_step(bracket_step[[1]], bracket_step[[2]]),
-        debug = debug)
+        debug = debug
+      )
       if (debug) {
-        message('Grad-Cubic Interpolation: trial step = ', formatC(alpha))
+        message("Grad-Cubic Interpolation: trial step = ", formatC(alpha))
       }
     }
     else {
@@ -320,32 +336,32 @@ schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
       }
       alpha <- mixedInterp_step(bracket_step, Tpos, oldLO, debug)
       if (debug) {
-        message('Mixed Interpolation: trial step = ', formatC(alpha))
+        message("Mixed Interpolation: trial step = ", formatC(alpha))
       }
     }
 
     # Ensure that alpha is finite
     if (!is.finite(alpha)) {
-      alpha <- mean(bracket_props(bracket_step, 'alpha'))
+      alpha <- mean(bracket_props(bracket_step, "alpha"))
       if (debug) {
         message("Non-finite trial alpha, bisecting: alpha = ", formatC(alpha))
       }
     }
 
     # Test that we are making sufficient progress
-    bracket_alphas <- bracket_props(bracket_step, 'alpha')
+    bracket_alphas <- bracket_props(bracket_step, "alpha")
     alpha_max <- max(bracket_alphas)
     alpha_min <- min(bracket_alphas)
     alpha_range <- alpha_max - alpha_min
     if (alpha_range > 0) {
       if (min(alpha_max - alpha, alpha - alpha_min) / alpha_range < 0.1) {
         if (debug) {
-          message('Interpolation close to boundary')
+          message("Interpolation close to boundary")
         }
 
         if (insufProgress || alpha >= alpha_max || alpha <= alpha_min) {
           if (debug) {
-            message('Evaluating at 0.1 away from boundary')
+            message("Evaluating at 0.1 away from boundary")
           }
           if (abs(alpha - alpha_max) < abs(alpha - alpha_min)) {
             alpha <- alpha_max - 0.1 * alpha_range
@@ -372,7 +388,8 @@ schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
     # finite value by bisecting repeatedly. If we run out of evaluations or
     # hit the bracket, we give up.
     ff_res <- find_finite(funObj, alpha, maxLS - funEvals,
-                          min_alpha = bracket_min_alpha(bracket_step))
+      min_alpha = bracket_min_alpha(bracket_step)
+    )
     funEvals <- funEvals + ff_res$nfn
     if (!ff_res$ok) {
       if (debug) {
@@ -384,7 +401,7 @@ schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
 
     # Update bracket
     if (!armijo_check_fn(step0, step_new, c1) ||
-        step_new$f >= bracket_step[[LOpos]]$f) {
+      step_new$f >= bracket_step[[LOpos]]$f) {
       if (debug) {
         message("New point becomes new HI")
       }
@@ -408,7 +425,7 @@ schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
 
         if (LS_interp == 3) {
           if (debug) {
-            message('LO Pos is being removed!')
+            message("LO Pos is being removed!")
           }
           LOposRemoved <- TRUE
           oldLO <- bracket_step[[LOpos]]
@@ -427,14 +444,14 @@ schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
 
     if (!done && bracket_width(bracket_step) * pnorm_inf < progTol) {
       if (debug) {
-        message('Line-search bracket has been reduced below progTol')
+        message("Line-search bracket has been reduced below progTol")
       }
       break
     }
   } # end of while loop
   if (funEvals >= maxLS) {
     if (debug) {
-      message('Line Search Exceeded Maximum Function Evaluations')
+      message("Line Search Exceeded Maximum Function Evaluations")
     }
   }
   list(bracket = bracket_step, funEvals = funEvals)
@@ -486,8 +503,7 @@ ArmijoBacktrack <-
            funObj,
            varargin = NULL,
            pnorm_inf,
-           progTol = 1e-9, debug = FALSE)
-  {
+           progTol = 1e-9, debug = FALSE) {
     # Evaluate the Objective and Gradient at the Initial Step
 
     f_prev <- NA
@@ -507,7 +523,7 @@ ArmijoBacktrack <-
       if (LS_interp == 0 || !is.finite(f_new)) {
         # Ignore value of new point
         if (debug) {
-          message('Fixed BT')
+          message("Fixed BT")
         }
         step <- step_down * step
       }
@@ -516,20 +532,25 @@ ArmijoBacktrack <-
         if (funEvals < 2 || LS_multi == 0 || !is.finite(f_prev)) {
           # Backtracking w/ quadratic interpolation based on two points
           if (debug) {
-            message('Quad BT')
+            message("Quad BT")
           }
-          step <- polyinterp(point_matrix(c(0, step), c(f, f_new), c(gtd, NA)),
-                             0, step)
+          step <- polyinterp(
+            point_matrix(c(0, step), c(f, f_new), c(gtd, NA)),
+            0, step
+          )
         }
         else {
           # Backtracking w/ cubic interpolation based on three points
           if (debug) {
-            message('Cubic BT')
+            message("Cubic BT")
           }
           step <-
-            polyinterp(point_matrix(
-              c(0, step, t_prev), c(f, f_new, f_prev), c(gtd, NA, NA)),
-              0, step)
+            polyinterp(
+              point_matrix(
+                c(0, step, t_prev), c(f, f_new, f_prev), c(gtd, NA, NA)
+              ),
+              0, step
+            )
         }
       }
       else {
@@ -537,35 +558,42 @@ ArmijoBacktrack <-
         if (funEvals < 2 || LS_multi == 0 || !is.finite(f_prev)) {
           # Backtracking w/ cubic interpolation w/ derivative
           if (debug) {
-            message('Grad-Cubic BT')
+            message("Grad-Cubic BT")
           }
           step <- polyinterp(
             point_matrix(c(0, step), c(f, f_new), c(gtd, gtd_new)),
-            0, step)
+            0, step
+          )
         }
         else if (any(!is.finite(g_prev))) {
           # Backtracking w/ quartic interpolation 3 points and derivative
           # of two
           if (debug) {
-            message('Grad-Quartic BT')
+            message("Grad-Quartic BT")
           }
 
-          step <- polyinterp(point_matrix(
-            c(0, step, t_prev), c(f, f_new, f_prev), c(gtd, gtd_new, NA)),
-            0, step)
+          step <- polyinterp(
+            point_matrix(
+              c(0, step, t_prev), c(f, f_new, f_prev), c(gtd, gtd_new, NA)
+            ),
+            0, step
+          )
         }
         else {
           # Backtracking w/ quintic interpolation of 3 points and derivative
           # of three
           if (debug) {
-            message('Grad-Quintic BT')
+            message("Grad-Quintic BT")
           }
 
-          step <- polyinterp(point_matrix(
-            c(0, step, t_prev),
-            c(f, f_new, f_prev),
-            c(gtd, gtd_new, gtd_prev)),
-            0, step)
+          step <- polyinterp(
+            point_matrix(
+              c(0, step, t_prev),
+              c(f, f_new, f_prev),
+              c(gtd, gtd_new, gtd_prev)
+            ),
+            0, step
+          )
         }
       }
 
@@ -576,13 +604,12 @@ ArmijoBacktrack <-
       # Adjust if change in step is too small/large
       if (step < temp * 1e-3) {
         if (debug) {
-          message('Interpolated Value Too Small, Adjusting')
+          message("Interpolated Value Too Small, Adjusting")
         }
         step <- temp * 1e-3
-
       } else if (step > temp * 0.6) {
         if (debug) {
-          message('Interpolated Value Too Large, Adjusting')
+          message("Interpolated Value Too Large, Adjusting")
         }
         step <- temp * 0.6
       }
@@ -608,7 +635,7 @@ ArmijoBacktrack <-
       # Check whether step size has become too small
       if (pnorm_inf * step <= progTol) {
         if (debug) {
-          message('Backtracking Line Search Failed')
+          message("Backtracking Line Search Failed")
         }
         step <- 0
         f_new <- f
@@ -625,32 +652,39 @@ ArmijoBacktrack <-
   }
 
 mixedExtrap_step <- function(step0, step1, minStep, maxStep, debug) {
-  mixedExtrap(step0$alpha, step0$f, step0$d, step1$alpha, step1$f, step1$d,
-              minStep, maxStep, debug)
+  mixedExtrap(
+    step0$alpha, step0$f, step0$d, step1$alpha, step1$f, step1$d,
+    minStep, maxStep, debug
+  )
 }
 
 mixedExtrap <- function(x0, f0, g0, x1, f1, g1, minStep, maxStep, debug) {
   alpha_c <- polyinterp(point_matrix(c(x0, x1), c(f0, f1), c(g0, g1)),
-                        minStep, maxStep, debug = debug)
+    minStep, maxStep,
+    debug = debug
+  )
   alpha_s <- polyinterp(point_matrix(c(x0, x1), c(f0, NA), c(g0, g1)),
-                        minStep, maxStep, debug = debug)
+    minStep, maxStep,
+    debug = debug
+  )
   if (debug) {
-    message("cubic ext = ", formatC(alpha_c), " secant ext = ", formatC(alpha_s),
-            " minStep = ", formatC(minStep),
-            " alpha_c > minStep ? ", alpha_c > minStep,
-            " |ac - x1| = ", formatC(abs(alpha_c - x1)),
-            " |as - x1| = ", formatC( abs(alpha_s - x1))
+    message(
+      "cubic ext = ", formatC(alpha_c), " secant ext = ", formatC(alpha_s),
+      " minStep = ", formatC(minStep),
+      " alpha_c > minStep ? ", alpha_c > minStep,
+      " |ac - x1| = ", formatC(abs(alpha_c - x1)),
+      " |as - x1| = ", formatC(abs(alpha_s - x1))
     )
   }
   if (alpha_c > minStep && abs(alpha_c - x1) < abs(alpha_s - x1)) {
     if (debug) {
-      message('Cubic Extrapolation ', formatC(alpha_c))
+      message("Cubic Extrapolation ", formatC(alpha_c))
     }
     res <- alpha_c
   }
   else {
     if (debug) {
-      message('Secant Extrapolation ', formatC(alpha_s))
+      message("Secant Extrapolation ", formatC(alpha_s))
     }
     res <- alpha_s
   }
@@ -658,123 +692,135 @@ mixedExtrap <- function(x0, f0, g0, x1, f1, g1, minStep, maxStep, debug) {
 }
 
 mixedInterp_step <- function(bracket_step,
-                        Tpos,
-                        oldLO,
-                        debug) {
-
+                             Tpos,
+                             oldLO,
+                             debug) {
   bracket <- c(bracket_step[[1]]$alpha, bracket_step[[2]]$alpha)
   bracketFval <- c(bracket_step[[1]]$f, bracket_step[[2]]$f)
   bracketDval <- c(bracket_step[[1]]$d, bracket_step[[2]]$d)
 
-  mixedInterp(bracket, bracketFval, bracketDval, Tpos,
-              oldLO$alpha, oldLO$f, oldLO$d, debug)
+  mixedInterp(
+    bracket, bracketFval, bracketDval, Tpos,
+    oldLO$alpha, oldLO$f, oldLO$d, debug
+  )
 }
 
 mixedInterp <- function(
-  bracket, bracketFval, bracketDval,
-  Tpos,
-  oldLOval, oldLOFval, oldLODval,
-  debug) {
+                        bracket, bracketFval, bracketDval,
+                        Tpos,
+                        oldLOval, oldLOFval, oldLODval,
+                        debug) {
 
   # Mixed Case
   nonTpos <- -Tpos + 3
 
 
-    gtdT <- bracketDval[Tpos]
-    gtdNonT <- bracketDval[nonTpos]
-    oldLOgtd <- oldLODval
-    if (bracketFval[Tpos] > oldLOFval) {
-      alpha_c <- polyinterp(point_matrix(
-        c(oldLOval, bracket[Tpos]),
-        c(oldLOFval, bracketFval[Tpos]),
-        c(oldLOgtd, gtdT)))
-      alpha_q <- polyinterp(point_matrix(
-        c(oldLOval, bracket[Tpos]),
-        c(oldLOFval, bracketFval[Tpos]),
-        c(oldLOgtd, NA)))
-      if (abs(alpha_c - oldLOval) < abs(alpha_q - oldLOval)) {
+  gtdT <- bracketDval[Tpos]
+  gtdNonT <- bracketDval[nonTpos]
+  oldLOgtd <- oldLODval
+  if (bracketFval[Tpos] > oldLOFval) {
+    alpha_c <- polyinterp(point_matrix(
+      c(oldLOval, bracket[Tpos]),
+      c(oldLOFval, bracketFval[Tpos]),
+      c(oldLOgtd, gtdT)
+    ))
+    alpha_q <- polyinterp(point_matrix(
+      c(oldLOval, bracket[Tpos]),
+      c(oldLOFval, bracketFval[Tpos]),
+      c(oldLOgtd, NA)
+    ))
+    if (abs(alpha_c - oldLOval) < abs(alpha_q - oldLOval)) {
+      if (debug) {
+        message("Cubic Interpolation")
+      }
+      res <- alpha_c
+    }
+    else {
+      if (debug) {
+        message("Mixed Quad/Cubic Interpolation")
+      }
+      res <- (alpha_q + alpha_c) / 2
+    }
+  }
+  else if (dot(gtdT, oldLOgtd) < 0) {
+    alpha_c <- polyinterp(point_matrix(
+      c(oldLOval, bracket[Tpos]),
+      c(oldLOFval, bracketFval[Tpos]),
+      c(oldLOgtd, gtdT)
+    ))
+    alpha_s <- polyinterp(point_matrix(
+      c(oldLOval, bracket[Tpos]),
+      c(oldLOFval, NA),
+      c(oldLOgtd, gtdT)
+    ))
+    if (abs(alpha_c - bracket[Tpos]) >= abs(alpha_s - bracket[Tpos])) {
+      if (debug) {
+        message("Cubic Interpolation")
+      }
+      res <- alpha_c
+    }
+    else {
+      if (debug) {
+        message("Quad Interpolation")
+      }
+      res <- alpha_s
+    }
+  }
+  else if (abs(gtdT) <= abs(oldLOgtd)) {
+    alpha_c <- polyinterp(point_matrix(
+      c(oldLOval, bracket[Tpos]),
+      c(oldLOFval, bracketFval[Tpos]),
+      c(oldLOgtd, gtdT)
+    ), min(bracket), max(bracket))
+    alpha_s <- polyinterp(point_matrix(
+      c(oldLOval, bracket[Tpos]),
+      c(NA, bracketFval[Tpos]),
+      c(oldLOgtd, gtdT)
+    ), min(bracket), max(bracket))
+
+    if (alpha_c > min(bracket) && alpha_c < max(bracket)) {
+      if (abs(alpha_c - bracket[Tpos]) < abs(alpha_s - bracket[Tpos])) {
         if (debug) {
-          message('Cubic Interpolation')
+          message("Bounded Cubic Extrapolation")
         }
         res <- alpha_c
       }
       else {
         if (debug) {
-          message('Mixed Quad/Cubic Interpolation')
-        }
-        res <- (alpha_q + alpha_c) / 2
-      }
-    }
-    else if (dot(gtdT, oldLOgtd) < 0) {
-      alpha_c <- polyinterp(point_matrix(
-        c(oldLOval, bracket[Tpos]),
-        c(oldLOFval, bracketFval[Tpos]),
-        c(oldLOgtd, gtdT)))
-      alpha_s <- polyinterp(point_matrix(
-        c(oldLOval, bracket[Tpos]),
-        c(oldLOFval, NA),
-        c(oldLOgtd, gtdT)))
-      if (abs(alpha_c - bracket[Tpos]) >= abs(alpha_s - bracket[Tpos])) {
-        if (debug) {
-          message('Cubic Interpolation')
-        }
-        res <- alpha_c
-      }
-      else {
-        if (debug) {
-          message('Quad Interpolation')
+          message("Bounded Secant Extrapolation")
         }
         res <- alpha_s
-      }
-    }
-    else if (abs(gtdT) <= abs(oldLOgtd)) {
-      alpha_c <- polyinterp(point_matrix(
-        c(oldLOval, bracket[Tpos]),
-        c(oldLOFval, bracketFval[Tpos]),
-        c(oldLOgtd, gtdT)), min(bracket), max(bracket))
-      alpha_s <- polyinterp(point_matrix(
-        c(oldLOval, bracket[Tpos]),
-        c(NA, bracketFval[Tpos]),
-        c(oldLOgtd, gtdT)), min(bracket), max(bracket))
-
-      if (alpha_c > min(bracket) && alpha_c < max(bracket)) {
-        if (abs(alpha_c - bracket[Tpos]) < abs(alpha_s - bracket[Tpos])) {
-          if (debug) {
-            message('Bounded Cubic Extrapolation')
-          }
-          res <- alpha_c
-        }
-        else {
-          if (debug) {
-            message('Bounded Secant Extrapolation')
-          }
-          res <- alpha_s
-        }
-      }
-      else {
-        if (debug) {
-          message('Bounded Secant Extrapolation')
-        }
-        res <- alpha_s
-      }
-
-      if (bracket[Tpos] > oldLOval) {
-        res <- min(bracket[Tpos] + 0.66 * (bracket[nonTpos] - bracket[Tpos]),
-                   res)
-      }
-      else {
-        res <- max(bracket[Tpos] + 0.66 * (bracket[nonTpos] - bracket[Tpos]),
-                   res)
       }
     }
     else {
-      res <- polyinterp(point_matrix(
-        c(bracket[nonTpos], bracket[Tpos]),
-        c(bracketFval[nonTpos], bracketFval[Tpos]),
-        c(gtdNonT, gtdT)))
+      if (debug) {
+        message("Bounded Secant Extrapolation")
+      }
+      res <- alpha_s
     }
-    res
+
+    if (bracket[Tpos] > oldLOval) {
+      res <- min(
+        bracket[Tpos] + 0.66 * (bracket[nonTpos] - bracket[Tpos]),
+        res
+      )
+    }
+    else {
+      res <- max(
+        bracket[Tpos] + 0.66 * (bracket[nonTpos] - bracket[Tpos]),
+        res
+      )
+    }
   }
+  else {
+    res <- polyinterp(point_matrix(
+      c(bracket[nonTpos], bracket[Tpos]),
+      c(bracketFval[nonTpos], bracketFval[Tpos]),
+      c(gtdNonT, gtdT)
+    ))
+  }
+  res
+}
 
 # function [minPos] <- polyinterp(points,doPlot,xminBound,xmaxBound)
 #
@@ -830,18 +876,22 @@ polyinterp <- function(points,
     }
 
     d1 <- g1 + g2 - 3 * (f1 - f2) / (x1 - x2)
-    d2sq <- d1 ^ 2 - g1 * g2
+    d2sq <- d1^2 - g1 * g2
 
     if (is_finite_numeric(d2sq) && d2sq >= 0) {
       d2 <- sqrt(d2sq)
 
       x <- x2 - (x2 - x1) * ((g2 + d2 - d1) / (g2 - g1 + 2 * d2))
-      if (debug) { message("d2 is real ", formatC(d2), " x = ", formatC(x)) }
+      if (debug) {
+        message("d2 is real ", formatC(d2), " x = ", formatC(x))
+      }
 
       minPos <- min(max(x, xminBound), xmaxBound)
     }
     else {
-      if (debug) { message("d2 is not real, bisecting") }
+      if (debug) {
+        message("d2 is not real, bisecting")
+      }
 
       minPos <- (xmaxBound + xminBound) / 2
     }
@@ -866,13 +916,17 @@ polyinterp <- function(points,
   # Remove mad, bad and dangerous to know critical points:
   # Must be finite, non-complex and not an extrapolation
   if (all(is.finite(dParams))) {
-    cp <- c(cp,
-            Re(Filter(
-              function(x) {
-                abs(Im(x)) < 1e-8 &&
-                  Re(x) >= xminBound &&
-                  Re(x) <= xmaxBound },
-              polyroot(dParams))))
+    cp <- c(
+      cp,
+      Re(Filter(
+        function(x) {
+          abs(Im(x)) < 1e-8 &&
+            Re(x) >= xminBound &&
+            Re(x) <= xmaxBound
+        },
+        polyroot(dParams)
+      ))
+    )
   }
 
   # Test Critical Points
@@ -907,7 +961,7 @@ polyfit <- function(points) {
     if (!is.na(points[i, 2])) {
       constraint <- rep(0, order + 1)
       for (j in rev(0:order)) {
-        constraint[order - j + 1] <- points[i, 1] ^ j
+        constraint[order - j + 1] <- points[i, 1]^j
       }
       if (is.null(A)) {
         A <- constraint
@@ -929,7 +983,7 @@ polyfit <- function(points) {
     if (!is.na(points[i, 3])) {
       constraint <- rep(0, order + 1)
       for (j in 1:order) {
-        constraint[j] <- (order - j + 1) * points[i, 1] ^ (order - j)
+        constraint[j] <- (order - j + 1) * points[i, 1]^(order - j)
       }
       if (is.null(A)) {
         A <- constraint
@@ -965,8 +1019,10 @@ polyfit <- function(points) {
 polyval <- function(x, coefs) {
   deg <- length(coefs) - 1
   # Sweep multiplies each column of the poly matrix by the coefficient
-  rowSums(sweep(stats::poly(x, degree = deg, raw = TRUE),
-                2, coefs[2:length(coefs)], `*`)) + coefs[1]
+  rowSums(sweep(
+    stats::poly(x, degree = deg, raw = TRUE),
+    2, coefs[2:length(coefs)], `*`
+  )) + coefs[1]
 }
 
 point_matrix <- function(xs, fs, gs) {
@@ -974,7 +1030,8 @@ point_matrix <- function(xs, fs, gs) {
 }
 
 point_matrix_step <- function(step1, step2) {
-  point_matrix(c(step1$alpha, step2$alpha), c(step1$f, step2$f),
-               c(step1$d, step2$d))
+  point_matrix(
+    c(step1$alpha, step2$alpha), c(step1$f, step2$f),
+    c(step1$d, step2$d)
+  )
 }
-

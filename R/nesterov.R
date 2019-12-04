@@ -59,8 +59,10 @@ nesterov_step <- function(burn_in = 0, q = 0, use_approx = FALSE,
   }
 
   if (use_approx) {
-    nesterov_convex_approx_step(burn_in = burn_in,
-                                use_init_mu = use_init_mu)
+    nesterov_convex_approx_step(
+      burn_in = burn_in,
+      use_init_mu = use_init_mu
+    )
   }
   else {
     nesterov_convex_step(q = q, burn_in = burn_in)
@@ -109,12 +111,16 @@ make_nesterov_convex_approx <- function(burn_in = 0, use_init_mu = FALSE) {
 #  you will get only 60% of the gradient step you might have been expecting
 #  on the first step, and you will get a 60% longer step size if using NAG.
 nesterov_convex_approx_step <- function(burn_in = 0, use_init_mu = FALSE) {
-  make_momentum_step(mu_fn =
-                       make_nesterov_convex_approx(burn_in = burn_in,
-                                                   use_init_mu = use_init_mu),
-                     min_momentum = 0,
-                     max_momentum = 1,
-                     use_init_mom = use_init_mu)
+  make_momentum_step(
+    mu_fn =
+      make_nesterov_convex_approx(
+        burn_in = burn_in,
+        use_init_mu = use_init_mu
+      ),
+    min_momentum = 0,
+    max_momentum = 1,
+    use_init_mom = use_init_mu
+  )
 }
 
 # The NAG pseudo-momentum schedule.
@@ -206,13 +212,13 @@ nesterov_convex_step_q <- function(q, burn_in = 0) {
         # expression given in the appendix/thesis).
         sub_stage$value <- theta_old * (1 - theta_old) / (theta_old * theta_old + theta)
         sub_stage$theta_old <- theta
-        #message("Nesterov momentum = ", formatC(sub_stage$value))
+        # message("Nesterov momentum = ", formatC(sub_stage$value))
       }
       list(sub_stage = sub_stage)
     },
     after_step = function(opt, stage, sub_stage, par, fg, iter, par0,
                           update) {
-      #message("nesterov_convex: after step")
+      # message("nesterov_convex: after step")
       if (!opt$ok) {
         sub_stage$theta_old <- 1
       }
@@ -227,8 +233,8 @@ solve_quad <- function(a, b, c) {
   disc <- b * b - 4 * a * c
   res <- c()
   if (disc > 0) {
-    root_pos = (-b + sqrt(disc)) / (2 * a)
-    root_neg = (-b - sqrt(disc)) / (2 * a)
+    root_pos <- (-b + sqrt(disc)) / (2 * a)
+    root_neg <- (-b - sqrt(disc)) / (2 * a)
     res <- c(root_pos, root_neg)
   }
   res
