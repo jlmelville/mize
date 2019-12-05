@@ -1,3 +1,12 @@
+# mize 0.2.3
+
+A patch release to fix an incompatibility with R-devel.
+
+## Bug fixes
+
+* Fixed a bug where `class` was being checked directly and a scalar value was
+assumed. The correct behavior is to use `methods::is`.
+
 # mize 0.2.2
 
 A patch release for a bug fix.

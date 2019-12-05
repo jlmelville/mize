@@ -1,14 +1,14 @@
 ## Release Summary
 
-This is a patch update to fix a user-reported bug.
+This is a patch update to maintain compatibility with R-devel.
 
 ## Test environments
 
-* ubuntu 14.04 (on travis-ci), R 3.4.4, R 3.6.0, R-devel
+* ubuntu 16.04 (on travis-ci), R 3.5.3, R 3.6.1, R-devel
 * ubuntu 16.04 (on rhub), R 3.6.1
 * fedora 30 (on rhub), R-devel
 * mac OS X High Sierra (on travis-ci), R 3.5.3, R 3.6.1
-* local Windows 10 build, R 3.5.3, R 3.6.1
+* local Windows 10 build, R 3.6.1
 * Windows Server 2008 (on rhub) R-devel
 * Windows Server 2012 (on appveyor) R 3.6.1
 * win-builder (devel)
@@ -31,6 +31,14 @@ There was a message about possibly mis-spelled words in DESCRIPTION:
 
 Those words are spelled correctly.
 
+## CRAN checks
+
+There are two errors, for r-devel-linux-x86_64-debian-clang and 
+r-devel-linux-x86_64-debian-gcc. This release is designed to expressly fix
+these errors.
+
 ## Downstream dependencies
 
-None.
+There are 2 downstream dependencies. 
+
+* All completed R CMD CHECK without issues.
