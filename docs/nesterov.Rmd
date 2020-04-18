@@ -340,7 +340,9 @@ QHM in this answer. Note that it's a bit hard to see the connection between
 the form of NAG given here and the QHM method, because the QHM equations apply
 the learning rate to both the gradient descent and the momentum step, and
 introduces a discounting term to the gradient descent (i.e. multiplies it by 
-$1 - \mu_{t}$).
+$1 - \mu_{t}$). The supplemental material in 
+[Understanding the Role of Momentum in Stochastic Gradient Methods](https://papers.nips.cc/paper/9158-understanding-the-role-of-momentum-in-stochastic-gradient-methods)
+provides a derivation.
 
 Less radically, we can create a "generalized" momentum update by introducing a 
 parameter $\beta$ to give:

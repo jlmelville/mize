@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
 
 <head>
 
 <meta charset="utf-8" />
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
 <meta name="author" content="James Melville" />
@@ -87,8 +87,6 @@ overflow: auto;
 margin-left: 2%;
 position: fixed;
 border: 1px solid #ccc;
-webkit-border-radius: 6px;
-moz-border-radius: 6px;
 border-radius: 6px;
 }
 
@@ -116,9 +114,14 @@ font-size: 12px;
 .tocify-subheader .tocify-subheader {
 text-indent: 30px;
 }
-
 .tocify-subheader .tocify-subheader .tocify-subheader {
 text-indent: 40px;
+}
+.tocify-subheader .tocify-subheader .tocify-subheader .tocify-subheader {
+text-indent: 50px;
+}
+.tocify-subheader .tocify-subheader .tocify-subheader .tocify-subheader .tocify-subheader {
+text-indent: 60px;
 }
 
 .tocify .tocify-item > a, .tocify .nav-list .nav-header {
@@ -522,13 +525,13 @@ float: none;
 
           item.append($("<a/>", {
 
-            "text": self.text()
+            "html": self.html()
 
           }));
 
         } else {
 
-          item.text(self.text());
+          item.html(self.html());
 
         }
 
@@ -1359,7 +1362,6 @@ code {
 }
 img {
   max-width:100%;
-  height: auto;
 }
 .tabbed-pane {
   padding-top: 12px;
@@ -1421,6 +1423,7 @@ summary {
   border: none;
   display: inline-block;
   border-radius: 4px;
+  background-color: transparent;
 }
 
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li {
@@ -1433,48 +1436,9 @@ summary {
 }
 </style>
 
-<script>
-$(document).ready(function () {
-  window.buildTabsets("TOC");
-});
-
-$(document).ready(function () {
-  $('.tabset-dropdown > .nav-tabs > li').click(function () {
-    $(this).parent().toggleClass('nav-tabs-open')
-  });
-});
-</script>
-
 <!-- code folding -->
 
 
-
-<script>
-$(document).ready(function ()  {
-
-    // move toc-ignore selectors from section div to header
-    $('div.section.toc-ignore')
-        .removeClass('toc-ignore')
-        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
-
-    // establish options
-    var options = {
-      selectors: "h1,h2,h3",
-      theme: "bootstrap3",
-      context: '.toc-content',
-      hashGenerator: function (text) {
-        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_').toLowerCase();
-      },
-      ignoreSelector: ".toc-ignore",
-      scrollTo: 0
-    };
-    options.showAndHide = false;
-    options.smoothScroll = true;
-
-    // tocify
-    var toc = $("#TOC").tocify(options).data("toc-tocify");
-});
-</script>
 
 <style type="text/css">
 
@@ -1488,6 +1452,12 @@ $(document).ready(function ()  {
 }
 }
 
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
 
 .toc-content {
   padding-left: 30px;
@@ -1523,8 +1493,6 @@ div.tocify {
 
 .tocify-subheader .tocify-item {
   font-size: 0.90em;
-  padding-left: 25px;
-  text-indent: 0;
 }
 
 .tocify .list-group-item {
@@ -1702,7 +1670,7 @@ v_{t+1} =
 -
 \varepsilon_{t} \nabla f \left(\theta_{t}\right)
 \right]
-\]</span> which now resembles the classical momentum expression with an extra momentum term. I haven’t found a definitive reference for this expression, or what, if any, extra insight it provides, but user ‘denis’ uses this expression in an <a href="https://stats.stackexchange.com/a/233430">answer on the Cross Validated Stack Exchange</a>, and refers to the third form as “gradient momentum”. Another way to look at this is to say that the third term reduces the contribution of the classical momentum component of the update and increases the contribution of the gradient descent, with the degree of weighting controlled by <span class="math inline">\(\mu_{t}\)</span>. <a href="https://arxiv.org/abs/1810.06801">Quasi-hyperbolic momentum</a> effectively uses this formulation, but allows the weighting term to be a free parameter (<span class="math inline">\(\nu\)</span>), decoupled from <span class="math inline">\(\mu\)</span>. The Stack Exchange answer given above also suggests that the “gradient momentum” term can be set independently of <span class="math inline">\(\mu\)</span> and Denis Yarats is one of the authors of the QHM paper, so perhaps we see the origins of QHM in this answer. Note that it’s a bit hard to see the connection between the form of NAG given here and the QHM method, because the QHM equations apply the learning rate to both the gradient descent and the momentum step, and introduces a discounting term to the gradient descent (i.e. multiplies it by <span class="math inline">\(1 - \mu_{t}\)</span>).</p>
+\]</span> which now resembles the classical momentum expression with an extra momentum term. I haven’t found a definitive reference for this expression, or what, if any, extra insight it provides, but user ‘denis’ uses this expression in an <a href="https://stats.stackexchange.com/a/233430">answer on the Cross Validated Stack Exchange</a>, and refers to the third form as “gradient momentum”. Another way to look at this is to say that the third term reduces the contribution of the classical momentum component of the update and increases the contribution of the gradient descent, with the degree of weighting controlled by <span class="math inline">\(\mu_{t}\)</span>. <a href="https://arxiv.org/abs/1810.06801">Quasi-hyperbolic momentum</a> effectively uses this formulation, but allows the weighting term to be a free parameter (<span class="math inline">\(\nu\)</span>), decoupled from <span class="math inline">\(\mu\)</span>. The Stack Exchange answer given above also suggests that the “gradient momentum” term can be set independently of <span class="math inline">\(\mu\)</span> and Denis Yarats is one of the authors of the QHM paper, so perhaps we see the origins of QHM in this answer. Note that it’s a bit hard to see the connection between the form of NAG given here and the QHM method, because the QHM equations apply the learning rate to both the gradient descent and the momentum step, and introduces a discounting term to the gradient descent (i.e. multiplies it by <span class="math inline">\(1 - \mu_{t}\)</span>). The supplemental material in <a href="https://papers.nips.cc/paper/9158-understanding-the-role-of-momentum-in-stochastic-gradient-methods">Understanding the Role of Momentum in Stochastic Gradient Methods</a> provides a derivation.</p>
 <p>Less radically, we can create a “generalized” momentum update by introducing a parameter <span class="math inline">\(\beta\)</span> to give:</p>
 <p><span class="math display">\[
 v_{t+1} =  
@@ -2367,6 +2335,49 @@ $(document).ready(function () {
 });
 
 
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
+});
+</script>
+
+<!-- code folding -->
+
+<script>
+$(document).ready(function ()  {
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_').toLowerCase();
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = false;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
 </script>
 
 <!-- dynamically load mathjax for compatibility with self-contained -->
