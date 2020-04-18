@@ -19,7 +19,7 @@ Suggests:
     knitr,
     rmarkdown,
     covr
-RoxygenNote: 7.0.2
+RoxygenNote: 7.1.0
 URL: http://github.com/jlmelville/mize
 BugReports: http://github.com/jlmelville/mize/issues
 VignetteBuilder: knitr
