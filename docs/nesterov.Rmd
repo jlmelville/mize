@@ -314,7 +314,7 @@ and rearrange it further to give:
 
 $$
 v_{t+1} =  
-\mu_t v_t - \varepsilon_{t-1} \nabla f\left(\theta_{t-1} \right)
+\mu_t v_t - \varepsilon_{t} \nabla f\left(\theta_{t} \right)
 +
 \mu_t 
 \left[
@@ -349,7 +349,7 @@ parameter $\beta$ to give:
 
 $$
 v_{t+1} =  
-\mu_t v_t - \varepsilon_{t-1} \nabla f\left(\theta_{t-1} \right)
+\mu_t v_t - \varepsilon_{t} \nabla f\left(\theta_{t} \right)
 +
 \beta_t \mu_t 
 \left[
