@@ -1085,7 +1085,7 @@ might succeed better than classical momentum under conditions where the old
 gradients quickly become uniformative (regions of high curvature?). Personally,
 I find this view of NAG through the lens of a weighted history of gradients more
 appealing than the Sutskever formulation because it leads to interesting ideas
-like Quasi-Harmonic Momentum.
+like Quasi-Hyperbolic Momentum.
 
 In terms of implementation, I pity anyone tasked with implementing Nesterov
 momentum and demonstrating that they actually got it right. Imagine naively
