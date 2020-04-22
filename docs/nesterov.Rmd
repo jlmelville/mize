@@ -197,21 +197,27 @@ $$\Theta_{t+1} = \Theta_t + \mu_{t+1} v_{t+1} - \varepsilon_t \nabla f\left(\The
 
 We can now substitute in the Sutskever velocity expression, $v_{t+1}$:
 
-$$\Theta_{t+1} = 
+$$
+\Theta_{t+1} = 
 \Theta_t + \mu_{t+1}\left[\mu_t v_t - \varepsilon_t \nabla f\left(\Theta_t\right)\right] 
 - \varepsilon_t \nabla f\left(\Theta_t\right)
 $$
+
 Expanding out the parentheses gives:
 
-$$\Theta_{t+1} = 
+$$
+\Theta_{t+1} = 
 \Theta_t + \mu_{t+1} \mu_t v_t - \mu_{t+1} \varepsilon_t \nabla f\left(\Theta_t\right) 
 - \varepsilon_t \nabla f\left(\Theta_t\right)
 $$
+
 and, after grouping the gradient descent parts, finally gives:
 
-$$\Theta_{t+1} = 
-\Theta_t + \mu_{t+1} \mu_t v_t - \left(1 + \mu_{t+1} \right) \varepsilon_t \nabla f\left(\Theta_t\right) 
 $$
+\Theta_{t+1} = 
+\Theta_t + \mu_{t+1} \mu_t v_t - \left(1 + \mu_{t+1} \right) \varepsilon_t \nabla f\left(\Theta_t\right)
+$$
+
 At this point in the other derivations, I isolated the bits on the RHS that
 wasn't the old parameter and defined them as the velocity vector. Well,
 we can't do that here, as we're already using the Sutskever definition of
@@ -228,16 +234,21 @@ Before going any further, it's worth going back to the original expression
 for the gradient descent part of NAG that Sutskever gives in his thesis (and 
 appendix to the paper):
 
-$$y_{t+1} = \theta_t + \mu_t\left(\theta_t - \theta_{t-1} \right) 
+$$
+y_{t+1} = \theta_t + \mu_t\left(\theta_t - \theta_{t-1} \right) 
 = \theta_t + \mu_t v_t
 $$
 Let's just compare that to the Bengio definition of $\Theta$:
 
-$$\Theta_{t} \equiv \theta_{t} + \mu_{t} v_{t}
+$$
+\Theta_{t} \equiv \theta_{t} + \mu_{t} v_{t}
 $$
 Yep, that means:
 
-$$\Theta_{t} \equiv y_{t+1}$$
+$$
+\Theta_{t} \equiv y_{t+1}
+$$
+
 So the Bengio formulation is really just another way to write the standard NAG update.
 
 ### An Alternative Expression for NAG
@@ -252,7 +263,8 @@ $$\theta_{t+1} = \phi_t + \mu_t\left(\phi_t - \phi_{t-1} \right)$$
 Now, let's just write out the momentum stage in terms of $\theta$, substituting
 $\phi$ wherever we find it:
 
-$$\theta_{t+1} = \theta_t - \varepsilon_t \nabla f\left(\theta_t \right)
+$$
+\theta_{t+1} = \theta_t - \varepsilon_t \nabla f\left(\theta_t \right)
 + \mu_t \left[\theta_t - \varepsilon_t \nabla f\left(\theta_t \right)
 - \theta_{t-1} + \varepsilon_{t-1} \nabla f\left(\theta_{t-1} \right)
 \right]
@@ -260,7 +272,8 @@ $$
 
 Rearranging:
 
-$$\theta_{t+1} = \theta_t 
+$$
+\theta_{t+1} = \theta_t 
 + \mu_t \left[\theta_t - \theta_{t-1}
 + \varepsilon_{t-1} \nabla f\left(\theta_{t-1} \right)
 - \varepsilon_t \nabla f\left(\theta_t \right)
@@ -271,7 +284,8 @@ $$
 Finally, we can subtitute in $v_t$ for the first two terms in the square
 brackets, to give:
 
-$$\theta_{t+1} = \theta_t 
+$$
+\theta_{t+1} = \theta_t 
 + \mu_t \left[v_t
 + \varepsilon_{t-1} \nabla f\left(\theta_{t-1} \right)
 - \varepsilon_t \nabla f\left(\theta_t \right)
@@ -281,7 +295,8 @@ $$
 
 with velocity:
 
-$$v_{t+1} =  
+$$
+v_{t+1} =  
  \mu_t \left[v_t
 + \varepsilon_{t-1} \nabla f\left(\theta_{t-1} \right)
 - \varepsilon_t \nabla f\left(\theta_t \right)
@@ -377,6 +392,156 @@ and then when calculating the momentum term, change:
 $$\mu_t v_t$$
 to:
 $$\mu_t \left[v_t - \varepsilon_{t} \nabla f\left(\theta_t \right)\right]$$
+
+## Unrolling NAG and Classical Momentum
+
+As a way to understand the difference between classical momentum and NAG, 
+let's write out the first few steps of the optimization, substituting in the 
+recursive definitions with the previous step, and see what emerges.
+
+Because I have finally got tired of writing out 
+$\varepsilon_t \nabla f\left(\theta_t \right)$ all over the place (and it's 
+visually distracting), let's define:
+
+$$
+-\varepsilon_t \nabla f\left(\theta_t \right) \equiv s_t
+$$
+
+to represent the steepest descent direction. Note that this includes the 
+negative sign. Also, I am going to assume that the momentum is constant, to
+save on some more notational clutter.
+
+Classical momentum is therefore represented as:
+
+$$
+\theta_{t+1} = \theta_t + s_t + \mu v_t
+$$
+
+And we'll use this straight-forward expression for NAG:
+
+
+$$
+\theta_{t+1} = \theta_t + s_t
++ \mu \left(\theta_t + s_t
+- \theta_{t-1} - s_{t-1}
+\right)
+$$
+
+with just this tiny bit of re-arranging so it most closely resembles the
+classical momentum expression:
+
+$$
+\theta_{t+1} = \theta_t + s_t + \mu v_t + \mu \left(s_t - s_{t-1} \right)
+$$
+
+### Step 1: Gradient Descent
+
+A consequence of my nomenclature choice is that the initial coordinates are at 
+$\theta_1$, not $\theta_0$. Sorry if you find that annoying. In both cases, the 
+first step is always just gradient descent:
+
+$$
+\theta_2 = \theta_1 + s_1
+$$
+
+The next three steps then proceed as follows:
+
+### Classical Momentum Steps 2-4
+
+$$
+\theta_3 = \theta_2 + s_2 + \mu v_2 \\
+\theta_3 = \theta_2 + s_2 + \mu s_1
+$$
+
+$$
+\theta_4 = \theta_3 + s_3 + \mu v_3 \\
+\theta_4 = \theta_3 + s_3 + \mu \left(s_2 + \mu s_1 \right) \\
+\theta_4 = \theta_3 + s_3 + \mu s_2 + \mu^2 s_1
+$$
+
+$$
+\theta_5 = \theta_4 + s_4 + \mu v_4 \\
+\theta_5 = \theta_4 + s_4 + \mu \left( s_3 + \mu s_2 + \mu^2 s_1 \right)\\
+\theta_5 = \theta_4 + s_4 + \mu s_3 + \mu^2 s_2 + \mu^3 s_1
+$$
+
+### NAG Steps 2-4
+
+$$
+\theta_3 = \theta_2 + s_2 + \mu v_2 + \mu \left(s_2 - s_1 \right) \\
+\theta_3 = \theta_2 + s_2 + \mu s_1 + \mu s_2 - \mu s_1 \\
+\theta_3 = \theta_2 + \left(1 + \mu \right) s_2
+$$
+
+$$
+\theta_4 = \theta_3 + s_3 + \mu v_3 + \mu \left(s_3 - s_2 \right) \\
+\theta_4 = \theta_3 + s_3 + \mu \left[ \left(1 + \mu \right) s_2 \right] + \mu s_3 - \mu s_2 \\
+\theta_4 = \theta_3 + \left(1 + \mu \right) s_3 + \mu^2 s_2
+$$
+$$
+\theta_5 = \theta_4 + s_4 + \mu v_4 + \mu \left(s_4 - s_3 \right) \\
+\theta_5 = \theta_4 + s_4 + \mu \left[ \left(1 + \mu \right) s_3 + \mu^2 s_2 \right] + \mu s_4 - \mu s_3 \\
+\theta_5 = \theta_4 + \left(1 + \mu \right) s_4 + \mu^2 s_3 + \mu^3 s_2
+$$
+
+You can see a pattern emerging here at this point, I hope. These are quite
+similar forms, the difference being in how the momentum affects the weighting
+coefficients.
+
+#### Relative Weights
+
+Here's a table showing how on the 4th step, the two methods weight the current
+and previous gradients in deciding on the next direction:
+
+| Momentum Type |  $s_4$     | $s_3$   | $s_2$   | $s_1$   |
+:--------------:|:----------:|:-------:|:-------:|:--------:
+Classical       | 1          | $\mu$   | $\mu^2$ | $\mu^3$ 
+NAG             | 1 + $\mu$  | $\mu^2$ | $\mu^3$ | 0
+
+From this it's clear that the difference between NAG and classical momentum
+is that NAG puts more weight on recent gradients: in fact, it gives zero weight
+to the first gradient descent direction after the first iteration, so the
+second step also be a pure gradient descent step, but with an extra big step
+size of $\left(1 + \mu \right) \varepsilon$. Another way of looking at it is to
+say that NAG forgets old gradients more quickly.
+
+Let's write some R code to generate a table to compare how the relative weights
+turn out between CM and NAG at different values of $\mu$. We'll normalize the 
+contributions so they sum to 1.
+
+```{r generate relative weights}
+cm_weights <- function(mu) { c(1, mu, mu * mu, mu * mu * mu) }
+
+nag_weights <- function(mu) { c(1 + mu, mu * mu, mu * mu * mu, 0) }
+
+mumat <- function(wfun, mus = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.99)) {
+  rel_weights <- matrix(nrow = length(mus), ncol = 5)
+  for (i in 1:length(mus)) {
+    mu <- mus[i]
+    weights <- wfun(mu)
+    rel_weights[i, ] <- c(mu, weights / sum(weights))
+  }
+  colnames(rel_weights) <- c("mu", "s4", "s3", "s2", "s1")
+
+  rel_weights
+}
+```
+
+#### Classical momentum weights
+
+```{r table of classical momentum relative weights}
+knitr::kable(mumat(cm_weights), digits = 4)
+```
+
+#### NAG weights
+
+```{r table of NAG relative weights}
+knitr::kable(mumat(nag_weights), digits = 4)
+```
+
+At high momentum, classical momentum is only placing around 25-30% of the
+weight on the current gradient, whereas for NAG, it's still at 50-55%.
+
 
 ## NAG in practice
 
@@ -830,6 +995,7 @@ $v_1$ to be zero by not updating it on the first iteration. I chose
 the latter.
 
 ### Momentum NAG consistent with NAG
+
 ```{r Momentum NAG consistent with NAG}
 # momentum NAG consistent with NAG
 mnagc <- function(par, fn, gr, lr, mu, max_iter = 10) {
@@ -868,8 +1034,7 @@ mnagc_opt <- mnagc(par, fn, gr, lr, mu, max_iter)
 snagc_opt <- snagc(par, fn, gr, lr, mu, max_iter, wait = 1)
 bnagc_opt <- bnagc(par, fn, gr, lr, mu, max_iter)
 
-ncdf <- data.frame( 
-                 cBengio = bnagc_opt$fs,
+ncdf <- data.frame(cBengio = bnagc_opt$fs,
                  cSutskever = snagc_opt$fs,
                  "Suts Mom" = snagc_opt$mu_fs,
                  NAG = nag_opt$fs, 
@@ -909,8 +1074,21 @@ That's a relief.
 
 ## Conclusions
 
-I pity anyone tasked with implementing Nesterov momentum and demonstrating
-that they actually got it right. Imagine naively implementing vanilla NAG,
-the Sutskever formulation and the Bengio formulation. Using identical test functions,
-starting points and parameters, their output are all different from each other
-*but they're all correct*!
+Yes, NAG can be thought of as being like classical momentum but where you do the 
+momentum step first and *then* the gradient step. But there's more to it than
+that.
+
+Both classical momentum and NAG use a weighted combination of the current and
+past gradients to determine the next direction of descent. The difference is in
+the distribution of weights: NAG places more emphasis on recent gradients. So it
+might succeed better than classical momentum under conditions where the old
+gradients quickly become uniformative (regions of high curvature?). Personally,
+I find this view of NAG through the lens of a weighted history of gradients more
+appealing than the Sutskever formulation because it leads to interesting ideas
+like Quasi-Harmonic Momentum.
+
+In terms of implementation, I pity anyone tasked with implementing Nesterov
+momentum and demonstrating that they actually got it right. Imagine naively
+implementing vanilla NAG, the Sutskever formulation and the Bengio formulation.
+Using identical test functions, starting points and parameters, their output are
+all different from each other *but they're all correct*!
