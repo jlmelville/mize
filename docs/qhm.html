@@ -9,11 +9,10 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
-<meta name="author" content="James Melville" />
 
-<meta name="date" content="2016-12-31" />
+<meta name="date" content="2020-04-30" />
 
-<title>Nesterov Accelerated Gradient and Momentum</title>
+<title>Quasi-Hyperbolic Momentum</title>
 
 <script>/*! jQuery v1.11.3 | (c) 2005, 2015 jQuery Foundation, Inc. | jquery.org/license */
 !function(a,b){"object"==typeof module&&"object"==typeof module.exports?module.exports=a.document?b(a,!0):function(a){if(!a.document)throw new Error("jQuery requires a window with a document");return b(a)}:b(a)}("undefined"!=typeof window?window:this,function(a,b){var c=[],d=c.slice,e=c.concat,f=c.push,g=c.indexOf,h={},i=h.toString,j=h.hasOwnProperty,k={},l="1.11.3",m=function(a,b){return new m.fn.init(a,b)},n=/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g,o=/^-ms-/,p=/-([\da-z])/gi,q=function(a,b){return b.toUpperCase()};m.fn=m.prototype={jquery:l,constructor:m,selector:"",length:0,toArray:function(){return d.call(this)},get:function(a){return null!=a?0>a?this[a+this.length]:this[a]:d.call(this)},pushStack:function(a){var b=m.merge(this.constructor(),a);return b.prevObject=this,b.context=this.context,b},each:function(a,b){return m.each(this,a,b)},map:function(a){return this.pushStack(m.map(this,function(b,c){return a.call(b,c,b)}))},slice:function(){return this.pushStack(d.apply(this,arguments))},first:function(){return this.eq(0)},last:function(){return this.eq(-1)},eq:function(a){var b=this.length,c=+a+(0>a?b:0);return this.pushStack(c>=0&&b>c?[this[c]]:[])},end:function(){return this.prevObject||this.constructor(null)},push:f,sort:c.sort,splice:c.splice},m.extend=m.fn.extend=function(){var a,b,c,d,e,f,g=arguments[0]||{},h=1,i=arguments.length,j=!1;for("boolean"==typeof g&&(j=g,g=arguments[h]||{},h++),"object"==typeof g||m.isFunction(g)||(g={}),h===i&&(g=this,h--);i>h;h++)if(null!=(e=arguments[h]))for(d in e)a=g[d],c=e[d],g!==c&&(j&&c&&(m.isPlainObject(c)||(b=m.isArray(c)))?(b?(b=!1,f=a&&m.isArray(a)?a:[]):f=a&&m.isPlainObject(a)?a:{},g[d]=m.extend(j,f,c)):void 0!==c&&(g[d]=c));return g},m.extend({expando:"jQuery"+(l+Math.random()).replace(/\D/g,""),isReady:!0,error:function(a){throw new Error(a)},noop:function(){},isFunction:function(a){return"function"===m.type(a)},isArray:Array.isArray||function(a){return"array"===m.type(a)},isWindow:function(a){return null!=a&&a==a.window},isNumeric:function(a){return!m.isArray(a)&&a-parseFloat(a)+1>=0},isEmptyObject:function(a){var b;for(b in a)return!1;return!0},isPlainObject:function(a){var b;if(!a||"object"!==m.type(a)||a.nodeType||m.isWindow(a))return!1;try{if(a.constructor&&!j.call(a,"constructor")&&!j.call(a.constructor.prototype,"isPrototypeOf"))return!1}catch(c){return!1}if(k.ownLast)for(b in a)return j.call(a,b);for(b in a);return void 0===b||j.call(a,b)},type:function(a){return null==a?a+"":"object"==typeof a||"function"==typeof a?h[i.call(a)]||"object":typeof a},globalEval:function(b){b&&m.trim(b)&&(a.execScript||function(b){a.eval.call(a,b)})(b)},camelCase:function(a){return a.replace(o,"ms-").replace(p,q)},nodeName:function(a,b){return a.nodeName&&a.nodeName.toLowerCase()===b.toLowerCase()},each:function(a,b,c){var d,e=0,f=a.length,g=r(a);if(c){if(g){for(;f>e;e++)if(d=b.apply(a[e],c),d===!1)break}else for(e in a)if(d=b.apply(a[e],c),d===!1)break}else if(g){for(;f>e;e++)if(d=b.call(a[e],e,a[e]),d===!1)break}else for(e in a)if(d=b.call(a[e],e,a[e]),d===!1)break;return a},trim:function(a){return null==a?"":(a+"").replace(n,"")},makeArray:function(a,b){var c=b||[];return null!=a&&(r(Object(a))?m.merge(c,"string"==typeof a?[a]:a):f.call(c,a)),c},inArray:function(a,b,c){var d;if(b){if(g)return g.call(b,a,c);for(d=b.length,c=c?0>c?Math.max(0,d+c):c:0;d>c;c++)if(c in b&&b[c]===a)return c}return-1},merge:function(a,b){var c=+b.length,d=0,e=a.length;while(c>d)a[e++]=b[d++];if(c!==c)while(void 0!==b[d])a[e++]=b[d++];return a.length=e,a},grep:function(a,b,c){for(var d,e=[],f=0,g=a.length,h=!c;g>f;f++)d=!b(a[f],f),d!==h&&e.push(a[f]);return e},map:function(a,b,c){var d,f=0,g=a.length,h=r(a),i=[];if(h)for(;g>f;f++)d=b(a[f],f,c),null!=d&&i.push(d);else for(f in a)d=b(a[f],f,c),null!=d&&i.push(d);return e.apply([],i)},guid:1,proxy:function(a,b){var c,e,f;return"string"==typeof b&&(f=a[b],b=a,a=f),m.isFunction(a)?(c=d.call(arguments,2),e=function(){return a.apply(b||this,c.concat(d.call(arguments)))},e.guid=a.guid=a.guid||m.guid++,e):void 0},now:function(){return+new Date},support:k}),m.each("Boolean Number String Function Array Date RegExp Object Error".split(" "),function(a,b){h["[object "+b+"]"]=b.toLowerCase()});function r(a){var b="length"in a&&a.length,c=m.type(a);return"function"===c||m.isWindow(a)?!1:1===a.nodeType&&b?!0:"array"===c||0===b||"number"==typeof b&&b>0&&b-1 in a}var s=function(a){var b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u="sizzle"+1*new Date,v=a.document,w=0,x=0,y=ha(),z=ha(),A=ha(),B=function(a,b){return a===b&&(l=!0),0},C=1<<31,D={}.hasOwnProperty,E=[],F=E.pop,G=E.push,H=E.push,I=E.slice,J=function(a,b){for(var c=0,d=a.length;d>c;c++)if(a[c]===b)return c;return-1},K="checked|selected|async|autofocus|autoplay|controls|defer|disabled|hidden|ismap|loop|multiple|open|readonly|required|scoped",L="[\\x20\\t\\r\\n\\f]",M="(?:\\\\.|[\\w-]|[^\\x00-\\xa0])+",N=M.replace("w","w#"),O="\\["+L+"*("+M+")(?:"+L+"*([*^$|!~]?=)"+L+"*(?:'((?:\\\\.|[^\\\\'])*)'|\"((?:\\\\.|[^\\\\\"])*)\"|("+N+"))|)"+L+"*\\]",P=":("+M+")(?:\\((('((?:\\\\.|[^\\\\'])*)'|\"((?:\\\\.|[^\\\\\"])*)\")|((?:\\\\.|[^\\\\()[\\]]|"+O+")*)|.*)\\)|)",Q=new RegExp(L+"+","g"),R=new RegExp("^"+L+"+|((?:^|[^\\\\])(?:\\\\.)*)"+L+"+$","g"),S=new RegExp("^"+L+"*,"+L+"*"),T=new RegExp("^"+L+"*([>+~]|"+L+")"+L+"*"),U=new RegExp("="+L+"*([^\\]'\"]*?)"+L+"*\\]","g"),V=new RegExp(P),W=new RegExp("^"+N+"$"),X={ID:new RegExp("^#("+M+")"),CLASS:new RegExp("^\\.("+M+")"),TAG:new RegExp("^("+M.replace("w","w*")+")"),ATTR:new RegExp("^"+O),PSEUDO:new RegExp("^"+P),CHILD:new RegExp("^:(only|first|last|nth|nth-last)-(child|of-type)(?:\\("+L+"*(even|odd|(([+-]|)(\\d*)n|)"+L+"*(?:([+-]|)"+L+"*(\\d+)|))"+L+"*\\)|)","i"),bool:new RegExp("^(?:"+K+")$","i"),needsContext:new RegExp("^"+L+"*[>+~]|:(even|odd|eq|gt|lt|nth|first|last)(?:\\("+L+"*((?:-\\d)?\\d*)"+L+"*\\)|)(?=[^-]|$)","i")},Y=/^(?:input|select|textarea|button)$/i,Z=/^h\d$/i,$=/^[^{]+\{\s*\[native \w/,_=/^(?:#([\w-]+)|(\w+)|\.([\w-]+))$/,aa=/[+~]/,ba=/'|\\/g,ca=new RegExp("\\\\([\\da-f]{1,6}"+L+"?|("+L+")|.)","ig"),da=function(a,b,c){var d="0x"+b-65536;return d!==d||c?b:0>d?String.fromCharCode(d+65536):String.fromCharCode(d>>10|55296,1023&d|56320)},ea=function(){m()};try{H.apply(E=I.call(v.childNodes),v.childNodes),E[v.childNodes.length].nodeType}catch(fa){H={apply:E.length?function(a,b){G.apply(a,I.call(b))}:function(a,b){var c=a.length,d=0;while(a[c++]=b[d++]);a.length=c-1}}}function ga(a,b,d,e){var f,h,j,k,l,o,r,s,w,x;if((b?b.ownerDocument||b:v)!==n&&m(b),b=b||n,d=d||[],k=b.nodeType,"string"!=typeof a||!a||1!==k&&9!==k&&11!==k)return d;if(!e&&p){if(11!==k&&(f=_.exec(a)))if(j=f[1]){if(9===k){if(h=b.getElementById(j),!h||!h.parentNode)return d;if(h.id===j)return d.push(h),d}else if(b.ownerDocument&&(h=b.ownerDocument.getElementById(j))&&t(b,h)&&h.id===j)return d.push(h),d}else{if(f[2])return H.apply(d,b.getElementsByTagName(a)),d;if((j=f[3])&&c.getElementsByClassName)return H.apply(d,b.getElementsByClassName(j)),d}if(c.qsa&&(!q||!q.test(a))){if(s=r=u,w=b,x=1!==k&&a,1===k&&"object"!==b.nodeName.toLowerCase()){o=g(a),(r=b.getAttribute("id"))?s=r.replace(ba,"\\$&"):b.setAttribute("id",s),s="[id='"+s+"'] ",l=o.length;while(l--)o[l]=s+ra(o[l]);w=aa.test(a)&&pa(b.parentNode)||b,x=o.join(",")}if(x)try{return H.apply(d,w.querySelectorAll(x)),d}catch(y){}finally{r||b.removeAttribute("id")}}}return i(a.replace(R,"$1"),b,d,e)}function ha(){var a=[];function b(c,e){return a.push(c+" ")>d.cacheLength&&delete b[a.shift()],b[c+" "]=e}return b}function ia(a){return a[u]=!0,a}function ja(a){var b=n.createElement("div");try{return!!a(b)}catch(c){return!1}finally{b.parentNode&&b.parentNode.removeChild(b),b=null}}function ka(a,b){var c=a.split("|"),e=a.length;while(e--)d.attrHandle[c[e]]=b}function la(a,b){var c=b&&a,d=c&&1===a.nodeType&&1===b.nodeType&&(~b.sourceIndex||C)-(~a.sourceIndex||C);if(d)return d;if(c)while(c=c.nextSibling)if(c===b)return-1;return a?1:-1}function ma(a){return function(b){var c=b.nodeName.toLowerCase();return"input"===c&&b.type===a}}function na(a){return function(b){var c=b.nodeName.toLowerCase();return("input"===c||"button"===c)&&b.type===a}}function oa(a){return ia(function(b){return b=+b,ia(function(c,d){var e,f=a([],c.length,b),g=f.length;while(g--)c[e=f[g]]&&(c[e]=!(d[e]=c[e]))})})}function pa(a){return a&&"undefined"!=typeof a.getElementsByTagName&&a}c=ga.support={},f=ga.isXML=function(a){var b=a&&(a.ownerDocument||a).documentElement;return b?"HTML"!==b.nodeName:!1},m=ga.setDocument=function(a){var b,e,g=a?a.ownerDocument||a:v;return g!==n&&9===g.nodeType&&g.documentElement?(n=g,o=g.documentElement,e=g.defaultView,e&&e!==e.top&&(e.addEventListener?e.addEventListener("unload",ea,!1):e.attachEvent&&e.attachEvent("onunload",ea)),p=!f(g),c.attributes=ja(function(a){return a.className="i",!a.getAttribute("className")}),c.getElementsByTagName=ja(function(a){return a.appendChild(g.createComment("")),!a.getElementsByTagName("*").length}),c.getElementsByClassName=$.test(g.getElementsByClassName),c.getById=ja(function(a){return o.appendChild(a).id=u,!g.getElementsByName||!g.getElementsByName(u).length}),c.getById?(d.find.ID=function(a,b){if("undefined"!=typeof b.getElementById&&p){var c=b.getElementById(a);return c&&c.parentNode?[c]:[]}},d.filter.ID=function(a){var b=a.replace(ca,da);return function(a){return a.getAttribute("id")===b}}):(delete d.find.ID,d.filter.ID=function(a){var b=a.replace(ca,da);return function(a){var c="undefined"!=typeof a.getAttributeNode&&a.getAttributeNode("id");return c&&c.value===b}}),d.find.TAG=c.getElementsByTagName?function(a,b){return"undefined"!=typeof b.getElementsByTagName?b.getElementsByTagName(a):c.qsa?b.querySelectorAll(a):void 0}:function(a,b){var c,d=[],e=0,f=b.getElementsByTagName(a);if("*"===a){while(c=f[e++])1===c.nodeType&&d.push(c);return d}return f},d.find.CLASS=c.getElementsByClassName&&function(a,b){return p?b.getElementsByClassName(a):void 0},r=[],q=[],(c.qsa=$.test(g.querySelectorAll))&&(ja(function(a){o.appendChild(a).innerHTML="<a id='"+u+"'></a><select id='"+u+"-\f]' msallowcapture=''><option selected=''></option></select>",a.querySelectorAll("[msallowcapture^='']").length&&q.push("[*^$]="+L+"*(?:''|\"\")"),a.querySelectorAll("[selected]").length||q.push("\\["+L+"*(?:value|"+K+")"),a.querySelectorAll("[id~="+u+"-]").length||q.push("~="),a.querySelectorAll(":checked").length||q.push(":checked"),a.querySelectorAll("a#"+u+"+*").length||q.push(".#.+[+~]")}),ja(function(a){var b=g.createElement("input");b.setAttribute("type","hidden"),a.appendChild(b).setAttribute("name","D"),a.querySelectorAll("[name=d]").length&&q.push("name"+L+"*[*^$|!~]?="),a.querySelectorAll(":enabled").length||q.push(":enabled",":disabled"),a.querySelectorAll("*,:x"),q.push(",.*:")})),(c.matchesSelector=$.test(s=o.matches||o.webkitMatchesSelector||o.mozMatchesSelector||o.oMatchesSelector||o.msMatchesSelector))&&ja(function(a){c.disconnectedMatch=s.call(a,"div"),s.call(a,"[s!='']:x"),r.push("!=",P)}),q=q.length&&new RegExp(q.join("|")),r=r.length&&new RegExp(r.join("|")),b=$.test(o.compareDocumentPosition),t=b||$.test(o.contains)?function(a,b){var c=9===a.nodeType?a.documentElement:a,d=b&&b.parentNode;return a===d||!(!d||1!==d.nodeType||!(c.contains?c.contains(d):a.compareDocumentPosition&&16&a.compareDocumentPosition(d)))}:function(a,b){if(b)while(b=b.parentNode)if(b===a)return!0;return!1},B=b?function(a,b){if(a===b)return l=!0,0;var d=!a.compareDocumentPosition-!b.compareDocumentPosition;return d?d:(d=(a.ownerDocument||a)===(b.ownerDocument||b)?a.compareDocumentPosition(b):1,1&d||!c.sortDetached&&b.compareDocumentPosition(a)===d?a===g||a.ownerDocument===v&&t(v,a)?-1:b===g||b.ownerDocument===v&&t(v,b)?1:k?J(k,a)-J(k,b):0:4&d?-1:1)}:function(a,b){if(a===b)return l=!0,0;var c,d=0,e=a.parentNode,f=b.parentNode,h=[a],i=[b];if(!e||!f)return a===g?-1:b===g?1:e?-1:f?1:k?J(k,a)-J(k,b):0;if(e===f)return la(a,b);c=a;while(c=c.parentNode)h.unshift(c);c=b;while(c=c.parentNode)i.unshift(c);while(h[d]===i[d])d++;return d?la(h[d],i[d]):h[d]===v?-1:i[d]===v?1:0},g):n},ga.matches=function(a,b){return ga(a,null,null,b)},ga.matchesSelector=function(a,b){if((a.ownerDocument||a)!==n&&m(a),b=b.replace(U,"='$1']"),!(!c.matchesSelector||!p||r&&r.test(b)||q&&q.test(b)))try{var d=s.call(a,b);if(d||c.disconnectedMatch||a.document&&11!==a.document.nodeType)return d}catch(e){}return ga(b,n,null,[a]).length>0},ga.contains=function(a,b){return(a.ownerDocument||a)!==n&&m(a),t(a,b)},ga.attr=function(a,b){(a.ownerDocument||a)!==n&&m(a);var e=d.attrHandle[b.toLowerCase()],f=e&&D.call(d.attrHandle,b.toLowerCase())?e(a,b,!p):void 0;return void 0!==f?f:c.attributes||!p?a.getAttribute(b):(f=a.getAttributeNode(b))&&f.specified?f.value:null},ga.error=function(a){throw new Error("Syntax error, unrecognized expression: "+a)},ga.uniqueSort=function(a){var b,d=[],e=0,f=0;if(l=!c.detectDuplicates,k=!c.sortStable&&a.slice(0),a.sort(B),l){while(b=a[f++])b===a[f]&&(e=d.push(f));while(e--)a.splice(d[e],1)}return k=null,a},e=ga.getText=function(a){var b,c="",d=0,f=a.nodeType;if(f){if(1===f||9===f||11===f){if("string"==typeof a.textContent)return a.textContent;for(a=a.firstChild;a;a=a.nextSibling)c+=e(a)}else if(3===f||4===f)return a.nodeValue}else while(b=a[d++])c+=e(b);return c},d=ga.selectors={cacheLength:50,createPseudo:ia,match:X,attrHandle:{},find:{},relative:{">":{dir:"parentNode",first:!0}," ":{dir:"parentNode"},"+":{dir:"previousSibling",first:!0},"~":{dir:"previousSibling"}},preFilter:{ATTR:function(a){return a[1]=a[1].replace(ca,da),a[3]=(a[3]||a[4]||a[5]||"").replace(ca,da),"~="===a[2]&&(a[3]=" "+a[3]+" "),a.slice(0,4)},CHILD:function(a){return a[1]=a[1].toLowerCase(),"nth"===a[1].slice(0,3)?(a[3]||ga.error(a[0]),a[4]=+(a[4]?a[5]+(a[6]||1):2*("even"===a[3]||"odd"===a[3])),a[5]=+(a[7]+a[8]||"odd"===a[3])):a[3]&&ga.error(a[0]),a},PSEUDO:function(a){var b,c=!a[6]&&a[2];return X.CHILD.test(a[0])?null:(a[3]?a[2]=a[4]||a[5]||"":c&&V.test(c)&&(b=g(c,!0))&&(b=c.indexOf(")",c.length-b)-c.length)&&(a[0]=a[0].slice(0,b),a[2]=c.slice(0,b)),a.slice(0,3))}},filter:{TAG:function(a){var b=a.replace(ca,da).toLowerCase();return"*"===a?function(){return!0}:function(a){return a.nodeName&&a.nodeName.toLowerCase()===b}},CLASS:function(a){var b=y[a+" "];return b||(b=new RegExp("(^|"+L+")"+a+"("+L+"|$)"))&&y(a,function(a){return b.test("string"==typeof a.className&&a.className||"undefined"!=typeof a.getAttribute&&a.getAttribute("class")||"")})},ATTR:function(a,b,c){return function(d){var e=ga.attr(d,a);return null==e?"!="===b:b?(e+="","="===b?e===c:"!="===b?e!==c:"^="===b?c&&0===e.indexOf(c):"*="===b?c&&e.indexOf(c)>-1:"$="===b?c&&e.slice(-c.length)===c:"~="===b?(" "+e.replace(Q," ")+" ").indexOf(c)>-1:"|="===b?e===c||e.slice(0,c.length+1)===c+"-":!1):!0}},CHILD:function(a,b,c,d,e){var f="nth"!==a.slice(0,3),g="last"!==a.slice(-4),h="of-type"===b;return 1===d&&0===e?function(a){return!!a.parentNode}:function(b,c,i){var j,k,l,m,n,o,p=f!==g?"nextSibling":"previousSibling",q=b.parentNode,r=h&&b.nodeName.toLowerCase(),s=!i&&!h;if(q){if(f){while(p){l=b;while(l=l[p])if(h?l.nodeName.toLowerCase()===r:1===l.nodeType)return!1;o=p="only"===a&&!o&&"nextSibling"}return!0}if(o=[g?q.firstChild:q.lastChild],g&&s){k=q[u]||(q[u]={}),j=k[a]||[],n=j[0]===w&&j[1],m=j[0]===w&&j[2],l=n&&q.childNodes[n];while(l=++n&&l&&l[p]||(m=n=0)||o.pop())if(1===l.nodeType&&++m&&l===b){k[a]=[w,n,m];break}}else if(s&&(j=(b[u]||(b[u]={}))[a])&&j[0]===w)m=j[1];else while(l=++n&&l&&l[p]||(m=n=0)||o.pop())if((h?l.nodeName.toLowerCase()===r:1===l.nodeType)&&++m&&(s&&((l[u]||(l[u]={}))[a]=[w,m]),l===b))break;return m-=e,m===d||m%d===0&&m/d>=0}}},PSEUDO:function(a,b){var c,e=d.pseudos[a]||d.setFilters[a.toLowerCase()]||ga.error("unsupported pseudo: "+a);return e[u]?e(b):e.length>1?(c=[a,a,"",b],d.setFilters.hasOwnProperty(a.toLowerCase())?ia(function(a,c){var d,f=e(a,b),g=f.length;while(g--)d=J(a,f[g]),a[d]=!(c[d]=f[g])}):function(a){return e(a,0,c)}):e}},pseudos:{not:ia(function(a){var b=[],c=[],d=h(a.replace(R,"$1"));return d[u]?ia(function(a,b,c,e){var f,g=d(a,null,e,[]),h=a.length;while(h--)(f=g[h])&&(a[h]=!(b[h]=f))}):function(a,e,f){return b[0]=a,d(b,null,f,c),b[0]=null,!c.pop()}}),has:ia(function(a){return function(b){return ga(a,b).length>0}}),contains:ia(function(a){return a=a.replace(ca,da),function(b){return(b.textContent||b.innerText||e(b)).indexOf(a)>-1}}),lang:ia(function(a){return W.test(a||"")||ga.error("unsupported lang: "+a),a=a.replace(ca,da).toLowerCase(),function(b){var c;do if(c=p?b.lang:b.getAttribute("xml:lang")||b.getAttribute("lang"))return c=c.toLowerCase(),c===a||0===c.indexOf(a+"-");while((b=b.parentNode)&&1===b.nodeType);return!1}}),target:function(b){var c=a.location&&a.location.hash;return c&&c.slice(1)===b.id},root:function(a){return a===o},focus:function(a){return a===n.activeElement&&(!n.hasFocus||n.hasFocus())&&!!(a.type||a.href||~a.tabIndex)},enabled:function(a){return a.disabled===!1},disabled:function(a){return a.disabled===!0},checked:function(a){var b=a.nodeName.toLowerCase();return"input"===b&&!!a.checked||"option"===b&&!!a.selected},selected:function(a){return a.parentNode&&a.parentNode.selectedIndex,a.selected===!0},empty:function(a){for(a=a.firstChild;a;a=a.nextSibling)if(a.nodeType<6)return!1;return!0},parent:function(a){return!d.pseudos.empty(a)},header:function(a){return Z.test(a.nodeName)},input:function(a){return Y.test(a.nodeName)},button:function(a){var b=a.nodeName.toLowerCase();return"input"===b&&"button"===a.type||"button"===b},text:function(a){var b;return"input"===a.nodeName.toLowerCase()&&"text"===a.type&&(null==(b=a.getAttribute("type"))||"text"===b.toLowerCase())},first:oa(function(){return[0]}),last:oa(function(a,b){return[b-1]}),eq:oa(function(a,b,c){return[0>c?c+b:c]}),even:oa(function(a,b){for(var c=0;b>c;c+=2)a.push(c);return a}),odd:oa(function(a,b){for(var c=1;b>c;c+=2)a.push(c);return a}),lt:oa(function(a,b,c){for(var d=0>c?c+b:c;--d>=0;)a.push(d);return a}),gt:oa(function(a,b,c){for(var d=0>c?c+b:c;++d<b;)a.push(d);return a})}},d.pseudos.nth=d.pseudos.eq;for(b in{radio:!0,checkbox:!0,file:!0,password:!0,image:!0})d.pseudos[b]=ma(b);for(b in{submit:!0,reset:!0})d.pseudos[b]=na(b);function qa(){}qa.prototype=d.filters=d.pseudos,d.setFilters=new qa,g=ga.tokenize=function(a,b){var c,e,f,g,h,i,j,k=z[a+" "];if(k)return b?0:k.slice(0);h=a,i=[],j=d.preFilter;while(h){(!c||(e=S.exec(h)))&&(e&&(h=h.slice(e[0].length)||h),i.push(f=[])),c=!1,(e=T.exec(h))&&(c=e.shift(),f.push({value:c,type:e[0].replace(R," ")}),h=h.slice(c.length));for(g in d.filter)!(e=X[g].exec(h))||j[g]&&!(e=j[g](e))||(c=e.shift(),f.push({value:c,type:g,matches:e}),h=h.slice(c.length));if(!c)break}return b?h.length:h?ga.error(a):z(a,i).slice(0)};function ra(a){for(var b=0,c=a.length,d="";c>b;b++)d+=a[b].value;return d}function sa(a,b,c){var d=b.dir,e=c&&"parentNode"===d,f=x++;return b.first?function(b,c,f){while(b=b[d])if(1===b.nodeType||e)return a(b,c,f)}:function(b,c,g){var h,i,j=[w,f];if(g){while(b=b[d])if((1===b.nodeType||e)&&a(b,c,g))return!0}else while(b=b[d])if(1===b.nodeType||e){if(i=b[u]||(b[u]={}),(h=i[d])&&h[0]===w&&h[1]===f)return j[2]=h[2];if(i[d]=j,j[2]=a(b,c,g))return!0}}}function ta(a){return a.length>1?function(b,c,d){var e=a.length;while(e--)if(!a[e](b,c,d))return!1;return!0}:a[0]}function ua(a,b,c){for(var d=0,e=b.length;e>d;d++)ga(a,b[d],c);return c}function va(a,b,c,d,e){for(var f,g=[],h=0,i=a.length,j=null!=b;i>h;h++)(f=a[h])&&(!c||c(f,d,e))&&(g.push(f),j&&b.push(h));return g}function wa(a,b,c,d,e,f){return d&&!d[u]&&(d=wa(d)),e&&!e[u]&&(e=wa(e,f)),ia(function(f,g,h,i){var j,k,l,m=[],n=[],o=g.length,p=f||ua(b||"*",h.nodeType?[h]:h,[]),q=!a||!f&&b?p:va(p,m,a,h,i),r=c?e||(f?a:o||d)?[]:g:q;if(c&&c(q,r,h,i),d){j=va(r,n),d(j,[],h,i),k=j.length;while(k--)(l=j[k])&&(r[n[k]]=!(q[n[k]]=l))}if(f){if(e||a){if(e){j=[],k=r.length;while(k--)(l=r[k])&&j.push(q[k]=l);e(null,r=[],j,i)}k=r.length;while(k--)(l=r[k])&&(j=e?J(f,l):m[k])>-1&&(f[j]=!(g[j]=l))}}else r=va(r===g?r.splice(o,r.length):r),e?e(null,g,r,i):H.apply(g,r)})}function xa(a){for(var b,c,e,f=a.length,g=d.relative[a[0].type],h=g||d.relative[" "],i=g?1:0,k=sa(function(a){return a===b},h,!0),l=sa(function(a){return J(b,a)>-1},h,!0),m=[function(a,c,d){var e=!g&&(d||c!==j)||((b=c).nodeType?k(a,c,d):l(a,c,d));return b=null,e}];f>i;i++)if(c=d.relative[a[i].type])m=[sa(ta(m),c)];else{if(c=d.filter[a[i].type].apply(null,a[i].matches),c[u]){for(e=++i;f>e;e++)if(d.relative[a[e].type])break;return wa(i>1&&ta(m),i>1&&ra(a.slice(0,i-1).concat({value:" "===a[i-2].type?"*":""})).replace(R,"$1"),c,e>i&&xa(a.slice(i,e)),f>e&&xa(a=a.slice(e)),f>e&&ra(a))}m.push(c)}return ta(m)}function ya(a,b){var c=b.length>0,e=a.length>0,f=function(f,g,h,i,k){var l,m,o,p=0,q="0",r=f&&[],s=[],t=j,u=f||e&&d.find.TAG("*",k),v=w+=null==t?1:Math.random()||.1,x=u.length;for(k&&(j=g!==n&&g);q!==x&&null!=(l=u[q]);q++){if(e&&l){m=0;while(o=a[m++])if(o(l,g,h)){i.push(l);break}k&&(w=v)}c&&((l=!o&&l)&&p--,f&&r.push(l))}if(p+=q,c&&q!==p){m=0;while(o=b[m++])o(r,s,g,h);if(f){if(p>0)while(q--)r[q]||s[q]||(s[q]=F.call(i));s=va(s)}H.apply(i,s),k&&!f&&s.length>0&&p+b.length>1&&ga.uniqueSort(i)}return k&&(w=v,j=t),r};return c?ia(f):f}return h=ga.compile=function(a,b){var c,d=[],e=[],f=A[a+" "];if(!f){b||(b=g(a)),c=b.length;while(c--)f=xa(b[c]),f[u]?d.push(f):e.push(f);f=A(a,ya(e,d)),f.selector=a}return f},i=ga.select=function(a,b,e,f){var i,j,k,l,m,n="function"==typeof a&&a,o=!f&&g(a=n.selector||a);if(e=e||[],1===o.length){if(j=o[0]=o[0].slice(0),j.length>2&&"ID"===(k=j[0]).type&&c.getById&&9===b.nodeType&&p&&d.relative[j[1].type]){if(b=(d.find.ID(k.matches[0].replace(ca,da),b)||[])[0],!b)return e;n&&(b=b.parentNode),a=a.slice(j.shift().value.length)}i=X.needsContext.test(a)?0:j.length;while(i--){if(k=j[i],d.relative[l=k.type])break;if((m=d.find[l])&&(f=m(k.matches[0].replace(ca,da),aa.test(j[0].type)&&pa(b.parentNode)||b))){if(j.splice(i,1),a=f.length&&ra(j),!a)return H.apply(e,f),e;break}}}return(n||h(a,o))(f,b,!p,e,aa.test(a)&&pa(b.parentNode)||b),e},c.sortStable=u.split("").sort(B).join("")===u,c.detectDuplicates=!!l,m(),c.sortDetached=ja(function(a){return 1&a.compareDocumentPosition(n.createElement("div"))}),ja(function(a){return a.innerHTML="<a href='#'></a>","#"===a.firstChild.getAttribute("href")})||ka("type|href|height|width",function(a,b,c){return c?void 0:a.getAttribute(b,"type"===b.toLowerCase()?1:2)}),c.attributes&&ja(function(a){return a.innerHTML="<input/>",a.firstChild.setAttribute("value",""),""===a.firstChild.getAttribute("value")})||ka("value",function(a,b,c){return c||"input"!==a.nodeName.toLowerCase()?void 0:a.defaultValue}),ja(function(a){return null==a.getAttribute("disabled")})||ka(K,function(a,b,c){var d;return c?void 0:a[b]===!0?b.toLowerCase():(d=a.getAttributeNode(b))&&d.specified?d.value:null}),ga}(a);m.find=s,m.expr=s.selectors,m.expr[":"]=m.expr.pseudos,m.unique=s.uniqueSort,m.text=s.getText,m.isXMLDoc=s.isXML,m.contains=s.contains;var t=m.expr.match.needsContext,u=/^<(\w+)\s*\/?>(?:<\/\1>|)$/,v=/^.[^:#\[\.,]*$/;function w(a,b,c){if(m.isFunction(b))return m.grep(a,function(a,d){return!!b.call(a,d,a)!==c});if(b.nodeType)return m.grep(a,function(a){return a===b!==c});if("string"==typeof b){if(v.test(b))return m.filter(b,a,c);b=m.filter(b,a)}return m.grep(a,function(a){return m.inArray(a,b)>=0!==c})}m.filter=function(a,b,c){var d=b[0];return c&&(a=":not("+a+")"),1===b.length&&1===d.nodeType?m.find.matchesSelector(d,a)?[d]:[]:m.find.matches(a,m.grep(b,function(a){return 1===a.nodeType}))},m.fn.extend({find:function(a){var b,c=[],d=this,e=d.length;if("string"!=typeof a)return this.pushStack(m(a).filter(function(){for(b=0;e>b;b++)if(m.contains(d[b],this))return!0}));for(b=0;e>b;b++)m.find(a,d[b],c);return c=this.pushStack(e>1?m.unique(c):c),c.selector=this.selector?this.selector+" "+a:a,c},filter:function(a){return this.pushStack(w(this,a||[],!1))},not:function(a){return this.pushStack(w(this,a||[],!0))},is:function(a){return!!w(this,"string"==typeof a&&t.test(a)?m(a):a||[],!1).length}});var x,y=a.document,z=/^(?:\s*(<[\w\W]+>)[^>]*|#([\w-]*))$/,A=m.fn.init=function(a,b){var c,d;if(!a)return this;if("string"==typeof a){if(c="<"===a.charAt(0)&&">"===a.charAt(a.length-1)&&a.length>=3?[null,a,null]:z.exec(a),!c||!c[1]&&b)return!b||b.jquery?(b||x).find(a):this.constructor(b).find(a);if(c[1]){if(b=b instanceof m?b[0]:b,m.merge(this,m.parseHTML(c[1],b&&b.nodeType?b.ownerDocument||b:y,!0)),u.test(c[1])&&m.isPlainObject(b))for(c in b)m.isFunction(this[c])?this[c](b[c]):this.attr(c,b[c]);return this}if(d=y.getElementById(c[2]),d&&d.parentNode){if(d.id!==c[2])return x.find(a);this.length=1,this[0]=d}return this.context=y,this.selector=a,this}return a.nodeType?(this.context=this[0]=a,this.length=1,this):m.isFunction(a)?"undefined"!=typeof x.ready?x.ready(a):a(m):(void 0!==a.selector&&(this.selector=a.selector,this.context=a.context),m.makeArray(a,this))};A.prototype=m.fn,x=m(y);var B=/^(?:parents|prev(?:Until|All))/,C={children:!0,contents:!0,next:!0,prev:!0};m.extend({dir:function(a,b,c){var d=[],e=a[b];while(e&&9!==e.nodeType&&(void 0===c||1!==e.nodeType||!m(e).is(c)))1===e.nodeType&&d.push(e),e=e[b];return d},sibling:function(a,b){for(var c=[];a;a=a.nextSibling)1===a.nodeType&&a!==b&&c.push(a);return c}}),m.fn.extend({has:function(a){var b,c=m(a,this),d=c.length;return this.filter(function(){for(b=0;d>b;b++)if(m.contains(this,c[b]))return!0})},closest:function(a,b){for(var c,d=0,e=this.length,f=[],g=t.test(a)||"string"!=typeof a?m(a,b||this.context):0;e>d;d++)for(c=this[d];c&&c!==b;c=c.parentNode)if(c.nodeType<11&&(g?g.index(c)>-1:1===c.nodeType&&m.find.matchesSelector(c,a))){f.push(c);break}return this.pushStack(f.length>1?m.unique(f):f)},index:function(a){return a?"string"==typeof a?m.inArray(this[0],m(a)):m.inArray(a.jquery?a[0]:a,this):this[0]&&this[0].parentNode?this.first().prevAll().length:-1},add:function(a,b){return this.pushStack(m.unique(m.merge(this.get(),m(a,b))))},addBack:function(a){return this.add(null==a?this.prevObject:this.prevObject.filter(a))}});function D(a,b){do a=a[b];while(a&&1!==a.nodeType);return a}m.each({parent:function(a){var b=a.parentNode;return b&&11!==b.nodeType?b:null},parents:function(a){return m.dir(a,"parentNode")},parentsUntil:function(a,b,c){return m.dir(a,"parentNode",c)},next:function(a){return D(a,"nextSibling")},prev:function(a){return D(a,"previousSibling")},nextAll:function(a){return m.dir(a,"nextSibling")},prevAll:function(a){return m.dir(a,"previousSibling")},nextUntil:function(a,b,c){return m.dir(a,"nextSibling",c)},prevUntil:function(a,b,c){return m.dir(a,"previousSibling",c)},siblings:function(a){return m.sibling((a.parentNode||{}).firstChild,a)},children:function(a){return m.sibling(a.firstChild)},contents:function(a){return m.nodeName(a,"iframe")?a.contentDocument||a.contentWindow.document:m.merge([],a.childNodes)}},function(a,b){m.fn[a]=function(c,d){var e=m.map(this,b,c);return"Until"!==a.slice(-5)&&(d=c),d&&"string"==typeof d&&(e=m.filter(d,e)),this.length>1&&(C[a]||(e=m.unique(e)),B.test(a)&&(e=e.reverse())),this.pushStack(e)}});var E=/\S+/g,F={};function G(a){var b=F[a]={};return m.each(a.match(E)||[],function(a,c){b[c]=!0}),b}m.Callbacks=function(a){a="string"==typeof a?F[a]||G(a):m.extend({},a);var b,c,d,e,f,g,h=[],i=!a.once&&[],j=function(l){for(c=a.memory&&l,d=!0,f=g||0,g=0,e=h.length,b=!0;h&&e>f;f++)if(h[f].apply(l[0],l[1])===!1&&a.stopOnFalse){c=!1;break}b=!1,h&&(i?i.length&&j(i.shift()):c?h=[]:k.disable())},k={add:function(){if(h){var d=h.length;!function f(b){m.each(b,function(b,c){var d=m.type(c);"function"===d?a.unique&&k.has(c)||h.push(c):c&&c.length&&"string"!==d&&f(c)})}(arguments),b?e=h.length:c&&(g=d,j(c))}return this},remove:function(){return h&&m.each(arguments,function(a,c){var d;while((d=m.inArray(c,h,d))>-1)h.splice(d,1),b&&(e>=d&&e--,f>=d&&f--)}),this},has:function(a){return a?m.inArray(a,h)>-1:!(!h||!h.length)},empty:function(){return h=[],e=0,this},disable:function(){return h=i=c=void 0,this},disabled:function(){return!h},lock:function(){return i=void 0,c||k.disable(),this},locked:function(){return!i},fireWith:function(a,c){return!h||d&&!i||(c=c||[],c=[a,c.slice?c.slice():c],b?i.push(c):j(c)),this},fire:function(){return k.fireWith(this,arguments),this},fired:function(){return!!d}};return k},m.extend({Deferred:function(a){var b=[["resolve","done",m.Callbacks("once memory"),"resolved"],["reject","fail",m.Callbacks("once memory"),"rejected"],["notify","progress",m.Callbacks("memory")]],c="pending",d={state:function(){return c},always:function(){return e.done(arguments).fail(arguments),this},then:function(){var a=arguments;return m.Deferred(function(c){m.each(b,function(b,f){var g=m.isFunction(a[b])&&a[b];e[f[1]](function(){var a=g&&g.apply(this,arguments);a&&m.isFunction(a.promise)?a.promise().done(c.resolve).fail(c.reject).progress(c.notify):c[f[0]+"With"](this===d?c.promise():this,g?[a]:arguments)})}),a=null}).promise()},promise:function(a){return null!=a?m.extend(a,d):d}},e={};return d.pipe=d.then,m.each(b,function(a,f){var g=f[2],h=f[3];d[f[1]]=g.add,h&&g.add(function(){c=h},b[1^a][2].disable,b[2][2].lock),e[f[0]]=function(){return e[f[0]+"With"](this===e?d:this,arguments),this},e[f[0]+"With"]=g.fireWith}),d.promise(e),a&&a.call(e,e),e},when:function(a){var b=0,c=d.call(arguments),e=c.length,f=1!==e||a&&m.isFunction(a.promise)?e:0,g=1===f?a:m.Deferred(),h=function(a,b,c){return function(e){b[a]=this,c[a]=arguments.length>1?d.call(arguments):e,c===i?g.notifyWith(b,c):--f||g.resolveWith(b,c)}},i,j,k;if(e>1)for(i=new Array(e),j=new Array(e),k=new Array(e);e>b;b++)c[b]&&m.isFunction(c[b].promise)?c[b].promise().done(h(b,k,c)).fail(g.reject).progress(h(b,j,i)):--f;return f||g.resolveWith(k,c),g.promise()}});var H;m.fn.ready=function(a){return m.ready.promise().done(a),this},m.extend({isReady:!1,readyWait:1,holdReady:function(a){a?m.readyWait++:m.ready(!0)},ready:function(a){if(a===!0?!--m.readyWait:!m.isReady){if(!y.body)return setTimeout(m.ready);m.isReady=!0,a!==!0&&--m.readyWait>0||(H.resolveWith(y,[m]),m.fn.triggerHandler&&(m(y).triggerHandler("ready"),m(y).off("ready")))}}});function I(){y.addEventListener?(y.removeEventListener("DOMContentLoaded",J,!1),a.removeEventListener("load",J,!1)):(y.detachEvent("onreadystatechange",J),a.detachEvent("onload",J))}function J(){(y.addEventListener||"load"===event.type||"complete"===y.readyState)&&(I(),m.ready())}m.ready.promise=function(b){if(!H)if(H=m.Deferred(),"complete"===y.readyState)setTimeout(m.ready);else if(y.addEventListener)y.addEventListener("DOMContentLoaded",J,!1),a.addEventListener("load",J,!1);else{y.attachEvent("onreadystatechange",J),a.attachEvent("onload",J);var c=!1;try{c=null==a.frameElement&&y.documentElement}catch(d){}c&&c.doScroll&&!function e(){if(!m.isReady){try{c.doScroll("left")}catch(a){return setTimeout(e,50)}I(),m.ready()}}()}return H.promise(b)};var K="undefined",L;for(L in m(k))break;k.ownLast="0"!==L,k.inlineBlockNeedsLayout=!1,m(function(){var a,b,c,d;c=y.getElementsByTagName("body")[0],c&&c.style&&(b=y.createElement("div"),d=y.createElement("div"),d.style.cssText="position:absolute;border:0;width:0;height:0;top:0;left:-9999px",c.appendChild(d).appendChild(b),typeof b.style.zoom!==K&&(b.style.cssText="display:inline;margin:0;border:0;padding:1px;width:1px;zoom:1",k.inlineBlockNeedsLayout=a=3===b.offsetWidth,a&&(c.style.zoom=1)),c.removeChild(d))}),function(){var a=y.createElement("div");if(null==k.deleteExpando){k.deleteExpando=!0;try{delete a.test}catch(b){k.deleteExpando=!1}}a=null}(),m.acceptData=function(a){var b=m.noData[(a.nodeName+" ").toLowerCase()],c=+a.nodeType||1;return 1!==c&&9!==c?!1:!b||b!==!0&&a.getAttribute("classid")===b};var M=/^(?:\{[\w\W]*\}|\[[\w\W]*\])$/,N=/([A-Z])/g;function O(a,b,c){if(void 0===c&&1===a.nodeType){var d="data-"+b.replace(N,"-$1").toLowerCase();if(c=a.getAttribute(d),"string"==typeof c){try{c="true"===c?!0:"false"===c?!1:"null"===c?null:+c+""===c?+c:M.test(c)?m.parseJSON(c):c}catch(e){}m.data(a,b,c)}else c=void 0}return c}function P(a){var b;for(b in a)if(("data"!==b||!m.isEmptyObject(a[b]))&&"toJSON"!==b)return!1;
@@ -1534,1039 +1533,285 @@ div.tocify {
 
 
 
-<h1 class="title toc-ignore">Nesterov Accelerated Gradient and Momentum</h1>
-<h4 class="author">James Melville</h4>
-<h4 class="date">December 31, 2016</h4>
+<h1 class="title toc-ignore">Quasi-Hyperbolic Momentum</h1>
+<h4 class="date">April 30, 2020</h4>
 
 </div>
 
 
-<p>A way to express Nesterov Accelerated Gradient in terms of a regular momentum update was noted by <a href="http://www.jmlr.org/proceedings/papers/v28/sutskever13.html">Sutskever and co-workers</a>, and perhaps more importantly, when it came to training neural networks, it seemed to work better than classical momentum schemes. This was further confirmed by <a href="https://arxiv.org/abs/1212.0901">Bengio and co-workers</a>, who provided an alternative formulation that might be easier to integrate into existing software.</p>
-<p>I implemented NAG as part of <a href="https://github.com/jlmelville/mize">mize</a>, but found it was a bit more difficult than I’d anticipated to test that I’d got the correct results.</p>
-<p>It seems I am not alone in being confused by the exact details of implementing NAG as a momentum scheme (e.g. comments and issues in the deep learning projects <a href="https://github.com/fchollet/keras/issues/966">keras</a> and <a href="https://github.com/pluskid/Mocha.jl/pull/47">mocha.jl</a>, which I found from random googling), so mainly for the benefit of future me, I am going to derive the Sutskever and Bengio formulations from NAG in tedious detail. I am also going to derive an alternative expression that I ended up using in mize. Finally, I will write some R code to demonstrate their equivalence. This will turn out to be trickier than I anticipated.</p>
-<p>Wherever possible I will try and stick with the notation used by Sutskever. Apart from the Sutskever and Bengio papers linked to above, it’s worth checking out the <a href="http://www.jmlr.org/proceedings/papers/v28/sutskever13-supp.pdf">appendix to the Sutskever paper (PDF)</a> or the relevant part (chapter 7) of <a href="http://hdl.handle.net/1807/36012">Sutskever’s thesis</a>. For an introduction to NAG itself, try the first part of this paper by <a href="https://arxiv.org/abs/1204.3982">O’Donoghue and Candès</a> (the rest of it is also good but not germane to Nesterov momentum expressions).</p>
-<div id="definitions" class="section level2">
-<h2>Definitions</h2>
-<p>The goal is to optimize some parameters, <span class="math inline">\(\theta\)</span>. This is going to involve gradient descent, so we will be evaluating the gradient of an objective function of those parameters, <span class="math inline">\(\nabla f\left(\theta\right)\)</span>, and moving a certain distance in the direction of the negative of the gradient, the distance being related to the learning rate, <span class="math inline">\(\varepsilon\)</span>. There will also be a momentum term involved, with momentum coefficient <span class="math inline">\(\mu\)</span>. The value of the parameters, learning rate and momentum at iteration <span class="math inline">\(t\)</span> will be indicated by a subscript, e.g. <span class="math inline">\(\theta_t\)</span>.</p>
-<p>A definition which holds across all the methods discussed here is that the parameters at iteration <span class="math inline">\(t+1\)</span> are related to the parameters at iteration <span class="math inline">\(t\)</span> by an update that involves the addition of a velocity vector, <span class="math inline">\(v\)</span>:</p>
-<p><span class="math display">\[\theta_{t+1} = \theta_t + v_{t+1} \implies v_{t+1} = \theta_{t+1} - \theta_t\]</span></p>
-<p>This is pretty obvious, but different methods have different velocity defintions, and it’s easy to get confused.</p>
-<p>Finally, I’ll try to be strict about names. When I’m referring to the original Nesterov Accelerated Gradient, I’ll call that NAG. When I’m referring to the versions that recast it as a momentum scheme, I’ll call that Nesterov momentum, and refer to either the Sutskever or Bengio forumulation where necessary. The traditional momentum scheme is referred to as “standard” or “regular” momentum by Bengio, and “classical” by Sutskever. I’ll refer to it as “classical” momentum.</p>
-</div>
-<div id="classical-momentum" class="section level2">
-<h2>Classical Momentum</h2>
-<p>The classical momentum velocity vector is defined by Bengio as:</p>
-<p><span class="math display">\[v_t = \mu_{t-1}v_{t-1} - \varepsilon_{t-1}\nabla f\left(\theta_{t-1}\right)\]</span></p>
-<p>Sutskever gives the same definition but without any <span class="math inline">\(t\)</span> subscript on the velocity vector or the momentum coefficient.</p>
-<p>We can write out the full update for classical momentum as:</p>
-<p><span class="math display">\[\theta_{t+1} = \theta_t + \mu_t v_t - \varepsilon_t \nabla f\left(\theta_t\right)\]</span> with velocity:</p>
-<p><span class="math display">\[v_{t+1} = \mu_t v_t - \varepsilon_t \nabla f\left(\theta_t \right)\]</span></p>
-</div>
-<div id="nag" class="section level2">
-<h2>NAG</h2>
-<p>The Nesterov Accelerated Gradient method consists of a gradient descent step, followed by something that looks a lot like a momentum term, but isn’t exactly the same as that found in classical momentum. I’ll call it a “momentum stage” here. It’s important to note that the parameters being minimized by NAG are given the symbol <span class="math inline">\(y\)</span> by Sutskever, not <span class="math inline">\(\theta\)</span>. You’ll see that <span class="math inline">\(\theta\)</span> is the symbol for the parameters after they’ve been updated by the gradient descent stage, but before the momentum stage.</p>
-<p>Here’s the gradient descent stage: <span class="math display">\[\theta_t = y_t - \varepsilon_t \nabla f\left(y_t\right)\]</span> And here’s the momentum stage: <span class="math display">\[y_{t+1} = \theta_t + \mu_t\left(\theta_t - \theta_{t-1} \right)\]</span> That concludes one iteration of NAG. The hard part is actually finding the correct learning rate and momentum value in order to get the convergence guarantees that make the method attractive, but that needn’t concern us. Sutskever in his thesis suggests manual tuning to get an optimal result (at least for deep learning applications) so we are in heuristic territory here anyway.</p>
-</div>
-<div id="sutskever-nesterov-momentum" class="section level2">
-<h2>Sutskever Nesterov Momentum</h2>
-<p>The key idea behind the Sutskever momentum derivation is to shift the perspective about which of the parameters we want as the result of the iteration, from <span class="math inline">\(y\)</span> to <span class="math inline">\(\theta\)</span>. Rather than having the optimization iterations proceed as “gradient descent, momentum (end of iteration 1), gradient descent, momentum (end of iteration 2), gradient descent etc.” move the boundary of where the iterations end by a half-iteration to get “momentum, gradient descent (end of iteration 1), momentum, gradient descent (end of iteration 2) etc.”. This leaves a phantom gradient descent step that used to be first stage of the first iteration, now floating in the nether regions of iteration zero, but you can just pretend that the starting position is the result of gradient descent from some other arbitrary starting position.</p>
-<p>The Sutskever derivation then proceeds as follows. First, rewrite the momentum stage in terms of <span class="math inline">\(y_t\)</span>:</p>
-<p><span class="math display">\[y_t = \theta_{t-1} + \mu_{t-1}\left(\theta_{t-1} - \theta_{t-2} \right)\]</span></p>
-<p>Then note that the term in parentheses is just the definition of the velocity vector, so we can write:</p>
-<p><span class="math display">\[y_t = \theta_{t-1} + \mu_{t-1}v_{t-1}\]</span></p>
-<p>We now substitute this expression for <span class="math inline">\(y_t\)</span> into the gradient descent stage:</p>
-<p><span class="math display">\[\theta_t = \theta_{t-1} + \mu_{t-1}v_{t-1} - \varepsilon_t \nabla f\left(y_t\right)\]</span> and replace <span class="math inline">\(y_t\)</span> with an expression in terms of <span class="math inline">\(\theta_t\)</span>:</p>
-<p><span class="math display">\[\theta_t = \theta_{t-1} + \mu_{t-1}v_{t-1} - \varepsilon_t \nabla f\left(\theta_{t-1} + \mu_{t-1}v_{t-1}\right)\]</span></p>
-<p>At this point, the expression differs from that given by Sutskever in one detail: the learning rate associated with the gradient descent is currently written as <span class="math inline">\(\varepsilon_{t}\)</span>. But remember that we have now moved the boundaries of the iteration: the gradient descent that would have been the first stage of iteration <span class="math inline">\(t+1\)</span> is now the second stage of iteration <span class="math inline">\(t\)</span>. So the above expression is more correctly written as:</p>
-<p><span class="math display">\[\theta_t = \theta_{t-1} + \mu_{t-1}v_{t-1} - \varepsilon_{t-1} \nabla f\left(\theta_{t-1} + \mu_{t-1}v_{t-1}\right)\]</span></p>
-<p>just as given by Sutskever. And therefore the expression for the parameter update is trivially:</p>
-<p><span class="math display">\[\theta_{t+1} = \theta_t + \mu_t v_t - \varepsilon_t \nabla f\left(\theta_t + \mu_t v_t\right)\]</span></p>
-<p>with the velocity vector defined as:</p>
-<p><span class="math display">\[v_{t+1} = \mu_t v_t - \varepsilon_t \nabla f\left(\theta_t + \mu_t v_t\right)\]</span></p>
-<p>This looks just like the classical momentum update, except that the gradient is calculated after the momentum update. Hence, one can do NAG by simply reversing the order in which the update is usually carried out: do the momentum stage first, update the parameters, and then do the gradient descent part.</p>
-<div id="bengio-nesterov-momentum" class="section level3">
-<h3>Bengio Nesterov Momentum</h3>
-<p>The Bengio formulation of Nesterov momentum starts from the Sutskever definition and then defines a new variable, <span class="math inline">\(\Theta\)</span>, which represents <span class="math inline">\(\theta\)</span> after the momentum update:</p>
-<p><span class="math display">\[\Theta_{t-1} \equiv \theta_{t-1} + \mu_{t-1} v_{t-1}\]</span></p>
-<p>A re-arrangement that will come in handy is: <span class="math display">\[\theta_{t-1} = \Theta_{t-1} - \mu_{t-1} v_{t-1}\]</span></p>
-<p>Also, we are going to do something a bit tricky, and that is to keep on using the velocity vector definition from the Sutskever formulation, but with <span class="math inline">\(\Theta\)</span> substituted in:</p>
-<p><span class="math display">\[v_t = \mu_{t-1} v_{t-1} - \varepsilon_{t-1} \nabla f\left(\Theta_{t-1}\right)\]</span> The reason I call this tricky is that the velocity vector still refers to the <span class="math inline">\(\theta\)</span> update, but we are going to be writing the update in terms of <span class="math inline">\(\Theta\)</span>. You’ll see what I mean.</p>
-<p>Anyway, let’s take the Sutskever Nesterov momentum update and substitute in the expression above for <span class="math inline">\(\theta\)</span> in terms of <span class="math inline">\(\Theta\)</span>:</p>
-<p><span class="math display">\[\Theta_{t+1} - \mu_{t+1} v_{t+1} = \Theta_t - \mu_t v_t + \mu_t v_t - \varepsilon_t \nabla f\left(\Theta_t\right)\]</span></p>
-<p>Noting that those two <span class="math inline">\(\mu_t v_t\)</span> terms cancel out and then rearranging to leave <span class="math inline">\(\Theta_{t+1}\)</span> on the LHS, we get:</p>
-<p><span class="math display">\[\Theta_{t+1} = \Theta_t + \mu_{t+1} v_{t+1} - \varepsilon_t \nabla f\left(\Theta_t\right)\]</span></p>
-<p>We can now substitute in the Sutskever velocity expression, <span class="math inline">\(v_{t+1}\)</span>:</p>
+<p>When writing about <a href="https://jlmelville.github.io/mize/nesterov.html">Nesterov Accelerated Gradient and Momentum</a> I wrote out a formula that made it easy to interpolate between Nesterov accelerated gradient (NAG) and classical momentum (CM), and then discovered that <a href="https://arxiv.org/abs/1810.06801">Quasi-Hyperbolic Momentum</a> seemed to do the same thing. It is not immediately clear from the presentation in the QHM paper if the expressions are exactly the same, so here are some notes on my efforts to rewrite QHM into a form closer to the NAG page.</p>
+<p>A brief definition of the symbols I use:</p>
+<ul>
+<li><span class="math inline">\(\theta\)</span>: the parameters being optimized.</li>
+<li><span class="math inline">\(\varepsilon\)</span>: the learning rate or step size.</li>
+<li><span class="math inline">\(f\)</span>: the cost or loss function to be minimized.</li>
+<li><span class="math inline">\(\nabla f\left(\theta \right)\)</span>: the gradient of the cost function with respect to the parameters.</li>
+<li><span class="math inline">\(\mu\)</span>: the momentum coefficient.</li>
+<li><span class="math inline">\(v\)</span>: the velocity or update vector.</li>
+<li><span class="math inline">\(s\)</span>: the steepest descent step, i.e.</li>
+</ul>
+<p>Any of these can vary with iteration which is marked by the subscript <span class="math inline">\(t\)</span>. Most importantly for this discussion, the update vector is always:</p>
 <p><span class="math display">\[
-\Theta_{t+1} = 
-\Theta_t + \mu_{t+1}\left[\mu_t v_t - \varepsilon_t \nabla f\left(\Theta_t\right)\right] 
-- \varepsilon_t \nabla f\left(\Theta_t\right)
+v_t \overset{\mathrm{def}}{=} \theta_t - \theta_{t-1}
 \]</span></p>
-<p>Expanding out the parentheses gives:</p>
+<p>it can be expressed in other ways depending on the type of momentum being used, but that definition always holds. Also, the steepest descent step is:</p>
 <p><span class="math display">\[
-\Theta_{t+1} = 
-\Theta_t + \mu_{t+1} \mu_t v_t - \mu_{t+1} \varepsilon_t \nabla f\left(\Theta_t\right) 
-- \varepsilon_t \nabla f\left(\Theta_t\right)
+s_t \overset{\mathrm{def}}{=} -\varepsilon_t \nabla f\left(\theta_t \right)
 \]</span></p>
-<p>and, after grouping the gradient descent parts, finally gives:</p>
-<p><span class="math display">\[
-\Theta_{t+1} = 
-\Theta_t + \mu_{t+1} \mu_t v_t - \left(1 + \mu_{t+1} \right) \varepsilon_t \nabla f\left(\Theta_t\right)
-\]</span></p>
-<p>At this point in the other derivations, I isolated the bits on the RHS that wasn’t the old parameter and defined them as the velocity vector. Well, we can’t do that here, as we’re already using the Sutskever definition of the velocity vector which is <span class="math inline">\(\theta_t - \theta_{t-1}\)</span> and <em>not</em> <span class="math inline">\(\Theta_t - \Theta_{t-1}\)</span>. I said it was a bit tricky.</p>
-<p>The advantage of this expression for the Nesterov momentum is that it doesn’t require calculating a gradient at a non-standard position, and only requires a modification to the coefficients used to calculate the velocity, which is probably an easier change to make to an existing codebase which already uses classical momentum.</p>
-<p>Before going any further, it’s worth going back to the original expression for the gradient descent part of NAG that Sutskever gives in his thesis (and appendix to the paper):</p>
-<p><span class="math display">\[
-y_{t+1} = \theta_t + \mu_t\left(\theta_t - \theta_{t-1} \right) 
-= \theta_t + \mu_t v_t
-\]</span> Let’s just compare that to the Bengio definition of <span class="math inline">\(\Theta\)</span>:</p>
-<p><span class="math display">\[
-\Theta_{t} \equiv \theta_{t} + \mu_{t} v_{t}
-\]</span> Yep, that means:</p>
-<p><span class="math display">\[
-\Theta_{t} \equiv y_{t+1}
-\]</span></p>
-<p>So the Bengio formulation is really just another way to write the standard NAG update.</p>
-</div>
-<div id="an-alternative-expression-for-nag" class="section level3">
-<h3>An Alternative Expression for NAG</h3>
-<p>Let’s go back to the original formulation of NAG and now instead of making <span class="math inline">\(\theta\)</span> the variables after gradient descent, we’ll put them where <span class="math inline">\(y\)</span> was originally used. The variables after gradient descent I’ll refer to as <span class="math inline">\(\phi\)</span>.</p>
-<p><span class="math display">\[\phi_t = \theta_t - \varepsilon_t \nabla f\left(\theta_t \right)\]</span> <span class="math display">\[\theta_{t+1} = \phi_t + \mu_t\left(\phi_t - \phi_{t-1} \right)\]</span></p>
-<p>Now, let’s just write out the momentum stage in terms of <span class="math inline">\(\theta\)</span>, substituting <span class="math inline">\(\phi\)</span> wherever we find it:</p>
-<p><span class="math display">\[
-\theta_{t+1} = \theta_t - \varepsilon_t \nabla f\left(\theta_t \right)
-+ \mu_t \left[\theta_t - \varepsilon_t \nabla f\left(\theta_t \right)
-- \theta_{t-1} + \varepsilon_{t-1} \nabla f\left(\theta_{t-1} \right)
-\right]
-\]</span></p>
-<p>Rearranging:</p>
-<p><span class="math display">\[
-\theta_{t+1} = \theta_t 
-+ \mu_t \left[\theta_t - \theta_{t-1}
-+ \varepsilon_{t-1} \nabla f\left(\theta_{t-1} \right)
-- \varepsilon_t \nabla f\left(\theta_t \right)
-\right]
-- \varepsilon_t \nabla f\left(\theta_t \right)
-\]</span></p>
-<p>Finally, we can subtitute in <span class="math inline">\(v_t\)</span> for the first two terms in the square brackets, to give:</p>
-<p><span class="math display">\[
-\theta_{t+1} = \theta_t 
-+ \mu_t \left[v_t
-+ \varepsilon_{t-1} \nabla f\left(\theta_{t-1} \right)
-- \varepsilon_t \nabla f\left(\theta_t \right)
-\right]
-- \varepsilon_t \nabla f\left(\theta_t \right)
-\]</span></p>
-<p>with velocity:</p>
-<p><span class="math display">\[
-v_{t+1} =  
- \mu_t \left[v_t
-+ \varepsilon_{t-1} \nabla f\left(\theta_{t-1} \right)
-- \varepsilon_t \nabla f\left(\theta_t \right)
-\right]
-- \varepsilon_t \nabla f\left(\theta_t \right)
-\]</span></p>
-<p>This looks a lot like the classical momentum expression, but with the velocity vector modified to first remove the contribution of the gradient descent from the previous iteration, and replace it with the gradient descent contribution from the <em>current</em> iteration. Gives an interesting insight into the idea of the Nesterov momentum using a form of “lookahead” with the gradient descent.</p>
-<p>You could also choose to expand the velocity expression to make it look a bit like the Bengio formulation:</p>
-<p><span class="math display">\[
-v_{t+1} =  
-\mu_t \left[v_t
-+ \varepsilon_{t-1} \nabla f\left(\theta_{t-1} \right)
-\right]
-- \left(1 + \mu_t\right) \varepsilon_t \nabla f\left(\theta_t \right)
-\]</span></p>
-<p>but as this version can’t be expressed as the classical momentum form with different coefficients, the way the Bengio formulation can be, it probably doesn’t gain you anything in terms of implementation, except you can expand it and rearrange it further to give:</p>
-<p><span class="math display">\[
-v_{t+1} =  
-\mu_t v_t - \varepsilon_{t} \nabla f\left(\theta_{t} \right)
-+
-\mu_t 
-\left[
-\varepsilon_{t-1} \nabla f \left(\theta_{t-1}\right) 
--
-\varepsilon_{t} \nabla f \left(\theta_{t}\right)
-\right]
-\]</span> which now resembles the classical momentum expression with an extra momentum term. I haven’t found a definitive reference for this expression, or what, if any, extra insight it provides, but user ‘denis’ uses this expression in an <a href="https://stats.stackexchange.com/a/233430">answer on the Cross Validated Stack Exchange</a>, and refers to the third form as “gradient momentum”. Another way to look at this is to say that the third term reduces the contribution of the classical momentum component of the update and increases the contribution of the gradient descent, with the degree of weighting controlled by <span class="math inline">\(\mu_{t}\)</span>.</p>
-<p><a href="https://arxiv.org/abs/1810.06801">Quasi-hyperbolic momentum</a> uses a similar formulation, but introduces an extra parameter that allows QHM to generalize over classical momentum and NAG, subject to the restriction of a fixed learning rate. The Stack Exchange answer given above also suggests that the “gradient momentum” term can be set independently of <span class="math inline">\(\mu\)</span> and Denis Yarats is one of the authors of the QHM paper, so perhaps we see the origins of QHM in this answer.</p>
-<p>The setup and presentation of the update equations for QHM in that paper make it a bit hard to see the connection between it and the form of NAG given here. The supplemental material in <a href="https://papers.nips.cc/paper/9158-understanding-the-role-of-momentum-in-stochastic-gradient-methods">Understanding the Role of Momentum in Stochastic Gradient Methods</a> might be of interest, or some extra <a href="https://jlmelville.github.io/mize/qhm.html">notes on QHM</a> I wrote for my own benefit.</p>
-<p>Similarly to QHM, we can write a related “generalized” momentum update by introducing a parameter <span class="math inline">\(\beta\)</span> to give:</p>
-<p><span class="math display">\[
-v_{t+1} =  
-\mu_t v_t - \varepsilon_{t} \nabla f\left(\theta_{t} \right)
-+
-\beta_t \mu_t 
-\left[
-\varepsilon_{t-1} \nabla f \left(\theta_{t-1}\right) 
--
-\varepsilon_{t} \nabla f \left(\theta_{t}\right)
-\right]
-\]</span> where setting <span class="math inline">\(\beta_t = 0\)</span> will give classical momentum and <span class="math inline">\(\beta_t = 1\)</span> gives Nesterov.</p>
-<p>From the look of the expression, it seems that a major downside of this expression is that calculating the parameters for iteration <span class="math inline">\(t+1\)</span> requires storage of information from not only iteration <span class="math inline">\(t\)</span> but from iteration <span class="math inline">\(t-1\)</span> too. But you don’t necessarily have to do any extra storage with an implementation that used this version of NAG. At the end of an iteration, when saving the velocity vector for the next iteration, you change:</p>
-<p><span class="math display">\[v_{t-1} \leftarrow v_t\]</span> to: <span class="math display">\[v_{t-1} \leftarrow v_t + \varepsilon_{t} \nabla f\left(\theta_t \right)\]</span></p>
-<p>and then when calculating the momentum term, change:</p>
-<p><span class="math display">\[\mu_t v_t\]</span> to: <span class="math display">\[\mu_t \left[v_t - \varepsilon_{t} \nabla f\left(\theta_t \right)\right]\]</span></p>
-</div>
-</div>
-<div id="unrolling-nag-and-classical-momentum" class="section level2">
-<h2>Unrolling NAG and Classical Momentum</h2>
-<p>As a way to understand the difference between classical momentum and NAG, let’s write out the first few steps of the optimization, substituting in the recursive definitions with the previous step, and see what emerges.</p>
-<p>Because I have finally got tired of writing out <span class="math inline">\(\varepsilon_t \nabla f\left(\theta_t \right)\)</span> all over the place (and it’s visually distracting), let’s define:</p>
-<p><span class="math display">\[
--\varepsilon_t \nabla f\left(\theta_t \right) \equiv s_t
-\]</span></p>
-<p>to represent the steepest descent direction. Note that this includes the negative sign. Also, I am going to assume that the momentum is constant, to save on some more notational clutter.</p>
-<p>Classical momentum is therefore represented as:</p>
+<p>Some others will be introduced as I need them. I used equivalence symbol (<span class="math inline">\(\equiv\)</span>) for definitions on the NAG page, but I thought I would change it up and use <span class="math inline">\(\overset{\mathrm{def}}{=}\)</span> for this page, just to see which one looks nicer on the screen. I’m sure I am using them both incorrectly, but hopefully the intention comes across.</p>
+<div id="standard-definitions" class="section level2">
+<h2>Standard Definitions</h2>
+<div id="classical-momentum" class="section level3">
+<h3>Classical Momentum</h3>
 <p><span class="math display">\[
 \theta_{t+1} = \theta_t + s_t + \mu v_t
 \]</span></p>
-<p>And we’ll use this straight-forward expression for NAG:</p>
-<p><span class="math display">\[
-\theta_{t+1} = \theta_t + s_t
-+ \mu \left(\theta_t + s_t
-- \theta_{t-1} - s_{t-1}
-\right)
-\]</span></p>
-<p>with just this tiny bit of re-arranging so it most closely resembles the classical momentum expression:</p>
-<p><span class="math display">\[
-\theta_{t+1} = \theta_t + s_t + \mu v_t + \mu \left(s_t - s_{t-1} \right)
-\]</span></p>
-<div id="step-1-gradient-descent" class="section level3">
-<h3>Step 1: Gradient Descent</h3>
-<p>A consequence of my nomenclature choice is that the initial coordinates are at <span class="math inline">\(\theta_1\)</span>, not <span class="math inline">\(\theta_0\)</span>. Sorry if you find that annoying. In both cases, the first step is always just gradient descent:</p>
-<p><span class="math display">\[
-\theta_2 = \theta_1 + s_1
-\]</span></p>
-<p>The next three steps then proceed as follows:</p>
 </div>
-<div id="classical-momentum-steps-2-4" class="section level3">
-<h3>Classical Momentum Steps 2-4</h3>
+<div id="nesterov-accelerated-gradient" class="section level3">
+<h3>Nesterov Accelerated Gradient</h3>
+<p><span class="math display">\[
+\theta_{t+1} = \theta_t + \left(1 + \mu \right) s_t + \mu v_t - \mu s_{t-1}
+\]</span></p>
+</div>
+<div id="generalized-momentum" class="section level3">
+<h3>Generalized Momentum</h3>
+<p>From the above, it’s pretty easy to come up with a scheme to interpolate between CM and NAG:</p>
+<p><span class="math display">\[
+\theta_{t+1} = \theta_t + \left(1 +  \beta \mu \right) s_t + \mu v_t - \beta \mu s_{t-1}
+\]</span></p>
+<p>where <span class="math inline">\(\beta = 0\)</span> gives CM and <span class="math inline">\(\beta = 1\)</span> gives NAG.</p>
+</div>
+</div>
+<div id="damped-momentum" class="section level2">
+<h2>Damped Momentum</h2>
+<p>In the <a href="https://arxiv.org/abs/1810.06801">QHM</a> paper, a “damped” or “normalized” expression for momentum is given. This reweights the expression so that the weighting coefficients of the gradient descent and the momentum term sums to one. The idea here is to stop the length of the update, <span class="math inline">\(v_t\)</span> from being dependent on the momentum, i.e. in the above expressions, the more momentum you have, the longer the step sizes will be. This confounds any analysis of how momentum helps: better direction or just a longer step size?</p>
+<p>Damping CM just means weighting the gradient descent by <span class="math inline">\((1 - \mu)\)</span>. For NAG, this requires weighing <span class="math inline">\(s_t\)</span> (and <span class="math inline">\(s_{t-1}\)</span>) by <span class="math inline">\((1 - \mu)\)</span> in all parts of the expression to take into account that it is making a smaller contribution everywhere.</p>
+<div id="damped-classical-momentum" class="section level3">
+<h3>Damped Classical Momentum</h3>
+<p><span class="math display">\[
+\theta_{t+1} = \theta_t + \left(1 - \mu \right) s_t + \mu v_t
+\]</span></p>
+</div>
+<div id="damped-nesterov-accelerated-gradient" class="section level3">
+<h3>Damped Nesterov Accelerated Gradient</h3>
+<p><span class="math display">\[
+\theta_{t+1} = \theta_t + \left(1 - \mu^2 \right) s_t 
++ \mu v_t 
+- \left(1 - \mu \right) \mu s_{t-1}
+\]</span></p>
+<p>or:</p>
+<p><span class="math display">\[
+\theta_{t+1} = \theta_t + \left(1 + \mu \right) \left(1 - \mu \right) s_t 
++ \mu v_t 
+- \left(1 - \mu \right) \mu s_{t-1}
+\]</span></p>
+</div>
+<div id="damped-generalized-momentum" class="section level3">
+<h3>Damped Generalized Momentum</h3>
+<p><span class="math display">\[
+\theta_{t+1} = \theta_t + 
+\left( 1 + \beta \mu \right)\left(1 - \mu \right) s_t 
++ \mu v_t 
+- \beta \left(1 - \mu \right) \mu s_{t-1}
+\]</span></p>
+<p>The advantage of the damped expressions is that if you “unroll” an expression (with gradient descent on the first step) the update vector is just a weighted average of previous updates, i.e. the weighting factors sum to one without any normalization needed.</p>
+</div>
+<div id="quasi-hyperbolic-momentum" class="section level3">
+<h3>Quasi-Hyperbolic Momentum</h3>
+<p><span class="math display">\[
+\theta_{t+1} = \theta_t
++ \left( 1 - \nu \mu \right ) s_t
++ \mu v_t
+- \left( 1 - \nu \right ) \mu s_{t-1}
+\]</span></p>
+<p><span class="math inline">\(\nu = 0\)</span> gives gradient descent, <span class="math inline">\(\nu = 1\)</span> gives damped classical momentum, and <span class="math inline">\(\nu = \mu\)</span> gives damped NAG.</p>
+</div>
+<div id="deriving-the-qhm-update" class="section level3">
+<h3>Deriving the QHM update</h3>
+<p>The QHM expression above seems to differ from the one given in the <a href="https://arxiv.org/abs/1810.06801">QHM paper</a>. Also, it’s not immediately apparent that <span class="math inline">\(\nu = 0\)</span> gives gradient descent, despite my assertion.</p>
+<p>Here we’ll start with QHM update in a way that most resembles how the paper expresses it and then rewrite it into the form above. The QHM update is in a form that is both “damped” <em>and</em> assumes a constant learning rate, that latter allowing the extraction of the <span class="math inline">\(\varepsilon\)</span> out of the various update rules. Don’t worry about why the QHM authors want to do that for now.</p>
+<p>Also, I need to introduce a couple of new symbols.</p>
+<p>First, we won’t be evaluating the gradient of the objective function <span class="math inline">\(f\)</span> anywhere except at <span class="math inline">\(\theta_t\)</span>, so let’s define a short-hand to represent the gradient at iteration <span class="math inline">\(t\)</span>. It makes perfect sense to me to represent the gradient using the symbol <span class="math inline">\(g\)</span>, but the QHM authors had other plans, and use that to represent the “momentum buffer” (see below). To avoid confusion with the notation in the paper I will reluctantly choose a different symbol. The QHM authors use <span class="math inline">\(\nabla \hat{L} \left( \theta_t \right)\)</span> for the gradient of the objective function, so let’s define:</p>
+<p><span class="math display">\[
+l_t \overset{\mathrm{def}}{=} \nabla f\left(\theta_t \right)
+\]</span></p>
+<p>Second, QHM uses the expression close to the (damped) classical momentum update, which is calls the “momentum buffer”. But note that it is <em>not</em> the update vector used in QHM, so we can’t call it <span class="math inline">\(v_t\)</span>. The QHM authors refer to this as <span class="math inline">\(g_t\)</span>, but I refuse on principle to use this notation as I am incapable of not mistaking that for the gradient whenever I read it. Instead we’ll call it <span class="math inline">\(m_t\)</span> (as in m for momentum):</p>
+<p><span class="math display">\[
+m_{t+1} = (1 - \mu) l_t + \mu m_t
+\]</span></p>
+<p>We are now ready to see the QHM update:</p>
+<p><span class="math display">\[
+\theta_{t+1} = \theta_t 
+- \varepsilon 
+\left[
+\left( 1 - \nu \right ) l_t 
++ \nu m_{t+1}
+\right]
+\]</span></p>
+<p>When <span class="math inline">\(\nu = 0\)</span>, we get back plain old gradient descent. That is quite easy to see. What’s less easy to see is that <span class="math inline">\(\nu = \mu\)</span> gets you damped NAG and <span class="math inline">\(\nu = 1\)</span> gets you damped classical momentum. Now is the time to do some jiggery-pokery to the QHM equation and see what comes out.</p>
+<div id="rewriting-qhm" class="section level4">
+<h4>Rewriting QHM</h4>
+<p>The update vector for QHM is:</p>
+<p><span class="math display">\[
+v_{t+1} =
+- \varepsilon 
+\left[
+\left( 1 - \nu \right ) l_t + \nu m_{t+1}
+\right]
+\]</span></p>
+<p>Let’s expand:</p>
+<p><span class="math display">\[
+v_{t+1} =
+- \varepsilon \left( 1 - \nu \right ) l_t
+- \varepsilon \nu m_{t+1}
+\]</span></p>
+<p>and rearrange for <span class="math inline">\(m_{t+1}\)</span>:</p>
+<p><span class="math display">\[
+m_{t+1} =
+- \frac{\left( 1 - \nu \right ) l_t}{\nu}
+- \frac{v_{t+1}}{\varepsilon \nu}
+\]</span></p>
+<p>and then subtract one from each subscript to get an expression for <span class="math inline">\(m_t\)</span>:</p>
+<p><span class="math display">\[
+m_t =
+- \frac{\left( 1 - \nu \right ) l_{t-1}}{\nu}
+- \frac{v_t}{\varepsilon \nu}
+\]</span></p>
+<p>Next, let’s substitute the <span class="math inline">\(m_{t+1}\)</span> in the QHM update with the momentum buffer update expression:</p>
+<p><span class="math display">\[
+\theta_{t+1} = \theta_t 
+- \varepsilon 
+\left[
+\left( 1 - \nu \right ) l_t 
++ \nu (1 - \mu) l_t 
++ \nu \mu m_t
+\right]
+\]</span></p>
+<p>and group the <span class="math inline">\(l_t\)</span> terms together to get:</p>
+<p><span class="math display">\[
+\theta_{t+1} = \theta_t 
+- \varepsilon 
+\left[
+\left( 1 - \nu \mu \right ) l_t 
++ \nu \mu m_t
+\right]
+\]</span></p>
+<p>Now we can substitute in the expression for <span class="math inline">\(m_t\)</span> we just came up with:</p>
+<p><span class="math display">\[
+\theta_{t+1} = \theta_t 
+- \varepsilon 
+\bigg\{
+\left( 1 - \nu \mu \right ) l_t 
++ \nu \mu 
+\left[
+- \frac{\left( 1 - \nu \right ) l_{t-1}}{\nu}
+- \frac{v_t}{\varepsilon \nu}
+\right]
+\bigg\}
+\]</span></p>
+<p>to give:</p>
+<p><span class="math display">\[
+\theta_{t+1} = \theta_t 
+- \varepsilon 
+\left[
+\left( 1 - \nu \mu \right ) l_t 
+- \mu \left( 1 - \nu \right ) l_{t-1}
+- \mu \frac{v_t}{\varepsilon}
+\right]
+\]</span></p>
+<p>Finally, let’s expand the bracket, using <span class="math inline">\(s_t = -\varepsilon l_t\)</span> to give this three-term QHM expression:</p>
+<p><span class="math display">\[
+\theta_{t+1} = \theta_t 
++ \left( 1 - \nu \mu \right ) s_t
+- \mu \left( 1 - \nu \right ) s_{t-1}
++ \mu v_t
+\]</span></p>
+<p>Hopefully it is now easier to see that if you subsitute <span class="math inline">\(\nu = \mu\)</span>, you get damped NAG, and <span class="math inline">\(\nu = 1\)</span> gets you damped classical momentum. With <span class="math inline">\(\nu = 0\)</span>, when QHM should give us gradient descent, the expression looks a little odd as there are still terms that contain <span class="math inline">\(\mu\)</span>:</p>
+<p><span class="math display">\[
+\theta_{t+1} = \theta_t 
++ s_t
+- \mu s_{t-1}
++ \mu v_t
+\]</span></p>
+<p>If you wade through the expressions above, you’ll see that <span class="math inline">\(v_t\)</span> can be written as:</p>
+<p><span class="math display">\[
+v_t =
+\left( 1 - \nu \right ) s_{t-1}
+- \varepsilon \nu m_t
+\]</span></p>
+<p>And when <span class="math inline">\(\nu = 0\)</span> the second term disappears so we get:</p>
+<p><span class="math display">\[
+\mu v_t = \mu s_{t-1}
+\]</span></p>
+<p>Therfore, for <span class="math inline">\(\nu = 0\)</span>, the second and third terms in the three-term QHM equation cancel, leaving just gradient descent as expected.</p>
+</div>
+<div id="undamped-qhm" class="section level4">
+<h4>Undamped QHM?</h4>
+<p>I have been unsuccessful in coming up with an undamped version of QHM which generalizes to NAG, CM and steepest descent. Which is not to say it can’t be done.</p>
+</div>
+</div>
+<div id="constant-learning-rate" class="section level3">
+<h3>Constant Learning Rate</h3>
+<p>QHM goes one step further to also assume a fixed learning rate <span class="math inline">\(\varepsilon\)</span> at each step. The advantage of <em>that</em> can be seen by unrolling the classical momentum (undamped to be as clear as possible) for a few steps:</p>
+<p><span class="math display">\[
+\theta_2 = \theta_1 + s_1 \\
+\theta_2 = \theta_1 - \varepsilon l_1 \\
+\implies v_2 = - \varepsilon l_1
+\]</span></p>
 <p><span class="math display">\[
 \theta_3 = \theta_2 + s_2 + \mu v_2 \\
-\theta_3 = \theta_2 + s_2 + \mu s_1
+\theta_3 = 
+\theta_2 - \varepsilon l_2
+- \mu \varepsilon l_1 \\
+\theta_3 =
+\theta_2 - \varepsilon \left( l_2 + \mu l_1 \right ) \\
+\implies v_3 = - \varepsilon \left( l_2 + \mu l_1 \right)
 \]</span></p>
 <p><span class="math display">\[
-\theta_4 = \theta_3 + s_3 + \mu v_3 \\
-\theta_4 = \theta_3 + s_3 + \mu \left(s_2 + \mu s_1 \right) \\
-\theta_4 = \theta_3 + s_3 + \mu s_2 + \mu^2 s_1
+\theta_4 = \theta_3 + s_3 + \mu v_3
+\\
+\theta_4 = \theta_3 - \varepsilon l_3
+- \mu \left[ - \varepsilon \left( l_2 + \mu l_1 \right) \right]
+\\
+\implies v_4 = - \varepsilon \left[ l_3 + \mu \left( l_2 + \mu l_1 \right) \right]
 \]</span></p>
+<p>You can keep writing out the updates, but with a constant <span class="math inline">\(\varepsilon\)</span> you can always rearrange so that the update is in the form <span class="math inline">\(v_t = -\varepsilon d_t\)</span> where <span class="math inline">\(d_t\)</span> is just the direction of the update. This is also true for NAG and the damped versions. The motivation to do this for QHM is to write the update as a weighted average of gradients so the update can also be seen as a gradient estimator in a stochastic gradient descent context.</p>
+<p>The other advantage of this is that in terms of translating from the un-damped expressions to the damped forms, we can always start with the un-damped expression using a momentum coefficient <span class="math inline">\(\mu^*\)</span> and then transform into the damped expression by rescaling the contributions from the gradient descent and momentum, and then rescaling the learning rate, to compensate, i.e.:</p>
 <p><span class="math display">\[
-\theta_5 = \theta_4 + s_4 + \mu v_4 \\
-\theta_5 = \theta_4 + s_4 + \mu \left( s_3 + \mu s_2 + \mu^2 s_1 \right)\\
-\theta_5 = \theta_4 + s_4 + \mu s_3 + \mu^2 s_2 + \mu^3 s_1
+\theta_{t+1} = \theta_t -\varepsilon \left(l_t + \mu^* v_t \right) = \\
+\theta_t -\frac{\varepsilon}{1 + \mu^*} \left[ \left(1 - \mu \right) l_t + \mu v_t \right] = \\
+\theta_t - \left(1 - \mu \right) \varepsilon \left[ \left(1 - \mu \right) l_t + \mu v_t \right]
 \]</span></p>
-</div>
-<div id="nag-steps-2-4" class="section level3">
-<h3>NAG Steps 2-4</h3>
+<p>with</p>
 <p><span class="math display">\[
-\theta_3 = \theta_2 + s_2 + \mu v_2 + \mu \left(s_2 - s_1 \right) \\
-\theta_3 = \theta_2 + s_2 + \mu s_1 + \mu s_2 - \mu s_1 \\
-\theta_3 = \theta_2 + \left(1 + \mu \right) s_2
+\mu = \frac{\mu^*}{1 + \mu^*}
 \]</span></p>
-<p><span class="math display">\[
-\theta_4 = \theta_3 + s_3 + \mu v_3 + \mu \left(s_3 - s_2 \right) \\
-\theta_4 = \theta_3 + s_3 + \mu \left[ \left(1 + \mu \right) s_2 \right] + \mu s_3 - \mu s_2 \\
-\theta_4 = \theta_3 + \left(1 + \mu \right) s_3 + \mu^2 s_2
-\]</span> <span class="math display">\[
-\theta_5 = \theta_4 + s_4 + \mu v_4 + \mu \left(s_4 - s_3 \right) \\
-\theta_5 = \theta_4 + s_4 + \mu \left[ \left(1 + \mu \right) s_3 + \mu^2 s_2 \right] + \mu s_4 - \mu s_3 \\
-\theta_5 = \theta_4 + \left(1 + \mu \right) s_4 + \mu^2 s_3 + \mu^3 s_2
-\]</span></p>
-<p>You can see a pattern emerging here at this point, I hope. These are quite similar forms, the difference being in how the momentum affects the weighting coefficients.</p>
-<div id="relative-weights" class="section level4">
-<h4>Relative Weights</h4>
-<p>Here’s a table showing how on the 4th step, the two methods weight the current and previous gradients in deciding on the next direction:</p>
-<table>
-<thead>
-<tr class="header">
-<th align="center">Momentum Type</th>
-<th align="center"><span class="math inline">\(s_4\)</span></th>
-<th align="center"><span class="math inline">\(s_3\)</span></th>
-<th align="center"><span class="math inline">\(s_2\)</span></th>
-<th align="center"><span class="math inline">\(s_1\)</span></th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="center">Classical</td>
-<td align="center">1</td>
-<td align="center"><span class="math inline">\(\mu\)</span></td>
-<td align="center"><span class="math inline">\(\mu^2\)</span></td>
-<td align="center"><span class="math inline">\(\mu^3\)</span></td>
-</tr>
-<tr class="even">
-<td align="center">NAG</td>
-<td align="center">1 + <span class="math inline">\(\mu\)</span></td>
-<td align="center"><span class="math inline">\(\mu^2\)</span></td>
-<td align="center"><span class="math inline">\(\mu^3\)</span></td>
-<td align="center">0</td>
-</tr>
-</tbody>
-</table>
-<p>From this it’s clear that the difference between NAG and classical momentum is that NAG puts more weight on recent gradients: in fact, it gives zero weight to the first gradient descent direction after the first iteration, so the second step also be a pure gradient descent step, but with an extra big step size of <span class="math inline">\(\left(1 + \mu \right) \varepsilon\)</span>. Another way of looking at it is to say that NAG forgets old gradients more quickly.</p>
-<p>Let’s write some R code to generate a table to compare how the relative weights turn out between CM and NAG at different values of <span class="math inline">\(\mu\)</span>. We’ll normalize the contributions so they sum to 1.</p>
-<pre class="r"><code>cm_weights &lt;- function(mu) { c(1, mu, mu * mu, mu * mu * mu) }
-
-nag_weights &lt;- function(mu) { c(1 + mu, mu * mu, mu * mu * mu, 0) }
-
-mumat &lt;- function(wfun, mus = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.99)) {
-  rel_weights &lt;- matrix(nrow = length(mus), ncol = 5)
-  for (i in 1:length(mus)) {
-    mu &lt;- mus[i]
-    weights &lt;- wfun(mu)
-    rel_weights[i, ] &lt;- c(mu, weights / sum(weights))
-  }
-  colnames(rel_weights) &lt;- c(&quot;mu&quot;, &quot;s4&quot;, &quot;s3&quot;, &quot;s2&quot;, &quot;s1&quot;)
-
-  rel_weights
-}</code></pre>
-</div>
-<div id="classical-momentum-weights" class="section level4">
-<h4>Classical momentum weights</h4>
-<pre class="r"><code>knitr::kable(mumat(cm_weights), digits = 4)</code></pre>
-<table>
-<thead>
-<tr class="header">
-<th align="right">mu</th>
-<th align="right">s4</th>
-<th align="right">s3</th>
-<th align="right">s2</th>
-<th align="right">s1</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="right">0.10</td>
-<td align="right">0.9001</td>
-<td align="right">0.0900</td>
-<td align="right">0.0090</td>
-<td align="right">0.0009</td>
-</tr>
-<tr class="even">
-<td align="right">0.25</td>
-<td align="right">0.7529</td>
-<td align="right">0.1882</td>
-<td align="right">0.0471</td>
-<td align="right">0.0118</td>
-</tr>
-<tr class="odd">
-<td align="right">0.50</td>
-<td align="right">0.5333</td>
-<td align="right">0.2667</td>
-<td align="right">0.1333</td>
-<td align="right">0.0667</td>
-</tr>
-<tr class="even">
-<td align="right">0.75</td>
-<td align="right">0.3657</td>
-<td align="right">0.2743</td>
-<td align="right">0.2057</td>
-<td align="right">0.1543</td>
-</tr>
-<tr class="odd">
-<td align="right">0.90</td>
-<td align="right">0.2908</td>
-<td align="right">0.2617</td>
-<td align="right">0.2355</td>
-<td align="right">0.2120</td>
-</tr>
-<tr class="even">
-<td align="right">0.99</td>
-<td align="right">0.2538</td>
-<td align="right">0.2512</td>
-<td align="right">0.2487</td>
-<td align="right">0.2462</td>
-</tr>
-</tbody>
-</table>
-</div>
-<div id="nag-weights" class="section level4">
-<h4>NAG weights</h4>
-<pre class="r"><code>knitr::kable(mumat(nag_weights), digits = 4)</code></pre>
-<table>
-<thead>
-<tr class="header">
-<th align="right">mu</th>
-<th align="right">s4</th>
-<th align="right">s3</th>
-<th align="right">s2</th>
-<th align="right">s1</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="right">0.10</td>
-<td align="right">0.9901</td>
-<td align="right">0.0090</td>
-<td align="right">0.0009</td>
-<td align="right">0</td>
-</tr>
-<tr class="even">
-<td align="right">0.25</td>
-<td align="right">0.9412</td>
-<td align="right">0.0471</td>
-<td align="right">0.0118</td>
-<td align="right">0</td>
-</tr>
-<tr class="odd">
-<td align="right">0.50</td>
-<td align="right">0.8000</td>
-<td align="right">0.1333</td>
-<td align="right">0.0667</td>
-<td align="right">0</td>
-</tr>
-<tr class="even">
-<td align="right">0.75</td>
-<td align="right">0.6400</td>
-<td align="right">0.2057</td>
-<td align="right">0.1543</td>
-<td align="right">0</td>
-</tr>
-<tr class="odd">
-<td align="right">0.90</td>
-<td align="right">0.5525</td>
-<td align="right">0.2355</td>
-<td align="right">0.2120</td>
-<td align="right">0</td>
-</tr>
-<tr class="even">
-<td align="right">0.99</td>
-<td align="right">0.5050</td>
-<td align="right">0.2487</td>
-<td align="right">0.2462</td>
-<td align="right">0</td>
-</tr>
-</tbody>
-</table>
-<p>At high momentum, classical momentum is only placing around 25-30% of the weight on the current gradient, whereas for NAG, it’s still at 50-55%.</p>
+<p>As noted in the paper, this shrinks the update by a factor of <span class="math inline">\(1 - \mu\)</span> and this can be compensated by increasing <span class="math inline">\(\varepsilon\)</span> accordingly.</p>
+<p>Note also that the recommended setting of the damped momentum coefficient <span class="math inline">\(\mu = 0.999\)</span> in QHM would therefore translate to a very large undamped momentum coefficient of <span class="math inline">\(\mu^* = 999\)</span>.</p>
 </div>
 </div>
-</div>
-<div id="nag-in-practice" class="section level2">
-<h2>NAG in practice</h2>
-<p>So that’s how it’s all supposed to work in principle. Here I’ll demonstrate the equivalence of these methods, by implementing them all in simple R code.</p>
-<p>The biggest simplification I’ll make is that I’ll assume a constant learning rate and a constant momentum coefficient.</p>
-<div id="classical-momentum-1" class="section level3">
-<h3>Classical Momentum</h3>
-<pre class="r"><code>#&#39; Optimization by Classical Momentum
-#&#39;
-#&#39; @param par Starting point of vector of parameters to optimize.
-#&#39; @param fn Objective function to optimize. Takes vector with length of
-#&#39; \code{par} and returns a scalar.
-#&#39; @param gr Gradient of the objective function \code{fn}. Takes vector with
-#&#39; length of \code{par} and returns a vector of the same length.
-#&#39; @param lr Learning rate.
-#&#39; @param mu Momentum coefficient.
-#&#39; @param max_iter Maximum number of iterations to optimize for. First iteration
-#&#39; is always steepest descent.
-#&#39; @return list with components: \code{par} final set of parameters; \code{f}
-#&#39; value of \code{fn} evaluated at the returned set of parameters; \code{fs}
-#&#39; vector of function evaluated after each iteration.
-cm &lt;- function(par, fn, gr, lr, mu, max_iter = 10) {
-  fs &lt;- rep(0, max_iter)
-
-  v &lt;- rep(0, length(par))
-  for (i in 1:max_iter) {
-    g &lt;- gr(par)
-    v &lt;- mu * v - lr * g
-    par &lt;- par + v
-    
-    # store results
-    f &lt;- fn(par)
-    fs[i] &lt;- f
-  }
-
-  list(par = par, f = f, fs = fs)
-}</code></pre>
-<p>This is a reference implementation of classical momentum. Nearly all the parameters and the return values are the same for the other functions (except where noted), so they’re documented here once.</p>
-<p>Onto the various NAG implementations. They all have an extra bit of code in them to ensure that on the first iteration only the gradient descent stage is carried out. This is needed to keep the outputs consistent between the different implementations. The <code>cm</code> routine doesn’t require any extra checks for steepest descent on the first iteration, because initializing the velocity vector to zero results in steepest descent anyway even if the momentum coefficient is non-zero. As we’ll see below, some of the other implementations either don’t explicitly use a velocity vector or need the momentum coefficient to be set to zero on the first iteration to get the same result.</p>
-</div>
-<div id="nag-1" class="section level3">
-<h3>NAG</h3>
-<pre class="r"><code># Optimization by Nesterov Accelerated Gradient
-#
-# Return list also contains gd_fs: function evaluated after gradient descent
-# stage of each iteration; all: function evaluated after gradient descent
-# stage and momentum stage, in order.
-nag &lt;- function(par, fn, gr, lr, mu, max_iter = 10) {
-  fs &lt;- rep(0, max_iter)
-  gd_fs &lt;- rep(0, max_iter)
-  all &lt;- rep(0, max_iter * 2)
-
-  x_old &lt;- rep(0, length(par))
-  for (i in 1:max_iter) {
-    # gradient descent stage
-    g &lt;- gr(par)
-    x &lt;- par - (lr * g)
-
-    # store gradient descent values
-    f &lt;- fn(x)
-    gd_fs[i] &lt;- f
-    all[i * 2 - 1] &lt;- f
-
-    # momentum stage and update
-    par &lt;- x + ifelse(i == 1, 0, mu) * (x - x_old)
-    x_old &lt;- x
-
-    # store momentum values
-    f &lt;- fn(par)
-    fs[i] &lt;- f
-    all[i * 2] &lt;- f
-  }
-
-  list(par = par, f = f, fs = fs, gd_fs = gd_fs, all = all)
-}</code></pre>
-<p>In this routine, rather than store the velocity vector, we store the previous gradient descent result, <code>x_old</code>. In order to ensure the first iteration is gradient descent only, we also need to manually set the momentum coefficient <code>mu</code> to zero on the first iteration, which is what that <code>ifelse</code> expression does.</p>
-<p>Also, there’s some extra code to calculate and store the function values after the gradient descent stage. These aren’t needed for the optimization to work, I just want to keep track of the values to demonstrate the different methods are in fact equivalent.</p>
-</div>
-<div id="sutskever-formulation" class="section level3">
-<h3>Sutskever Formulation</h3>
-<pre class="r"><code># Optimization by Sutskever Nesterov Momentum
-#
-# Return list also contains mu_fs: function evaluated after momentum
-# stage of each iteration; all: function evaluated after gradient descent
-# stage and momentum stage, in order.
-snag &lt;- function(par, fn, gr, lr, mu, max_iter = 10) {
-  v &lt;- rep(0, length(par))
-
-  fs &lt;- rep(0, max_iter)
-  mu_fs &lt;- rep(0, max_iter)
-  all &lt;- rep(0, max_iter * 2)
-
-  for (i in 1:max_iter) {
-    # momentum stage and update parameters
-    mu_step &lt;- mu * v
-    par &lt;- par + mu_step
-
-    # store momentum results
-    f &lt;- fn(par)
-    mu_fs[i] &lt;- f
-    all[i * 2 - 1] &lt;- f
-
-    # gradient descent stage
-    g &lt;- gr(par)
-    gd_step &lt;- -lr * g
-
-    # update and store velocity for next step
-    par &lt;- par + gd_step
-    v &lt;- mu_step + gd_step
-
-    # store gradient descent results
-    f &lt;- fn(par)
-    fs[i] &lt;- f
-    all[i * 2] &lt;- f
-  }
-
-  list(par = par, f = f, fs = fs, mu_fs = mu_fs, all = all)
-}</code></pre>
-</div>
-<div id="bengio-formulation" class="section level3">
-<h3>Bengio Formulation</h3>
-<pre class="r"><code># Optimization by Bengio Nesterov Momentum
-bnag &lt;- function(par, fn, gr, lr, mu, max_iter = 10) {
-  fs &lt;- rep(0, max_iter)
-
-  v &lt;- rep(0, length(par))
-  for (i in 1:max_iter) {
-    g &lt;- gr(par)
-    par &lt;- par + mu * mu * v - (1 + mu) * lr * g
-    v &lt;- mu * v - lr * g
-
-    # store results
-    f &lt;- fn(par)
-    fs[i] &lt;- f
-  }
-
-  list(par = par, f = f, fs = fs)
-}</code></pre>
-<p>Because this implementation only uses a constant momentum coefficient, we replace the <span class="math inline">\(\mu_{t+1}\mu_{t}\)</span> term with <span class="math inline">\(\mu_{t}^2\)</span>. You would probably have to using a pretty wacky non-constant momentum schedule where this approximation had any major effect anyway… except when the momentum is changing from zero to non-zero, that is, in which case that’s the difference between some momentum and no momentum. We shall return to this point later.</p>
-</div>
-<div id="alternative-momentum-nag-expression" class="section level3">
-<h3>Alternative momentum NAG Expression</h3>
-<pre class="r"><code># Optimization by Nesterov Accelerated Gradient, using a momentum-style
-# update expression.
-mnag &lt;- function(par, fn, gr, lr, mu, max_iter = 10) {
-  fs &lt;- rep(0, max_iter)
-
-  v &lt;- rep(0, length(par))
-  for (i in 1:max_iter) {
-    g &lt;- gr(par)
-    v &lt;- mu * (v - lr * g) - lr * g
-    par &lt;- par + v
-    
-    # setup v for the next iteration by removing the old gradient contribution
-    v &lt;- v + lr * g
-    
-    # store results
-    f &lt;- fn(par)
-    fs[i] &lt;- f
-  }
-
-  list(par = par, f = f, fs = fs)
-}</code></pre>
-<p>Finally, here is your humble author’s expression for NAG, written as a momentum-style update. To differentiate from the Sutskever and Bengio versions of NAG, I’ll refer to it as momentum-NAG or mNAG.</p>
-</div>
-<div id="testing-with-rosenbrock" class="section level3">
-<h3>Testing with Rosenbrock</h3>
-<p>Tradition dictates that I must demonstrate the use of these optimizers using the 2D Rosenbrock function, with a specific starting point:</p>
-<pre class="r"><code>par &lt;- c(-1.2, 1)
-
-fn &lt;- function(x) {
-  x1 &lt;- x[1]
-  x2 &lt;- x[2]
-  100 * (x2 - x1 * x1) ^ 2 + (1 - x1) ^ 2
-}
-gr &lt;- function(x) {
-  x1 &lt;- x[1]
-  x2 &lt;- x[2]
-  c(
-    -400 * x1 * (x2 - x1 * x1) - 2 * (1 - x1),
-    200 *      (x2 - x1 * x1))
-}</code></pre>
-<p>Let’s run the optimizers for 100 iterations. The point here is not whether we get really amazing optimization (we don’t), but whether the outputs of the Sutskever and Bengio algorithms are equivalent. It would be a bonus if my mNAG result also worked. For comparison we’ll throw in the classical momentum and as a sanity check, the vanilla NAG routine.</p>
-<pre class="r"><code>lr &lt;- 0.001
-mu &lt;- 0.95
-max_iter &lt;- 100
-snag_opt &lt;- snag(par, fn, gr, lr, mu, max_iter)
-bnag_opt &lt;- bnag(par, fn, gr, lr, mu, max_iter)
-nag_opt &lt;- nag(par, fn, gr, lr, mu, max_iter)
-mnag_opt &lt;- mnag(par, fn, gr, lr, mu, max_iter)
-cm_opt &lt;- cm(par, fn, gr, lr, mu, max_iter)
-
-sbnag_df &lt;- data.frame(Bengio = bnag_opt$fs,
-                 Sutskever = snag_opt$fs, 
-                 &quot;Suts Mom&quot; = snag_opt$mu_fs,
-                 &quot;NAG&quot; = nag_opt$fs,
-                 &quot;mNAG&quot; = mnag_opt$fs,
-                 &quot;CM&quot; = cm_opt$fs)</code></pre>
-<p>Let’s have a look at the first few iteration results:</p>
-<pre class="r"><code>knitr::kable(head(sbnag_df), caption = paste(
-  &quot;First few evaluations of NAG implementations, with lr = &quot;, 
-  formatC(lr), &quot;mu = &quot;, formatC(mu),
-  collapse = &quot; &quot;))</code></pre>
-<table>
-<caption>First few evaluations of NAG implementations, with lr = 0.001 mu = 0.95</caption>
-<thead>
-<tr class="header">
-<th align="right">Bengio</th>
-<th align="right">Sutskever</th>
-<th align="right">Suts.Mom</th>
-<th align="right">NAG</th>
-<th align="right">mNAG</th>
-<th align="right">CM</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="right">34.960154</td>
-<td align="right">5.352912</td>
-<td align="right">24.200000</td>
-<td align="right">5.352912</td>
-<td align="right">34.960154</td>
-<td align="right">5.352912</td>
-</tr>
-<tr class="even">
-<td align="right">7.039334</td>
-<td align="right">6.144886</td>
-<td align="right">34.960154</td>
-<td align="right">5.257042</td>
-<td align="right">7.039334</td>
-<td align="right">25.541437</td>
-</tr>
-<tr class="odd">
-<td align="right">5.020041</td>
-<td align="right">4.002116</td>
-<td align="right">7.039334</td>
-<td align="right">4.133512</td>
-<td align="right">5.020041</td>
-<td align="right">22.488091</td>
-</tr>
-<tr class="even">
-<td align="right">3.845406</td>
-<td align="right">3.895340</td>
-<td align="right">5.020041</td>
-<td align="right">4.096729</td>
-<td align="right">3.845406</td>
-<td align="right">4.321887</td>
-</tr>
-<tr class="odd">
-<td align="right">3.746363</td>
-<td align="right">3.818670</td>
-<td align="right">3.845406</td>
-<td align="right">4.069433</td>
-<td align="right">3.746363</td>
-<td align="right">18.826923</td>
-</tr>
-<tr class="even">
-<td align="right">3.668701</td>
-<td align="right">3.741945</td>
-<td align="right">3.746363</td>
-<td align="right">4.050225</td>
-<td align="right">3.668701</td>
-<td align="right">17.960659</td>
-</tr>
-</tbody>
-</table>
-<p>The first two columns pit the Sutskever vs Bengio formulations directly. And, as we would expect, they’re not the same: the Sutskever iteration result is from the gradient descent stage, and the Bengio result comes from the momentum stage. But if we put the momentum results from the Sutskever formulation up, we can see that they are the same as the Bengio result, but behind by one iteration, i.e. the Bengio result at iteration <span class="math inline">\(t\)</span> matches the Sutskever momentum stage result at <span class="math inline">\(t+1\)</span>. The final column, indicates the results using the alternative derivation I provided. It matches the Bengio results. Hurrah.</p>
-<p>However, none of the results match the vanilla NAG implementation. A clue to what’s going on is from looking at the classical momentum result in the “CM” column. The first iteration of classical momentum is always plain gradient descent, and that’s also how NAG works by construction. We can see that both NAG and CM have the same result on the first iteration, which suggests they’re working correctly. The Sutskever version is also doing gradient descent on its first step. But the other implementations clearly aren’t doing gradient descent on their first iteration, and on subsequent iterations even the Sutskever version diverges from the NAG result.</p>
-<p>We’ll get back to this, but let’s just make sure these observations holds up at the end of the table too.</p>
-<pre class="r"><code>knitr::kable(tail(sbnag_df), caption = paste(
-  &quot;Last few evaluations of NAG implementations, with lr = &quot;, 
-  formatC(lr), &quot;mu = &quot;, formatC(mu),
-  collapse = &quot; &quot;))</code></pre>
-<table>
-<caption>Last few evaluations of NAG implementations, with lr = 0.001 mu = 0.95</caption>
-<thead>
-<tr class="header">
-<th></th>
-<th align="right">Bengio</th>
-<th align="right">Sutskever</th>
-<th align="right">Suts.Mom</th>
-<th align="right">NAG</th>
-<th align="right">mNAG</th>
-<th align="right">CM</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>95</td>
-<td align="right">0.0142850</td>
-<td align="right">0.0151685</td>
-<td align="right">0.0151835</td>
-<td align="right">0.0590959</td>
-<td align="right">0.0142850</td>
-<td align="right">0.4448498</td>
-</tr>
-<tr class="even">
-<td>96</td>
-<td align="right">0.0134463</td>
-<td align="right">0.0142710</td>
-<td align="right">0.0142850</td>
-<td align="right">0.0552234</td>
-<td align="right">0.0134463</td>
-<td align="right">0.5019262</td>
-</tr>
-<tr class="odd">
-<td>97</td>
-<td align="right">0.0126630</td>
-<td align="right">0.0134332</td>
-<td align="right">0.0134463</td>
-<td align="right">0.0516306</td>
-<td align="right">0.0126630</td>
-<td align="right">0.4306990</td>
-</tr>
-<tr class="even">
-<td>98</td>
-<td align="right">0.0119314</td>
-<td align="right">0.0126508</td>
-<td align="right">0.0126630</td>
-<td align="right">0.0482955</td>
-<td align="right">0.0119314</td>
-<td align="right">0.3112414</td>
-</tr>
-<tr class="odd">
-<td>99</td>
-<td align="right">0.0112476</td>
-<td align="right">0.0119199</td>
-<td align="right">0.0119314</td>
-<td align="right">0.0451983</td>
-<td align="right">0.0112476</td>
-<td align="right">0.2869773</td>
-</tr>
-<tr class="even">
-<td>100</td>
-<td align="right">0.0106082</td>
-<td align="right">0.0112368</td>
-<td align="right">0.0112476</td>
-<td align="right">0.0423208</td>
-<td align="right">0.0106082</td>
-<td align="right">0.3721692</td>
-</tr>
-</tbody>
-</table>
-<p>The Sutskever, Bengio and momentum NAG implementations all still match up in the same way they did. CM and NAG are off doing their own thing. I suppose it’s at least reassuring that for this arbitrarily chosen set of learning rate and momentum coefficient values, the NAG results all do better than classical momentum. And in fact it seems like not doing plain gradient descent on the first iteration gives better results, at least for this set of parameters.</p>
-</div>
-<div id="behavior-on-first-iteration" class="section level3">
-<h3>Behavior on first iteration</h3>
-<p>The reason for the differing behaviors of the NAG implementations is down to two things:</p>
+<div id="sort-of-related-ideas" class="section level2">
+<h2>Sort of Related Ideas</h2>
 <ul>
-<li>For some implementations (the Bengio and momentum NAG formulations), simply setting the initial velocity vector, <span class="math inline">\(v_0\)</span>, to zero isn’t enough to get gradient descent on the first iteration.</li>
-<li>The Sutskever version of NAG does a different pattern of gradient descent and momentum stages in its iterations, compared to vanilla NAG.</li>
+<li><a href="http://papers.nips.cc/paper/9158-understanding-the-role-of-momentum-in-stochastic-gradient-methods">Understanding the Role of Momentum in Stochastic Gradient Methods</a></li>
 </ul>
-<p>For the first point, let’s look at the Bengio formulation again:</p>
-<p><span class="math display">\[\Theta_{t+1} = 
-\Theta_t + \mu_{t+1} \mu_t v_t - \left(1 + \mu_{t+1} \right) \varepsilon_t \nabla f\left(\Theta_t\right) 
-\]</span> Let’s see the result for the first iteration with our current strategy of setting the initial velocity vector to zero:</p>
-<p><span class="math display">\[\Theta_1 = 
-\Theta_0 - \left(1 + \mu_1 \right) \varepsilon_t \nabla f\left(\Theta_0\right) 
-\]</span> Without also specifying that the momentum coefficient should be zero on the first iteration, we get an extra long gradient descent step. The same applies to the momentum NAG expression.</p>
-<p>That explains the Bengio formulation’s difference from the vanilla NAG result. What about the Sutskever formulation? Let’s think about the chain of parameter updates that actually take place over the first few iterations:</p>
-<p>For standard NAG, the chain is: gradient descent stage, momentum stage, gradient descent stage, momentum stage. Except the momentum stage results in zero change on iteration one because of the zero velocity vector, so what actually happens is: gradient descent stage, gradient descent stage, momentum stage. Let’s call that <code>g|gm</code> for short with the bar indicating where the end of an iteration occurs. To make the pattern more obvious, the first three iterations look like <code>g|gm|gm</code>. This is the same pattern as classical momentum, althought the <code>m</code> stages are obviously different in content.</p>
-<p>What about the Sutskever formulation? Its pattern for the first two iterations is: momentum stage, gradient descent stage, momentum stage, gradient descent stage. Except, once again, the momentum stage doesn’t happen on the first iteration, so you actually get: gradient descent stage, momentum stage, gradient descent stage, and so on. So for the Sutskever forumulation, the first three iterations look like <code>g|mg|mg</code>.</p>
-<p>Therefore, as you can see, the initial set of gradient and momentum stages is different for the Sutskever formulation, which is able to strictly interleave gradient descent and momentum stages, whereas NAG begins, like classical momentum, with two gradient descent stages. This difference shouldn’t be too surprising, because as we saw when deriving the Sutskever formulation, we conveniently “forget” about an initial gradient descent stage compared to NAG.</p>
-<p>Anyway, all this means that the parameters end up in different locations after the first iteration.</p>
-</div>
-</div>
-<div id="consistent-nag-momentum-algorithms" class="section level2">
-<h2>Consistent NAG momentum algorithms</h2>
-<p>It’s not clear to me that there is any particular theoretical or practical benefit to trying to bend these different formulations to give either gradient descent on the first iteration or to having them give the same pattern as vanilla NAG. But given the effort that’s been made to show that NAG is like classical momentum in some respects, we may as well see what it would take.</p>
-<div id="sutskever-formulation-consistent-with-nag" class="section level3">
-<h3>Sutskever Formulation consistent with NAG</h3>
-<pre class="r"><code># Sutskever Nesterov Momentum consistent with NAG
-#
-# Extra parameter wait: wait this number of extra iterations before applying
-# momentum. Needed only to sync up with other implementations of nesterov
-# momentum: set wait to 1 to make mu_f at iter i match the output of the
-# other implementations at iter i-1.
-snagc &lt;- function(par, fn, gr, lr, mu, max_iter = 10, wait = 0) {
-  v &lt;- rep(0, length(par))
-
-  fs &lt;- rep(0, max_iter)
-  mu_fs &lt;- rep(0, max_iter)
-  all &lt;- rep(0, max_iter * 2)
-
-  for (i in 1:max_iter) {
-    # momentum stage and update parameters
-    mu_step &lt;- ifelse(i &gt; wait + 1, mu, 0) * v
-    par &lt;- par + mu_step
-
-    # store momentum results
-    f &lt;- fn(par)
-    mu_fs[i] &lt;- f
-    all[i * 2 - 1] &lt;- f
-
-    # gradient descent stage
-    g &lt;- gr(par)
-    gd_step &lt;- -lr * g
-
-    # update and store velocity for next step
-    par &lt;- par + gd_step
-    v &lt;- mu_step + gd_step
-
-    # store gradient descent results
-    f &lt;- fn(par)
-    fs[i] &lt;- f
-    all[i * 2] &lt;- f
-  }
-
-  list(par = par, f = f, fs = fs, mu_fs = mu_fs, all = all)
-}</code></pre>
-<p>The Sutskever formulation already does gradient descent on its first iteration, so there’s not a huge change required for the algorithm. Instead, I’ve introduced a new parameter <code>wait</code>, that indicates the number of iterations to wait before applying momentum. If this is set to <code>0</code>, then you get the current behavior. Set it to <code>1</code> and the momentum step will be zero on the second iteration, too. That gives us the two gradient descent stages in a row that should sync us up with NAG.</p>
-</div>
-<div id="bengio-formulation-consistent-with-nag" class="section level3">
-<h3>Bengio Formulation consistent with NAG</h3>
-<pre class="r"><code># Bengio Nesterov Momentum consistent with NAG
-bnagc &lt;- function(par, fn, gr, lr, mu, max_iter = 10) {
-  fs &lt;- rep(0, max_iter)
-
-  v &lt;- rep(0, length(par))
-  for (i in 1:max_iter) {
-    g &lt;- gr(par)
-    if (i == 1) {
-      par &lt;- par - lr * g
-    }
-    else {
-      par &lt;- par + (mu * mu * v) - ((1 + mu) * lr * g)
-      v &lt;- (mu * v) - (lr * g)
-    }
-    
-    # store gradient descent results
-    f &lt;- fn(par)
-    fs[i] &lt;- f
-  }
-
-  list(par = par, f = f, fs = fs)
-}</code></pre>
-<p>“Fixing” the Bengio formulation turns out to be a bit more work than you might think. As we noticed earlier, to get gradient decent on the first iteration, <span class="math inline">\(\mu_1\)</span>, needs to be set to zero. However, as a result this means the assumption we made that <span class="math inline">\(\mu_{t}\mu_{t-1} = \mu_{t-1}^2\)</span> isn’t correct for iteration 2: <span class="math inline">\(\mu_2\mu_1 = 0 \neq \mu_2^2\)</span>. However, we can’t just set <code>mu</code> to 0 for the second iteration, because the non-zero <span class="math inline">\(\mu_2\)</span> is used on its own as part of the gradient descent expression.</p>
-<p>There are two ways to deal with this: start storing the value of <code>mu</code> from the previous iteration, even though I purposely chose a constant value of <code>mu</code> to keep things simple, or just force <span class="math inline">\(v_1\)</span> to be zero by not updating it on the first iteration. I chose the latter.</p>
-</div>
-<div id="momentum-nag-consistent-with-nag" class="section level3">
-<h3>Momentum NAG consistent with NAG</h3>
-<pre class="r"><code># momentum NAG consistent with NAG
-mnagc &lt;- function(par, fn, gr, lr, mu, max_iter = 10) {
-  fs &lt;- rep(0, max_iter)
-
-  v &lt;- rep(0, length(par))
-  for (i in 1:max_iter) {
-    g &lt;- gr(par)
-    v &lt;- (ifelse(i == 1, 0, mu) * (v - lr * g)) - lr * g
-    par &lt;- par + v
-    
-    # setup v for the next iteration by removing the old gradient contribution
-    v &lt;- v + lr * g
-    
-    # store results
-    f &lt;- fn(par)
-    fs[i] &lt;- f
-  }
-
-  list(par = par, f = f, fs = fs)
-}</code></pre>
-<p>And last, the rewritten momentum NAG update. This required the least modification from the original routine: simply set the momentum coefficient to zero on the first iteration.</p>
-</div>
-<div id="results-for-the-nag-consistent-routines" class="section level3">
-<h3>Results for the “NAG-consistent” routines</h3>
-<p>Time to look at some numbers again. We’ll compare the new versions of the Sutskever, Bengio and Momentum formulations of NAG with vanilla NAG. We’ll also once again pull out the momentum stage results for Sutskever so we can compare directly to the Bengio result.</p>
-<pre class="r"><code>mnagc_opt &lt;- mnagc(par, fn, gr, lr, mu, max_iter)
-snagc_opt &lt;- snagc(par, fn, gr, lr, mu, max_iter, wait = 1)
-bnagc_opt &lt;- bnagc(par, fn, gr, lr, mu, max_iter)
-
-ncdf &lt;- data.frame(cBengio = bnagc_opt$fs,
-                 cSutskever = snagc_opt$fs,
-                 &quot;Suts Mom&quot; = snagc_opt$mu_fs,
-                 NAG = nag_opt$fs, 
-                 cmNAG = mnagc_opt$fs,
-                 &quot;NAG gd&quot; = nag_opt$gd_fs)</code></pre>
-<p>Let’s have a look at the first few iteration results:</p>
-<pre class="r"><code>knitr::kable(head(ncdf), caption = paste(
-  &quot;First few evaluations of NAG consistent implementations, with lr = &quot;, 
-  formatC(lr), &quot;mu = &quot;, formatC(mu),
-  collapse = &quot; &quot;))</code></pre>
-<table>
-<caption>First few evaluations of NAG consistent implementations, with lr = 0.001 mu = 0.95</caption>
-<thead>
-<tr class="header">
-<th align="right">cBengio</th>
-<th align="right">cSutskever</th>
-<th align="right">Suts.Mom</th>
-<th align="right">NAG</th>
-<th align="right">cmNAG</th>
-<th align="right">NAG.gd</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="right">5.352912</td>
-<td align="right">5.352912</td>
-<td align="right">24.200000</td>
-<td align="right">5.352912</td>
-<td align="right">5.352912</td>
-<td align="right">5.352912</td>
-</tr>
-<tr class="even">
-<td align="right">5.257042</td>
-<td align="right">4.117790</td>
-<td align="right">5.352912</td>
-<td align="right">5.257042</td>
-<td align="right">5.257042</td>
-<td align="right">4.117790</td>
-</tr>
-<tr class="odd">
-<td align="right">4.133512</td>
-<td align="right">4.118466</td>
-<td align="right">5.257042</td>
-<td align="right">4.133512</td>
-<td align="right">4.133512</td>
-<td align="right">4.118466</td>
-</tr>
-<tr class="even">
-<td align="right">4.096729</td>
-<td align="right">4.097143</td>
-<td align="right">4.133512</td>
-<td align="right">4.096729</td>
-<td align="right">4.096729</td>
-<td align="right">4.097143</td>
-</tr>
-<tr class="odd">
-<td align="right">4.069433</td>
-<td align="right">4.082870</td>
-<td align="right">4.096729</td>
-<td align="right">4.069433</td>
-<td align="right">4.069433</td>
-<td align="right">4.082870</td>
-</tr>
-<tr class="even">
-<td align="right">4.050225</td>
-<td align="right">4.066122</td>
-<td align="right">4.069433</td>
-<td align="right">4.050225</td>
-<td align="right">4.050225</td>
-<td align="right">4.066122</td>
-</tr>
-</tbody>
-</table>
-<p>These are in the same order as the previous table. The Bengio and Sutskever formulations don’t match, as expected. But the Sutskever momentum result in the third column <em>does</em> match the Bengio results from the previous iteration. So relative performance between Sutskever and Bengio has been maintained. But in addition, the NAG result in the fourth column matches the Bengio and Sutskever momentum results. The momentum NAG result has also been correctly updated. Finally, as an extra check, the NAG gradient desent result is shown in the final column, which also matches up with the Sutskever results.</p>
-<p>And let’s take a look at the final few iterations, just to make sure everything still holds up:</p>
-<pre class="r"><code>knitr::kable(tail(ncdf), caption = paste(
-  &quot;Last few evaluations of NAG consistent implementations, with lr = &quot;, 
-  formatC(lr), &quot;mu = &quot;, formatC(mu),
-  collapse = &quot; &quot;))</code></pre>
-<table>
-<caption>Last few evaluations of NAG consistent implementations, with lr = 0.001 mu = 0.95</caption>
-<thead>
-<tr class="header">
-<th></th>
-<th align="right">cBengio</th>
-<th align="right">cSutskever</th>
-<th align="right">Suts.Mom</th>
-<th align="right">NAG</th>
-<th align="right">cmNAG</th>
-<th align="right">NAG.gd</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>95</td>
-<td align="right">0.0590959</td>
-<td align="right">0.0631888</td>
-<td align="right">0.0632715</td>
-<td align="right">0.0590959</td>
-<td align="right">0.0590959</td>
-<td align="right">0.0631888</td>
-</tr>
-<tr class="even">
-<td>96</td>
-<td align="right">0.0552234</td>
-<td align="right">0.0590202</td>
-<td align="right">0.0590959</td>
-<td align="right">0.0552234</td>
-<td align="right">0.0552234</td>
-<td align="right">0.0590202</td>
-</tr>
-<tr class="odd">
-<td>97</td>
-<td align="right">0.0516306</td>
-<td align="right">0.0551542</td>
-<td align="right">0.0552234</td>
-<td align="right">0.0516306</td>
-<td align="right">0.0516306</td>
-<td align="right">0.0551542</td>
-</tr>
-<tr class="even">
-<td>98</td>
-<td align="right">0.0482955</td>
-<td align="right">0.0515670</td>
-<td align="right">0.0516306</td>
-<td align="right">0.0482955</td>
-<td align="right">0.0482955</td>
-<td align="right">0.0515670</td>
-</tr>
-<tr class="odd">
-<td>99</td>
-<td align="right">0.0451983</td>
-<td align="right">0.0482371</td>
-<td align="right">0.0482955</td>
-<td align="right">0.0451983</td>
-<td align="right">0.0451983</td>
-<td align="right">0.0482371</td>
-</tr>
-<tr class="even">
-<td>100</td>
-<td align="right">0.0423208</td>
-<td align="right">0.0451446</td>
-<td align="right">0.0451983</td>
-<td align="right">0.0423208</td>
-<td align="right">0.0423208</td>
-<td align="right">0.0451446</td>
-</tr>
-</tbody>
-</table>
-<p>That’s a relief.</p>
-</div>
-</div>
-<div id="conclusions" class="section level2">
-<h2>Conclusions</h2>
-<p>Yes, NAG can be thought of as being like classical momentum but where you do the momentum step first and <em>then</em> the gradient step. But there’s more to it than that.</p>
-<p>Both classical momentum and NAG use a weighted combination of the current and past gradients to determine the next direction of descent. The difference is in the distribution of weights: NAG places more emphasis on recent gradients. So it might succeed better than classical momentum under conditions where the old gradients quickly become uniformative (regions of high curvature?). Personally, I find this view of NAG through the lens of a weighted history of gradients more appealing than the Sutskever formulation because it leads to interesting ideas like Quasi-Hyperbolic Momentum.</p>
-<p>In terms of implementation, I pity anyone tasked with implementing Nesterov momentum and demonstrating that they actually got it right. Imagine naively implementing vanilla NAG, the Sutskever formulation and the Bengio formulation. Using identical test functions, starting points and parameters, their output are all different from each other <em>but they’re all correct</em>!</p>
+<p>Lots more on the theoretical performance of QHM and a wealth of supplementary material.</p>
+<ul>
+<li><a href="https://arxiv.org/abs/2001.06472">Gradient descent with momentum — to accelerate or to super-accelerate?</a></li>
+</ul>
+<p>Uses the Sutskever expression for NAG but ups the “look-ahead” concept by taking <em>two</em> steps. The first step is the momentum step, then a second step is taken using a large value of <span class="math inline">\(\mu\)</span> (the authors recommend <span class="math inline">\(\mu = 5\)</span> at the start of the optimization, and then <span class="math inline">\(\mu = 2\)</span> later), and the gradient is evaluated at that latter point. The gradient descent step still takes place at the end point of the original moment step, but uses the gradient evaluated at the second location.</p>
+<ul>
+<li><a href="https://arxiv.org/abs/1910.04952">Decaying momentum helps neural network training</a></li>
+</ul>
+<p>This proposes a decaying momentum (“Demon”) schedule of:</p>
+<p><span class="math display">\[
+\mu_t = \mu_0  \frac{1 - t / T}{\left( 1 - \mu_0 \right) + \mu_0 \left( 1 - t/T \right)}
+\]</span></p>
+<p>where <span class="math inline">\(\mu_0\)</span> is the initial momentum and <span class="math inline">\(T\)</span> is the total number of iterations.</p>
+<ul>
+<li><a href="https://arxiv.org/abs/1807.04740">Negative Momentum for Improved Game Dynamics</a></li>
+</ul>
+<p>This paper shows a trend in recent GAN papers of increasingly small value for momentum and then proposes negative momentum. The analogy here is the idea of friction in damping down oscillations. No connection with anything discussed here, just an example of how weird momentum is.</p>
 </div>
 
 

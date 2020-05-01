@@ -358,7 +358,9 @@ The setup and presentation of the update equations for QHM in that paper make it
 a bit hard to see the connection between it and the form of NAG given here. The
 supplemental material in 
 [Understanding the Role of Momentum in Stochastic Gradient Methods](https://papers.nips.cc/paper/9158-understanding-the-role-of-momentum-in-stochastic-gradient-methods)
-might be of interest.
+might be of interest, or some extra 
+[notes on QHM](https://jlmelville.github.io/mize/qhm.html) I wrote for my own
+benefit.
 
 Similarly to QHM, we can write a related "generalized" momentum update by 
 introducing a parameter $\beta$ to give:
