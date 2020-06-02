@@ -26,7 +26,7 @@ A brief definition of the symbols I use:
 to the parameters.
 * $\mu$: the momentum coefficient.
 * $v$: the velocity or update vector.
-* $s$: the steepest descent step, i.e.
+* $s$: the steepest descent step.
 
 Any of these can vary with iteration which is marked by the subscript $t$. Most
 importantly for this discussion, the update vector is always:

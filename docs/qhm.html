@@ -1548,7 +1548,7 @@ div.tocify {
 <li><span class="math inline">\(\nabla f\left(\theta \right)\)</span>: the gradient of the cost function with respect to the parameters.</li>
 <li><span class="math inline">\(\mu\)</span>: the momentum coefficient.</li>
 <li><span class="math inline">\(v\)</span>: the velocity or update vector.</li>
-<li><span class="math inline">\(s\)</span>: the steepest descent step, i.e.</li>
+<li><span class="math inline">\(s\)</span>: the steepest descent step.</li>
 </ul>
 <p>Any of these can vary with iteration which is marked by the subscript <span class="math inline">\(t\)</span>. Most importantly for this discussion, the update vector is always:</p>
 <p><span class="math display">\[
@@ -1864,7 +1864,7 @@ $(document).ready(function ()  {
       theme: "bootstrap3",
       context: '.toc-content',
       hashGenerator: function (text) {
-        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_').toLowerCase();
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
       },
       ignoreSelector: ".toc-ignore",
       scrollTo: 0
