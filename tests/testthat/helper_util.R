@@ -2,10 +2,12 @@
 
 # Step Size Expectation ---------------------------------------------------
 
-expect_step <- function(actual, x, f, df, alpha = x, nfev, tolerance = 1e-4) {
+expect_step <- function(actual, x, f, df, alpha = x, nfev, tolerance = 1e-4, check_grad = TRUE) {
   expect_equal(actual$step$par, x, tolerance = tolerance)
   expect_equal(actual$step$f, f, tolerance = tolerance)
-  expect_equal(actual$step$df, df, tolerance = tolerance)
+  if (check_grad) {
+    expect_equal(actual$step$df, df, tolerance = tolerance)
+  }
   expect_equal(actual$step$alpha, alpha, tolerance = tolerance)
   expect_equal(actual$nfn, nfev)
 }

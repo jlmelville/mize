@@ -62,6 +62,7 @@ schmidt_armijo_backtrack <- function(c1 = 0.05, step_down = NULL, max_fn = Inf) 
     if (maxfev <= 0) {
       return(list(step = step0, nfn = 0, ngr = 0))
     }
+    
     if (!is.null(step_down)) {
       # fixed-size step reduction by a factor of step_down
       LS_interp <- 0
@@ -70,7 +71,7 @@ schmidt_armijo_backtrack <- function(c1 = 0.05, step_down = NULL, max_fn = Inf) 
       # cubic interpolation
       LS_interp <- 2
     }
-
+    
     res <- ArmijoBacktrack(
       step = alpha, f = step0$f, g = step0$df,
       gtd = step0$d,
@@ -81,7 +82,6 @@ schmidt_armijo_backtrack <- function(c1 = 0.05, step_down = NULL, max_fn = Inf) 
       progTol = 1e-9, debug = FALSE
     )
 
-    res$ngr <- res$nfn
     res
   }
 }
@@ -154,6 +154,7 @@ WolfeLineSearch <-
       )
 
       armijo_res$nfn <- armijo_res$nfn + funEvals
+      armijo_res$ngr <- armijo_res$ngr + funEvals
       return(armijo_res)
     }
 
@@ -174,7 +175,7 @@ WolfeLineSearch <-
       bracket_step <- zoom_res$bracket
     }
 
-    list(step = best_bracket_step(bracket_step), nfn = funEvals)
+    list(step = best_bracket_step(bracket_step), nfn = funEvals, ngr = funEvals)
   }
 
 # Change from original: maxLS refers to maximum allowed funEvals, not LS iters
@@ -493,8 +494,7 @@ schmidt_zoom <- function(bracket_step, LS_interp, maxLS, funObj,
 #   g_new: gradient value at x+t*d
 #   funEvals: number function evaluations performed by line search
 #
-# recet change: LS changed to LS_interp and LS_multi
-
+# recent change: LS changed to LS_interp and LS_multi
 ArmijoBacktrack <-
   function(step, f, g, gtd,
            c1 = 1e-4,
@@ -503,20 +503,22 @@ ArmijoBacktrack <-
            funObj,
            varargin = NULL,
            pnorm_inf,
-           progTol = 1e-9, debug = FALSE) {
+           progTol = 1e-9, debug = TRUE) {
     # Evaluate the Objective and Gradient at the Initial Step
-
     f_prev <- NA
     t_prev <- NA
     g_prev <- NA
     gtd_prev <- NA
 
-    fun_obj_res <- funObj(step)
+    # Don't calculate gradient if we aren't using gradient values in the
+    # interpolation
+    calc_gradient <- LS_interp != 0
+    fun_obj_res <- funObj(step, calc_gradient = calc_gradient)
     f_new <- fun_obj_res$f
     g_new <- fun_obj_res$df
     gtd_new <- fun_obj_res$d
-
     funEvals <- 1
+    grEvals <- ifelse(calc_gradient, 1, 0)
 
     while (funEvals < maxLS && (f_new > f + c1 * step * gtd || !is.finite(f_new))) {
       temp <- step
@@ -625,13 +627,13 @@ ArmijoBacktrack <-
         }
       }
 
-      fun_obj_res <- funObj(step)
+      fun_obj_res <- funObj(step, calc_gradient = calc_gradient)
       f_new <- fun_obj_res$f
       g_new <- fun_obj_res$df
       gtd_new <- fun_obj_res$d
-
       funEvals <- funEvals + 1
-
+      grEvals <- ifelse(calc_gradient, grEvals + 1, grEvals)
+      
       # Check whether step size has become too small
       if (pnorm_inf * step <= progTol) {
         if (debug) {
@@ -647,7 +649,7 @@ ArmijoBacktrack <-
 
     list(
       step = list(alpha = step, f = f_new, df = g_new, d = gtd_new),
-      nfn = funEvals
+      nfn = funEvals, ngr = grEvals, is_gr_curr = calc_gradient
     )
   }
 
