@@ -248,7 +248,6 @@ line_search <- function(ls_fn,
     name = name,
     eps = eps,
     init = function(opt, stage, sub_stage, par, fg, iter) {
-      # message("Initializing Wolfe line search for ", stage$type)
 
       if (!is_first_stage(opt, stage)) {
         # Requires knowing f at the current location
@@ -277,7 +276,6 @@ line_search <- function(ls_fn,
       }
 
       if (is_first_stage(opt, stage) && has_fn_curr(opt, iter)) {
-        #        message(sub_stage$name, ": fetching fn_curr from cache ", formatC(opt$cache$fn_curr))
         f0 <- opt$cache$fn_curr
       }
       else {
@@ -285,7 +283,6 @@ line_search <- function(ls_fn,
         f0 <- opt$fn
       }
 
-      # message("gr = ", vec_formatC(opt$cache$gr_curr), " pm = ", vec_formatC(pm))
       step0 <- list(
         alpha = 0,
         f = f0,
@@ -298,7 +295,6 @@ line_search <- function(ls_fn,
       phi_alpha <- make_phi_alpha(par, fg, pm,
         calc_gradient_default = TRUE, debug = debug
       )
-
 
       alpha_next <- 0
       if (is.numeric(initializer)) {
@@ -420,14 +416,12 @@ make_phi_alpha <- function(par, fg, pm,
         d = dot(g, pm)
       )
     }
-
     else {
       f <- fg$fn(y_alpha)
       step <- list(
         alpha = alpha,
         f = f
       )
-
       if (calc_gradient) {
         step$df <- fg$gr(y_alpha)
         step$d <- dot(step$df, pm)
