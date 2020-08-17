@@ -201,7 +201,7 @@ not store every iteration of convergence information if requested.
 
 The available optimization methods are listed below. I won't be describing the
 algorithms behind them in any depth. For that, you should look in
-the book by [Nocedal and Wright](http://dx.doi.org/10.1007/978-0-387-40065-5).
+the book by [Nocedal and Wright](https://dx.doi.org/10.1007/978-0-387-40065-5).
 
 Many of these methods can be thought of as coming up with a direction to move
 in, but with the distance to travel in that direction as being someone else's
@@ -213,7 +213,7 @@ step size. We'll discuss the available step size methods separately.
 The good news is that you always get some improvement with steepest descent.
 The bad news is everything else: it often takes a long time to make any 
 progress, unless you are 
-[very clever with the step size](http://dx.doi.org/10.1093/imanum/8.1.141). 
+[very clever with the step size](https://dx.doi.org/10.1093/imanum/8.1.141). 
 It is however, the basis for most other gradient descent techniques, 
 and many of them will revert back to this direction, at least temporarily, if 
 things start going wrong.
@@ -291,7 +291,7 @@ Other CG update methods are available via the `cg_update` parameter. Methods
 which seem competitive or even superior to the `"PR+"` update is the `"HS+"`
 method (named after Hestenes and Stiefel) and the `"HZ+"` update (named
 after Hager and Zhang, and part of the 
-[CG_DESCENT](http://users.clas.ufl.edu/hager/papers/Software/) optimizer):
+[CG_DESCENT](https://users.clas.ufl.edu/hager/papers/Software/) optimizer):
 
 ```{r CG with HZ+}
 res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", cg_update = "HZ+")
@@ -350,7 +350,7 @@ the problem.
 To get the theoretical guarantees about convergence, you actually need to follow
 a fairly strict formula about what the step size should be (it's related to the
 reciprocal of the Lipschitz constant of the function), and 
-[Sutskever](http://hdl.handle.net/1807/36012) notes that for non-convex 
+[Sutskever](https://hdl.handle.net/1807/36012) notes that for non-convex 
 functions (with sparse stochastic gradient) the theoretically optimal momentum 
 and step size values are too aggressive. Alas, the best advice (at least for
 deep learning applications) given was "manual tuning".
@@ -436,7 +436,7 @@ I'm not saying it's a *good* idea.
 
 Interest in NAG in the neural network community (specifically deep learning),
 was sparked by papers from 
-[Sutskever and co-workers](http://www.jmlr.org/proceedings/papers/v28/sutskever13.html)
+[Sutskever and co-workers](https://www.jmlr.org/proceedings/papers/v28/sutskever13.html)
 and [Bengio and co-workers](https://arxiv.org/abs/1212.0901) who showed that 
 it could be related to classical momentum in a way that made it easy to 
 implement if you already had a working classical momentum implementation, and
@@ -510,7 +510,7 @@ The default for all methods mentioned so far is a Wolfe line search that
 satisfies the strong Wolfe conditions. Specifically,
 [More-Thuente line search](https://doi.org/10.1145/192115.192132), 
 converted from 
-[Dianne O'Leary's Matlab code](http://www.cs.umd.edu/users/oleary/software/).
+[Dianne O'Leary's Matlab code](https://www.cs.umd.edu/users/oleary/software/).
 This uses cubic interpolation to find a point close to a minimize along the
 search direction for each iteration. This requires a function and gradient
 evaluation at each candidate point.
@@ -519,8 +519,8 @@ If the More-Thuente line search fails to work for some reason, alternative
 Wolfe line search method from Carl Edward Rasmussen's 
 [conjugate gradient routine](http://learning.eng.cam.ac.uk/carl/code/minimize/),
 Mark Schmidt's 
-[minimization routines](http://www.cs.ubc.ca/~schmidtm/Software/minFunc.html),
-and an implementation of [Hager-Zhang](http://dx.doi.org/10.1137/030601880)
+[minimization routines](https://www.cs.ubc.ca/~schmidtm/Software/minFunc.html),
+and an implementation of [Hager-Zhang](https://dx.doi.org/10.1137/030601880)
 line search are also available (although they are all quite similar):
 
 ```{r other Wolfe line search}
@@ -572,7 +572,7 @@ To try the slope ratio method, set `step_next_init = "slope"`.
 ```{r Line search with slope ratio}
 res <- mize(rb0, rb_fg, max_iter = 10, step_next_init = "slope")
 ```
-In the [CG_DESCENT](http://dx.doi.org/10.1145/1132973.1132979) software, Hager
+In the [CG_DESCENT](https://dx.doi.org/10.1145/1132973.1132979) software, Hager
 and Zhang suggest using a "QuadStep" method. In this case, a small trial step is
 attempted followed by a quadratic interpolation. If the resulting quadratic is
 strongly convex (for a 1D quadratic $Ax^2 + Bx + c$, this just means $A > 0$),
@@ -602,10 +602,10 @@ uses $\frac{1}{1+\left\| g \right\|_2^2}$
 * [SciPy](https://www.scipy.org/)'s `optimize.py` uses
 $\frac{1}{\left\| g \right\|_2}$
 * Mark Schmidt's 
-[minimization routines](http://www.cs.ubc.ca/~schmidtm/Software/minFunc.html)
+[minimization routines](https://www.cs.ubc.ca/~schmidtm/Software/minFunc.html)
 uses $\frac{1}{1+\left\| g \right\|_1}$
 * Hager and Zhang use a slightly more complicated procedure for their 
-[CG_DESCENT](http://dx.doi.org/10.1145/1132973.1132979) software: 
+[CG_DESCENT](https://dx.doi.org/10.1145/1132973.1132979) software: 
 use $\psi_0\frac{\left\|x\right\|_\infty}{\left\|g\right\|_\infty}$, where $x$
 is the initial parameter vector and $\psi_0$ is a small positive value (e.g.
 0.01), or if that doesn't produce a finite positive value, use 
@@ -686,7 +686,7 @@ the Armijo condition) of the Wolfe line search conditions is fulfilled. This is
 controlled by `c1`, the larger the value, the larger the decrease in the
 function value is needed for a step size to be accepted. By default, the cubic
 interpolation method from 
-[minFunc](http://www.cs.ubc.ca/~schmidtm/Software/minFunc.html) is used to
+[minFunc](https://www.cs.ubc.ca/~schmidtm/Software/minFunc.html) is used to
 find the step size.
 
 ```{r backtracking with cubic interpolation}
@@ -738,7 +738,7 @@ res <- mize(rb0, rb_fg, max_iter = 10, ls_max_gr = 10)
 So far, the `method` and `line_search` arguments can be freely mixed and 
 matched. However, some methods choose both the direction and the step size
 directly. The 
-[Delta-Bar-Delta method](http://dx.doi.org/10.1016/0893-6080(88)90003-2) has its 
+[Delta-Bar-Delta method](https://dx.doi.org/10.1016/0893-6080(88)90003-2) has its 
 roots in neural network research but was also used in the currently popular 
 [t-Distributed Stochastic Neighbor Embedding](https://lvdmaaten.github.io/tsne/) 
 data visualization method.
