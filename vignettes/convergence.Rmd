@@ -95,11 +95,11 @@ This seems like a good stopping criterion because it is always zero at a
 minimum, even if the function isn't. It is also used to compare different
 methods in Nocedal and Wright's book. However, it has also been recognized that
 it is not always reliable, see for instance this 
-[paper by Nocedal and co-workers](https://dx.doi.org/10.1023/A:1014897230089).
+[paper by Nocedal and co-workers](https://doi.org/10.1023/A:1014897230089).
 
 Other workers suggest using the infinity norm (the maximum absolute component)
 of the gradient vector, particularly for larger problems. For example, see this
-[conjugate gradient paper by Hager and Zhang](https://dx.doi.org/10.1137/030601880).
+[conjugate gradient paper by Hager and Zhang](https://doi.org/10.1137/030601880).
 To use the infinity norm, set the `ginf_norm` parameter.
 
 ```{r Gradient infinity-norm tolerance}
