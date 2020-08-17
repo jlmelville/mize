@@ -1,16 +1,16 @@
 ## Release Summary
 
-This is a patch update to maintain compatibility with R-devel.
+This is a patch update to fix a minor bug.
 
 ## Test environments
 
-* ubuntu 16.04 (on travis-ci), R 3.5.3, R 3.6.1, R-devel
+* ubuntu 16.04 (on travis-ci), R 3.6.3, R 4.0.0, R-devel
 * ubuntu 16.04 (on rhub), R 3.6.1
-* fedora 30 (on rhub), R-devel
-* mac OS X High Sierra (on travis-ci), R 3.5.3, R 3.6.1
-* local Windows 10 build, R 3.6.1
+* fedora 32 (on rhub), R-devel
+* mac OS X High Sierra (on travis-ci), R 3.6.3, R 4.0.2
+* local Windows 10 build, R 4.0.2
 * Windows Server 2008 (on rhub) R-devel
-* Windows Server 2012 (on appveyor) R 3.6.1
+* Windows Server 2012 (on appveyor) R 4.0.2
 * win-builder (devel)
 
 ## R CMD check results
@@ -31,11 +31,23 @@ There was a message about possibly mis-spelled words in DESCRIPTION:
 
 Those words are spelled correctly.
 
+For winbuilder checks only, there was a NOTE about a URL in a vignette
+(<https://doi.org/10.1137/030601880>)
+
+Found the following (possibly) invalid URLs:
+  URL: https://doi.org/10.1137/030601880
+    From: inst/doc/convergence.html
+          inst/doc/mize.html
+    Status: Error
+    Message: libcurl error code 56:
+      	Recv failure: Connection was reset
+      	
+I am unable to reproduce this and can access the URL without problems via
+curl and a web browser.
+
 ## CRAN checks
 
-There are two errors, for r-devel-linux-x86_64-debian-clang and 
-r-devel-linux-x86_64-debian-gcc. This release is designed to expressly fix
-these errors.
+There are no NOTEs, ERRORs or WARNINGs.
 
 ## Downstream dependencies
 
