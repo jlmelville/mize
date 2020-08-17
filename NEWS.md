@@ -1,3 +1,19 @@
+# mize 0.2.4
+
+Bug fix release.
+
+## Bug fixes.
+
+* If using `line_search = "backtracking"` with a specified `step_down`
+parameter, an incorrectly large number of gradient calculations was being 
+reported.
+* The documentation now specifies that if you *don't* provide a `step_down` 
+argument with `line_search = "backtracking"`, interpolation using function
+and gradient evaluations is carried out. To get a typical Armijo-style
+backtracking line search, specify a value for `step_down` (e.g. 
+`step_down = 0.5` to halve the step size), and only function evaluations are
+used.
+
 # mize 0.2.3
 
 A patch release to fix an incompatibility with R-devel.
