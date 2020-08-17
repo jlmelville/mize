@@ -20,6 +20,6 @@ Suggests:
     rmarkdown,
     covr
 RoxygenNote: 7.1.1
-URL: http://github.com/jlmelville/mize
-BugReports: http://github.com/jlmelville/mize/issues
+URL: https://github.com/jlmelville/mize
+BugReports: https://github.com/jlmelville/mize/issues
 VignetteBuilder: knitr
