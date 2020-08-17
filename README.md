@@ -7,6 +7,7 @@
 [![Dependencies](https://tinyverse.netlify.com/badge/mize)](https://cran.r-project.org/package=mize)
 [![CRAN Monthly Downloads](https://cranlogs.r-pkg.org/badges/mize)](https://cran.r-project.org/package=mize)
 ![CRAN Downloads](http://cranlogs.r-pkg.org/badges/grand-total/mize)
+[![Last Commit](https://img.shields.io/github/last-commit/jlmelville/mize)](https://github.com/jlmelville/mize)
 
 Unconstrained Numerical Optimization Algorithms.
 
