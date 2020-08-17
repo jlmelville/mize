@@ -106,9 +106,12 @@
 #'   conditions as implemented in Mark Schmidt's minFunc routines.
 #'   \item \code{"Backtracking"} carries out a back tracking line search using
 #'   the sufficient decrease (Armijo) condition. By default, cubic interpolation
-#'   is used to find an acceptable step size. A constant step size reduction
-#'   can be used by specifying a value for \code{step_down} between 0 and 1
-#'   (e.g. step size will be halved if \code{step_down} is set to \code{0.5}).
+#'   using function and gradient values is used to find an acceptable step size.
+#'   A constant step size reduction can be used by specifying a value for 
+#'   \code{step_down} between 0 and 1 (e.g. step size will be halved if 
+#'   \code{step_down} is set to \code{0.5}). If a constant step size reduction
+#'   is used then only function evaluations are carried out and no extra 
+#'   gradient calculations are made.
 #'   \item \code{"Bold Driver"} carries out a back tracking line search until a
 #'   reduction in the function value is found.
 #'   \item \code{"Constant"} uses a constant line search, the value of which
@@ -1028,8 +1031,8 @@ make_mize <- function(method = "L-BFGS",
   }
   step_up_fun <- match.arg(step_up_fun)
   if (!is.null(step_down) && !is_in_range(step_down, 0, 1)) {
-    stop("step_down must be between 0 and 1")
-  }
+      stop("step_down must be between 0 and 1")
+    }
   if (!is_in_range(dbd_weight, 0, 1)) {
     stop("dbd_weight must be between 0 and 1")
   }
@@ -1231,6 +1234,9 @@ make_mize <- function(method = "L-BFGS",
     }
     if (line_search == "minfunc") {
       line_search <- "schmidt"
+    }
+    if (line_search == "armijo") {
+      line_search <- "backtracking"
     }
 
     if (line_search == "bold driver") {
