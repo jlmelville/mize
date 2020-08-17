@@ -92,7 +92,7 @@ eurodist_mat <- as.matrix(eurodist)
 Writing out the cost function with respect to distances only makes it pretty
 straightforward. However, we need the gradient with respect to the parameters
 we are optimizing, which is the coordinates of each city. Indicating the 
-(two-dimensional) vector that represents the coordintes of city $i$ as 
+(two-dimensional) vector that represents the coordinates of city $i$ as 
 $\mathbf{y_i}$, the gradient of the cost function above is:
 
 $$\frac{\partial C}{\partial \mathbf{y_i}} = 

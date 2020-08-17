@@ -79,7 +79,7 @@ gradient update suggested by Gilbert and Nocedal.
 * Error occurred when checking if a step size was finite during line search.
 * DBD method didn't use momentum when asked to.
 * Fix incorrectly specified conjugate gradient descent methods: 
-Hestenes-Steifel (`cg_udpate = "hs"`), Conjugate Descent (`cg_udpate = "cd"`), 
+Hestenes-Stiefel (`cg_udpate = "hs"`), Conjugate Descent (`cg_udpate = "cd"`), 
 Dai-Yuan (`cg_udpate = "dy"`) and Liu-Storey (`cg_udpate = "ls"`).
 
 # mize 0.1.1

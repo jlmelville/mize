@@ -563,7 +563,7 @@ res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", cg_update = "HZ+",
 
 Another important choice is what step size to start each iteration from. Nocedal
 and Wright suggest two methods based on the result achieved for the previous 
-iteration, one involving the ratio of the slopes at consecutive iteratons, and 
+iteration, one involving the ratio of the slopes at consecutive iterations, and 
 one involving a quadratic interpolation. By default, for Wolfe line searches
 other than `"Hager-Zhang"`, the quadratic interpolation method is tried.
 
@@ -646,9 +646,9 @@ to determine when to terminate the line search. The Hager-Zhang line search uses
 the standard curvature conditions by default. It also uses an approximation to 
 the Armijo sufficient descent conditions which may prevent premature termination
 of a line search when the minimizer lies close to the initial step size under
-some circumstances. Use of these variations on the Wolfe conditons can be applied
-to any of the Wolfe line searches by supplying the `strong_curvature` and 
-`approx_armijo` options:
+some circumstances. Use of these variations on the Wolfe conditions can be
+applied to any of the Wolfe line searches by supplying the `strong_curvature`
+and `approx_armijo` options:
 
 ```{r alternative Wolfe conditions}
 # Rasmussen line search with standard Wolfe conditions

@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE, collapse = TRUE, comment = "#>")
 library(mize)
 ```
 
-By "Stateful" I mean what if we could create an optimizer indepedently of
+By "Stateful" I mean what if we could create an optimizer independently of
 the function it was operating on and be able to pass it around, store it, and
 get full control over when we pass it data to continue the optimization.
 
@@ -117,7 +117,7 @@ for (batch in 1:3) {
 ```
 
 The difference here is that you have to do the iterating in batches of 10 
-manualy yourself, remembering to increment the iteration counter and pass it
+manually yourself, remembering to increment the iteration counter and pass it
 to `mize_step`. Plus, the optimizer needs to be updated with the version that
 was returned from the function.
 
@@ -319,7 +319,7 @@ Apart from just maximum number of iterations, there are a variety of options
 that relate to convergence. There is a separate vignette which covers these
 [convergence options](convergence.html), and all the parameters mentioned there
 can be passed to `make_mize` and `mize_init`. Whatever options you use, 
-setting `max_iter` is a good idea to avoid an infinte loop.
+setting `max_iter` is a good idea to avoid an infinite loop.
 
 Here's the example repeated again, this time using `check_mize_convergence`
 to control the number of iterations, rather than a `for` loop:
