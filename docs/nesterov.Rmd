@@ -503,8 +503,8 @@ NAG             | 1 + $\mu$  | $\mu^2$ | $\mu^3$ | 0
 
 From this it's clear that the difference between NAG and classical momentum
 is that NAG puts more weight on recent gradients: in fact, it gives zero weight
-to the first gradient descent direction after the first iteration, so the
-second step also be a pure gradient descent step, but with an extra big step
+to the first gradient descent direction after the first iteration. This means 
+the second step is also a pure gradient descent step, but with an extra big step
 size of $\left(1 + \mu \right) \varepsilon$. Another way of looking at it is to
 say that NAG forgets old gradients more quickly.
 
