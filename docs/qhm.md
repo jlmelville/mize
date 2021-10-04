@@ -386,7 +386,27 @@ Note also that the recommended setting of the damped momentum coefficient
 $\mu = 0.999$ in QHM would therefore translate to a very large undamped
 momentum coefficient of $\mu^* = 999$.
 
+### Generalized Momentum Again
+
+You can also decide to let pretty much everything vary at each step: $\mu$,
+$\varepsilon$ and $\nu$. It's still possible to decouple a varying learning rate
+from the direction of the update ($d_t$) and come up with something in the
+spirit of the generalized momentum while still being able to interpret each
+update as a weighted sum of gradients. To make life easier notationally by
+removing lots of negative signs, here's one more definition, the steepest
+descent direction: $p_t \overset{\mathrm{def}}{=} -\nabla f\left(\theta \right)$:
+
+$$
+\theta_{t+1} = \theta_t + \varepsilon_t \left[
+\left( 1 + \beta_t \mu_t \right)\left(1 - \mu_t \right) p_t 
++ \mu_t d_{t-1} 
+- \beta_{t-1} \left(1 - \mu_{t-1} \right) \mu_t p_{t-1}
+\right]
+$$
+
 ## Sort of Related Ideas
+
+Papers that (mainly) also focus on momentum.
 
 * [Understanding the Role of Momentum in Stochastic Gradient Methods](http://papers.nips.cc/paper/9158-understanding-the-role-of-momentum-in-stochastic-gradient-methods)
 
@@ -419,3 +439,19 @@ This paper shows a trend in recent GAN papers of increasingly small value for
 momentum and then proposes negative momentum. The analogy here is the idea of
 friction in damping down oscillations. No connection with anything discussed
 here, just an example of how weird momentum is.
+
+* [An updated overview of recent gradient descent algorithms](https://johnchenresearch.github.io/demon/)
+
+Details and benchmarks a lot of the methods and papers listed here as well as
+several other adaptive learning rate methods (e.g. Adam and its many, many
+variants).
+
+* [YellowFin and the Art of Momentum Tuning](https://arxiv.org/abs/1706.03471)
+
+Describes an adaptive momentum (and learning rate) system.
+
+* [Online Learning Rate Adaptation with Hypergradient Descent](https://arxiv.org/abs/1703.04782)
+
+This has nothing to do with momentum but is another approach to automatically
+choosing a learning rate. Perhaps its approach will be applied to momentum
+tuning one day.
