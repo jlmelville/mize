@@ -388,13 +388,17 @@ momentum coefficient of $\mu^* = 999$.
 
 ### Generalized Momentum Again
 
-You can also decide to let pretty much everything vary at each step: $\mu$,
-$\varepsilon$ and $\nu$. It's still possible to decouple a varying learning rate
-from the direction of the update ($d_t$) and come up with something in the
-spirit of the generalized momentum while still being able to interpret each
-update as a weighted sum of gradients. To make life easier notationally by
-removing lots of negative signs, here's one more definition, the steepest
-descent direction: $p_t \overset{\mathrm{def}}{=} -\nabla f\left(\theta \right)$:
+For completeness (and my own edification), we can take the same approach with
+generalized momentum and have the learning rate apply to the entire direction of
+the update ($d_t$) rather than just the steepest descent direction and therefore
+get an update that is a weighted average of gradients. To make life easier
+notationally by removing lots of negative signs, here's one more definition, the
+steepest descent direction:
+$p_t \overset{\mathrm{def}}{=} -\nabla f\left(\theta_t \right)$.
+
+The resulting generalized momentum expression below also allows for varying
+pretty much everything at each step: $\mu$, $\varepsilon$ and $\beta$ although I
+don't have any suggestions for how you would go about tuning these values:
 
 $$
 \theta_{t+1} = \theta_t + \varepsilon_t \left[

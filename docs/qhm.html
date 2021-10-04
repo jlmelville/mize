@@ -504,7 +504,8 @@ v_t =
 </div>
 <div id="generalized-momentum-again" class="section level3">
 <h3>Generalized Momentum Again</h3>
-<p>You can also decide to let pretty much everything vary at each step: <span class="math inline">\(\mu\)</span>, <span class="math inline">\(\varepsilon\)</span> and <span class="math inline">\(\nu\)</span>. It’s still possible to decouple a varying learning rate from the direction of the update (<span class="math inline">\(d_t\)</span>) and come up with something in the spirit of the generalized momentum while still being able to interpret each update as a weighted sum of gradients. To make life easier notationally by removing lots of negative signs, here’s one more definition, the steepest descent direction: <span class="math inline">\(p_t \overset{\mathrm{def}}{=} -\nabla f\left(\theta \right)\)</span>:</p>
+<p>For completeness (and my own edification), we can take the same approach with generalized momentum and have the learning rate apply to the entire direction of the update (<span class="math inline">\(d_t\)</span>) rather than just the steepest descent direction and therefore get an update that is a weighted average of gradients. To make life easier notationally by removing lots of negative signs, here’s one more definition, the steepest descent direction: <span class="math inline">\(p_t \overset{\mathrm{def}}{=} -\nabla f\left(\theta_t \right)\)</span>.</p>
+<p>The resulting generalized momentum expression below also allows for varying pretty much everything at each step: <span class="math inline">\(\mu\)</span>, <span class="math inline">\(\varepsilon\)</span> and <span class="math inline">\(\beta\)</span> although I don’t have any suggestions for how you would go about tuning these values:</p>
 <p><span class="math display">\[
 \theta_{t+1} = \theta_t + \varepsilon_t \left[
 \left( 1 + \beta_t \mu_t \right)\left(1 - \mu_t \right) p_t 
