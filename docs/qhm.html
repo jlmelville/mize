@@ -252,6 +252,7 @@ div.tocify {
 </div>
 
 
+<p><em>December 12 2021</em>: reworded all uses of “generalized” momentum (a term of my own bad invention) with “unified momentum” as used by <a href="https://arxiv.org/abs/1808.03408">Zou and co-workers</a>.</p>
 <p>When writing about <a href="https://jlmelville.github.io/mize/nesterov.html">Nesterov Accelerated Gradient and Momentum</a> I wrote out a formula that made it easy to interpolate between Nesterov accelerated gradient (NAG) and classical momentum (CM), and then discovered that <a href="https://arxiv.org/abs/1810.06801">Quasi-Hyperbolic Momentum</a> seemed to do the same thing. It is not immediately clear from the presentation in the QHM paper if the expressions are exactly the same, so here are some notes on my efforts to rewrite QHM into a form closer to the NAG page.</p>
 <p>A brief definition of the symbols I use:</p>
 <ul>
@@ -286,13 +287,13 @@ s_t \overset{\mathrm{def}}{=} -\varepsilon_t \nabla f\left(\theta_t \right)
 \theta_{t+1} = \theta_t + \left(1 + \mu \right) s_t + \mu v_t - \mu s_{t-1}
 \]</span></p>
 </div>
-<div id="generalized-momentum" class="section level3">
-<h3>Generalized Momentum</h3>
+<div id="unified-momentum" class="section level3">
+<h3>Unified Momentum</h3>
 <p>From the above, it’s pretty easy to come up with a scheme to interpolate between CM and NAG:</p>
 <p><span class="math display">\[
 \theta_{t+1} = \theta_t + \left(1 +  \beta \mu \right) s_t + \mu v_t - \beta \mu s_{t-1}
 \]</span></p>
-<p>where <span class="math inline">\(\beta = 0\)</span> gives CM and <span class="math inline">\(\beta = 1\)</span> gives NAG.</p>
+<p>where <span class="math inline">\(\beta = 0\)</span> gives CM and <span class="math inline">\(\beta = 1\)</span> gives NAG. The earliest publication I am aware of that gives this expression is <a href="https://arxiv.org/abs/1808.03408">Zou and co-workers</a> from 2018. I’d love to know of any earlier uses.</p>
 </div>
 </div>
 <div id="damped-momentum" class="section level2">
@@ -319,8 +320,8 @@ s_t \overset{\mathrm{def}}{=} -\varepsilon_t \nabla f\left(\theta_t \right)
 - \left(1 - \mu \right) \mu s_{t-1}
 \]</span></p>
 </div>
-<div id="damped-generalized-momentum" class="section level3">
-<h3>Damped Generalized Momentum</h3>
+<div id="damped-unified-momentum" class="section level3">
+<h3>Damped Unified Momentum</h3>
 <p><span class="math display">\[
 \theta_{t+1} = \theta_t + 
 \left( 1 + \beta \mu \right)\left(1 - \mu \right) s_t 
@@ -502,10 +503,10 @@ v_t =
 <p>As noted in the paper, this shrinks the update by a factor of <span class="math inline">\(1 - \mu\)</span> and this can be compensated by increasing <span class="math inline">\(\varepsilon\)</span> accordingly.</p>
 <p>Note also that the recommended setting of the damped momentum coefficient <span class="math inline">\(\mu = 0.999\)</span> in QHM would therefore translate to a very large undamped momentum coefficient of <span class="math inline">\(\mu^* = 999\)</span>.</p>
 </div>
-<div id="generalized-momentum-again" class="section level3">
-<h3>Generalized Momentum Again</h3>
-<p>For completeness (and my own edification), we can take the same approach with generalized momentum and have the learning rate apply to the entire direction of the update (<span class="math inline">\(d_t\)</span>) rather than just the steepest descent direction and therefore get an update that is a weighted average of gradients. To make life easier notationally by removing lots of negative signs, here’s one more definition, the steepest descent direction: <span class="math inline">\(p_t \overset{\mathrm{def}}{=} -\nabla f\left(\theta_t \right)\)</span>.</p>
-<p>The resulting generalized momentum expression below also allows for varying pretty much everything at each step: <span class="math inline">\(\mu\)</span>, <span class="math inline">\(\varepsilon\)</span> and <span class="math inline">\(\beta\)</span> although I don’t have any suggestions for how you would go about tuning these values:</p>
+<div id="unified-momentum-again" class="section level3">
+<h3>Unified Momentum Again</h3>
+<p>For completeness (and my own edification), we can take the same approach with unified momentum and have the learning rate apply to the entire direction of the update (<span class="math inline">\(d_t\)</span>) rather than just the steepest descent direction and therefore get an update that is a weighted average of gradients. To make life easier notationally by removing lots of negative signs, here’s one more definition, the steepest descent direction: <span class="math inline">\(p_t \overset{\mathrm{def}}{=} -\nabla f\left(\theta_t \right)\)</span>.</p>
+<p>The resulting unified momentum expression below also allows for varying pretty much everything at each step: <span class="math inline">\(\mu\)</span>, <span class="math inline">\(\varepsilon\)</span> and <span class="math inline">\(\beta\)</span> although I don’t have any suggestions for how you would go about tuning these values:</p>
 <p><span class="math display">\[
 \theta_{t+1} = \theta_t + \varepsilon_t \left[
 \left( 1 + \beta_t \mu_t \right)\left(1 - \mu_t \right) p_t 

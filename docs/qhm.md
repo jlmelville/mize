@@ -12,6 +12,10 @@ editor_options:
     wrap: 72
 ---
 
+*December 12 2021*: reworded all uses of "generalized" momentum (a term of my
+own bad invention) with "unified momentum" as used by [Zou and
+co-workers](https://arxiv.org/abs/1808.03408).
+
 When writing about [Nesterov Accelerated Gradient and
 Momentum](https://jlmelville.github.io/mize/nesterov.html) I wrote out a
 formula that made it easy to interpolate between Nesterov accelerated
@@ -67,7 +71,7 @@ $$
 \theta_{t+1} = \theta_t + \left(1 + \mu \right) s_t + \mu v_t - \mu s_{t-1}
 $$
 
-### Generalized Momentum
+### Unified Momentum
 
 From the above, it's pretty easy to come up with a scheme to interpolate
 between CM and NAG:
@@ -76,7 +80,10 @@ $$
 \theta_{t+1} = \theta_t + \left(1 +  \beta \mu \right) s_t + \mu v_t - \beta \mu s_{t-1}
 $$
 
-where $\beta = 0$ gives CM and $\beta = 1$ gives NAG.
+where $\beta = 0$ gives CM and $\beta = 1$ gives NAG. The earliest publication
+I am aware of that gives this expression is [Zou and
+co-workers](https://arxiv.org/abs/1808.03408) from 2018. I'd love to know of any
+earlier uses.
 
 ## Damped Momentum
 
@@ -116,7 +123,7 @@ $$
 - \left(1 - \mu \right) \mu s_{t-1}
 $$
 
-### Damped Generalized Momentum
+### Damped Unified Momentum
 
 $$
 \theta_{t+1} = \theta_t + 
@@ -398,17 +405,17 @@ Note also that the recommended setting of the damped momentum
 coefficient $\mu = 0.999$ in QHM would therefore translate to a very
 large undamped momentum coefficient of $\mu^* = 999$.
 
-### Generalized Momentum Again
+### Unified Momentum Again
 
 For completeness (and my own edification), we can take the same approach
-with generalized momentum and have the learning rate apply to the entire
+with unified momentum and have the learning rate apply to the entire
 direction of the update ($d_t$) rather than just the steepest descent
 direction and therefore get an update that is a weighted average of
 gradients. To make life easier notationally by removing lots of negative
 signs, here's one more definition, the steepest descent direction:
 $p_t \overset{\mathrm{def}}{=} -\nabla f\left(\theta_t \right)$.
 
-The resulting generalized momentum expression below also allows for
+The resulting unified momentum expression below also allows for
 varying pretty much everything at each step: $\mu$, $\varepsilon$ and
 $\beta$ although I don't have any suggestions for how you would go about
 tuning these values:
