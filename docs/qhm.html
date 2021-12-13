@@ -252,7 +252,7 @@ div.tocify {
 </div>
 
 
-<p><em>December 12 2021</em>: reworded all uses of “generalized” momentum (a term of my own bad invention) with “unified momentum” as used by <a href="https://arxiv.org/abs/1808.03408">Zou and co-workers</a>.</p>
+<p><em>December 12 2021</em>: reworded all uses of “generalized” momentum (a term of my own bad invention) with “unified momentum” as used by <a href="https://arxiv.org/abs/1808.03408">Zou and co-workers</a>. Also, pointed to the expression for Nesterov momentum in the <a href="https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ">Nadam paper</a>.</p>
 <p>When writing about <a href="https://jlmelville.github.io/mize/nesterov.html">Nesterov Accelerated Gradient and Momentum</a> I wrote out a formula that made it easy to interpolate between Nesterov accelerated gradient (NAG) and classical momentum (CM), and then discovered that <a href="https://arxiv.org/abs/1810.06801">Quasi-Hyperbolic Momentum</a> seemed to do the same thing. It is not immediately clear from the presentation in the QHM paper if the expressions are exactly the same, so here are some notes on my efforts to rewrite QHM into a form closer to the NAG page.</p>
 <p>A brief definition of the symbols I use:</p>
 <ul>
@@ -362,7 +362,34 @@ m_{t+1} = (1 - \mu) l_t + \mu m_t
 + \nu m_{t+1}
 \right]
 \]</span></p>
-<p>When <span class="math inline">\(\nu = 0\)</span>, we get back plain old gradient descent. That is quite easy to see. What’s less easy to see is that <span class="math inline">\(\nu = \mu\)</span> gets you damped NAG and <span class="math inline">\(\nu = 1\)</span> gets you damped classical momentum. Now is the time to do some jiggery-pokery to the QHM equation and see what comes out.</p>
+<p>When <span class="math inline">\(\nu = 0\)</span>, we get back plain old gradient descent. That is quite easy to see.</p>
+<p><em>December 12 2021</em>: Before contorting the QHM equation further, the rest of this section is new, mainly to draw attention to how QHM also generates Dozat’s version of NAG in the Nadam paper.</p>
+<p>With <span class="math inline">\(\nu = 1\)</span>, the only thing left in the square brackets is the momentum buffer <span class="math inline">\(m_{t+1}\)</span> which combines with <span class="math inline">\(\varepsilon\)</span> to give the damped classical momentum update. That’s also quite easy to see.</p>
+<p>What’s less easy to see is that <span class="math inline">\(\nu = \mu\)</span> gets you damped NAG. I’d like to draw your attention to the immediate result:</p>
+<p><span class="math display">\[
+\theta_{t+1} = \theta_t 
+- \varepsilon 
+\left[
+\left( 1 - \mu \right ) l_t 
++ \mu m_{t+1}
+\right]
+\]</span></p>
+<p>The bit in the square brackets has an identical form to the momentum buffer except that <span class="math inline">\(m_{t}\)</span> has been replaced by <span class="math inline">\(m_{t+1}\)</span>. For some reason I find this delightful:</p>
+<ul>
+<li>You want damped classical momentum? Form a weighted average of the current gradient with the previous iteration’s damped classical momentum direction.</li>
+<li>You wanted damped NAG? Just do the above, then do it <em>again</em>: form a weighted average of the current gradient with the new damped classical momentum direction from the step above.</li>
+</ul>
+<p>As I have apparently made a hobby of collecting different researchers giving different expressions for Nesterov momentum, here I must point out that this is the form of the Nesterov momentum expression given by <a href="https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ">Dozat in 2016</a>: see equation 11.</p>
+<p>Anyway, substituting in <span class="math inline">\(m_{t+1}\)</span>, we get to:</p>
+<p><span class="math display">\[
+\theta_{t+1} = \theta_t 
+- \varepsilon 
+\left[
+\left( 1 + \mu \right ) \left( 1 - \mu \right ) l_t 
++ \mu^2 m_{t}
+\right]
+\]</span></p>
+<p>That’s closer to the damped NAG result, but there is a conspicuous absence of contributions from the gradient step at the previous iteration, and it’s still written in terms of the momentum buffer and not the NAG update vector (although that’s not necessarily a bad thing). Now is the time to do some jiggery-pokery to the QHM equation and see what comes out.</p>
 <div id="rewriting-qhm" class="section level4">
 <h4>Rewriting QHM</h4>
 <p>The update vector for QHM is:</p>

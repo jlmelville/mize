@@ -14,7 +14,9 @@ editor_options:
 
 *December 12 2021*: reworded all uses of "generalized" momentum (a term of my
 own bad invention) with "unified momentum" as used by [Zou and
-co-workers](https://arxiv.org/abs/1808.03408).
+co-workers](https://arxiv.org/abs/1808.03408). Also, pointed to the expression
+for Nesterov momentum in the [Nadam
+paper](https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ).
 
 When writing about [Nesterov Accelerated Gradient and
 Momentum](https://jlmelville.github.io/mize/nesterov.html) I wrote out a
@@ -200,10 +202,60 @@ $$
 \right]
 $$
 
-When $\nu = 0$, we get back plain old gradient descent. That is quite
-easy to see. What's less easy to see is that $\nu = \mu$ gets you damped
-NAG and $\nu = 1$ gets you damped classical momentum. Now is the time to
-do some jiggery-pokery to the QHM equation and see what comes out.
+When $\nu = 0$, we get back plain old gradient descent. That is quite easy to
+see. 
+
+*December 12 2021*: Before contorting the QHM equation further, the rest of this
+section is new, mainly to draw attention to how QHM also generates Dozat's
+version of NAG in the Nadam paper.
+
+With $\nu = 1$, the only thing left in the square brackets is the
+momentum buffer $m_{t+1}$ which combines with $\varepsilon$ to give the damped
+classical momentum update. That's also quite easy to see.
+
+What's less easy to see is that $\nu = \mu$ gets you damped NAG. I'd like to
+draw your attention to the immediate result:
+
+$$
+\theta_{t+1} = \theta_t 
+- \varepsilon 
+\left[
+\left( 1 - \mu \right ) l_t 
++ \mu m_{t+1}
+\right]
+$$
+
+The bit in the square brackets has an identical form to the momentum buffer
+except that $m_{t}$ has been replaced by $m_{t+1}$. For some reason I find
+this delightful:
+
+* You want damped classical momentum? Form a weighted average of the current 
+gradient with the previous iteration's damped classical momentum direction.
+* You wanted damped NAG? Just do the above, then do it *again*: form a 
+weighted average of the current gradient with the new damped classical momentum
+direction from the step above.
+
+As I have apparently made a hobby of collecting different researchers giving
+different expressions for Nesterov momentum, here I must point out that this is
+the form of the Nesterov momentum expression given by [Dozat in
+2016](https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ): see equation 11.
+
+Anyway, substituting in $m_{t+1}$, we get to:
+
+$$
+\theta_{t+1} = \theta_t 
+- \varepsilon 
+\left[
+\left( 1 + \mu \right ) \left( 1 - \mu \right ) l_t 
++ \mu^2 m_{t}
+\right]
+$$
+
+That's closer to the damped NAG result, but there is a conspicuous absence of
+contributions from the gradient step at the previous iteration, and it's still
+written in terms of the momentum buffer and not the NAG update vector (although
+that's not necessarily a bad thing). Now is the time to do some jiggery-pokery
+to the QHM equation and see what comes out.
 
 #### Rewriting QHM
 
