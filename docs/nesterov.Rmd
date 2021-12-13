@@ -364,14 +364,14 @@ benefit.
 
 ### Unified Momentum
 
-*December 12 2021*: Previously in this section I wrote down a QHM-like expression
-I called "generalized" momentum. This was a bad choice of words because there is
-already a concept in physics called generalized momentum, which is nothing to
-do with this. Fortunately, in 2018 
-[Zou and co-workers](https://arxiv.org/abs/1808.03408) published a paper with
-the same expression and called it "unified stochastic momentum". The stochastic
-bit is because it is in the context of stochastic gradient descent but that
-has no effect on the expression. So let's call it "unified momentum" insted:
+*December 12 2021*: Previously in this section I wrote down a QHM-like
+expression I called "generalized" momentum. This was a bad choice of words
+because there is already a concept in physics called generalized momentum, which
+is nothing to do with this. Fortunately, in 2018 [Zou and
+co-workers](https://arxiv.org/abs/1808.03408) published a paper with the same
+expression and called it "unified stochastic momentum". The stochastic bit is
+because it is in the context of stochastic gradient descent but that has no
+effect on the expression. So let's call it "unified momentum" instead:
 
 Similarly to QHM, we can write a related ~~"generalized"~~ "unified" momentum 
 update by introducing a parameter $\beta$ to give:
@@ -389,6 +389,13 @@ v_{t+1} =
 $$
 where setting $\beta_t = 0$ will give classical momentum and $\beta_t = 1$ gives
 Nesterov.
+
+In 2020, a similar expression was given by [Ziyin and
+co-workers](https://arxiv.org/abs/2002.04839), but didn't give it a catchy name.
+They don't cite the Zou paper, so presumably they discovered it independently.
+I'd like to find the earliest use of this interpolation, but neither the Zou nor
+the Ziyin paper give a reference to any earlier paper. Perhaps it's just
+incredibly obvious?
 
 From the look of the expression, it seems that a major downside of this 
 expression is that calculating the parameters for iteration $t+1$ requires 

@@ -404,7 +404,7 @@ v_{t+1} =
 </div>
 <div id="unified-momentum" class="section level3">
 <h3>Unified Momentum</h3>
-<p><em>December 12 2021</em>: Previously in this section I wrote down a QHM-like expression I called “generalized” momentum. This was a bad choice of words because there is already a concept in physics called generalized momentum, which is nothing to do with this. Fortunately, in 2018 <a href="https://arxiv.org/abs/1808.03408">Zou and co-workers</a> published a paper with the same expression and called it “unified stochastic momentum”. The stochastic bit is because it is in the context of stochastic gradient descent but that has no effect on the expression. So let’s call it “unified momentum” insted:</p>
+<p><em>December 12 2021</em>: Previously in this section I wrote down a QHM-like expression I called “generalized” momentum. This was a bad choice of words because there is already a concept in physics called generalized momentum, which is nothing to do with this. Fortunately, in 2018 <a href="https://arxiv.org/abs/1808.03408">Zou and co-workers</a> published a paper with the same expression and called it “unified stochastic momentum”. The stochastic bit is because it is in the context of stochastic gradient descent but that has no effect on the expression. So let’s call it “unified momentum” instead:</p>
 <p>Similarly to QHM, we can write a related <del>“generalized”</del> “unified” momentum update by introducing a parameter <span class="math inline">\(\beta\)</span> to give:</p>
 <p><span class="math display">\[
 v_{t+1} =  
@@ -417,6 +417,7 @@ v_{t+1} =
 \varepsilon_{t} \nabla f \left(\theta_{t}\right)
 \right]
 \]</span> where setting <span class="math inline">\(\beta_t = 0\)</span> will give classical momentum and <span class="math inline">\(\beta_t = 1\)</span> gives Nesterov.</p>
+<p>In 2020, a similar expression was given by <a href="https://arxiv.org/abs/2002.04839">Ziyin and co-workers</a>, but didn’t give it a catchy name. They don’t cite the Zou paper, so presumably they discovered it independently. I’d like to find the earliest use of this interpolation, but neither the Zou nor the Ziyin paper give a reference to any earlier paper. Perhaps it’s just incredibly obvious?</p>
 <p>From the look of the expression, it seems that a major downside of this expression is that calculating the parameters for iteration <span class="math inline">\(t+1\)</span> requires storage of information from not only iteration <span class="math inline">\(t\)</span> but from iteration <span class="math inline">\(t-1\)</span> too. But you don’t necessarily have to do any extra storage with an implementation that used this version of NAG. At the end of an iteration, when saving the velocity vector for the next iteration, you change:</p>
 <p><span class="math display">\[v_{t-1} \leftarrow v_t\]</span> to: <span class="math display">\[v_{t-1} \leftarrow v_t + \varepsilon_{t} \nabla f\left(\theta_t \right)\]</span></p>
 <p>and then when calculating the momentum term, change:</p>
