@@ -362,8 +362,19 @@ might be of interest, or some extra
 [notes on QHM](https://jlmelville.github.io/mize/qhm.html) I wrote for my own
 benefit.
 
-Similarly to QHM, we can write a related "generalized" momentum update by 
-introducing a parameter $\beta$ to give:
+### Unified Momentum
+
+*December 12 2021*: Previously in this section I wrote down a QHM-like expression
+I called "generalized" momentum. This was a bad choice of words because there is
+already a concept in physics called generalized momentum, which is nothing to
+do with this. Fortunately, in 2018 
+[Zou and co-workers](https://arxiv.org/abs/1808.03408) published a paper with
+the same expression and called it "unified stochastic momentum". The stochastic
+bit is because it is in the context of stochastic gradient descent but that
+has no effect on the expression. So let's call it "unified momentum" insted:
+
+Similarly to QHM, we can write a related ~~"generalized"~~ "unified" momentum 
+update by introducing a parameter $\beta$ to give:
 
 $$
 v_{t+1} =  
