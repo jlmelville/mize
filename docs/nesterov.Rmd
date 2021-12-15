@@ -448,11 +448,11 @@ $$
 \right)
 $$
 
-with just this tiny bit of re-arranging so it most closely resembles the
-classical momentum expression:
+with just this bit of re-arranging so terms are all grouped together and the 
+$v_t$ is at the end, which makes it easier to follow the substitution of $v_t$:
 
 $$
-\theta_{t+1} = \theta_t + s_t + \mu v_t + \mu \left(s_t - s_{t-1} \right)
+\theta_{t+1} = \theta_t + \left(1 + \mu \right) s_t - \mu s_{t-1} + \mu v_t
 $$
 
 ### Step 1: Gradient Descent
@@ -470,39 +470,65 @@ The next three steps then proceed as follows:
 ### Classical Momentum Steps 2-4
 
 $$
-\theta_3 = \theta_2 + s_2 + \mu v_2 \\
-\theta_3 = \theta_2 + s_2 + \mu s_1
+\begin{equation}
+\begin{split}
+\theta_3 & = \theta_2 + s_2 + \mu v_2 \\
+ & = \theta_2 + s_2 + \mu s_1
+\end{split}
+\end{equation}
 $$
 
 $$
-\theta_4 = \theta_3 + s_3 + \mu v_3 \\
-\theta_4 = \theta_3 + s_3 + \mu \left(s_2 + \mu s_1 \right) \\
-\theta_4 = \theta_3 + s_3 + \mu s_2 + \mu^2 s_1
+\begin{equation}
+\begin{split}
+\theta_4 & = \theta_3 + s_3 + \mu v_3 \\
+ & = \theta_3 + s_3 + \mu \left(s_2 + \mu s_1 \right) \\
+ & = \theta_3 + s_3 + \mu s_2 + \mu^2 s_1
+\end{split}
+\end{equation}
 $$
 
 $$
-\theta_5 = \theta_4 + s_4 + \mu v_4 \\
-\theta_5 = \theta_4 + s_4 + \mu \left( s_3 + \mu s_2 + \mu^2 s_1 \right)\\
-\theta_5 = \theta_4 + s_4 + \mu s_3 + \mu^2 s_2 + \mu^3 s_1
+\begin{equation}
+\begin{split}
+\theta_5 & = \theta_4 + s_4 + \mu v_4 \\
+ & = \theta_4 + s_4 + \mu \left( s_3 + \mu s_2 + \mu^2 s_1 \right)\\
+ & = \theta_4 + s_4 + \mu s_3 + \mu^2 s_2 + \mu^3 s_1
+\end{split}
+\end{equation}
 $$
 
 ### NAG Steps 2-4
 
 $$
-\theta_3 = \theta_2 + s_2 + \mu v_2 + \mu \left(s_2 - s_1 \right) \\
-\theta_3 = \theta_2 + s_2 + \mu s_1 + \mu s_2 - \mu s_1 \\
-\theta_3 = \theta_2 + \left(1 + \mu \right) s_2
+\begin{equation}
+\begin{split}
+\theta_3 & = \theta_2 + \left(1 + \mu \right) s_2 - \mu s_1 + \mu v_2 \\
+ & = \theta_2 + \left(1 + \mu \right) s_2 - \mu s_1 + \mu s_1 \\
+ & = \theta_2 + \left(1 + \mu \right) s_2 \\
+\end{split}
+\end{equation}
 $$
 
 $$
-\theta_4 = \theta_3 + s_3 + \mu v_3 + \mu \left(s_3 - s_2 \right) \\
-\theta_4 = \theta_3 + s_3 + \mu \left[ \left(1 + \mu \right) s_2 \right] + \mu s_3 - \mu s_2 \\
-\theta_4 = \theta_3 + \left(1 + \mu \right) s_3 + \mu^2 s_2
+\begin{equation}
+\begin{split}
+\theta_4 & = \theta_3 + \left(1 + \mu \right) s_3 - \mu s_2 + \mu v_3 \\
+& = \theta_3 + \left(1 + \mu \right) s_3 - \mu s_2 + \mu \left(1 + \mu \right) s_2 \\
+& = \theta_3 + \left(1 + \mu \right) s_3 + \mu^2 s_2
+\end{split}
+\end{equation}
 $$
+
 $$
-\theta_5 = \theta_4 + s_4 + \mu v_4 + \mu \left(s_4 - s_3 \right) \\
-\theta_5 = \theta_4 + s_4 + \mu \left[ \left(1 + \mu \right) s_3 + \mu^2 s_2 \right] + \mu s_4 - \mu s_3 \\
-\theta_5 = \theta_4 + \left(1 + \mu \right) s_4 + \mu^2 s_3 + \mu^3 s_2
+\begin{equation}
+\begin{split}
+\theta_5 & = \theta_4 + \left(1 + \mu \right) s_4 - \mu s_3 + \mu v_4 \\
+& = \theta_4 + \left(1 + \mu \right) s_4 - \mu s_3 + \mu \left[ \left(1 + \mu \right) s_3 + \mu^2 s_2 \right] \\
+& = \theta_4 + \left(1 + \mu \right) s_4 - \mu s_3 + \mu \left(1 + \mu \right) s_3 + \mu^3 s_2 \\
+& = \theta_4 + \left(1 + \mu \right) s_4 + \mu^2 s_3 + \mu^3 s_2
+\end{split}
+\end{equation}
 $$
 
 You can see a pattern emerging here at this point, I hope. These are quite
