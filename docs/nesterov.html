@@ -9,7 +9,6 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
-<meta name="author" content="James Melville" />
 
 <meta name="date" content="2016-12-31" />
 
@@ -248,102 +247,159 @@ div.tocify {
 
 
 <h1 class="title toc-ignore">Nesterov Accelerated Gradient and Momentum</h1>
-<h4 class="author">James Melville</h4>
 <h4 class="date">December 31, 2016</h4>
 
 </div>
 
 
-<p>A way to express Nesterov Accelerated Gradient in terms of a regular momentum update was noted by <a href="http://www.jmlr.org/proceedings/papers/v28/sutskever13.html">Sutskever and co-workers</a>, and perhaps more importantly, when it came to training neural networks, it seemed to work better than classical momentum schemes. This was further confirmed by <a href="https://arxiv.org/abs/1212.0901">Bengio and co-workers</a>, who provided an alternative formulation that might be easier to integrate into existing software.</p>
+<p><em>December 16 2021</em>: I have rewritten a large chunk of this document to make the derivations a little clearer and added a brief section on the definition of Nesterov momentum used in the NAdam paper.</p>
+<p>A way to express Nesterov Accelerated Gradient (NAG) in terms of a regular momentum update was noted by <a href="http://www.jmlr.org/proceedings/papers/v28/sutskever13.html">Sutskever and co-workers</a>, and perhaps more importantly, when it came to training neural networks, it seemed to work better than classical momentum schemes. This was further confirmed by <a href="https://arxiv.org/abs/1212.0901">Bengio and co-workers</a>, who provided an alternative formulation that might be easier to integrate into existing software.</p>
 <p>I implemented NAG as part of <a href="https://github.com/jlmelville/mize">mize</a>, but found it was a bit more difficult than I’d anticipated to test that I’d got the correct results.</p>
 <p>It seems I am not alone in being confused by the exact details of implementing NAG as a momentum scheme (e.g. comments and issues in the deep learning projects <a href="https://github.com/fchollet/keras/issues/966">keras</a> and <a href="https://github.com/pluskid/Mocha.jl/pull/47">mocha.jl</a>, which I found from random googling), so mainly for the benefit of future me, I am going to derive the Sutskever and Bengio formulations from NAG in tedious detail. I am also going to derive an alternative expression that I ended up using in mize. Finally, I will write some R code to demonstrate their equivalence. This will turn out to be trickier than I anticipated.</p>
-<p>Wherever possible I will try and stick with the notation used by Sutskever. Apart from the Sutskever and Bengio papers linked to above, it’s worth checking out the <a href="http://www.jmlr.org/proceedings/papers/v28/sutskever13-supp.pdf">appendix to the Sutskever paper (PDF)</a> or the relevant part (chapter 7) of <a href="http://hdl.handle.net/1807/36012">Sutskever’s thesis</a>. For an introduction to NAG itself, try the first part of this paper by <a href="https://arxiv.org/abs/1204.3982">O’Donoghue and Candès</a> (the rest of it is also good but not germane to Nesterov momentum expressions).</p>
+<p>I originally tried to stick with the notation used by Sutskever but in retrospect that was a mistake. It’s too hard to keep everything straight between the different papers. I will borrow some symbols and try and be very clear about what they mean and what each expression applies to. Translating between this document and the original papers may require mentally transposing some symbols and shifting iteration indices from <span class="math inline">\(t\)</span> to <span class="math inline">\(t+1\)</span> or <span class="math inline">\(t-1\)</span>.</p>
+<p>Apart from the Sutskever and Bengio papers linked to above, it’s worth checking out the <a href="http://www.jmlr.org/proceedings/papers/v28/sutskever13-supp.pdf">appendix to the Sutskever paper (PDF)</a> or the relevant part (chapter 7) of <a href="http://hdl.handle.net/1807/36012">Sutskever’s thesis</a>. For an introduction to NAG itself, try the first part of this paper by <a href="https://arxiv.org/abs/1204.3982">O’Donoghue and Candès</a> (the rest of it is also good but not germane to Nesterov momentum expressions).</p>
 <div id="definitions" class="section level2">
 <h2>Definitions</h2>
 <p>The goal is to optimize some parameters, <span class="math inline">\(\theta\)</span>. This is going to involve gradient descent, so we will be evaluating the gradient of an objective function of those parameters, <span class="math inline">\(\nabla f\left(\theta\right)\)</span>, and moving a certain distance in the direction of the negative of the gradient, the distance being related to the learning rate, <span class="math inline">\(\varepsilon\)</span>. There will also be a momentum term involved, with momentum coefficient <span class="math inline">\(\mu\)</span>. The value of the parameters, learning rate and momentum at iteration <span class="math inline">\(t\)</span> will be indicated by a subscript, e.g. <span class="math inline">\(\theta_t\)</span>.</p>
+<div id="the-update-vector" class="section level3">
+<h3>The Update Vector</h3>
 <p>A definition which holds across all the methods discussed here is that the parameters at iteration <span class="math inline">\(t+1\)</span> are related to the parameters at iteration <span class="math inline">\(t\)</span> by an update that involves the addition of a velocity vector, <span class="math inline">\(v\)</span>:</p>
 <p><span class="math display">\[\theta_{t+1} = \theta_t + v_{t+1} \implies v_{t+1} = \theta_{t+1} - \theta_t\]</span></p>
-<p>This is pretty obvious, but different methods have different velocity defintions, and it’s easy to get confused.</p>
-<p>Finally, I’ll try to be strict about names. When I’m referring to the original Nesterov Accelerated Gradient, I’ll call that NAG. When I’m referring to the versions that recast it as a momentum scheme, I’ll call that Nesterov momentum, and refer to either the Sutskever or Bengio forumulation where necessary. The traditional momentum scheme is referred to as “standard” or “regular” momentum by Bengio, and “classical” by Sutskever. I’ll refer to it as “classical” momentum.</p>
+<p>This is pretty obvious, but the expressions we will be dealing with here use a recursive definition of <span class="math inline">\(v_t\)</span>, i.e. to usefully define these updates we need to express <span class="math inline">\(v_t\)</span> in terms of <span class="math inline">\(v_{t-1}\)</span>. The exact expression depends on whether we are using classical momentum or NAG. In both cases, it would make sense to label a particular vector as <span class="math inline">\(v_t\)</span>, but due to the similarity in how they work, the temptation to substitute the classical momentum recursive definition of <span class="math inline">\(v_t\)</span> into an expression for NAG is almost overwhelming, and also always wrong.</p>
+<p>To confuse matters further, some papers (see the Bengio paper for example) directly use <span class="math inline">\(v_t\)</span> in expressions that update parameters, but where the <span class="math inline">\(v_t\)</span> doesn’t actually apply to the parameter being updated.</p>
+<p>Finally, I’ll try to be strict about names. When I’m referring to the original Nesterov Accelerated Gradient, I’ll call that NAG. When I’m referring to the versions that recast it as a momentum scheme, I’ll call that Nesterov momentum, and refer to either the Sutskever or Bengio forumulation where necessary. The traditional momentum scheme is referred to as “standard” or “regular” momentum by Bengio, and “classical” by Sutskever. Other authors call it “Polyak” or “heavy ball” momentum. I’ll refer to it as “classical” momentum.</p>
+</div>
 </div>
 <div id="classical-momentum" class="section level2">
 <h2>Classical Momentum</h2>
 <p>The classical momentum velocity vector is defined by Bengio as:</p>
-<p><span class="math display">\[v_t = \mu_{t-1}v_{t-1} - \varepsilon_{t-1}\nabla f\left(\theta_{t-1}\right)\]</span></p>
+<p><span class="math display">\[
+v_t = \mu_{t-1}v_{t-1} - \varepsilon_{t-1}\nabla f\left(\theta_{t-1}\right)
+\]</span></p>
 <p>Sutskever gives the same definition but without any <span class="math inline">\(t\)</span> subscript on the velocity vector or the momentum coefficient.</p>
 <p>We can write out the full update for classical momentum as:</p>
-<p><span class="math display">\[\theta_{t+1} = \theta_t + \mu_t v_t - \varepsilon_t \nabla f\left(\theta_t\right)\]</span> with velocity:</p>
+<p><span class="math display">\[\theta_{t+1} = \theta_t + \mu_t v_t - \varepsilon_t \nabla f\left(\theta_t\right)\]</span></p>
+<p>with velocity:</p>
 <p><span class="math display">\[v_{t+1} = \mu_t v_t - \varepsilon_t \nabla f\left(\theta_t \right)\]</span></p>
 </div>
 <div id="nag" class="section level2">
 <h2>NAG</h2>
-<p>The Nesterov Accelerated Gradient method consists of a gradient descent step, followed by something that looks a lot like a momentum term, but isn’t exactly the same as that found in classical momentum. I’ll call it a “momentum stage” here. It’s important to note that the parameters being minimized by NAG are given the symbol <span class="math inline">\(y\)</span> by Sutskever, not <span class="math inline">\(\theta\)</span>. You’ll see that <span class="math inline">\(\theta\)</span> is the symbol for the parameters after they’ve been updated by the gradient descent stage, but before the momentum stage.</p>
-<p>Here’s the gradient descent stage: <span class="math display">\[\theta_t = y_t - \varepsilon_t \nabla f\left(y_t\right)\]</span> And here’s the momentum stage: <span class="math display">\[y_{t+1} = \theta_t + \mu_t\left(\theta_t - \theta_{t-1} \right)\]</span> That concludes one iteration of NAG. The hard part is actually finding the correct learning rate and momentum value in order to get the convergence guarantees that make the method attractive, but that needn’t concern us. Sutskever in his thesis suggests manual tuning to get an optimal result (at least for deep learning applications) so we are in heuristic territory here anyway.</p>
+<p>The Nesterov Accelerated Gradient method consists of a gradient descent step, followed by something that looks a lot like a momentum term, but isn’t exactly the same as that found in classical momentum. I’ll call it a “momentum stage” here. If you look at the Sutskever paper, t’s important to note that the parameters being minimized by NAG are given the symbol <span class="math inline">\(y\)</span>, not <span class="math inline">\(\theta\)</span>. You’ll see that <span class="math inline">\(\theta\)</span> is the symbol for the parameters after they’ve been updated by the gradient descent stage, but before the momentum stage.</p>
+<p>I’m going to stick with <span class="math inline">\(\theta_t\)</span> as the parameters being updated. But we do need to define a symbol that accounts for the state of the parameters after the gradient descent stage. I’ll go with <span class="math inline">\(\phi_{t+1}\)</span>. Whether you consider the intermediate step to be part of iterate <span class="math inline">\(t\)</span> or <span class="math inline">\(t+1\)</span> doesn’t really matter, but different papers use different conventions, so you will need to keep track of it all or risk getting very confused. In this case I am going with <span class="math inline">\(t+1\)</span> so it’s consistent with any new quantities calculated in an iteration (like <span class="math inline">\(v_{t+1}\)</span>).</p>
+<p>Here’s the gradient descent stage:</p>
+<p><span class="math display">\[
+\phi_{t+1} = \theta_t - \varepsilon_t \nabla f\left(\theta_t \right)
+\]</span></p>
+<p>followed by the momentum-like stage:</p>
+<p><span class="math display">\[
+\theta_{t+1} = \phi_{t+1} + \mu_t\left(\phi_{t+1} - \phi_{t} \right)
+\]</span></p>
+<p>That concludes one iteration of NAG. The hard part is actually finding the correct learning rate and momentum value in order to get the convergence guarantees that make the method attractive, but that needn’t concern us. Sutskever in his thesis suggests manual tuning to get an optimal result (at least for deep learning applications) so we are in heuristic territory here anyway.</p>
 </div>
 <div id="sutskever-nesterov-momentum" class="section level2">
 <h2>Sutskever Nesterov Momentum</h2>
-<p>The key idea behind the Sutskever momentum derivation is to shift the perspective about which of the parameters we want as the result of the iteration, from <span class="math inline">\(y\)</span> to <span class="math inline">\(\theta\)</span>. Rather than having the optimization iterations proceed as “gradient descent, momentum (end of iteration 1), gradient descent, momentum (end of iteration 2), gradient descent etc.” move the boundary of where the iterations end by a half-iteration to get “momentum, gradient descent (end of iteration 1), momentum, gradient descent (end of iteration 2) etc.”. This leaves a phantom gradient descent step that used to be first stage of the first iteration, now floating in the nether regions of iteration zero, but you can just pretend that the starting position is the result of gradient descent from some other arbitrary starting position.</p>
-<p>The Sutskever derivation then proceeds as follows. First, rewrite the momentum stage in terms of <span class="math inline">\(y_t\)</span>:</p>
-<p><span class="math display">\[y_t = \theta_{t-1} + \mu_{t-1}\left(\theta_{t-1} - \theta_{t-2} \right)\]</span></p>
-<p>Then note that the term in parentheses is just the definition of the velocity vector, so we can write:</p>
-<p><span class="math display">\[y_t = \theta_{t-1} + \mu_{t-1}v_{t-1}\]</span></p>
-<p>We now substitute this expression for <span class="math inline">\(y_t\)</span> into the gradient descent stage:</p>
-<p><span class="math display">\[\theta_t = \theta_{t-1} + \mu_{t-1}v_{t-1} - \varepsilon_t \nabla f\left(y_t\right)\]</span> and replace <span class="math inline">\(y_t\)</span> with an expression in terms of <span class="math inline">\(\theta_t\)</span>:</p>
-<p><span class="math display">\[\theta_t = \theta_{t-1} + \mu_{t-1}v_{t-1} - \varepsilon_t \nabla f\left(\theta_{t-1} + \mu_{t-1}v_{t-1}\right)\]</span></p>
-<p>At this point, the expression differs from that given by Sutskever in one detail: the learning rate associated with the gradient descent is currently written as <span class="math inline">\(\varepsilon_{t}\)</span>. But remember that we have now moved the boundaries of the iteration: the gradient descent that would have been the first stage of iteration <span class="math inline">\(t+1\)</span> is now the second stage of iteration <span class="math inline">\(t\)</span>. So the above expression is more correctly written as:</p>
-<p><span class="math display">\[\theta_t = \theta_{t-1} + \mu_{t-1}v_{t-1} - \varepsilon_{t-1} \nabla f\left(\theta_{t-1} + \mu_{t-1}v_{t-1}\right)\]</span></p>
-<p>just as given by Sutskever. And therefore the expression for the parameter update is trivially:</p>
-<p><span class="math display">\[\theta_{t+1} = \theta_t + \mu_t v_t - \varepsilon_t \nabla f\left(\theta_t + \mu_t v_t\right)\]</span></p>
-<p>with the velocity vector defined as:</p>
-<p><span class="math display">\[v_{t+1} = \mu_t v_t - \varepsilon_t \nabla f\left(\theta_t + \mu_t v_t\right)\]</span></p>
-<p>This looks just like the classical momentum update, except that the gradient is calculated after the momentum update. Hence, one can do NAG by simply reversing the order in which the update is usually carried out: do the momentum stage first, update the parameters, and then do the gradient descent part.</p>
-<div id="bengio-nesterov-momentum" class="section level3">
-<h3>Bengio Nesterov Momentum</h3>
-<p>The Bengio formulation of Nesterov momentum starts from the Sutskever definition and then defines a new variable, <span class="math inline">\(\Theta\)</span>, which represents <span class="math inline">\(\theta\)</span> after the momentum update:</p>
-<p><span class="math display">\[\Theta_{t-1} \equiv \theta_{t-1} + \mu_{t-1} v_{t-1}\]</span></p>
-<p>A re-arrangement that will come in handy is: <span class="math display">\[\theta_{t-1} = \Theta_{t-1} - \mu_{t-1} v_{t-1}\]</span></p>
-<p>Also, we are going to do something a bit tricky, and that is to keep on using the velocity vector definition from the Sutskever formulation, but with <span class="math inline">\(\Theta\)</span> substituted in:</p>
-<p><span class="math display">\[v_t = \mu_{t-1} v_{t-1} - \varepsilon_{t-1} \nabla f\left(\Theta_{t-1}\right)\]</span> The reason I call this tricky is that the velocity vector still refers to the <span class="math inline">\(\theta\)</span> update, but we are going to be writing the update in terms of <span class="math inline">\(\Theta\)</span>. You’ll see what I mean.</p>
-<p>Anyway, let’s take the Sutskever Nesterov momentum update and substitute in the expression above for <span class="math inline">\(\theta\)</span> in terms of <span class="math inline">\(\Theta\)</span>:</p>
-<p><span class="math display">\[\Theta_{t+1} - \mu_{t+1} v_{t+1} = \Theta_t - \mu_t v_t + \mu_t v_t - \varepsilon_t \nabla f\left(\Theta_t\right)\]</span></p>
-<p>Noting that those two <span class="math inline">\(\mu_t v_t\)</span> terms cancel out and then rearranging to leave <span class="math inline">\(\Theta_{t+1}\)</span> on the LHS, we get:</p>
-<p><span class="math display">\[\Theta_{t+1} = \Theta_t + \mu_{t+1} v_{t+1} - \varepsilon_t \nabla f\left(\Theta_t\right)\]</span></p>
-<p>We can now substitute in the Sutskever velocity expression, <span class="math inline">\(v_{t+1}\)</span>:</p>
+<p>The key idea behind the Sutskever momentum derivation is to shift the perspective about which of the parameters we want as the result of the iteration, from <span class="math inline">\(\theta\)</span> to <span class="math inline">\(\phi\)</span>. Rather than having the optimization iterations proceed as “gradient descent, momentum (end of iteration 1), gradient descent, momentum (end of iteration 2), gradient descent etc.” move the boundary of where the iterations end by a half-iteration to get “momentum, gradient descent (end of iteration 1), momentum, gradient descent (end of iteration 2) etc.”. This leaves a phantom gradient descent step that used to be first stage of the first iteration, now floating in the nether regions of iteration zero, but you can just pretend that the starting position is the result of gradient descent from some other arbitrary starting position.</p>
+<p>Perhaps a visualization will help. Here are two full iterations of NAG in its standard form, separated by boxes so you can see where one interation ends and the other begins.</p>
 <p><span class="math display">\[
-\Theta_{t+1} = 
-\Theta_t + \mu_{t+1}\left[\mu_t v_t - \varepsilon_t \nabla f\left(\Theta_t\right)\right] 
-- \varepsilon_t \nabla f\left(\Theta_t\right)
+\boxed{
+\phi_{t+1} = \theta_t - \varepsilon_t \nabla f\left(\theta_t \right) \\
+\theta_{t+1} = \phi_{t+1} + \mu_t\left(\phi_{t+1} - \phi_{t} \right)} \\
+\boxed{
+\phi_{t+2} = \theta_{t+1} - \varepsilon_{t+1} \nabla f\left(\theta_{t+1} \right) \\
+\theta_{t+2} = \phi_{t+2} + \mu_{t+1}\left(\phi_{t+2} - \phi_{t+1} \right)
+}
 \]</span></p>
-<p>Expanding out the parentheses gives:</p>
+<p>The Sutskever derivation says shift the boundaries of the iteration so that it starts one stage later. This is the same four equations as above, but with a box showing the new definition of the iteration:</p>
 <p><span class="math display">\[
-\Theta_{t+1} = 
-\Theta_t + \mu_{t+1} \mu_t v_t - \mu_{t+1} \varepsilon_t \nabla f\left(\Theta_t\right) 
-- \varepsilon_t \nabla f\left(\Theta_t\right)
+\phi_{t+1} = \theta_t - \varepsilon_t \nabla f\left(\theta_t \right) \\
+\boxed
+{
+\theta_{t+1} = \phi_{t+1} + \mu_t\left(\phi_{t+1} - \phi_{t} \right) \\
+\phi_{t+2} = \theta_{t+1} - \varepsilon_{t+1} \nabla f\left(\theta_{t+1} \right)
+} \\
+\theta_{t+2} = \phi_{t+2} + \mu_{t+1}\left(\phi_{t+2} - \phi_{+1} \right)
 \]</span></p>
-<p>and, after grouping the gradient descent parts, finally gives:</p>
+<p>Now that the definition of where we start and finish each iteration has changed we need to re-label some variables: uses of <span class="math inline">\(\phi\)</span> and <span class="math inline">\(\varepsilon\)</span> need to be shifted back one step of <span class="math inline">\(t\)</span> to give:</p>
 <p><span class="math display">\[
-\Theta_{t+1} = 
-\Theta_t + \mu_{t+1} \mu_t v_t - \left(1 + \mu_{t+1} \right) \varepsilon_t \nabla f\left(\Theta_t\right)
+\theta_{t+1} = \phi_{t} + \mu_t\left(\phi_{t} - \phi_{t-1} \right) \\
+\phi_{t+1} = \theta_{t+1} - \varepsilon_{t} \nabla f\left(\theta_{t+1} \right)
 \]</span></p>
-<p>At this point in the other derivations, I isolated the bits on the RHS that wasn’t the old parameter and defined them as the velocity vector. Well, we can’t do that here, as we’re already using the Sutskever definition of the velocity vector which is <span class="math inline">\(\theta_t - \theta_{t-1}\)</span> and <em>not</em> <span class="math inline">\(\Theta_t - \Theta_{t-1}\)</span>. I said it was a bit tricky.</p>
-<p>The advantage of this expression for the Nesterov momentum is that it doesn’t require calculating a gradient at a non-standard position, and only requires a modification to the coefficients used to calculate the velocity, which is probably an easier change to make to an existing codebase which already uses classical momentum.</p>
-<p>Before going any further, it’s worth going back to the original expression for the gradient descent part of NAG that Sutskever gives in his thesis (and appendix to the paper):</p>
+<p>Then because our update is now in terms of <span class="math inline">\(\phi\)</span> rather than <span class="math inline">\(\theta\)</span>, we can label <span class="math inline">\(\phi_{t} - \phi_{t-1}\)</span> as <span class="math inline">\(v_t\)</span>. The new definition of <span class="math inline">\(\theta_{t+1}\)</span> is then:</p>
 <p><span class="math display">\[
-y_{t+1} = \theta_t + \mu_t\left(\theta_t - \theta_{t-1} \right) 
-= \theta_t + \mu_t v_t
-\]</span> Let’s just compare that to the Bengio definition of <span class="math inline">\(\Theta\)</span>:</p>
-<p><span class="math display">\[
-\Theta_{t} \equiv \theta_{t} + \mu_{t} v_{t}
-\]</span> Yep, that means:</p>
-<p><span class="math display">\[
-\Theta_{t} \equiv y_{t+1}
+\theta_{t+1} = \phi_{t} + \mu_t v_t
 \]</span></p>
-<p>So the Bengio formulation is really just another way to write the standard NAG update.</p>
+<p>And we can now substitute that definition for <span class="math inline">\(\theta_{t+1}\)</span> into the momentum stage expression, which lets us write this half-shifted NAG iteration in one line:</p>
+<p><span class="math display">\[
+\phi_{t+1} = \phi_{t} + \mu_t v_t - \varepsilon_{t} \nabla f\left(\phi_{t} + \mu_t v_t \right)
+\]</span></p>
+<p>There you have it: this looks just like the classical momentum update, except that the gradient is calculated after the momentum update. Hence, one can do NAG by simply reversing the order in which the update is usually carried out: do the momentum stage first, update the parameters, and then do the gradient descent part. Just like Sutskever said you could.</p>
 </div>
-<div id="an-alternative-expression-for-nag" class="section level3">
-<h3>An Alternative Expression for NAG</h3>
+<div id="bengio-nesterov-momentum" class="section level2">
+<h2>Bengio Nesterov Momentum</h2>
+<p>I found working through the Bengio version of Nesterov momentum a bit brain-breaking. It starts from the Sutskever definition and then defines a new variable, <span class="math inline">\(\Theta\)</span>, which represents the parameters after the momentum update. But that just moves us one half-step forward in the iteration, so we are back to doing things in the original NAG way: gradient descent then momentum-style update. So their paper’s <span class="math inline">\(\Theta\)</span> is the same as our <span class="math inline">\(\theta\)</span>. Its explanation of “committing to the ‘peekedahead’ parameters” and then “backtracking by the same amount before each update”, also never landed with me (this is a reflection on my mental capacity, not the paper). Finally, it expresses the update in terms of <span class="math inline">\(v\)</span>, but that’s still the the update in terms of the difference in <span class="math inline">\(\phi\)</span>, not <span class="math inline">\(\theta\)</span>. Unlike this document it also uses <span class="math inline">\(t-1\)</span> and <span class="math inline">\(t\)</span> to index the parameters that are being updated, so you will have to remember to add or subtract 1 from the subscripts when looking between here and the paper, but that’s the least of your problems honestly.</p>
+<p>It’s all too much. I can’t get their explanation to stick in my brain, even though I can follow the individual steps and get the right expression. So I will show you how to arrange the standard NAG expressions into their form, rather than starting from the Sutskever result.</p>
+<p>First, let’s remove the confusion around using <span class="math inline">\(v\)</span> as an update vector which isn’t the change in the parameters that we are updating each iteration. Instead of <span class="math inline">\(\phi_{t+1} - \phi_{t} = v_{t+1}\)</span>, define:</p>
+<p><span class="math display">\[
+\phi_{t+1} - \phi_{t} = b_{t+1}
+\]</span></p>
+<p>(the ‘b’ is for Bengio). Our goal now is to end up with an expression that is defined using <span class="math inline">\(\theta_t\)</span> (no <span class="math inline">\(\phi_t\)</span> allowed) and <span class="math inline">\(b_t\)</span>.</p>
+<p>Now we are going to go back to using the original NAG expression so to help you scrub all the shifts in <span class="math inline">\(t\)</span> from your mind here is the expression again:</p>
+<p><span class="math display">\[
+\phi_{t+1} = \theta_t - \varepsilon_t \nabla f\left(\theta_t \right) \\
+\theta_{t+1} = \phi_{t+1} + \mu_t\left(\phi_{t+1} - \phi_{t} \right)
+\]</span> Start by replacing all uses of <span class="math inline">\(\phi_{t+1}\)</span> in the second equation with the definition in terms of <span class="math inline">\(\theta_t\)</span> given in the first equation:</p>
+<p><span class="math display">\[
+\begin{equation}
+\begin{split}
+\theta_{t+1} &amp; = \theta_t - \varepsilon_t \nabla f\left(\theta_t \right) + 
+  \mu_t \left( \theta_t - \varepsilon_t \nabla f\left(\theta_t \right) - \phi_{t} \right) \\
+ &amp; = \left(1 + \mu \right) \theta_t 
+ - \left(1 + \mu_t \right) \varepsilon_t \nabla f\left(\theta_t \right)
+  - \mu_t \phi_t
+\end{split}
+\end{equation}  
+\]</span></p>
+<p>So far, so un-promising. Time to get <span class="math inline">\(b_t\)</span> involved. Remember how we defined:</p>
+<p><span class="math display">\[
+\begin{equation}
+\begin{split}
+\theta_{t+1} &amp; = \phi_{t+1} + \mu_t\left(\phi_{t+1} - \phi_{t} \right) \\
+ &amp; = \phi_{t+1} + \mu_t b_{t+1}
+\end{split}
+\end{equation}
+\]</span></p>
+<p>Let’s shift everything back one iteration:</p>
+<p><span class="math display">\[
+\theta_{t} = \phi_{t} + \mu_{t-1} b_{t} \\
+\implies  \phi_{t} = \theta_{t} - \mu_{t-1} b_{t}
+\]</span></p>
+<p>And now substitute for <span class="math inline">\(\phi_t\)</span> in the last term in our NAG update:</p>
+<p><span class="math display">\[
+\begin{equation}
+\begin{split}
+\theta_{t+1} &amp; = \left(1 + \mu \right) \theta_t 
+ - \left(1 + \mu_t \right) \varepsilon_t \nabla f\left(\theta_t \right)
+  - \mu_t \phi_t \\
+ &amp; = \left(1 + \mu \right) \theta_t 
+ - \left(1 + \mu_t \right) \varepsilon_t \nabla f\left(\theta_t \right)
+  - \mu_{t} \theta_t + \mu_{t-1} \mu_t b_t
+\end{split}
+\end{equation}  
+\]</span></p>
+<p>The final step is to gather together the <span class="math inline">\(\theta_t\)</span> terms and the result is:</p>
+<p><span class="math display">\[
+\theta_{t+1} = \theta_t + \mu_{t-1} \mu_t b_t
+ - \left(1 + \mu_t \right) \varepsilon_t \nabla f\left(\theta_t \right)
+\]</span></p>
+<p>Ta da. There it is, just like in the paper, subject to the differences in symbols and when the iteration ticks over from <span class="math inline">\(t\)</span> to <span class="math inline">\(t+1\)</span> and so on.</p>
+<p>The advantage of this expression for the Nesterov momentum is that it doesn’t require calculating a gradient at a non-standard position, and only requires a modification to the coefficients used to calculate the velocity, which is probably an easier change to make to an existing codebase which already uses classical momentum. However, because this expression is recursive on <span class="math inline">\(b_t\)</span> rather than the update vector <span class="math inline">\(v_t\)</span>, you will need to remember to store the a different vector than you would with classical momentum. It’s not really clear to me whether that is an easy or hard thing to do with most optimization code bases vs having to make code changes to calculate the gradient at a different location than the current parameter vector, as you have to do with the Sutskever version.</p>
+<p>You should also remember that while the parameters from this version and the Sutskever version should converge to the same values from the same starting positions, on an iteration-to-iteration version level, you will get different values for the parameters, because they are half a step out of sync with each other.</p>
+</div>
+<div id="an-alternative-expression-for-nag" class="section level2">
+<h2>An Alternative Expression for NAG</h2>
 <p>Let’s go back to the original formulation of NAG and now instead of making <span class="math inline">\(\theta\)</span> the variables after gradient descent, we’ll put them where <span class="math inline">\(y\)</span> was originally used. The variables after gradient descent I’ll refer to as <span class="math inline">\(\phi\)</span>.</p>
-<p><span class="math display">\[\phi_t = \theta_t - \varepsilon_t \nabla f\left(\theta_t \right)\]</span> <span class="math display">\[\theta_{t+1} = \phi_t + \mu_t\left(\phi_t - \phi_{t-1} \right)\]</span></p>
+<p><span class="math display">\[\phi_t = \theta_t - \varepsilon_t \nabla f\left(\theta_t \right)\]</span></p>
+<p><span class="math display">\[\theta_{t+1} = \phi_t + \mu_t\left(\phi_t - \phi_{t-1} \right)\]</span></p>
 <p>Now, let’s just write out the momentum stage in terms of <span class="math inline">\(\theta\)</span>, substituting <span class="math inline">\(\phi\)</span> wherever we find it:</p>
 <p><span class="math display">\[
 \theta_{t+1} = \theta_t - \varepsilon_t \nabla f\left(\theta_t \right)
@@ -402,8 +458,8 @@ v_{t+1} =
 <p><a href="https://arxiv.org/abs/1810.06801">Quasi-hyperbolic momentum</a> uses a similar formulation, but introduces an extra parameter that allows QHM to generalize over classical momentum and NAG, subject to the restriction of a fixed learning rate. The Stack Exchange answer given above also suggests that the “gradient momentum” term can be set independently of <span class="math inline">\(\mu\)</span> and Denis Yarats is one of the authors of the QHM paper, so perhaps we see the origins of QHM in this answer.</p>
 <p>The setup and presentation of the update equations for QHM in that paper make it a bit hard to see the connection between it and the form of NAG given here. The supplemental material in <a href="https://papers.nips.cc/paper/9158-understanding-the-role-of-momentum-in-stochastic-gradient-methods">Understanding the Role of Momentum in Stochastic Gradient Methods</a> might be of interest, or some extra <a href="https://jlmelville.github.io/mize/qhm.html">notes on QHM</a> I wrote for my own benefit.</p>
 </div>
-<div id="unified-momentum" class="section level3">
-<h3>Unified Momentum</h3>
+<div id="unified-momentum" class="section level2">
+<h2>Unified Momentum</h2>
 <p><em>December 12 2021</em>: Previously in this section I wrote down a QHM-like expression I called “generalized” momentum. This was a bad choice of words because there is already a concept in physics called generalized momentum, which is nothing to do with this. Fortunately, in 2018 <a href="https://arxiv.org/abs/1808.03408">Zou and co-workers</a> published a paper with the same expression and called it “unified stochastic momentum”. The stochastic bit is because it is in the context of stochastic gradient descent but that has no effect on the expression. So let’s call it “unified momentum” instead:</p>
 <p>Similarly to QHM, we can write a related <del>“generalized”</del> “unified” momentum update by introducing a parameter <span class="math inline">\(\beta\)</span> to give:</p>
 <p><span class="math display">\[
@@ -419,10 +475,10 @@ v_{t+1} =
 \]</span> where setting <span class="math inline">\(\beta_t = 0\)</span> will give classical momentum and <span class="math inline">\(\beta_t = 1\)</span> gives Nesterov.</p>
 <p>In 2020, a similar expression was given by <a href="https://arxiv.org/abs/2002.04839">Ziyin and co-workers</a>, but didn’t give it a catchy name. They don’t cite the Zou paper, so presumably they discovered it independently. I’d like to find the earliest use of this interpolation, but neither the Zou nor the Ziyin paper give a reference to any earlier paper. Perhaps it’s just incredibly obvious?</p>
 <p>From the look of the expression, it seems that a major downside of this expression is that calculating the parameters for iteration <span class="math inline">\(t+1\)</span> requires storage of information from not only iteration <span class="math inline">\(t\)</span> but from iteration <span class="math inline">\(t-1\)</span> too. But you don’t necessarily have to do any extra storage with an implementation that used this version of NAG. At the end of an iteration, when saving the velocity vector for the next iteration, you change:</p>
-<p><span class="math display">\[v_{t-1} \leftarrow v_t\]</span> to: <span class="math display">\[v_{t-1} \leftarrow v_t + \varepsilon_{t} \nabla f\left(\theta_t \right)\]</span></p>
+<p><span class="math display">\[v_{t-1} \leftarrow v_t\]</span> to:</p>
+<p><span class="math display">\[v_{t-1} \leftarrow v_t + \varepsilon_{t} \nabla f\left(\theta_t \right)\]</span></p>
 <p>and then when calculating the momentum term, change:</p>
 <p><span class="math display">\[\mu_t v_t\]</span> to: <span class="math display">\[\mu_t \left[v_t - \varepsilon_{t} \nabla f\left(\theta_t \right)\right]\]</span></p>
-</div>
 </div>
 <div id="unrolling-nag-and-classical-momentum" class="section level2">
 <h2>Unrolling NAG and Classical Momentum</h2>
@@ -432,11 +488,36 @@ v_{t+1} =
 -\varepsilon_t \nabla f\left(\theta_t \right) \equiv s_t
 \]</span></p>
 <p>to represent the steepest descent direction. Note that this includes the negative sign. Also, I am going to assume that the momentum is constant, to save on some more notational clutter.</p>
-<p>Classical momentum is therefore represented as:</p>
+<p>A consequence of my nomenclature choice is that the initial coordinates are at <span class="math inline">\(\theta_1\)</span>, not <span class="math inline">\(\theta_0\)</span>. Sorry if you find that annoying.</p>
+<div id="classical-momentum-1" class="section level3">
+<h3>Classical Momentum</h3>
+<p>Using the slightly briefer symbols, the classical momentum update is:</p>
 <p><span class="math display">\[
 \theta_{t+1} = \theta_t + s_t + \mu v_t
 \]</span></p>
-<p>And we’ll use this straight-forward expression for NAG:</p>
+<p>And the first four updates (including steepest descent on the first iteration) are as follows:</p>
+<p><span class="math display">\[
+\begin{equation}
+\begin{split}
+\theta_2 &amp; = \theta_1 + s_1 \\
+\\
+\theta_3 &amp; = \theta_2 + s_2 + \mu v_2 \\
+ &amp; = \theta_2 + s_2 + \mu s_1 \\
+\\
+\theta_4 &amp; = \theta_3 + s_3 + \mu v_3 \\
+ &amp; = \theta_3 + s_3 + \mu \left(s_2 + \mu s_1 \right) \\
+ &amp; = \theta_3 + s_3 + \mu s_2 + \mu^2 s_1 \\
+\\
+\theta_5 &amp; = \theta_4 + s_4 + \mu v_4 \\
+ &amp; = \theta_4 + s_4 + \mu \left( s_3 + \mu s_2 + \mu^2 s_1 \right)\\
+ &amp; = \theta_4 + s_4 + \mu s_3 + \mu^2 s_2 + \mu^3 s_1 \\
+\end{split}
+\end{equation}
+\]</span></p>
+</div>
+<div id="nag-1" class="section level3">
+<h3>NAG</h3>
+<p>We’ll use this straight-forward expression for NAG:</p>
 <p><span class="math display">\[
 \theta_{t+1} = \theta_t + s_t
 + \mu \left(\theta_t + s_t
@@ -447,66 +528,57 @@ v_{t+1} =
 <p><span class="math display">\[
 \theta_{t+1} = \theta_t + \left(1 + \mu \right) s_t - \mu s_{t-1} + \mu v_t
 \]</span></p>
-<div id="step-1-gradient-descent" class="section level3">
-<h3>Step 1: Gradient Descent</h3>
-<p>A consequence of my nomenclature choice is that the initial coordinates are at <span class="math inline">\(\theta_1\)</span>, not <span class="math inline">\(\theta_0\)</span>. Sorry if you find that annoying. In both cases, the first step is always just gradient descent:</p>
+<div id="the-first-step" class="section level4">
+<h4>The first step</h4>
+<p><em>December 14 2021</em> (this section describing your choices for the first step is new).</p>
+<p>Like classical momentum, the only sensible direction to move in on the first step is the steepest descent direction because we have no “memory” of any previous directions to use. But a strict application of the NAG update would set <span class="math inline">\(v_t = 0\)</span> and <span class="math inline">\(s_{t-1} = 0\)</span> and leave us with:</p>
 <p><span class="math display">\[
-\theta_2 = \theta_1 + s_1
+\theta_{2} = \theta_1 + \left(1 + \mu \right) s_1
 \]</span></p>
-<p>The next three steps then proceed as follows:</p>
+<p>This is still moving in the direction of the negative gradient, but it takes a longer step size than classical momentum. This doesn’t make a lot of sense to me as a good first step without any contributions from previous updates or gradients. Why have a momentum term involved at all when most of what that <span class="math inline">\(\mu\)</span> gets applied to in subsequent iterations isn’t around?</p>
+<p>Also, as we will see later, taking the long step makes reconciling the different versions of NAG a bit harder than it needs. Plus, I see the appeal of both classical momentum and NAG taking the step on the first iteration when there is no history of updates to work on. So I won’t blame you if you decide to go with steepest descent with step size of length <span class="math inline">\(\varepsilon_1\)</span> rather than <span class="math inline">\(\left(1 + \mu \right) \varepsilon_1\)</span>.</p>
+<p>Unfortunately, as you will discover, your efforts to avoid taking the “long” steepest descent step will be in vain. If you don’t do it on the first iteration, it just shows up again in the second iteration.</p>
+<p>We’ll look at the results with both choices, and it’s honestly not that consequential, but probably going with the <span class="math inline">\(\left(1 + \mu \right)\)</span> step size on the first iteration is the right move.</p>
+<p>Having decided on the “long” version of the first steepest descent step, here it is along with the subsequent three steps of NAG:</p>
+<p><span class="math display">\[
+\begin{equation}
+\begin{split}
+\theta_2 &amp; = \theta_1 + \left(1 + \mu \right) s_1 \\
+\\
+\theta_3 &amp; = \theta_2 + \left(1 + \mu \right) s_2 - \mu s_1 + \mu v_2 \\
+ &amp; = \theta_2 + \left(1 + \mu \right) s_2 - \mu s_1 + \mu \left(1 + \mu \right) s_1 \\
+ &amp; = \theta_2 + \left(1 + \mu \right) s_2 + \mu^2 s_1 \\
+\\ 
+\theta_4 &amp; = \theta_3 + \left(1 + \mu \right) s_3 - \mu s_2 + \mu v_3 \\
+&amp; = \theta_3 + \left(1 + \mu \right) s_3 - \mu s_2 + \mu \left(1 + \mu \right) s_2 + \mu^3 s_1\\
+&amp; = \theta_3 + \left(1 + \mu \right) s_3 + \mu^2 s_2 + \mu^3 s_1 \\
+\\
+\theta_5 &amp; = \theta_4 + \left(1 + \mu \right) s_4 - \mu s_3 + \mu v_4 \\
+&amp; = \theta_4 + \left(1 + \mu \right) s_4 - \mu s_3 + \mu \left[ \left(1 + \mu \right) s_3 + \mu^2 s_2 + \mu^3 s_1 \right] \\
+&amp; = \theta_4 + \left(1 + \mu \right) s_4 - \mu s_3 + \mu \left(1 + \mu \right) s_3 + \mu^3 s_2  + \mu^4 s_1 \\
+&amp; = \theta_4 + \left(1 + \mu \right) s_4 + \mu^2 s_3 + \mu^3 s_2 + \mu^4 s_1
+\end{split}
+\end{equation}
+\]</span></p>
+<p>You can see a pattern emerging here at this point, I hope. These are quite similar in form compared to the classical momentum.</p>
 </div>
-<div id="classical-momentum-steps-2-4" class="section level3">
-<h3>Classical Momentum Steps 2-4</h3>
-<p><span class="math display">\[
-\begin{equation}
-\begin{split}
-\theta_3 &amp; = \theta_2 + s_2 + \mu v_2 \\
- &amp; = \theta_2 + s_2 + \mu s_1
-\end{split}
-\end{equation}
-\]</span></p>
-<p><span class="math display">\[
-\begin{equation}
-\begin{split}
-\theta_4 &amp; = \theta_3 + s_3 + \mu v_3 \\
- &amp; = \theta_3 + s_3 + \mu \left(s_2 + \mu s_1 \right) \\
- &amp; = \theta_3 + s_3 + \mu s_2 + \mu^2 s_1
-\end{split}
-\end{equation}
-\]</span></p>
-<p><span class="math display">\[
-\begin{equation}
-\begin{split}
-\theta_5 &amp; = \theta_4 + s_4 + \mu v_4 \\
- &amp; = \theta_4 + s_4 + \mu \left( s_3 + \mu s_2 + \mu^2 s_1 \right)\\
- &amp; = \theta_4 + s_4 + \mu s_3 + \mu^2 s_2 + \mu^3 s_1
-\end{split}
-\end{equation}
-\]</span></p>
 </div>
-<div id="nag-steps-2-4" class="section level3">
-<h3>NAG Steps 2-4</h3>
+<div id="nag-with-short-steepest-descent" class="section level3">
+<h3>NAG with “short” steepest descent</h3>
+<p>What happens if we decide to go with the shorter steepest descent step and make the same first step as we do with classical momentum? Here’s how that plays out:</p>
 <p><span class="math display">\[
 \begin{equation}
 \begin{split}
+\theta_{2} &amp; = \theta_1 + s_1 \\
+\\
 \theta_3 &amp; = \theta_2 + \left(1 + \mu \right) s_2 - \mu s_1 + \mu v_2 \\
  &amp; = \theta_2 + \left(1 + \mu \right) s_2 - \mu s_1 + \mu s_1 \\
  &amp; = \theta_2 + \left(1 + \mu \right) s_2 \\
-\end{split}
-\end{equation}
-\]</span></p>
-<p><span class="math display">\[
-\begin{equation}
-\begin{split}
+\\ 
 \theta_4 &amp; = \theta_3 + \left(1 + \mu \right) s_3 - \mu s_2 + \mu v_3 \\
 &amp; = \theta_3 + \left(1 + \mu \right) s_3 - \mu s_2 + \mu \left(1 + \mu \right) s_2 \\
-&amp; = \theta_3 + \left(1 + \mu \right) s_3 + \mu^2 s_2
-\end{split}
-\end{equation}
-\]</span></p>
-<p><span class="math display">\[
-\begin{equation}
-\begin{split}
+&amp; = \theta_3 + \left(1 + \mu \right) s_3 + \mu^2 s_2 \\
+\\
 \theta_5 &amp; = \theta_4 + \left(1 + \mu \right) s_4 - \mu s_3 + \mu v_4 \\
 &amp; = \theta_4 + \left(1 + \mu \right) s_4 - \mu s_3 + \mu \left[ \left(1 + \mu \right) s_3 + \mu^2 s_2 \right] \\
 &amp; = \theta_4 + \left(1 + \mu \right) s_4 - \mu s_3 + \mu \left(1 + \mu \right) s_3 + \mu^3 s_2 \\
@@ -514,7 +586,9 @@ v_{t+1} =
 \end{split}
 \end{equation}
 \]</span></p>
-<p>You can see a pattern emerging here at this point, I hope. These are quite similar forms, the difference being in how the momentum affects the weighting coefficients.</p>
+<p>Overall the results aren’t that different: nearly all of the terms are present with the same coefficients. However we can see that, as I mentioned above, the second step ends up being steepest descent as well, because the contribution of the <span class="math inline">\(s_1\)</span> terms cancel out. And once it’s gone, it’s gone for good: all the subsequent iterations lack the contribution of the <span class="math inline">\(s_1\)</span> term. And the second iteration is the “long” steepest descent step, the thing we were trying to avoid in the first place.</p>
+<p>So that’s two disadvantages to deal with: first, the long steepest descent is going to happen anyway. Second, the disappearance of the contribution of the first gradient after the first iteration. None of the other gradients behave like that and it also slightly messes with the relationship between the weights we get with NAG and classical momentum.</p>
+<p>On balance, I recommend using the “long” step for the first iteration of NAG. If I need to distinguish between the two methods I will call the version where we use the “short” step “NAGs”.</p>
 <div id="relative-weights" class="section level4">
 <h4>Relative Weights</h4>
 <p>Here’s a table showing how on the 4th step, the two methods weight the current and previous gradients in deciding on the next direction:</p>
@@ -541,15 +615,26 @@ v_{t+1} =
 <td align="center">1 + <span class="math inline">\(\mu\)</span></td>
 <td align="center"><span class="math inline">\(\mu^2\)</span></td>
 <td align="center"><span class="math inline">\(\mu^3\)</span></td>
+<td align="center"><span class="math inline">\(\mu^4\)</span></td>
+</tr>
+<tr class="odd">
+<td align="center">NAGs</td>
+<td align="center">1 + <span class="math inline">\(\mu\)</span></td>
+<td align="center"><span class="math inline">\(\mu^2\)</span></td>
+<td align="center"><span class="math inline">\(\mu^3\)</span></td>
 <td align="center">0</td>
 </tr>
 </tbody>
 </table>
-<p>From this it’s clear that the difference between NAG and classical momentum is that NAG puts more weight on recent gradients: in fact, it gives zero weight to the first gradient descent direction after the first iteration. This means the second step is also a pure gradient descent step, but with an extra big step size of <span class="math inline">\(\left(1 + \mu \right) \varepsilon\)</span>. Another way of looking at it is to say that NAG forgets old gradients more quickly.</p>
+<p>From this it’s clear that the difference between NAG and classical momentum is that NAG puts more weight on recent gradients: another way of looking at it is to say that NAG forgets old gradients more quickly.</p>
+<p>The regularity of the difference between classical momentum and NAG weights in that terrible suggest that there should be a way to express the NAG update in terms of a classical momentum update. See the section on ‘Dozat Nesterov momentum’ below for more on that.</p>
 <p>Let’s write some R code to generate a table to compare how the relative weights turn out between CM and NAG at different values of <span class="math inline">\(\mu\)</span>. We’ll normalize the contributions so they sum to 1.</p>
 <pre class="r"><code>cm_weights &lt;- function(mu) { c(1, mu, mu * mu, mu * mu * mu) }
 
-nag_weights &lt;- function(mu) { c(1 + mu, mu * mu, mu * mu * mu, 0) }
+nags_weights &lt;- function(mu) { c(1 + mu, mu * mu, mu * mu * mu, 0) }
+
+nag_weights &lt;- function(mu) { c(1 + mu, mu * mu, mu * mu * mu, mu * mu * mu * mu) }
+
 
 mumat &lt;- function(wfun, mus = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.99)) {
   rel_weights &lt;- matrix(nrow = length(mus), ncol = 5)
@@ -638,6 +723,65 @@ mumat &lt;- function(wfun, mus = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.99)) {
 <tbody>
 <tr class="odd">
 <td align="right">0.10</td>
+<td align="right">0.9900</td>
+<td align="right">0.0090</td>
+<td align="right">0.0009</td>
+<td align="right">0.0001</td>
+</tr>
+<tr class="even">
+<td align="right">0.25</td>
+<td align="right">0.9384</td>
+<td align="right">0.0469</td>
+<td align="right">0.0117</td>
+<td align="right">0.0029</td>
+</tr>
+<tr class="odd">
+<td align="right">0.50</td>
+<td align="right">0.7742</td>
+<td align="right">0.1290</td>
+<td align="right">0.0645</td>
+<td align="right">0.0323</td>
+</tr>
+<tr class="even">
+<td align="right">0.75</td>
+<td align="right">0.5736</td>
+<td align="right">0.1844</td>
+<td align="right">0.1383</td>
+<td align="right">0.1037</td>
+</tr>
+<tr class="odd">
+<td align="right">0.90</td>
+<td align="right">0.4640</td>
+<td align="right">0.1978</td>
+<td align="right">0.1780</td>
+<td align="right">0.1602</td>
+</tr>
+<tr class="even">
+<td align="right">0.99</td>
+<td align="right">0.4060</td>
+<td align="right">0.2000</td>
+<td align="right">0.1980</td>
+<td align="right">0.1960</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="nags-weights" class="section level4">
+<h4>NAGs weights</h4>
+<pre class="r"><code>knitr::kable(mumat(nags_weights), digits = 4)</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="right">mu</th>
+<th align="right">s4</th>
+<th align="right">s3</th>
+<th align="right">s2</th>
+<th align="right">s1</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">0.10</td>
 <td align="right">0.9901</td>
 <td align="right">0.0090</td>
 <td align="right">0.0009</td>
@@ -680,15 +824,61 @@ mumat &lt;- function(wfun, mus = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.99)) {
 </tr>
 </tbody>
 </table>
-<p>At high momentum, classical momentum is only placing around 25-30% of the weight on the current gradient, whereas for NAG, it’s still at 50-55%.</p>
+<p>At high momentum, classical momentum is only placing around 25-30% of the weight on the current gradient, whereas for NAG, it’s 45-50%. For NAGs, the weight is even higher at 50-55%.</p>
 </div>
 </div>
+</div>
+<div id="dozat-nesterov-momentum" class="section level2">
+<h2>Dozat Nesterov Momentum</h2>
+<p><em>16 December 2021</em>: A new section (currently in a serviceable but somewhat unsatisfactory state) on the expression for Nesterov momentum given by Timothy Dozat in the NAdam paper.</p>
+<p>All the expressions for CM and NAG so far have been recursive in their update vectors, i.e. <span class="math inline">\(v_t\)</span> is always defined in terms of <span class="math inline">\(v_{t-1}\)</span>. QHM does things slightly differently and always uses the classical momentum update as the recursive definition, even when its free parameter is set to give the same results as NAG or an interpolation between CM and NAG. So instead of storing the previous update, to use QHM, you:</p>
+<ol style="list-style-type: decimal">
+<li>Calculate the update vector as if you were doing classical momentum, which requires the previous iteration’s classical momentum update vector to have been stored. Let’s call the CM update vector <span class="math inline">\(m_{t+1}\)</span>, and the previous iterate’s momentum update is therefore <span class="math inline">\(m_t\)</span>.</li>
+<li>Use the current iteration CM update vector, <span class="math inline">\(m_{t+1}\)</span> to generate the QHM update vector, which we can call <span class="math inline">\(v_{t+1}\)</span>.</li>
+<li>Update <span class="math inline">\(\theta_{t}\)</span> using <span class="math inline">\(v_{t+1}\)</span> just as you do with CM and NAG.</li>
+<li>Store the current iteration CM update vector so it can be used as <span class="math inline">\(m_t\)</span> in the next iteration.</li>
+<li>You <em>don’t</em> store <span class="math inline">\(v_{t+1}\)</span> as the next iteration’s <span class="math inline">\(v_t\)</span>, because as the above steps show, it’s not used for calculating the next <span class="math inline">\(v_{t+1}\)</span>.</li>
+</ol>
+<p>This is also how Nesterov momentum is defined in a paper by <a href="https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ">Dozat</a> which integrates Nesterov momentum into the <a href="https://arxiv.org/abs/1412.6980">Adam</a> stochastic gradient descent method. The procedure there is:</p>
+<ol style="list-style-type: decimal">
+<li><span class="math inline">\(m_{t+1} = \mu m_{t} + s_{t}\)</span></li>
+<li><span class="math inline">\(v_{t+1} = \mu m_{t+1} + s_{t}\)</span></li>
+</ol>
+<p>Note that step 2 is the same as CM except <span class="math inline">\(m_t\)</span> is replaced by <span class="math inline">\(m_{t+1}\)</span>. This basically says that for CM, you carry out the gradient/velocity re-weighting once, but for NAG you repeat the process a second time. I am not sure what to call this. I’d love to say “double momentum” but that’s <a href="https://arxiv.org/abs/2102.07367">already a thing</a>. I’m going with “iterated” momentum.</p>
+<p>Seems neat, but is it actually true for the definition of NAG we’ve been using?</p>
+<p>At this point I must come to you with my head hung in defeat. I really wanted to get from the NAG equation we are now all very familiar with to the Dozat version of Nesterov momentum in the same way I generated the Sutskever and Bengio versions, but I have yet to succeed (in case you’re wondering, no I haven’t spent the last five years trying and failing).</p>
+<p>Instead, I just wrote out the Dozat momentum for the first few iterations and compared it to the unrolled CM and NAG expressions we generated above. It works well enough for our purposes here.</p>
+<p>The CM expression for <span class="math inline">\(\theta_5\)</span> re-written to use <span class="math inline">\(m_t\)</span> is the only example we need:</p>
+<p><span class="math display">\[
+\begin{equation}
+\begin{split}
+\theta_5 &amp; = \theta_4 + m_4 \\
+ &amp; = \theta_4 + s_4 + \mu m_3 \\
+ &amp; = \theta_4 + s_4 + \mu s_3 + \mu^2 s_2 + \mu^3 s_1
+\end{split}
+\end{equation}
+\]</span></p>
+<p>If we apply the re-weighting a second time we would get:</p>
+<p><span class="math display">\[
+\begin{equation}
+\begin{split}
+\theta_5 &amp; = \theta_4 + \mu m_5 \\
+ &amp; = \theta_4 + s_4 + \mu m_4 \\
+ &amp; = \theta_4 + s_4 + \mu \left( s_4 + \mu s_3 + \mu^2 s_2 + \mu^3 s_1 \right) \\
+ &amp; = \theta_4 + \left( 1 + \mu \right) s_4 + \mu^2 s_3 + \mu^3 s_2 + \mu^4 s_1
+\end{split}
+\end{equation}
+\]</span> Here’s a reminder of the equivalent NAG expression:</p>
+<p><span class="math display">\[
+\theta_5 = \theta_4 + \left(1 + \mu \right) s_4 + \mu^2 s_3 + \mu^3 s_2 + \mu^4 s_1
+\]</span></p>
+<p>So it seems like we have another expression for NAG, at least for the constant momentum case.</p>
 </div>
 <div id="nag-in-practice" class="section level2">
 <h2>NAG in practice</h2>
 <p>So that’s how it’s all supposed to work in principle. Here I’ll demonstrate the equivalence of these methods, by implementing them all in simple R code.</p>
 <p>The biggest simplification I’ll make is that I’ll assume a constant learning rate and a constant momentum coefficient.</p>
-<div id="classical-momentum-1" class="section level3">
+<div id="classical-momentum-2" class="section level3">
 <h3>Classical Momentum</h3>
 <pre class="r"><code>#&#39; Optimization by Classical Momentum
 #&#39;
@@ -723,7 +913,7 @@ cm &lt;- function(par, fn, gr, lr, mu, max_iter = 10) {
 <p>This is a reference implementation of classical momentum. Nearly all the parameters and the return values are the same for the other functions (except where noted), so they’re documented here once.</p>
 <p>Onto the various NAG implementations. They all have an extra bit of code in them to ensure that on the first iteration only the gradient descent stage is carried out. This is needed to keep the outputs consistent between the different implementations. The <code>cm</code> routine doesn’t require any extra checks for steepest descent on the first iteration, because initializing the velocity vector to zero results in steepest descent anyway even if the momentum coefficient is non-zero. As we’ll see below, some of the other implementations either don’t explicitly use a velocity vector or need the momentum coefficient to be set to zero on the first iteration to get the same result.</p>
 </div>
-<div id="nag-1" class="section level3">
+<div id="nag-2" class="section level3">
 <h3>NAG</h3>
 <pre class="r"><code># Optimization by Nesterov Accelerated Gradient
 #
@@ -801,6 +991,7 @@ snag &lt;- function(par, fn, gr, lr, mu, max_iter = 10) {
 
   list(par = par, f = f, fs = fs, mu_fs = mu_fs, all = all)
 }</code></pre>
+<p>This one is pretty straight-forward.</p>
 </div>
 <div id="bengio-formulation" class="section level3">
 <h3>Bengio Formulation</h3>
@@ -1035,23 +1226,16 @@ sbnag_df &lt;- data.frame(Bengio = bnag_opt$fs,
 <li>For some implementations (the Bengio and momentum NAG formulations), simply setting the initial velocity vector, <span class="math inline">\(v_0\)</span>, to zero isn’t enough to get gradient descent on the first iteration.</li>
 <li>The Sutskever version of NAG does a different pattern of gradient descent and momentum stages in its iterations, compared to vanilla NAG.</li>
 </ul>
-<p>For the first point, let’s look at the Bengio formulation again:</p>
-<p><span class="math display">\[\Theta_{t+1} = 
-\Theta_t + \mu_{t+1} \mu_t v_t - \left(1 + \mu_{t+1} \right) \varepsilon_t \nabla f\left(\Theta_t\right) 
-\]</span> Let’s see the result for the first iteration with our current strategy of setting the initial velocity vector to zero:</p>
-<p><span class="math display">\[\Theta_1 = 
-\Theta_0 - \left(1 + \mu_1 \right) \varepsilon_t \nabla f\left(\Theta_0\right) 
-\]</span> Without also specifying that the momentum coefficient should be zero on the first iteration, we get an extra long gradient descent step. The same applies to the momentum NAG expression.</p>
-<p>That explains the Bengio formulation’s difference from the vanilla NAG result. What about the Sutskever formulation? Let’s think about the chain of parameter updates that actually take place over the first few iterations:</p>
-<p>For standard NAG, the chain is: gradient descent stage, momentum stage, gradient descent stage, momentum stage. Except the momentum stage results in zero change on iteration one because of the zero velocity vector, so what actually happens is: gradient descent stage, gradient descent stage, momentum stage. Let’s call that <code>g|gm</code> for short with the bar indicating where the end of an iteration occurs. To make the pattern more obvious, the first three iterations look like <code>g|gm|gm</code>. This is the same pattern as classical momentum, althought the <code>m</code> stages are obviously different in content.</p>
-<p>What about the Sutskever formulation? Its pattern for the first two iterations is: momentum stage, gradient descent stage, momentum stage, gradient descent stage. Except, once again, the momentum stage doesn’t happen on the first iteration, so you actually get: gradient descent stage, momentum stage, gradient descent stage, and so on. So for the Sutskever forumulation, the first three iterations look like <code>g|mg|mg</code>.</p>
-<p>Therefore, as you can see, the initial set of gradient and momentum stages is different for the Sutskever formulation, which is able to strictly interleave gradient descent and momentum stages, whereas NAG begins, like classical momentum, with two gradient descent stages. This difference shouldn’t be too surprising, because as we saw when deriving the Sutskever formulation, we conveniently “forget” about an initial gradient descent stage compared to NAG.</p>
-<p>Anyway, all this means that the parameters end up in different locations after the first iteration.</p>
+<p>For the first point, the implementation of Bengio Nesterov momentum and momentum NAG are both giving the “long” version of the steepest descent on the first iteration. In the discussion on unrolling the updates where we first came across this point of difference with CM, I decided that the “long” version of the first iteration was the right decision, but you can see that it causes some extra issues in our comparisons.</p>
+<p>What about the Sutskever formulation? Let’s think about the chain of parameter updates that actually take place over the first few iterations:</p>
+<p>For standard NAG, the chain is: gradient descent stage, momentum stage, gradient descent stage, momentum stage. Except the momentum stage results in zero change on iteration one because of the zero velocity vector, so what actually happens is: gradient descent stage, gradient descent stage, momentum stage. Let’s call that <code>g|gm</code> for short with the bar indicating where the end of an iteration occurs. To make the pattern more obvious, the first three iterations look like <code>g|gm|gm</code>. This is the same pattern as classical momentum, although the <code>m</code> stages are obviously different in content.</p>
+<p>What about the Sutskever formulation? Its pattern for the first two iterations is: momentum stage, gradient descent stage, momentum stage, gradient descent stage. Except, once again, the momentum stage doesn’t happen on the first iteration, so you actually get: gradient descent stage, momentum stage, gradient descent stage, and so on. So for Sutskever momentum, the first three iterations look like <code>g|mg|mg</code>.</p>
+<p>Therefore, as you can see, the initial set of gradient and momentum stages is different for the Sutskever formulation, which is able to strictly interleave gradient descent and momentum stages, whereas NAG begins, like classical momentum, with two gradient descent stages. This difference shouldn’t be too surprising, because as we saw when deriving the Sutskever formulation, we conveniently “forget” about an initial gradient descent stage compared to NAG. Anyway, all this means that the parameters end up in different locations after the first iteration.</p>
 </div>
 </div>
 <div id="consistent-nag-momentum-algorithms" class="section level2">
 <h2>Consistent NAG momentum algorithms</h2>
-<p>It’s not clear to me that there is any particular theoretical or practical benefit to trying to bend these different formulations to give either gradient descent on the first iteration or to having them give the same pattern as vanilla NAG. But given the effort that’s been made to show that NAG is like classical momentum in some respects, we may as well see what it would take.</p>
+<p>It’s not clear to me that there is any particular theoretical or practical benefit to trying to bend these different formulations to give either the same gradient descent on the first iteration as CM, or to having them give the same pattern as vanilla NAG. But given the effort that’s been made to show that NAG is like classical momentum in some respects, we may as well see what it would take.</p>
 <div id="sutskever-formulation-consistent-with-nag" class="section level3">
 <h3>Sutskever Formulation consistent with NAG</h3>
 <pre class="r"><code># Sutskever Nesterov Momentum consistent with NAG
