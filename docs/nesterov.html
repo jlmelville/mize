@@ -488,7 +488,7 @@ v_{t+1} =
 -\varepsilon_t \nabla f\left(\theta_t \right) \equiv s_t
 \]</span></p>
 <p>to represent the steepest descent direction. Note that this includes the negative sign. Also, I am going to assume that the momentum is constant, to save on some more notational clutter.</p>
-<p>A consequence of my nomenclature choice is that the initial coordinates are at <span class="math inline">\(\theta_1\)</span>, not <span class="math inline">\(\theta_0\)</span>. Sorry if you find that annoying.</p>
+<p>Initial coordinates are at <span class="math inline">\(\theta_0\)</span>.</p>
 <div id="classical-momentum-1" class="section level3">
 <h3>Classical Momentum</h3>
 <p>Using the slightly briefer symbols, the classical momentum update is:</p>
@@ -499,18 +499,18 @@ v_{t+1} =
 <p><span class="math display">\[
 \begin{equation}
 \begin{split}
-\theta_2 &amp; = \theta_1 + s_1 \\
+\theta_1 &amp; = \theta_0 + s_0 \\
+\\
+\theta_2 &amp; = \theta_1 + s_1 + \mu v_1 \\
+ &amp; = \theta_1 + s_1 + \mu s_0 \\
 \\
 \theta_3 &amp; = \theta_2 + s_2 + \mu v_2 \\
- &amp; = \theta_2 + s_2 + \mu s_1 \\
+ &amp; = \theta_2 + s_2 + \mu \left( s_1 + \mu s_0 \right) \\
+ &amp; = \theta_2 + s_2 + \mu s_1 + \mu^2 s_0 \\
 \\
 \theta_4 &amp; = \theta_3 + s_3 + \mu v_3 \\
- &amp; = \theta_3 + s_3 + \mu \left(s_2 + \mu s_1 \right) \\
- &amp; = \theta_3 + s_3 + \mu s_2 + \mu^2 s_1 \\
-\\
-\theta_5 &amp; = \theta_4 + s_4 + \mu v_4 \\
- &amp; = \theta_4 + s_4 + \mu \left( s_3 + \mu s_2 + \mu^2 s_1 \right)\\
- &amp; = \theta_4 + s_4 + \mu s_3 + \mu^2 s_2 + \mu^3 s_1 \\
+ &amp; = \theta_3 + s_3 + \mu \left( s_2 + \mu s_1 + \mu^2 s_0 \right)\\
+ &amp; = \theta_3 + s_3 + \mu s_2 + \mu^2 s_1 + \mu^3 s_0 \\
 \end{split}
 \end{equation}
 \]</span></p>
@@ -531,9 +531,9 @@ v_{t+1} =
 <div id="the-first-step" class="section level4">
 <h4>The first step</h4>
 <p><em>December 14 2021</em> (this section describing your choices for the first step is new).</p>
-<p>Like classical momentum, the only sensible direction to move in on the first step is the steepest descent direction because we have no “memory” of any previous directions to use. But a strict application of the NAG update would set <span class="math inline">\(v_t = 0\)</span> and <span class="math inline">\(s_{t-1} = 0\)</span> and leave us with:</p>
+<p>Like classical momentum, the only sensible direction to move in on the first step is the steepest descent direction because we have no “memory” of any previous directions to use. But a strict application of the NAG update would set <span class="math inline">\(v_0 = 0\)</span> and <span class="math inline">\(s_{-1} = 0\)</span> and leave us with:</p>
 <p><span class="math display">\[
-\theta_{2} = \theta_1 + \left(1 + \mu \right) s_1
+\theta_{1} = \theta_0 + \left(1 + \mu \right) s_0
 \]</span></p>
 <p>This is still moving in the direction of the negative gradient, but it takes a longer step size than classical momentum. This doesn’t make a lot of sense to me as a good first step without any contributions from previous updates or gradients. Why have a momentum term involved at all when most of what that <span class="math inline">\(\mu\)</span> gets applied to in subsequent iterations isn’t around?</p>
 <p>Also, as we will see later, taking the long step makes reconciling the different versions of NAG a bit harder than it needs. Plus, I see the appeal of both classical momentum and NAG taking the step on the first iteration when there is no history of updates to work on. So I won’t blame you if you decide to go with steepest descent with step size of length <span class="math inline">\(\varepsilon_1\)</span> rather than <span class="math inline">\(\left(1 + \mu \right) \varepsilon_1\)</span>.</p>
@@ -543,20 +543,20 @@ v_{t+1} =
 <p><span class="math display">\[
 \begin{equation}
 \begin{split}
-\theta_2 &amp; = \theta_1 + \left(1 + \mu \right) s_1 \\
+\theta_1 &amp; = \theta_0 + \left( 1 + \mu \right) s_0 \\
 \\
-\theta_3 &amp; = \theta_2 + \left(1 + \mu \right) s_2 - \mu s_1 + \mu v_2 \\
- &amp; = \theta_2 + \left(1 + \mu \right) s_2 - \mu s_1 + \mu \left(1 + \mu \right) s_1 \\
- &amp; = \theta_2 + \left(1 + \mu \right) s_2 + \mu^2 s_1 \\
+\theta_2 &amp; = \theta_1 + \left( 1 + \mu \right) s_1 - \mu s_0 + \mu v_1 \\
+ &amp; = \theta_1 + \left(1 + \mu \right) s_1 - \mu s_0 + \mu \left( 1 + \mu \right) s_0 \\
+ &amp; = \theta_1 + \left(1 + \mu \right) s_1 + \mu^2 s_0 \\
 \\ 
-\theta_4 &amp; = \theta_3 + \left(1 + \mu \right) s_3 - \mu s_2 + \mu v_3 \\
-&amp; = \theta_3 + \left(1 + \mu \right) s_3 - \mu s_2 + \mu \left(1 + \mu \right) s_2 + \mu^3 s_1\\
-&amp; = \theta_3 + \left(1 + \mu \right) s_3 + \mu^2 s_2 + \mu^3 s_1 \\
+\theta_3 &amp; = \theta_2 + \left( 1 + \mu \right) s_2 - \mu s_1 + \mu v_2 \\
+&amp; = \theta_2 + \left(1 + \mu \right) s_2 - \mu s_1 + \mu \left(1 + \mu \right) s_1 + \mu^3 s_0\\
+&amp; = \theta_2 + \left(1 + \mu \right) s_2 + \mu^2 s_1 + \mu^3 s_0 \\
 \\
-\theta_5 &amp; = \theta_4 + \left(1 + \mu \right) s_4 - \mu s_3 + \mu v_4 \\
-&amp; = \theta_4 + \left(1 + \mu \right) s_4 - \mu s_3 + \mu \left[ \left(1 + \mu \right) s_3 + \mu^2 s_2 + \mu^3 s_1 \right] \\
-&amp; = \theta_4 + \left(1 + \mu \right) s_4 - \mu s_3 + \mu \left(1 + \mu \right) s_3 + \mu^3 s_2  + \mu^4 s_1 \\
-&amp; = \theta_4 + \left(1 + \mu \right) s_4 + \mu^2 s_3 + \mu^3 s_2 + \mu^4 s_1
+\theta_4 &amp; = \theta_3 + \left(1 + \mu \right) s_3 - \mu s_2 + \mu v_3 \\
+&amp; = \theta_3 + \left(1 + \mu \right) s_3 - \mu s_2 + \mu \left[ \left(1 + \mu \right) s_2 + \mu^2 s_1 + \mu^3 s_0 \right] \\
+&amp; = \theta_3 + \left(1 + \mu \right) s_3 - \mu s_2 + \mu \left(1 + \mu \right) s_2 + \mu^3 s_1  + \mu^4 s_0 \\
+&amp; = \theta_3 + \left(1 + \mu \right) s_3 + \mu^2 s_2 + \mu^3 s_1 + \mu^4 s_0
 \end{split}
 \end{equation}
 \]</span></p>
@@ -569,20 +569,20 @@ v_{t+1} =
 <p><span class="math display">\[
 \begin{equation}
 \begin{split}
-\theta_{2} &amp; = \theta_1 + s_1 \\
+\theta_{1} &amp; = \theta_0 + s_0 \\
 \\
-\theta_3 &amp; = \theta_2 + \left(1 + \mu \right) s_2 - \mu s_1 + \mu v_2 \\
- &amp; = \theta_2 + \left(1 + \mu \right) s_2 - \mu s_1 + \mu s_1 \\
- &amp; = \theta_2 + \left(1 + \mu \right) s_2 \\
+\theta_2 &amp; = \theta_1 + \left( 1 + \mu \right) s_1 - \mu s_0 + \mu v_1 \\
+ &amp; = \theta_1 + \left( 1 + \mu \right) s_1 - \mu s_0 + \mu s_0 \\
+ &amp; = \theta_1 + \left( 1 + \mu \right) s_1 \\
 \\ 
-\theta_4 &amp; = \theta_3 + \left(1 + \mu \right) s_3 - \mu s_2 + \mu v_3 \\
-&amp; = \theta_3 + \left(1 + \mu \right) s_3 - \mu s_2 + \mu \left(1 + \mu \right) s_2 \\
-&amp; = \theta_3 + \left(1 + \mu \right) s_3 + \mu^2 s_2 \\
+\theta_3 &amp; = \theta_2 + \left( 1 + \mu \right) s_2 - \mu s_1 + \mu v_2 \\
+&amp; = \theta_2 + \left(1 + \mu \right) s_2 - \mu s_1 + \mu \left(1 + \mu \right) s_1 \\
+&amp; = \theta_2 + \left(1 + \mu \right) s_2 + \mu^2 s_1 \\
 \\
-\theta_5 &amp; = \theta_4 + \left(1 + \mu \right) s_4 - \mu s_3 + \mu v_4 \\
-&amp; = \theta_4 + \left(1 + \mu \right) s_4 - \mu s_3 + \mu \left[ \left(1 + \mu \right) s_3 + \mu^2 s_2 \right] \\
-&amp; = \theta_4 + \left(1 + \mu \right) s_4 - \mu s_3 + \mu \left(1 + \mu \right) s_3 + \mu^3 s_2 \\
-&amp; = \theta_4 + \left(1 + \mu \right) s_4 + \mu^2 s_3 + \mu^3 s_2
+\theta_4 &amp; = \theta_3 + \left( 1 + \mu \right) s_3 - \mu s_2 + \mu v_3 \\
+&amp; = \theta_3 + \left( 1 + \mu \right) s_3 - \mu s_2 + \mu \left[ \left( 1 + \mu \right) s_2 + \mu^2 s_1 \right] \\
+&amp; = \theta_3 + \left( 1 + \mu \right) s_3 - \mu s_2 + \mu \left( 1 + \mu \right) s_2 + \mu^3 s_1 \\
+&amp; = \theta_3 + \left( 1 + \mu \right) s_3 + \mu^2 s_2 + \mu^3 s_1
 \end{split}
 \end{equation}
 \]</span></p>
@@ -596,10 +596,10 @@ v_{t+1} =
 <thead>
 <tr class="header">
 <th align="center">Momentum Type</th>
-<th align="center"><span class="math inline">\(s_4\)</span></th>
 <th align="center"><span class="math inline">\(s_3\)</span></th>
 <th align="center"><span class="math inline">\(s_2\)</span></th>
 <th align="center"><span class="math inline">\(s_1\)</span></th>
+<th align="center"><span class="math inline">\(s_0\)</span></th>
 </tr>
 </thead>
 <tbody>
@@ -643,7 +643,7 @@ mumat &lt;- function(wfun, mus = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.99)) {
     weights &lt;- wfun(mu)
     rel_weights[i, ] &lt;- c(mu, weights / sum(weights))
   }
-  colnames(rel_weights) &lt;- c(&quot;mu&quot;, &quot;s4&quot;, &quot;s3&quot;, &quot;s2&quot;, &quot;s1&quot;)
+  colnames(rel_weights) &lt;- c(&quot;mu&quot;, &quot;s3&quot;, &quot;s2&quot;, &quot;s1&quot;, &quot;s0&quot;)
 
   rel_weights
 }</code></pre>
@@ -655,10 +655,10 @@ mumat &lt;- function(wfun, mus = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.99)) {
 <thead>
 <tr class="header">
 <th align="right">mu</th>
-<th align="right">s4</th>
 <th align="right">s3</th>
 <th align="right">s2</th>
 <th align="right">s1</th>
+<th align="right">s0</th>
 </tr>
 </thead>
 <tbody>
@@ -714,10 +714,10 @@ mumat &lt;- function(wfun, mus = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.99)) {
 <thead>
 <tr class="header">
 <th align="right">mu</th>
-<th align="right">s4</th>
 <th align="right">s3</th>
 <th align="right">s2</th>
 <th align="right">s1</th>
+<th align="right">s0</th>
 </tr>
 </thead>
 <tbody>
@@ -773,10 +773,10 @@ mumat &lt;- function(wfun, mus = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.99)) {
 <thead>
 <tr class="header">
 <th align="right">mu</th>
-<th align="right">s4</th>
 <th align="right">s3</th>
 <th align="right">s2</th>
 <th align="right">s1</th>
+<th align="right">s0</th>
 </tr>
 </thead>
 <tbody>
@@ -848,13 +848,14 @@ mumat &lt;- function(wfun, mus = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.99)) {
 <p>Seems neat, but is it actually true for the definition of NAG we’ve been using?</p>
 <p>At this point I must come to you with my head hung in defeat. I really wanted to get from the NAG equation we are now all very familiar with to the Dozat version of Nesterov momentum in the same way I generated the Sutskever and Bengio versions, but I have yet to succeed (in case you’re wondering, no I haven’t spent the last five years trying and failing).</p>
 <p>Instead, I just wrote out the Dozat momentum for the first few iterations and compared it to the unrolled CM and NAG expressions we generated above. It works well enough for our purposes here.</p>
-<p>The CM expression for <span class="math inline">\(\theta_5\)</span> re-written to use <span class="math inline">\(m_t\)</span> is the only example we need:</p>
+<p>The CM expression for <span class="math inline">\(\theta_4\)</span> re-written to use <span class="math inline">\(m_t\)</span> is the only example we need:</p>
 <p><span class="math display">\[
 \begin{equation}
 \begin{split}
-\theta_5 &amp; = \theta_4 + m_4 \\
- &amp; = \theta_4 + s_4 + \mu m_3 \\
- &amp; = \theta_4 + s_4 + \mu s_3 + \mu^2 s_2 + \mu^3 s_1
+\theta_4 &amp; = \theta_3 + m_4 \\
+ &amp; = \theta_3 + s_3 + \mu m_3 \\
+ &amp; = \theta_3 + s_3 + \mu \left( s_2 + \mu s_1 + \mu^2 s_0 \right)\\
+ &amp; = \theta_3 + s_3 + \mu s_2 + \mu^2 s_1 + \mu^3 s_0
 \end{split}
 \end{equation}
 \]</span></p>
@@ -862,15 +863,14 @@ mumat &lt;- function(wfun, mus = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.99)) {
 <p><span class="math display">\[
 \begin{equation}
 \begin{split}
-\theta_5 &amp; = \theta_4 + \mu m_5 \\
- &amp; = \theta_4 + s_4 + \mu m_4 \\
- &amp; = \theta_4 + s_4 + \mu \left( s_4 + \mu s_3 + \mu^2 s_2 + \mu^3 s_1 \right) \\
- &amp; = \theta_4 + \left( 1 + \mu \right) s_4 + \mu^2 s_3 + \mu^3 s_2 + \mu^4 s_1
+\theta_4 &amp; = \theta_3 + s_3 + \mu m_4 \\
+ &amp; = \theta_3 + s_3 + \mu \left( s_3 + \mu s_2 + \mu^2 s_1 + \mu^3 s_0 \right) \\
+ &amp; = \theta_3 + \left( 1 + \mu \right) s_3 + \mu^2 s_2 + \mu^3 s_1 + \mu^4 s_0
 \end{split}
 \end{equation}
 \]</span> Here’s a reminder of the equivalent NAG expression:</p>
 <p><span class="math display">\[
-\theta_5 = \theta_4 + \left(1 + \mu \right) s_4 + \mu^2 s_3 + \mu^3 s_2 + \mu^4 s_1
+\theta_4 = \theta_3 + \left(1 + \mu \right) s_3 + \mu^2 s_2 + \mu^3 s_1 + \mu^4 s_0
 \]</span></p>
 <p>So it seems like we have another expression for NAG, at least for the constant momentum case.</p>
 </div>

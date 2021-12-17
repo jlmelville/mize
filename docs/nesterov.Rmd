@@ -525,8 +525,7 @@ to represent the steepest descent direction. Note that this includes the
 negative sign. Also, I am going to assume that the momentum is constant, to save
 on some more notational clutter.
 
-A consequence of my nomenclature choice is that the initial coordinates are at 
-$\theta_1$, not $\theta_0$. Sorry if you find that annoying.
+Initial coordinates are at $\theta_0$.
 
 ### Classical Momentum
 
@@ -542,18 +541,18 @@ are as follows:
 $$
 \begin{equation}
 \begin{split}
-\theta_2 & = \theta_1 + s_1 \\
+\theta_1 & = \theta_0 + s_0 \\
+\\
+\theta_2 & = \theta_1 + s_1 + \mu v_1 \\
+ & = \theta_1 + s_1 + \mu s_0 \\
 \\
 \theta_3 & = \theta_2 + s_2 + \mu v_2 \\
- & = \theta_2 + s_2 + \mu s_1 \\
+ & = \theta_2 + s_2 + \mu \left( s_1 + \mu s_0 \right) \\
+ & = \theta_2 + s_2 + \mu s_1 + \mu^2 s_0 \\
 \\
 \theta_4 & = \theta_3 + s_3 + \mu v_3 \\
- & = \theta_3 + s_3 + \mu \left(s_2 + \mu s_1 \right) \\
- & = \theta_3 + s_3 + \mu s_2 + \mu^2 s_1 \\
-\\
-\theta_5 & = \theta_4 + s_4 + \mu v_4 \\
- & = \theta_4 + s_4 + \mu \left( s_3 + \mu s_2 + \mu^2 s_1 \right)\\
- & = \theta_4 + s_4 + \mu s_3 + \mu^2 s_2 + \mu^3 s_1 \\
+ & = \theta_3 + s_3 + \mu \left( s_2 + \mu s_1 + \mu^2 s_0 \right)\\
+ & = \theta_3 + s_3 + \mu s_2 + \mu^2 s_1 + \mu^3 s_0 \\
 \end{split}
 \end{equation}
 $$
@@ -584,10 +583,10 @@ new).
 Like classical momentum, the only sensible direction to move in on the first
 step is the steepest descent direction because we have no "memory" of any
 previous directions to use. But a strict application of the NAG update would set
-$v_t = 0$ and $s_{t-1} = 0$ and leave us with:
+$v_0 = 0$ and $s_{-1} = 0$ and leave us with:
 
 $$
-\theta_{2} = \theta_1 + \left(1 + \mu \right) s_1
+\theta_{1} = \theta_0 + \left(1 + \mu \right) s_0
 $$
 
 This is still moving in the direction of the negative gradient, but it takes a
@@ -617,20 +616,20 @@ it is along with the subsequent three steps of NAG:
 $$
 \begin{equation}
 \begin{split}
-\theta_2 & = \theta_1 + \left(1 + \mu \right) s_1 \\
+\theta_1 & = \theta_0 + \left( 1 + \mu \right) s_0 \\
 \\
-\theta_3 & = \theta_2 + \left(1 + \mu \right) s_2 - \mu s_1 + \mu v_2 \\
- & = \theta_2 + \left(1 + \mu \right) s_2 - \mu s_1 + \mu \left(1 + \mu \right) s_1 \\
- & = \theta_2 + \left(1 + \mu \right) s_2 + \mu^2 s_1 \\
+\theta_2 & = \theta_1 + \left( 1 + \mu \right) s_1 - \mu s_0 + \mu v_1 \\
+ & = \theta_1 + \left(1 + \mu \right) s_1 - \mu s_0 + \mu \left( 1 + \mu \right) s_0 \\
+ & = \theta_1 + \left(1 + \mu \right) s_1 + \mu^2 s_0 \\
 \\ 
-\theta_4 & = \theta_3 + \left(1 + \mu \right) s_3 - \mu s_2 + \mu v_3 \\
-& = \theta_3 + \left(1 + \mu \right) s_3 - \mu s_2 + \mu \left(1 + \mu \right) s_2 + \mu^3 s_1\\
-& = \theta_3 + \left(1 + \mu \right) s_3 + \mu^2 s_2 + \mu^3 s_1 \\
+\theta_3 & = \theta_2 + \left( 1 + \mu \right) s_2 - \mu s_1 + \mu v_2 \\
+& = \theta_2 + \left(1 + \mu \right) s_2 - \mu s_1 + \mu \left(1 + \mu \right) s_1 + \mu^3 s_0\\
+& = \theta_2 + \left(1 + \mu \right) s_2 + \mu^2 s_1 + \mu^3 s_0 \\
 \\
-\theta_5 & = \theta_4 + \left(1 + \mu \right) s_4 - \mu s_3 + \mu v_4 \\
-& = \theta_4 + \left(1 + \mu \right) s_4 - \mu s_3 + \mu \left[ \left(1 + \mu \right) s_3 + \mu^2 s_2 + \mu^3 s_1 \right] \\
-& = \theta_4 + \left(1 + \mu \right) s_4 - \mu s_3 + \mu \left(1 + \mu \right) s_3 + \mu^3 s_2  + \mu^4 s_1 \\
-& = \theta_4 + \left(1 + \mu \right) s_4 + \mu^2 s_3 + \mu^3 s_2 + \mu^4 s_1
+\theta_4 & = \theta_3 + \left(1 + \mu \right) s_3 - \mu s_2 + \mu v_3 \\
+& = \theta_3 + \left(1 + \mu \right) s_3 - \mu s_2 + \mu \left[ \left(1 + \mu \right) s_2 + \mu^2 s_1 + \mu^3 s_0 \right] \\
+& = \theta_3 + \left(1 + \mu \right) s_3 - \mu s_2 + \mu \left(1 + \mu \right) s_2 + \mu^3 s_1  + \mu^4 s_0 \\
+& = \theta_3 + \left(1 + \mu \right) s_3 + \mu^2 s_2 + \mu^3 s_1 + \mu^4 s_0
 \end{split}
 \end{equation}
 $$
@@ -646,20 +645,20 @@ the same first step as we do with classical momentum? Here's how that plays out:
 $$
 \begin{equation}
 \begin{split}
-\theta_{2} & = \theta_1 + s_1 \\
+\theta_{1} & = \theta_0 + s_0 \\
 \\
-\theta_3 & = \theta_2 + \left(1 + \mu \right) s_2 - \mu s_1 + \mu v_2 \\
- & = \theta_2 + \left(1 + \mu \right) s_2 - \mu s_1 + \mu s_1 \\
- & = \theta_2 + \left(1 + \mu \right) s_2 \\
+\theta_2 & = \theta_1 + \left( 1 + \mu \right) s_1 - \mu s_0 + \mu v_1 \\
+ & = \theta_1 + \left( 1 + \mu \right) s_1 - \mu s_0 + \mu s_0 \\
+ & = \theta_1 + \left( 1 + \mu \right) s_1 \\
 \\ 
-\theta_4 & = \theta_3 + \left(1 + \mu \right) s_3 - \mu s_2 + \mu v_3 \\
-& = \theta_3 + \left(1 + \mu \right) s_3 - \mu s_2 + \mu \left(1 + \mu \right) s_2 \\
-& = \theta_3 + \left(1 + \mu \right) s_3 + \mu^2 s_2 \\
+\theta_3 & = \theta_2 + \left( 1 + \mu \right) s_2 - \mu s_1 + \mu v_2 \\
+& = \theta_2 + \left(1 + \mu \right) s_2 - \mu s_1 + \mu \left(1 + \mu \right) s_1 \\
+& = \theta_2 + \left(1 + \mu \right) s_2 + \mu^2 s_1 \\
 \\
-\theta_5 & = \theta_4 + \left(1 + \mu \right) s_4 - \mu s_3 + \mu v_4 \\
-& = \theta_4 + \left(1 + \mu \right) s_4 - \mu s_3 + \mu \left[ \left(1 + \mu \right) s_3 + \mu^2 s_2 \right] \\
-& = \theta_4 + \left(1 + \mu \right) s_4 - \mu s_3 + \mu \left(1 + \mu \right) s_3 + \mu^3 s_2 \\
-& = \theta_4 + \left(1 + \mu \right) s_4 + \mu^2 s_3 + \mu^3 s_2
+\theta_4 & = \theta_3 + \left( 1 + \mu \right) s_3 - \mu s_2 + \mu v_3 \\
+& = \theta_3 + \left( 1 + \mu \right) s_3 - \mu s_2 + \mu \left[ \left( 1 + \mu \right) s_2 + \mu^2 s_1 \right] \\
+& = \theta_3 + \left( 1 + \mu \right) s_3 - \mu s_2 + \mu \left( 1 + \mu \right) s_2 + \mu^3 s_1 \\
+& = \theta_3 + \left( 1 + \mu \right) s_3 + \mu^2 s_2 + \mu^3 s_1
 \end{split}
 \end{equation}
 $$
@@ -687,7 +686,7 @@ we use the "short" step "NAGs".
 Here's a table showing how on the 4th step, the two methods weight the current
 and previous gradients in deciding on the next direction:
 
-| Momentum Type |  $s_4$     | $s_3$   | $s_2$   | $s_1$   |
+| Momentum Type |  $s_3$     | $s_2$   | $s_1$   | $s_0$   |
 :--------------:|:----------:|:-------:|:-------:|:--------:
 Classical       | 1          | $\mu$   | $\mu^2$ | $\mu^3$ 
 NAG             | 1 + $\mu$  | $\mu^2$ | $\mu^3$ | $\mu^4$
@@ -721,7 +720,7 @@ mumat <- function(wfun, mus = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.99)) {
     weights <- wfun(mu)
     rel_weights[i, ] <- c(mu, weights / sum(weights))
   }
-  colnames(rel_weights) <- c("mu", "s4", "s3", "s2", "s1")
+  colnames(rel_weights) <- c("mu", "s3", "s2", "s1", "s0")
 
   rel_weights
 }
@@ -801,15 +800,16 @@ Instead, I just wrote out the Dozat momentum for the first few iterations and
 compared it to the unrolled CM and NAG expressions we generated above. It works
 well enough for our purposes here.
 
-The CM expression for $\theta_5$ re-written to use $m_t$ is the only example we
+The CM expression for $\theta_4$ re-written to use $m_t$ is the only example we
 need:
 
 $$
 \begin{equation}
 \begin{split}
-\theta_5 & = \theta_4 + m_4 \\
- & = \theta_4 + s_4 + \mu m_3 \\
- & = \theta_4 + s_4 + \mu s_3 + \mu^2 s_2 + \mu^3 s_1
+\theta_4 & = \theta_3 + m_4 \\
+ & = \theta_3 + s_3 + \mu m_3 \\
+ & = \theta_3 + s_3 + \mu \left( s_2 + \mu s_1 + \mu^2 s_0 \right)\\
+ & = \theta_3 + s_3 + \mu s_2 + \mu^2 s_1 + \mu^3 s_0
 \end{split}
 \end{equation}
 $$
@@ -819,17 +819,16 @@ If we apply the re-weighting a second time we would get:
 $$
 \begin{equation}
 \begin{split}
-\theta_5 & = \theta_4 + \mu m_5 \\
- & = \theta_4 + s_4 + \mu m_4 \\
- & = \theta_4 + s_4 + \mu \left( s_4 + \mu s_3 + \mu^2 s_2 + \mu^3 s_1 \right) \\
- & = \theta_4 + \left( 1 + \mu \right) s_4 + \mu^2 s_3 + \mu^3 s_2 + \mu^4 s_1
+\theta_4 & = \theta_3 + s_3 + \mu m_4 \\
+ & = \theta_3 + s_3 + \mu \left( s_3 + \mu s_2 + \mu^2 s_1 + \mu^3 s_0 \right) \\
+ & = \theta_3 + \left( 1 + \mu \right) s_3 + \mu^2 s_2 + \mu^3 s_1 + \mu^4 s_0
 \end{split}
 \end{equation}
 $$
 Here's a reminder of the equivalent NAG expression:
 
 $$
-\theta_5 = \theta_4 + \left(1 + \mu \right) s_4 + \mu^2 s_3 + \mu^3 s_2 + \mu^4 s_1
+\theta_4 = \theta_3 + \left(1 + \mu \right) s_3 + \mu^2 s_2 + \mu^3 s_1 + \mu^4 s_0
 $$
 
 So it seems like we have another expression for NAG, at least for the constant
