@@ -1156,6 +1156,39 @@ any major effect anyway... except when the momentum is changing from zero to
 non-zero, that is, in which case that's the difference between some momentum and
 no momentum. We shall return to this point later.
 
+### Dozat Nesterov Momentum
+
+```{r Dozat NAG}
+# Optimization by Dozat's expression for Nesterov momentum
+dnag <- function(par, fn, gr, lr, mu, max_iter = 10) {
+  fs <- rep(0, max_iter)
+  
+  # mprime, the recursive variable
+  mpt <- 0
+  mumu <- mu * mu
+  
+  v <- rep(0, length(par))
+  for (i in 1:max_iter) {
+    g <- gr(par)
+    
+    s <- lr * -g
+    v <- (1 + mu) * s + mumu * mpt
+    par <- par + v
+    
+    # update mprime for next step
+    mpt <- mu * mpt + s
+    # store results
+    f <- fn(par)
+    fs[i] <- f
+  }
+
+  list(par = par, f = f, fs = fs)
+}
+```
+
+*18 December 2021*: Dozat's version of Nesterov momentum. We should expect this
+to give the same result as NAG and Bengio's Nesterov momentum.
+
 ### Alternative momentum NAG Expression
 
 ```{r Alternative NAG}
@@ -1209,12 +1242,12 @@ gr <- function(x) {
 ```
 
 Let's run the optimizers for 100 iterations. The point here is not whether we
-get really amazing optimization (we don't), but whether the outputs of the Sutskever and
-Bengio algorithms are equivalent. It would be a bonus if my mNAG result also worked.
-For comparison we'll throw in the classical momentum and as a sanity check,
-the vanilla NAG routine.
+get really amazing optimization (we don't), but whether the outputs of the
+Sutskever and Bengio algorithms are equivalent. It would be a bonus if my mNAG
+result also worked. For comparison we'll throw in the classical momentum and as
+a sanity check, the vanilla NAG routine.
 
-```{r Sutskever and Bengio formulations}
+```{r generating output}
 lr <- 0.001
 mu <- 0.95
 max_iter <- 100
@@ -1222,6 +1255,8 @@ snag_opt <- snag(par, fn, gr, lr, mu, max_iter)
 bnag_opt <- bnag(par, fn, gr, lr, mu, max_iter)
 nag_opt <- nag(par, fn, gr, lr, mu, max_iter)
 mnag_opt <- mnag(par, fn, gr, lr, mu, max_iter)
+dnag_opt <- dnag(par, fn, gr, lr, mu, max_iter)
+
 cm_opt <- cm(par, fn, gr, lr, mu, max_iter)
 
 sbnag_df <- data.frame(Bengio = bnag_opt$fs,
@@ -1229,12 +1264,13 @@ sbnag_df <- data.frame(Bengio = bnag_opt$fs,
                  "Suts Mom" = snag_opt$mu_fs,
                  "NAG" = nag_opt$fs,
                  "mNAG" = mnag_opt$fs,
+                 "Dozat" = dnag_opt$fs,
                  "CM" = cm_opt$fs)
 ```
 
 Let's have a look at the first few iteration results:
 
-```{r Sutskever and Bengio table head}
+```{r table head}
 knitr::kable(head(sbnag_df), caption = paste(
   "First few evaluations of NAG implementations, with lr = ", 
   formatC(lr), "mu = ", formatC(mu),
@@ -1244,21 +1280,25 @@ knitr::kable(head(sbnag_df), caption = paste(
 The first two columns pit the Sutskever vs Bengio formulations directly. And, as
 we would expect, they're not the same: the Sutskever iteration result is from
 the gradient descent stage, and the Bengio result comes from the momentum stage.
-But if we put the momentum results from the Sutskever formulation up, we
-can see that they are the same as the Bengio result, but behind by one iteration,
-i.e. the Bengio result at iteration $t$ matches the Sutskever momentum stage result
-at $t+1$. The final column, indicates the results using the alternative derivation
-I provided. It matches the Bengio results. Hurrah.
+But if we put the momentum results from the Sutskever formulation up, we can see
+that they are the same as the Bengio result, but behind by one iteration, i.e.
+the Bengio result at iteration $t$ matches the Sutskever momentum stage result
+at $t+1$. The final column indicates the results using the alternative
+derivation I provided. It matches the Bengio results. Hurrah.
 
-However, none of the results match the vanilla NAG implementation. A clue to what's
-going on is from looking at the classical momentum result in the "CM" column. The
-first iteration of classical momentum is always plain gradient descent, and that's also
-how NAG works by construction. We can see that both NAG and CM have the same result
-on the first iteration, which suggests they're working correctly. The Sutskever
-version is also doing gradient descent on its first step. But the other
-implementations clearly aren't doing gradient descent on their first iteration,
-and on subsequent iterations even the Sutskever version diverges from the NAG
-result.
+*18 December 2021* The results for Dozat's version of Nesterov momentum have
+also been added. As expected, it matches the Bengio and mNAG results. Not much
+elso to say about it so it won't appear in any further discussion.
+
+However, none of the results match the vanilla NAG implementation. A clue to
+what's going on is from looking at the classical momentum result in the "CM"
+column. The first iteration of classical momentum is always plain gradient
+descent, and that's also how NAG works by construction. We can see that both NAG
+and CM have the same result on the first iteration, which suggests they're
+working correctly. The Sutskever version is also doing gradient descent on its
+first step. But the other implementations clearly aren't doing gradient descent
+on their first iteration, and on subsequent iterations even the Sutskever
+version diverges from the NAG result.
 
 We'll get back to this, but let's just make sure these observations holds up at 
 the end of the table too.
@@ -1270,12 +1310,12 @@ knitr::kable(tail(sbnag_df), caption = paste(
   collapse = " "))
 ```
 
-The Sutskever, Bengio and momentum NAG implementations all still match up in
-the same way they did. CM and NAG are off doing their own thing. I suppose it's
-at least reassuring that for this arbitrarily chosen set of learning rate and
-momentum coefficient values, the NAG results all do better than classical momentum.
-And in fact it seems like not doing plain gradient descent on the first iteration
-gives better results, at least for this set of parameters.
+The Sutskever, Bengio and momentum NAG implementations all still match up in the
+same way they did. CM and NAG are off doing their own thing. I suppose it's at
+least reassuring that for this arbitrarily chosen set of learning rate and
+momentum coefficient values, the NAG results all do better than classical
+momentum. And in fact it seems like not doing plain gradient descent on the
+first iteration gives better results, at least for this set of parameters.
 
 ### Behavior on first iteration
 

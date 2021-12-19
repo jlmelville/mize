@@ -1143,6 +1143,35 @@ bnag &lt;- function(par, fn, gr, lr, mu, max_iter = 10) {
 }</code></pre>
 <p>Because this implementation only uses a constant momentum coefficient, we replace the <span class="math inline">\(\mu_{t+1}\mu_{t}\)</span> term with <span class="math inline">\(\mu_{t}^2\)</span>. You would probably have to using a pretty wacky non-constant momentum schedule where this approximation had any major effect anyway… except when the momentum is changing from zero to non-zero, that is, in which case that’s the difference between some momentum and no momentum. We shall return to this point later.</p>
 </div>
+<div id="dozat-nesterov-momentum-1" class="section level3">
+<h3>Dozat Nesterov Momentum</h3>
+<pre class="r"><code># Optimization by Dozat&#39;s expression for Nesterov momentum
+dnag &lt;- function(par, fn, gr, lr, mu, max_iter = 10) {
+  fs &lt;- rep(0, max_iter)
+  
+  # mprime, the recursive variable
+  mpt &lt;- 0
+  mumu &lt;- mu * mu
+  
+  v &lt;- rep(0, length(par))
+  for (i in 1:max_iter) {
+    g &lt;- gr(par)
+    
+    s &lt;- lr * -g
+    v &lt;- (1 + mu) * s + mumu * mpt
+    par &lt;- par + v
+    
+    # update mprime for next step
+    mpt &lt;- mu * mpt + s
+    # store results
+    f &lt;- fn(par)
+    fs[i] &lt;- f
+  }
+
+  list(par = par, f = f, fs = fs)
+}</code></pre>
+<p><em>18 December 2021</em>: Dozat’s version of Nesterov momentum. We should expect this to give the same result as NAG and Bengio’s Nesterov momentum.</p>
+</div>
 <div id="alternative-momentum-nag-expression" class="section level3">
 <h3>Alternative momentum NAG Expression</h3>
 <pre class="r"><code># Optimization by Nesterov Accelerated Gradient, using a momentum-style
@@ -1193,6 +1222,8 @@ snag_opt &lt;- snag(par, fn, gr, lr, mu, max_iter)
 bnag_opt &lt;- bnag(par, fn, gr, lr, mu, max_iter)
 nag_opt &lt;- nag(par, fn, gr, lr, mu, max_iter)
 mnag_opt &lt;- mnag(par, fn, gr, lr, mu, max_iter)
+dnag_opt &lt;- dnag(par, fn, gr, lr, mu, max_iter)
+
 cm_opt &lt;- cm(par, fn, gr, lr, mu, max_iter)
 
 sbnag_df &lt;- data.frame(Bengio = bnag_opt$fs,
@@ -1200,6 +1231,7 @@ sbnag_df &lt;- data.frame(Bengio = bnag_opt$fs,
                  &quot;Suts Mom&quot; = snag_opt$mu_fs,
                  &quot;NAG&quot; = nag_opt$fs,
                  &quot;mNAG&quot; = mnag_opt$fs,
+                 &quot;Dozat&quot; = dnag_opt$fs,
                  &quot;CM&quot; = cm_opt$fs)</code></pre>
 <p>Let’s have a look at the first few iteration results:</p>
 <pre class="r"><code>knitr::kable(head(sbnag_df), caption = paste(
@@ -1215,6 +1247,7 @@ sbnag_df &lt;- data.frame(Bengio = bnag_opt$fs,
 <th align="right">Suts.Mom</th>
 <th align="right">NAG</th>
 <th align="right">mNAG</th>
+<th align="right">Dozat</th>
 <th align="right">CM</th>
 </tr>
 </thead>
@@ -1225,6 +1258,7 @@ sbnag_df &lt;- data.frame(Bengio = bnag_opt$fs,
 <td align="right">24.200000</td>
 <td align="right">5.352912</td>
 <td align="right">34.960154</td>
+<td align="right">34.960154</td>
 <td align="right">5.352912</td>
 </tr>
 <tr class="even">
@@ -1232,6 +1266,7 @@ sbnag_df &lt;- data.frame(Bengio = bnag_opt$fs,
 <td align="right">6.144886</td>
 <td align="right">34.960154</td>
 <td align="right">5.257042</td>
+<td align="right">7.039334</td>
 <td align="right">7.039334</td>
 <td align="right">25.541437</td>
 </tr>
@@ -1241,6 +1276,7 @@ sbnag_df &lt;- data.frame(Bengio = bnag_opt$fs,
 <td align="right">7.039334</td>
 <td align="right">4.133512</td>
 <td align="right">5.020041</td>
+<td align="right">5.020041</td>
 <td align="right">22.488091</td>
 </tr>
 <tr class="even">
@@ -1248,6 +1284,7 @@ sbnag_df &lt;- data.frame(Bengio = bnag_opt$fs,
 <td align="right">3.895340</td>
 <td align="right">5.020041</td>
 <td align="right">4.096729</td>
+<td align="right">3.845406</td>
 <td align="right">3.845406</td>
 <td align="right">4.321887</td>
 </tr>
@@ -1257,6 +1294,7 @@ sbnag_df &lt;- data.frame(Bengio = bnag_opt$fs,
 <td align="right">3.845406</td>
 <td align="right">4.069433</td>
 <td align="right">3.746363</td>
+<td align="right">3.746363</td>
 <td align="right">18.826923</td>
 </tr>
 <tr class="even">
@@ -1265,11 +1303,13 @@ sbnag_df &lt;- data.frame(Bengio = bnag_opt$fs,
 <td align="right">3.746363</td>
 <td align="right">4.050225</td>
 <td align="right">3.668701</td>
+<td align="right">3.668701</td>
 <td align="right">17.960659</td>
 </tr>
 </tbody>
 </table>
-<p>The first two columns pit the Sutskever vs Bengio formulations directly. And, as we would expect, they’re not the same: the Sutskever iteration result is from the gradient descent stage, and the Bengio result comes from the momentum stage. But if we put the momentum results from the Sutskever formulation up, we can see that they are the same as the Bengio result, but behind by one iteration, i.e. the Bengio result at iteration <span class="math inline">\(t\)</span> matches the Sutskever momentum stage result at <span class="math inline">\(t+1\)</span>. The final column, indicates the results using the alternative derivation I provided. It matches the Bengio results. Hurrah.</p>
+<p>The first two columns pit the Sutskever vs Bengio formulations directly. And, as we would expect, they’re not the same: the Sutskever iteration result is from the gradient descent stage, and the Bengio result comes from the momentum stage. But if we put the momentum results from the Sutskever formulation up, we can see that they are the same as the Bengio result, but behind by one iteration, i.e. the Bengio result at iteration <span class="math inline">\(t\)</span> matches the Sutskever momentum stage result at <span class="math inline">\(t+1\)</span>. The final column indicates the results using the alternative derivation I provided. It matches the Bengio results. Hurrah.</p>
+<p><em>18 December 2021</em> The results for Dozat’s version of Nesterov momentum have also been added. As expected, it matches the Bengio and mNAG results. Not much elso to say about it so it won’t appear in any further discussion.</p>
 <p>However, none of the results match the vanilla NAG implementation. A clue to what’s going on is from looking at the classical momentum result in the “CM” column. The first iteration of classical momentum is always plain gradient descent, and that’s also how NAG works by construction. We can see that both NAG and CM have the same result on the first iteration, which suggests they’re working correctly. The Sutskever version is also doing gradient descent on its first step. But the other implementations clearly aren’t doing gradient descent on their first iteration, and on subsequent iterations even the Sutskever version diverges from the NAG result.</p>
 <p>We’ll get back to this, but let’s just make sure these observations holds up at the end of the table too.</p>
 <pre class="r"><code>knitr::kable(tail(sbnag_df), caption = paste(
@@ -1286,6 +1326,7 @@ sbnag_df &lt;- data.frame(Bengio = bnag_opt$fs,
 <th align="right">Suts.Mom</th>
 <th align="right">NAG</th>
 <th align="right">mNAG</th>
+<th align="right">Dozat</th>
 <th align="right">CM</th>
 </tr>
 </thead>
@@ -1297,6 +1338,7 @@ sbnag_df &lt;- data.frame(Bengio = bnag_opt$fs,
 <td align="right">0.0151835</td>
 <td align="right">0.0590959</td>
 <td align="right">0.0142850</td>
+<td align="right">0.0142850</td>
 <td align="right">0.4448498</td>
 </tr>
 <tr class="even">
@@ -1305,6 +1347,7 @@ sbnag_df &lt;- data.frame(Bengio = bnag_opt$fs,
 <td align="right">0.0142710</td>
 <td align="right">0.0142850</td>
 <td align="right">0.0552234</td>
+<td align="right">0.0134463</td>
 <td align="right">0.0134463</td>
 <td align="right">0.5019262</td>
 </tr>
@@ -1315,6 +1358,7 @@ sbnag_df &lt;- data.frame(Bengio = bnag_opt$fs,
 <td align="right">0.0134463</td>
 <td align="right">0.0516306</td>
 <td align="right">0.0126630</td>
+<td align="right">0.0126630</td>
 <td align="right">0.4306990</td>
 </tr>
 <tr class="even">
@@ -1323,6 +1367,7 @@ sbnag_df &lt;- data.frame(Bengio = bnag_opt$fs,
 <td align="right">0.0126508</td>
 <td align="right">0.0126630</td>
 <td align="right">0.0482955</td>
+<td align="right">0.0119314</td>
 <td align="right">0.0119314</td>
 <td align="right">0.3112414</td>
 </tr>
@@ -1333,6 +1378,7 @@ sbnag_df &lt;- data.frame(Bengio = bnag_opt$fs,
 <td align="right">0.0119314</td>
 <td align="right">0.0451983</td>
 <td align="right">0.0112476</td>
+<td align="right">0.0112476</td>
 <td align="right">0.2869773</td>
 </tr>
 <tr class="even">
@@ -1341,6 +1387,7 @@ sbnag_df &lt;- data.frame(Bengio = bnag_opt$fs,
 <td align="right">0.0112368</td>
 <td align="right">0.0112476</td>
 <td align="right">0.0423208</td>
+<td align="right">0.0106082</td>
 <td align="right">0.0106082</td>
 <td align="right">0.3721692</td>
 </tr>
