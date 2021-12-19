@@ -281,6 +281,11 @@ v_t = \mu_{t-1}v_{t-1} - \varepsilon_{t-1}\nabla f\left(\theta_{t-1}\right)
 <p><span class="math display">\[\theta_{t+1} = \theta_t + \mu_t v_t - \varepsilon_t \nabla f\left(\theta_t\right)\]</span></p>
 <p>with velocity:</p>
 <p><span class="math display">\[v_{t+1} = \mu_t v_t - \varepsilon_t \nabla f\left(\theta_t \right)\]</span></p>
+<p>Later we will want to use the recursive definition of momentum, but it won’t be the full update, so we will not be able to define it as <span class="math inline">\(v_t\)</span>. In those circumstances, I will call the update <span class="math inline">\(m_t\)</span> to avoid confusion:</p>
+<p><span class="math display">\[
+m_{t+1} = \mu_t m_t - \varepsilon_t \nabla f\left(\theta_t \right)
+\]</span></p>
+<p>Remember: <span class="math inline">\(v_{t+1} = m_{t+1}\)</span> <em>only</em> in the case of classical momentum.</p>
 </div>
 <div id="nag" class="section level2">
 <h2>NAG</h2>
@@ -827,52 +832,176 @@ mumat &lt;- function(wfun, mus = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.99)) {
 <p>At high momentum, classical momentum is only placing around 25-30% of the weight on the current gradient, whereas for NAG, it’s 45-50%. For NAGs, the weight is even higher at 50-55%.</p>
 </div>
 </div>
+<div id="unrolling-with-a-momentum-schedule" class="section level3">
+<h3>Unrolling with a momentum schedule</h3>
+<p>I kept <span class="math inline">\(\mu\)</span> constant in the unrolling expressions so far to keep things neat and to highlight some similarities between CM and NAG. But what if we want <span class="math inline">\(\mu\)</span> to vary with iteration? In our derivations of Nesterov momentum schemes we have explicitly accounted for <span class="math inline">\(\mu_t\)</span> so let’s take a look (and brace ourselves for the expressions to lose a lot of readability):</p>
+<div id="classical-momentum-with-a-schedule" class="section level4">
+<h4>Classical Momentum with a Schedule</h4>
+<p><span class="math display">\[
+\begin{equation}
+\begin{split}
+\theta_1 &amp; = \theta_0 + s_0 \\
+\\
+\theta_2 &amp; = \theta_1 + s_1 + \mu_1 v_1 \\
+ &amp; = \theta_1 + s_1 + \mu_1 s_0 \\
+\\
+\theta_3 &amp; = \theta_2 + s_2 + \mu_2 v_2 \\
+ &amp; = \theta_2 + s_2 + \mu_2 \left( s_1 + \mu_1 s_0 \right) \\
+ &amp; = \theta_2 + s_2 + \mu_2 s_1 + \mu_2 \mu_1 s_0 \\
+\\
+\theta_4 &amp; = \theta_3 + s_3 + \mu_3 v_3 \\
+ &amp; = \theta_3 + s_3 + \mu_3 \left( s_2 + \mu_2 s_1 + \mu_2 \mu_1 s_0 \right)\\
+ &amp; = \theta_3 + s_3 + \mu_3 s_2 + \mu_3 \mu_2 s_1 + \mu_3 \mu_2 \mu_1 s_0 \\
+\end{split}
+\end{equation}
+\]</span> Already this is looking pretty gross.</p>
+</div>
+<div id="nag-with-a-momentum-schedule" class="section level4">
+<h4>NAG with a Momentum Schedule</h4>
+<p><span class="math display">\[
+\begin{equation}
+\begin{split}
+\theta_1 &amp; = \theta_0 + \left( 1 + \mu_0 \right) s_0 \\
+\\
+\theta_2 &amp; = \theta_1 + \left( 1 + \mu_1 \right) s_1 - \mu_1 s_0 + \mu_1 v_1 \\
+ &amp; = \theta_1 + \left(1 + \mu_1 \right) s_1 - \mu_1 s_0 + \mu_1 \left( 1 + \mu_0 \right) s_0 \\
+ &amp; = \theta_1 + \left(1 + \mu_1 \right) s_1 + \mu_1 \mu_0 s_0 \\
+\\ 
+\theta_3 &amp; = \theta_2 + \left( 1 + \mu_2 \right) s_2 - \mu_2 s_1 + \mu_2 v_2 \\
+&amp; = \theta_2 + \left(1 + \mu_2 \right) s_2 - \mu_2 s_1 + \mu_2 \left(1 + \mu_1 \right) s_1 + \mu_2 \mu_1 \mu_0 s_0\\
+&amp; = \theta_2 + \left(1 + \mu_2 \right) s_2 + \mu_2 \mu_1 s_1 + \mu_2 \mu_1 \mu_0 s_0 \\
+\\
+\theta_4 &amp; = \theta_3 + \left(1 + \mu_3 \right) s_3 - \mu_3 s_2 + \mu_3 v_3 \\
+&amp; = \theta_3 + \left(1 + \mu_3 \right) s_3 - \mu_3 s_2 + \mu_3 \left[ \left(1 + \mu_2 \right) s_2 + \mu_2 \mu_1 s_1 + \mu_2 \mu_1 \mu_0 s_0 \right] \\
+&amp; = \theta_3 + \left(1 + \mu_3 \right) s_3 - \mu_3 s_2 + \mu_3 \left(1 + \mu_2 \right) s_2 + \mu_3 \mu_2 \mu_1 s_1 + \mu_3 \mu_2 \mu_1 \mu_0 s_0 \\
+&amp; = \theta_3 + \left(1 + \mu_3 \right) s_3 + \mu_3 \mu_2 s_2 + \mu_3 \mu_2 \mu_1 s_1 + \mu_3 \mu_2 \mu_1 \mu_0 s_0
+\end{split}
+\end{equation}
+\]</span></p>
+<p>I can see why I was in no hurry to write all that out in full until now. No point showing the “NAGs” version for this, it’s the same as with the constant <span class="math inline">\(\mu\)</span> case: the <span class="math inline">\(s_0\)</span> term vanishes after the first iteration.</p>
+<p>Here’s a comparison of the weights applied to the different gradients at <span class="math inline">\(\theta_4\)</span>:</p>
+<table>
+<thead>
+<tr class="header">
+<th align="center">Momentum Type</th>
+<th align="left"><span class="math inline">\(s_3\)</span></th>
+<th align="left"><span class="math inline">\(s_2\)</span></th>
+<th align="left"><span class="math inline">\(s_1\)</span></th>
+<th align="left"><span class="math inline">\(s_0\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center">Classical</td>
+<td align="left">1</td>
+<td align="left"><span class="math inline">\(\mu_3\)</span></td>
+<td align="left"><span class="math inline">\(\mu_3 \mu_2\)</span></td>
+<td align="left"><span class="math inline">\(\mu_3 \mu_2 \mu_1\)</span></td>
+</tr>
+<tr class="even">
+<td align="center">NAG</td>
+<td align="left">1 + <span class="math inline">\(\mu_3\)</span></td>
+<td align="left"><span class="math inline">\(\mu_3 \mu_2\)</span></td>
+<td align="left"><span class="math inline">\(\mu_3 \mu_2 \mu_1\)</span></td>
+<td align="left"><span class="math inline">\(\mu_3 \mu_2 \mu_1 \mu_0\)</span></td>
+</tr>
+</tbody>
+</table>
+<p>Now the momentum is not constant at each iteration, we see a more complex relationship between the CM and NAG weights. There definitely doesn’t seem to be a simple re-weighting that could map from CM to NAG here: each gradient needs re-weighting by a different <span class="math inline">\(\mu_t\)</span>.</p>
+</div>
+</div>
 </div>
 <div id="dozat-nesterov-momentum" class="section level2">
 <h2>Dozat Nesterov Momentum</h2>
-<p><em>16 December 2021</em>: A new section (currently in a serviceable but somewhat unsatisfactory state) on the expression for Nesterov momentum given by Timothy Dozat in the NAdam paper.</p>
-<p>All the expressions for CM and NAG so far have been recursive in their update vectors, i.e. <span class="math inline">\(v_t\)</span> is always defined in terms of <span class="math inline">\(v_{t-1}\)</span>. QHM does things slightly differently and always uses the classical momentum update as the recursive definition, even when its free parameter is set to give the same results as NAG or an interpolation between CM and NAG. So instead of storing the previous update, to use QHM, you:</p>
-<ol style="list-style-type: decimal">
-<li>Calculate the update vector as if you were doing classical momentum, which requires the previous iteration’s classical momentum update vector to have been stored. Let’s call the CM update vector <span class="math inline">\(m_{t+1}\)</span>, and the previous iterate’s momentum update is therefore <span class="math inline">\(m_t\)</span>.</li>
-<li>Use the current iteration CM update vector, <span class="math inline">\(m_{t+1}\)</span> to generate the QHM update vector, which we can call <span class="math inline">\(v_{t+1}\)</span>.</li>
-<li>Update <span class="math inline">\(\theta_{t}\)</span> using <span class="math inline">\(v_{t+1}\)</span> just as you do with CM and NAG.</li>
-<li>Store the current iteration CM update vector so it can be used as <span class="math inline">\(m_t\)</span> in the next iteration.</li>
-<li>You <em>don’t</em> store <span class="math inline">\(v_{t+1}\)</span> as the next iteration’s <span class="math inline">\(v_t\)</span>, because as the above steps show, it’s not used for calculating the next <span class="math inline">\(v_{t+1}\)</span>.</li>
-</ol>
-<p>This is also how Nesterov momentum is defined in a paper by <a href="https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ">Dozat</a> which integrates Nesterov momentum into the <a href="https://arxiv.org/abs/1412.6980">Adam</a> stochastic gradient descent method. The procedure there is:</p>
-<ol style="list-style-type: decimal">
-<li><span class="math inline">\(m_{t+1} = \mu m_{t} + s_{t}\)</span></li>
-<li><span class="math inline">\(v_{t+1} = \mu m_{t+1} + s_{t}\)</span></li>
-</ol>
-<p>Note that step 2 is the same as CM except <span class="math inline">\(m_t\)</span> is replaced by <span class="math inline">\(m_{t+1}\)</span>. This basically says that for CM, you carry out the gradient/velocity re-weighting once, but for NAG you repeat the process a second time. I am not sure what to call this. I’d love to say “double momentum” but that’s <a href="https://arxiv.org/abs/2102.07367">already a thing</a>. I’m going with “iterated” momentum.</p>
-<p>Seems neat, but is it actually true for the definition of NAG we’ve been using?</p>
-<p>At this point I must come to you with my head hung in defeat. I really wanted to get from the NAG equation we are now all very familiar with to the Dozat version of Nesterov momentum in the same way I generated the Sutskever and Bengio versions, but I have yet to succeed (in case you’re wondering, no I haven’t spent the last five years trying and failing).</p>
-<p>Instead, I just wrote out the Dozat momentum for the first few iterations and compared it to the unrolled CM and NAG expressions we generated above. It works well enough for our purposes here.</p>
-<p>The CM expression for <span class="math inline">\(\theta_4\)</span> re-written to use <span class="math inline">\(m_t\)</span> is the only example we need:</p>
+<p><em>18 December 2021</em>: A new section (currently in a serviceable but somewhat unsatisfactory state) on the expression for Nesterov momentum given by Timothy Dozat in the NAdam paper.</p>
+<p>A paper by <a href="https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ">Dozat integrating Nesterov momentum</a> into the <a href="https://arxiv.org/abs/1412.6980">Adam</a> stochastic gradient descent method shows how to get from the CM to NAG by re-weighting the CM update. As we just saw, allowing <span class="math inline">\(\mu\)</span> to vary at each iterate has complicated the relationship between CM and NAG, so we need to define a new CM-like update.</p>
+<p>Back when I defined CM, I said it would be useful to define the recursive momentum equation as <span class="math inline">\(m_t\)</span>, identifying as separate from the parameter update, <span class="math inline">\(v_{t}\)</span>, even though they coincide in CM. Here’s where it comes in useful to have separated those two concepts. We now need a CM-like definition, which differs from <span class="math inline">\(m_{t}\)</span> only in that we use the momentum coefficient from the previous iterate. This new definition I will label as <span class="math inline">\(m^{\prime}_{t}\)</span>:</p>
 <p><span class="math display">\[
 \begin{equation}
 \begin{split}
-\theta_4 &amp; = \theta_3 + m_4 \\
- &amp; = \theta_3 + s_3 + \mu m_3 \\
- &amp; = \theta_3 + s_3 + \mu \left( s_2 + \mu s_1 + \mu^2 s_0 \right)\\
- &amp; = \theta_3 + s_3 + \mu s_2 + \mu^2 s_1 + \mu^3 s_0
+m_{t+1} &amp; = \mu_{t} m_t + s_t\\
+m^{\prime}_{t+1} &amp; = \mu_{t-1} m^{\prime}_t + s_t\\
 \end{split}
 \end{equation}
+\]</span> For NAG, the update vector <span class="math inline">\(v_{t+1}\)</span> can now be defined in terms of <span class="math inline">\(m^{\prime}_{t+1}\)</span>, using the current iterate’s momentum coefficient:</p>
+<p><span class="math display">\[
+v_{t+1} = \mu_{t} m^{\prime}_{t+1} + s_t
 \]</span></p>
-<p>If we apply the re-weighting a second time we would get:</p>
+<p>This is like doing momentum twice per iteration (I’d love to say “double momentum” but that’s <a href="https://arxiv.org/abs/2102.07367">already a thing</a>). If we expand the update to be in terms of <span class="math inline">\(m^{\prime}_t\)</span> rather than <span class="math inline">\(m^{\prime}_{t+1}\)</span> we get:</p>
 <p><span class="math display">\[
 \begin{equation}
 \begin{split}
-\theta_4 &amp; = \theta_3 + s_3 + \mu m_4 \\
- &amp; = \theta_3 + s_3 + \mu \left( s_3 + \mu s_2 + \mu^2 s_1 + \mu^3 s_0 \right) \\
- &amp; = \theta_3 + \left( 1 + \mu \right) s_3 + \mu^2 s_2 + \mu^3 s_1 + \mu^4 s_0
+v_{t+1} &amp; = \mu_{t} \left( \mu_{t-1} m_t^{\prime} + s_t \right) + s_t \\
+&amp; = \mu_{t-1} \mu_{t} m_t^{\prime} + \left(1 + \mu_t \right) s_t
 \end{split}
 \end{equation}
-\]</span> Here’s a reminder of the equivalent NAG expression:</p>
-<p><span class="math display">\[
-\theta_4 = \theta_3 + \left(1 + \mu \right) s_3 + \mu^2 s_2 + \mu^3 s_1 + \mu^4 s_0
 \]</span></p>
-<p>So it seems like we have another expression for NAG, at least for the constant momentum case.</p>
+<p>So here’s the overall Dozat Nesterov momentum update, rearranged a bit to make the forthcoming un-rolling easier to write out:</p>
+<p><span class="math display">\[
+\theta_{t+1} = \theta_t + \left(1 + \mu_t \right) s_t + \mu_{t-1} \mu_{t} m_t^{\prime}
+\]</span></p>
+<p>At this point, I would love to say that I can get to this expression for NAG starting from the expression we have been using so far. But I admit that it’s not obvious to me how to get from the general recursive-in-<span class="math inline">\(v_t\)</span> expression to one which is recursive in <span class="math inline">\(m^{\prime}_t\)</span>. The key maye be to notice the connection between this expression and two others: the Bengio Nesterov momentum expression and the expanded and rearranged NAG expression:</p>
+<p><span class="math display">\[
+\begin{equation}
+\begin{split}
+\theta_{t+1} &amp; = \theta_t + \left(1 + \mu_t \right) s_t + \mu_{t-1} \mu_{t} m_t^{\prime} \\
+\theta_{t+1} &amp; = \theta_t + \left(1 + \mu_t \right) s_t + \mu_{t-1} \mu_t b_t \\
+\theta_{t+1} &amp; = \theta_t + \left(1 + \mu_t \right) s_t + \mu_t \left(v_t - s_{t-1} \right)
+\end{split}
+\end{equation}
+\]</span></p>
+<p>This means that:</p>
+<p><span class="math display">\[
+m_t^{\prime} = b_t = \frac{\left(v_t - s_{t-1} \right)}{\mu_{t-1}}
+\]</span></p>
+<p>Perhaps one day I will return to this section and fill in the obvious details. For now, let’s just unroll the first few iterations of the Dozat expression:</p>
+<p><span class="math display">\[
+\begin{equation}
+\begin{split}
+m^{\prime}_{0} &amp; = 0\\
+\theta_1 &amp; = \theta_0 + \left( 1 + \mu_0 \right) s_0 + \mu_0 \mu_{-1} m^{\prime}_{0} \\
+\theta_1 &amp; = \theta_0 + \left( 1 + \mu_0 \right) s_0 \\
+\\
+m^{\prime}_{1} &amp; = \mu_{-1} m^{\prime}_0 + s_0 \\
+&amp; = s_0 \\
+\theta_2 &amp; = \theta_1 + \left( 1 + \mu_1 \right) s_1 + \mu_1 \mu_0 m^{\prime}_{1} \\
+ &amp; = \theta_1 + \left(1 + \mu_1 \right) s_1 + \mu_1 \mu_0 s_0 \\
+\\
+m^{\prime}_{2} &amp; = \mu_{0} m^{\prime}_1 + s_1 \\
+&amp; = \mu_0 s_0 + s_1 \\
+\theta_3 &amp; = \theta_2 + \left( 1 + \mu_2 \right) s_2 + \mu_2 \mu_1 m^{\prime}_{2} \\
+&amp; = \theta_2 + \left(1 + \mu_2 \right) s_2 + \mu_2 \mu_1 s_1 + \mu_2 \mu_1 \mu_0 s_0 \\
+\\
+m^{\prime}_{3} &amp; = \mu_{1} m^{\prime}_2 + s_2 \\
+&amp; = \mu_1 \mu_0 s_0 + \mu_1 s_1 + s_2 \\
+\theta_4 &amp; = \theta_3 + \left(1 + \mu_3 \right) s_3 + \mu_3 \mu_2 m^{\prime}_{3} \\
+&amp; = \theta_3 + \left(1 + \mu_3 \right) s_3 + \mu_3 \mu_2 s_2 + \mu_3 \mu_2 \mu_1 s_1 + \mu_3 \mu_2 \mu_1 \mu_0 s_0
+\end{split}
+\end{equation}
+\]</span></p>
+<p>Yep, that’s the NAG update alright.</p>
+<p>Note that for this implementation, you <em>don’t</em> store the previous update, <span class="math inline">\(v_t\)</span>, but the momentum update <span class="math inline">\(m^{\prime}_t\)</span>. Also, you need to store the previous iterate’s momentum coefficient <span class="math inline">\(\mu_{t-1}\)</span>.</p>
+<div id="the-qhm-dozat-nesterov-momentum-connection" class="section level3">
+<h3>The QHM-Dozat Nesterov Momentum Connection</h3>
+<p>Quasi-hyperbolic momentum and the Dozat version of Nesterov momentum have a very similar form: QHM can be thought of as a generalization of Dozat Nesterov momentum, by replacing <span class="math inline">\(\mu_{t-1}\)</span> in the definition of <span class="math inline">\(m^{\prime}_{t+1}\)</span> with a new free parameter, <span class="math inline">\(\nu_{t}\)</span>. To avoid any confusion let’s call this new update <span class="math inline">\(q_{t+1}\)</span>:</p>
+<p><span class="math display">\[
+\begin{equation}
+\begin{split}
+q_{t+1} &amp; = \nu_t q_t + s_t \\
+v_{t+1} &amp; = \mu_{t} q_{t+1} + s_t \\
+&amp; = \mu_{t} \nu_t q_t + \left(1 + \mu_t \right) s_t
+\end{split}
+\end{equation}
+\]</span></p>
+<p>Setting:</p>
+<ul>
+<li><span class="math inline">\(\nu_t = 0\)</span> and you get steepest descent (nearly).</li>
+<li><span class="math inline">\(\nu_t = \mu_{t-1}\)</span> and you get Nesterov momentum.</li>
+<li><span class="math inline">\(\nu_t = 1\)</span> and you get classical momentum (nearly).</li>
+</ul>
+<p>So <span class="math inline">\(\nu_t\)</span> gives you an extra parameter along with <span class="math inline">\(\mu_t\)</span> to tune how much weight should go on previous gradients when constructing the update vector.</p>
+<p>At this point I should note that this isn’t <em>exactly</em> the QHM update, although it is quite close. Also, you only get “nearly” steepest decent and CM from this equation: the step size for steepest descent is the “long” version we have grown all too accustomed to. The QHM paper doesn’t have the same issue mainly because it takes care to both separate the <em>direction</em> of the update vector versus its magnitude. This takes us further away from how NAG and classical momentum are often defined, however.</p>
+</div>
 </div>
 <div id="nag-in-practice" class="section level2">
 <h2>NAG in practice</h2>
