@@ -541,7 +541,7 @@ v_{t+1} =
 \theta_{1} = \theta_0 + \left(1 + \mu \right) s_0
 \]</span></p>
 <p>This is still moving in the direction of the negative gradient, but it takes a longer step size than classical momentum. This doesn’t make a lot of sense to me as a good first step without any contributions from previous updates or gradients. Why have a momentum term involved at all when most of what that <span class="math inline">\(\mu\)</span> gets applied to in subsequent iterations isn’t around?</p>
-<p>Also, as we will see later, taking the long step makes reconciling the different versions of NAG a bit harder than it needs. Plus, I see the appeal of both classical momentum and NAG taking the step on the first iteration when there is no history of updates to work on. So I won’t blame you if you decide to go with steepest descent with step size of length <span class="math inline">\(\varepsilon_1\)</span> rather than <span class="math inline">\(\left(1 + \mu \right) \varepsilon_1\)</span>.</p>
+<p>Also, as we will see later, taking the long step makes reconciling the different versions of NAG a bit harder than it needs to be . Plus, I see the appeal of both classical momentum and NAG taking the step on the first iteration when there is no history of updates to work on. So I won’t blame you if you decide to go with steepest descent with step size of length <span class="math inline">\(\varepsilon_1\)</span> rather than <span class="math inline">\(\left(1 + \mu \right) \varepsilon_1\)</span>.</p>
 <p>Unfortunately, as you will discover, your efforts to avoid taking the “long” steepest descent step will be in vain. If you don’t do it on the first iteration, it just shows up again in the second iteration.</p>
 <p>We’ll look at the results with both choices, and it’s honestly not that consequential, but probably going with the <span class="math inline">\(\left(1 + \mu \right)\)</span> step size on the first iteration is the right move.</p>
 <p>Having decided on the “long” version of the first steepest descent step, here it is along with the subsequent three steps of NAG:</p>
@@ -632,7 +632,7 @@ v_{t+1} =
 </tbody>
 </table>
 <p>From this it’s clear that the difference between NAG and classical momentum is that NAG puts more weight on recent gradients: another way of looking at it is to say that NAG forgets old gradients more quickly.</p>
-<p>The regularity of the difference between classical momentum and NAG weights in that terrible suggest that there should be a way to express the NAG update in terms of a classical momentum update. See the section on ‘Dozat Nesterov momentum’ below for more on that.</p>
+<p>The regularity of the difference between classical momentum and NAG weights suggest that there should be a way to express the NAG update in terms of a classical momentum update. See the section on ‘Dozat Nesterov momentum’ below for more on that.</p>
 <p>Let’s write some R code to generate a table to compare how the relative weights turn out between CM and NAG at different values of <span class="math inline">\(\mu\)</span>. We’ll normalize the contributions so they sum to 1.</p>
 <pre class="r"><code>cm_weights &lt;- function(mu) { c(1, mu, mu * mu, mu * mu * mu) }
 

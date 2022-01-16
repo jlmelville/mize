@@ -606,10 +606,10 @@ gradients. Why have a momentum term involved at all when most of what that $\mu$
 gets applied to in subsequent iterations isn't around?
 
 Also, as we will see later, taking the long step makes reconciling the different
-versions of NAG a bit harder than it needs. Plus, I see the appeal of both
-classical momentum and NAG taking the step on the first iteration when there is
-no history of updates to work on. So I won't blame you if you decide to go with
-steepest descent with step size of length $\varepsilon_1$ rather than 
+versions of NAG a bit harder than it needs to be . Plus, I see the appeal of
+both classical momentum and NAG taking the step on the first iteration when
+there is no history of updates to work on. So I won't blame you if you decide to
+go with steepest descent with step size of length $\varepsilon_1$ rather than
 $\left(1 + \mu \right) \varepsilon_1$.
 
 Unfortunately, as you will discover, your efforts to avoid taking the "long"
@@ -706,10 +706,10 @@ From this it's clear that the difference between NAG and classical momentum is
 that NAG puts more weight on recent gradients: another way of looking at it is
 to say that NAG forgets old gradients more quickly.
 
-The regularity of the difference between classical momentum and NAG weights in
-that terrible suggest that there should be a way to express the NAG update in
-terms of a classical momentum update. See the section on 'Dozat Nesterov
-momentum' below for more on that.
+The regularity of the difference between classical momentum and NAG weights
+suggest that there should be a way to express the NAG update in terms of a
+classical momentum update. See the section on 'Dozat Nesterov momentum' below
+for more on that.
 
 Let's write some R code to generate a table to compare how the relative weights
 turn out between CM and NAG at different values of $\mu$. We'll normalize the 
