@@ -129,7 +129,7 @@ Remember: $v_{t+1} = m_{t+1}$ *only* in the case of classical momentum.
 The Nesterov Accelerated Gradient method consists of a gradient descent step,
 followed by something that looks a lot like a momentum term, but isn't exactly
 the same as that found in classical momentum. I'll call it a "momentum stage"
-here. If you look at the Sutskever paper, t's important to note that the
+here. If you look at the Sutskever paper, It's important to note that the
 parameters being minimized by NAG are given the symbol $y$, not $\theta$. You'll
 see that $\theta$ is the symbol for the parameters after they've been updated by
 the gradient descent stage, but before the momentum stage.
@@ -490,7 +490,8 @@ v_{t+1} =
 \right]
 $$
 where setting $\beta_t = 0$ will give classical momentum and $\beta_t = 1$ gives
-Nesterov.
+Nesterov. The stochastic unified momentum paper calls $\beta$ the "interpolation
+factor" (and use the symbol $\lambda$ instead of $\beta$).
 
 In 2020, a similar expression was given by [Ziyin and
 co-workers](https://arxiv.org/abs/2002.04839), but didn't give it a catchy name.
@@ -1216,8 +1217,9 @@ mnag <- function(par, fn, gr, lr, mu, max_iter = 10) {
 ```
 
 Finally, here is your humble author's expression for NAG, written as a
-momentum-style update. To differentiate from the Sutskever and Bengio versions
-of NAG, I'll refer to it as momentum-NAG or mNAG.
+momentum-style update. Effectively this is Zou and co-worker's unified momentum,
+with the interpolation factor set to 1 to give NAG. To differentiate from the
+Sutskever and Bengio versions of NAG, I'll refer to it as momentum-NAG or mNAG.
 
 ### Testing with Rosenbrock
 
