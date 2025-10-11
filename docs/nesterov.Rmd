@@ -90,7 +90,7 @@ doesn't actually apply to the parameter being updated.
 Finally, I'll try to be strict about names. When I'm referring to the original
 Nesterov Accelerated Gradient, I'll call that NAG. When I'm referring to the
 versions that recast it as a momentum scheme, I'll call that Nesterov momentum,
-and refer to either the Sutskever or Bengio forumulation where necessary. The
+and refer to either the Sutskever or Bengio formulation where necessary. The
 traditional momentum scheme is referred to as "standard" or "regular" momentum
 by Bengio, and "classical" by Sutskever. Other authors call it "Polyak" or
 "heavy ball" momentum. I'll refer to it as "classical" momentum.
@@ -177,7 +177,7 @@ but you can just pretend that the starting position is the result of gradient
 descent from some other arbitrary starting position.
 
 Perhaps a visualization will help. Here are two full iterations of NAG in its
-standard form, separated by boxes so you can see where one interation ends and
+standard form, separated by boxes so you can see where one iteration ends and
 the other begins.
 
 $$
@@ -201,7 +201,7 @@ $$
 \theta_{t+1} = \phi_{t+1} + \mu_t\left(\phi_{t+1} - \phi_{t} \right) \\
 \phi_{t+2} = \theta_{t+1} - \varepsilon_{t+1} \nabla f\left(\theta_{t+1} \right)
 } \\
-\theta_{t+2} = \phi_{t+2} + \mu_{t+1}\left(\phi_{t+2} - \phi_{+1} \right)
+\theta_{t+2} = \phi_{t+2} + \mu_{t+1}\left(\phi_{t+2} - \phi_{t+1} \right)
 $$
 
 Now that the definition of where we start and finish each iteration has changed
@@ -290,7 +290,7 @@ $$
 \end{equation}  
 $$
 
-So far, so un-promising. Time to get $b_t$ involved. Remember how we defined:
+So far, so unpromising. Time to get $b_t$ involved. Remember how we defined:
 
 $$
 \begin{equation}
@@ -313,10 +313,10 @@ And now substitute for $\phi_t$ in the last term in our NAG update:
 $$
 \begin{equation}
 \begin{split}
-\theta_{t+1} & = \left(1 + \mu \right) \theta_t 
+\theta_{t+1} & = \left(1 + \mu_t \right) \theta_t 
  - \left(1 + \mu_t \right) \varepsilon_t \nabla f\left(\theta_t \right)
   - \mu_t \phi_t \\
- & = \left(1 + \mu \right) \theta_t 
+ & = \left(1 + \mu_t \right) \theta_t 
  - \left(1 + \mu_t \right) \varepsilon_t \nabla f\left(\theta_t \right)
   - \mu_{t} \theta_t + \mu_{t-1} \mu_t b_t
 \end{split}
@@ -383,7 +383,7 @@ $$
 - \varepsilon_t \nabla f\left(\theta_t \right)
 $$
 
-Finally, we can subtitute in $v_t$ for the first two terms in the square
+Finally, we can substitute in $v_t$ for the first two terms in the square
 brackets, to give:
 
 $$
@@ -888,7 +888,7 @@ $$
 At this point, I would love to say that I can get to this expression for NAG
 starting from the expression we have been using so far. But I admit that it's
 not obvious to me how to get from the general recursive-in-$v_t$ expression to
-one which is recursive in $m^{\prime}_t$. The key maye be to notice the
+one which is recursive in $m^{\prime}_t$. The key may be to notice the
 connection between this expression and two others: the Bengio Nesterov momentum
 expression and the expanded and rearranged NAG expression:
 
@@ -1138,6 +1138,8 @@ bnag <- function(par, fn, gr, lr, mu, max_iter = 10) {
   v <- rep(0, length(par))
   for (i in 1:max_iter) {
     g <- gr(par)
+    # here we approximate mu_{t+1} * mu_{t} as mu^2
+    # works because mu is constant across all time steps in these examples
     par <- par + mu * mu * v - (1 + mu) * lr * g
     v <- mu * v - lr * g
 
@@ -1165,7 +1167,7 @@ dnag <- function(par, fn, gr, lr, mu, max_iter = 10) {
   fs <- rep(0, max_iter)
   
   # mprime, the recursive variable
-  mpt <- 0
+  mpt <- rep(0, length(par))
   mumu <- mu * mu
   
   v <- rep(0, length(par))
@@ -1290,7 +1292,7 @@ derivation I provided. It matches the Bengio results. Hurrah.
 
 *18 December 2021* The results for Dozat's version of Nesterov momentum have
 also been added. As expected, it matches the Bengio and mNAG results. Not much
-elso to say about it so it won't appear in any further discussion.
+else to say about it so it won't appear in any further discussion.
 
 However, none of the results match the vanilla NAG implementation. A clue to
 what's going on is from looking at the classical momentum result in the "CM"
@@ -1530,7 +1532,7 @@ third column *does* match the Bengio results from the previous iteration. So
 relative performance between Sutskever and Bengio has been maintained. But in
 addition, the NAG result in the fourth column matches the Bengio and Sutskever
 momentum results. The momentum NAG result has also been correctly updated.
-Finally, as an extra check, the NAG gradient desent result is shown in the final
+Finally, as an extra check, the NAG gradient descent result is shown in the final
 column, which also matches up with the Sutskever results.
 
 And let's take a look at the final few iterations, just to make sure everything
