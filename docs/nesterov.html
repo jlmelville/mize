@@ -1911,6 +1911,31 @@ momentum”. Another way to look at this is to say that the third term
 reduces the contribution of the classical momentum component of the
 update and increases the contribution of the gradient descent, with the
 degree of weighting controlled by <span class="math inline">\(\mu_{t}\)</span>.</p>
+<p><em>December 25 2025</em>: Here’s a possible insight into the meaning
+of the gradient term. If we write the steepest descent update as <span class="math inline">\(s_t = - \varepsilon_t \nabla f\left(\theta_t
+\right)\)</span>, then the NAG update is:</p>
+<p><span class="math display">\[
+v_{t+1} =  
+\mu_t v_t + s_{t}
++
+\mu_t
+\left[
+s_t - s_{t-1}
+\right]
+\]</span> The last term is then the change in the steepest descent step.
+In the case where gradient directions are not changing much between
+iterations, <span class="math inline">\(s_{t} - s_{t-1} \approx
+0\)</span>, and the NAG update reduces to classical momentum. But
+consider a case where the gradient is changing a lot between iterations,
+for example, a steep ravine where we are bouncing from one side to the
+other. In that case the direction (sign) of the gradient could be
+reversing in each iteration, i.e. <span class="math inline">\(s_{t}
+\approx - s_{t-1}\)</span>. In that case, the last term becomes
+approximately <span class="math inline">\(2 \mu_t s_t\)</span>, which
+increases the contribution of the current steepest descent direction to
+the overall update and therefore reduces the weight we place on previous
+directions. This gives some intuition about the conditions where NAG
+will differ from CM and why it might be beneficial.</p>
 <p><a href="https://arxiv.org/abs/1810.06801">Quasi-hyperbolic
 momentum</a> uses a similar formulation, but introduces an extra
 parameter that allows QHM to generalize over classical momentum and NAG,
