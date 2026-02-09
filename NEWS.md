@@ -1,3 +1,9 @@
+# mize 0.2.5
+
+Bug fix release.
+
+* Removed `LazyData` from the `DESCRIPTION` file.
+
 # mize 0.2.4
 
 Bug fix release.
