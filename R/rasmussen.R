@@ -26,10 +26,8 @@
 # @param int Interpolation constant. Prevents step size being too small.
 # @param max_fn Maximum number of function evaluations allowed per line search.
 # @return Line search function.
-# @seealso Line search based on Matlab code by
-#  \href{http://learning.eng.cam.ac.uk/carl/code/minimize/}{Carl Edward Rasmussen}
-#  and also part of the Matlab
-#  \href{(http://www.gaussianprocess.org/gpml/code/matlab/doc/)}{GPML} package.
+# @seealso based on code written by Carl Edward Rasmussen for the Matlab 
+#  \href{(https://www.gaussianprocess.org/gpml/code/matlab/doc/)}{GPML} package.
 rasmussen <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
                       max_fn = Inf, xtol = 1e-6, eps = 1e-6, approx_armijo = FALSE,
                       strong_curvature = TRUE, verbose = FALSE) {

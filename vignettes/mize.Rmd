@@ -436,7 +436,7 @@ I'm not saying it's a *good* idea.
 
 Interest in NAG in the neural network community (specifically deep learning),
 was sparked by papers from 
-[Sutskever and co-workers](https://www.jmlr.org/proceedings/papers/v28/sutskever13.html)
+[Sutskever and co-workers](https://proceedings.mlr.press/v28/sutskever13.html)
 and [Bengio and co-workers](https://arxiv.org/abs/1212.0901) who showed that 
 it could be related to classical momentum in a way that made it easy to 
 implement if you already had a working classical momentum implementation, and
@@ -599,7 +599,7 @@ size that is effectively inversely proportional to a norm of the gradient:
 * Carl Edward Rasmussen's 
 [conjugate gradient routine](http://learning.eng.cam.ac.uk/carl/code/minimize/)
 uses $\frac{1}{1+\left\| g \right\|_2^2}$
-* [SciPy](https://www.scipy.org/)'s `optimize.py` uses
+* [SciPy](https://scipy.org/)'s `optimize.py` uses
 $\frac{1}{\left\| g \right\|_2}$
 * Mark Schmidt's 
 [minimization routines](https://www.cs.ubc.ca/~schmidtm/Software/minFunc.html)
