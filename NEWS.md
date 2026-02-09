@@ -1,3 +1,5 @@
+# mize (development version)
+
 # mize 0.2.5
 
 Bug fix release.
