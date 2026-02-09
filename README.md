@@ -81,7 +81,7 @@ while (!done) {
 The Wolfe line searches use conversion of Mark Schmidt's
 [minFunc routines](http://www.cs.ubc.ca/~schmidtm/Software/minFunc.html),
 Carl Edward Rasmussen's
-[Matlab code](http://learning.eng.cam.ac.uk/carl/code/minimize/) and Dianne
+[Matlab code](https://gaussianprocess.org/gpml/code/matlab/doc/) and Dianne
 O'Leary's Matlab translation of the
 [Moré-Thuente line search](http://www.cs.umd.edu/users/oleary/software/)
 algorithm from [MINPACK](http://www.netlib.org/minpack/).

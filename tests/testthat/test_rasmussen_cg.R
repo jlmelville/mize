@@ -1,6 +1,8 @@
 context("PR-CG with Rasmussen step size")
 test_that("CG gives same results as minimize.m webpage", {
-  # example from http://learning.eng.cam.ac.uk/carl/code/minimize/
+  # example from (http://learning.eng.cam.ac.uk/carl/code/minimize/ -- this
+  # link is now dead, but code can be found at
+  # https://gaussianprocess.org/gpml/code/matlab/doc/)
   # this has (c) 2006, earlier versions are out there with different values
   # Don't care about results after 15 iterations
   # start getting large implementation-specific results

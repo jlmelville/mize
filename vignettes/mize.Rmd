@@ -517,7 +517,7 @@ evaluation at each candidate point.
 
 If the More-Thuente line search fails to work for some reason, alternative
 Wolfe line search method from Carl Edward Rasmussen's 
-[conjugate gradient routine](http://learning.eng.cam.ac.uk/carl/code/minimize/),
+[conjugate gradient routine](https://gaussianprocess.org/gpml/code/matlab/doc/),
 Mark Schmidt's 
 [minimization routines](https://www.cs.ubc.ca/~schmidtm/Software/minFunc.html),
 and an implementation of [Hager-Zhang](https://doi.org/10.1137/030601880)
@@ -597,7 +597,7 @@ point apart from the gradient, so all the implementations I've seen use a step
 size that is effectively inversely proportional to a norm of the gradient:
 
 * Carl Edward Rasmussen's 
-[conjugate gradient routine](http://learning.eng.cam.ac.uk/carl/code/minimize/)
+[conjugate gradient routine](https://gaussianprocess.org/gpml/code/matlab/doc/)
 uses $\frac{1}{1+\left\| g \right\|_2^2}$
 * [SciPy](https://scipy.org/)'s `optimize.py` uses
 $\frac{1}{\left\| g \right\|_2}$
