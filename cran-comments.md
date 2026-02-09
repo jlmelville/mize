@@ -1,56 +1,43 @@
 ## Release Summary
 
-This is a patch update to fix a minor bug.
+This is a patch update for compatibility with R-devel, fixing errors which have
+appeared in the CRAN checks.
 
 ## Test environments
 
-* ubuntu 16.04 (on travis-ci), R 3.6.3, R 4.0.0, R-devel
-* ubuntu 16.04 (on rhub), R 3.6.1
-* fedora 32 (on rhub), R-devel
-* mac OS X High Sierra (on travis-ci), R 3.6.3, R 4.0.2
-* local Windows 10 build, R 4.0.2
-* Windows Server 2008 (on rhub) R-devel
-* Windows Server 2012 (on appveyor) R 4.0.2
+* local ubuntu 25.10 R 4.5.2, devel
+* ubuntu 24.04 with clang and gcc12 (on rhub), devel
+* fedora 42 with gcc15 (on rhub), devel
+* ubuntu 24.04 (on github actions), R 4.4.3, R 4.5.2, devel
+* mac OS X Sequoia (on github actions) R 4.5.2
+* local Windows 11 build, R 4.5.2, devel
+* Windows Server 2022 (on github actions), R 4.4.3, R 4.5.2
 * win-builder (devel)
 
 ## R CMD check results
 
-There were no ERRORs or WARNINGs.
+There were 4 ERRORs and 3 NOTEs.
 
-There was 1 NOTE:
+The ERRORs (for r-devel-linux-x86_64-debian-clang, 
+R-devel-linux-x86_64-debian-gcc, r-devel-linux-x86_64-fedora-clang and	
+r-devel-windows-x86_64) are:
 
-> * checking CRAN incoming feasibility ... NOTE
-> Maintainer: 'James Melville <jlmelville@gmail.com>'
->
-> There was a message about possibly mis-spelled words in DESCRIPTION:
->
->  BFGS (8:64, 9:20, 9:28)
->  Broyden (8:30)
->  Goldfarb (8:47)
->  Shanno (8:56)
+> Running ‘testthat.R’ [10s/12s]
+   Running the tests in ‘tests/testthat.R’ failed.
 
-Those words are spelled correctly.
+The package has been updated to prevent these failures.
 
-For winbuilder checks only, there was a NOTE about a URL in a vignette
-(<https://doi.org/10.1137/030601880>)
+The NOTEs (for r-oldrel-macos-arm64, r-oldrel-macos-x86_64 and 
+r-oldrel-windows-x86_64) are: 
 
-> Found the following (possibly) invalid URLs:
->  URL: https://doi.org/10.1137/030601880
->    From: inst/doc/convergence.html
->          inst/doc/mize.html
->    Status: Error
->    Message: libcurl error code 56:
->      	Recv failure: Connection was reset
-      	
-I am unable to reproduce this and can access the URL without problems via
-curl and a web browser.
+> checking LazyData ... NOTE
+  'LazyData' is specified without a 'data' directory
 
-## CRAN checks
-
-There are no NOTEs, ERRORs or WARNINGs.
+The DESCRIPTION file has been updated to fix this.
 
 ## Downstream dependencies
 
-There are 2 downstream dependencies. 
+There are 3 downstream dependencies. 
 
-* All completed R CMD CHECK without issues.
+* All completed R CMD CHECK without issues. There were no new NOTEs, WARNINGs or
+ERRORs.

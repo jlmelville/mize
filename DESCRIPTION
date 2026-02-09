@@ -1,7 +1,7 @@
 Package: mize
 Type: Package
 Title: Unconstrained Numerical Optimization Algorithms
-Version: 0.2.4
+Version: 0.2.5
 Authors@R: person("James", "Melville", email = "jlmelville@gmail.com",
     role = c("aut", "cre"))
 Description: Optimization algorithms implemented in R, including

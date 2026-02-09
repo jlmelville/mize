@@ -2,7 +2,10 @@
 
 Bug fix release.
 
+## Bug fixes
+
 * Removed `LazyData` from the `DESCRIPTION` file.
+* Some flaky unit tests where removed.
 
 # mize 0.2.4
 
