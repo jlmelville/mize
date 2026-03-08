@@ -283,7 +283,7 @@ $$
 \begin{split}
 \theta_{t+1} & = \theta_t - \varepsilon_t \nabla f\left(\theta_t \right) + 
   \mu_t \left( \theta_t - \varepsilon_t \nabla f\left(\theta_t \right) - \phi_{t} \right) \\
- & = \left(1 + \mu \right) \theta_t 
+ & = \left(1 + \mu_t \right) \theta_t 
  - \left(1 + \mu_t \right) \varepsilon_t \nabla f\left(\theta_t \right)
   - \mu_t \phi_t
 \end{split}
@@ -969,10 +969,10 @@ iterate's momentum coefficient $\mu_{t-1}$.
 ### The QHM-Dozat Nesterov Momentum Connection
 
 Quasi-hyperbolic momentum and the Dozat version of Nesterov momentum have a
-very similar form: QHM can be thought of as a generalization of Dozat Nesterov
-momentum, by replacing $\mu_{t-1}$ in the definition of $m^{\prime}_{t+1}$ 
-with a new free parameter, $\nu_{t}$. To avoid any confusion let's call this
-new update $q_{t+1}$:
+very similar form. You can get something close to QHM by considering a
+generalization of Dozat Nesterov momentum, replacing $\mu_{t-1}$ in the 
+definition of $m^{\prime}_{t+1}$ with a new free parameter, $\nu_{t}$. To avoid
+any confusion let's call this new update $q_{t+1}$:
 
 $$
 \begin{equation}
@@ -996,10 +996,10 @@ weight should go on previous gradients when constructing the update vector.
 At this point I should note that this isn't *exactly* the QHM update, although
 it is quite close. Also, you only get "nearly" steepest decent and CM from this
 equation: the step size for steepest descent is the "long" version we have grown
-all too accustomed to. The QHM paper doesn't have the same issue mainly because
-it takes care to both separate the *direction* of the update vector versus its
-magnitude. This takes us further away from how NAG and classical momentum are
-often defined, however.
+all too accustomed to. The reason this is only a family resemblance to QHM is
+that QHM takes care to both separate the *direction* of the update vector versus
+its magnitude. This takes us further away from how NAG and classical momentum
+are often defined, however.
 
 ## NAG in practice
 

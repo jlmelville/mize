@@ -1766,7 +1766,7 @@ given in the first equation:</p>
 \right) +
   \mu_t \left( \theta_t - \varepsilon_t \nabla f\left(\theta_t \right) -
 \phi_{t} \right) \\
-&amp; = \left(1 + \mu \right) \theta_t
+&amp; = \left(1 + \mu_t \right) \theta_t
 - \left(1 + \mu_t \right) \varepsilon_t \nabla f\left(\theta_t \right)
   - \mu_t \phi_t
 \end{split}
@@ -2654,8 +2654,8 @@ you need to store the previous iterate’s momentum coefficient <span class="mat
 <div id="the-qhm-dozat-nesterov-momentum-connection" class="section level3">
 <h3>The QHM-Dozat Nesterov Momentum Connection</h3>
 <p>Quasi-hyperbolic momentum and the Dozat version of Nesterov momentum
-have a very similar form: QHM can be thought of as a generalization of
-Dozat Nesterov momentum, by replacing <span class="math inline">\(\mu_{t-1}\)</span> in the definition of <span class="math inline">\(m^{\prime}_{t+1}\)</span> with a new free
+have a very similar form. You can get something close to QHM by
+considering a generalization of Dozat Nesterov momentum, replacing <span class="math inline">\(\mu_{t-1}\)</span> in the definition of <span class="math inline">\(m^{\prime}_{t+1}\)</span> with a new free
 parameter, <span class="math inline">\(\nu_{t}\)</span>. To avoid any
 confusion let’s call this new update <span class="math inline">\(q_{t+1}\)</span>:</p>
 <p><span class="math display">\[
@@ -2683,8 +2683,8 @@ update vector.</p>
 <p>At this point I should note that this isn’t <em>exactly</em> the QHM
 update, although it is quite close. Also, you only get “nearly” steepest
 decent and CM from this equation: the step size for steepest descent is
-the “long” version we have grown all too accustomed to. The QHM paper
-doesn’t have the same issue mainly because it takes care to both
+the “long” version we have grown all too accustomed to. The reason this
+is only a family resemblance to QHM is that QHM takes care to both
 separate the <em>direction</em> of the update vector versus its
 magnitude. This takes us further away from how NAG and classical
 momentum are often defined, however.</p>
