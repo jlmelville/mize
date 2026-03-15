@@ -855,116 +855,63 @@ needs re-weighting by a different $\mu_t$.
 
 ## Dozat Nesterov Momentum
 
-*18 December 2021*: A new section (currently in a serviceable but somewhat
-unsatisfactory state) on the expression for Nesterov momentum given by Timothy
-Dozat in the NAdam paper.
-
 A paper by [Dozat integrating Nesterov
 momentum](https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ) into the
-[Adam](https://arxiv.org/abs/1412.6980) stochastic gradient descent method shows
-how to get from the CM to NAG by re-weighting the CM update. As we just saw,
-allowing $\mu$ to vary at each iterate has complicated the relationship between
-CM and NAG, so we need to define a new CM-like update.
-
-Back when I defined CM, I said it would be useful to define the recursive
-momentum equation as $m_t$, identifying as separate from the parameter update, 
-$v_{t}$, even though they coincide in CM. Here's where it comes in useful to have
-separated those two concepts. We now need a CM-like definition, which differs
-from $m_{t}$ only in that we use the momentum coefficient from the previous
-iterate. This new definition I will label as $m^{\prime}_{t}$:
+[Adam](https://arxiv.org/abs/1412.6980) gives a slightly different expression,
+that is quite closely related to the Bengio form:
 
 $$
 \begin{equation}
 \begin{split}
-m_{t+1} & = \mu_{t} m_t + s_t\\
-m^{\prime}_{t+1} & = \mu_{t-1} m^{\prime}_t + s_t\\
+\theta_{t+1} & = \phi_{t+1} + \mu_{t}\left(\phi_{t+1} - \phi_{t} \right) \\
+ & = \phi_{t+1} + \mu_{t} b_{t+1} \\
+ & = \theta_{t} + s_{t} + \mu_{t} b_{t+1}
 \end{split}
 \end{equation}
 $$
-For NAG, the update vector $v_{t+1}$ can now be defined in terms of $m^{\prime}_{t+1}$,
-using the current iterate's momentum coefficient:
-
-$$
-v_{t+1} = \mu_{t} m^{\prime}_{t+1} + s_t
-$$
-
-This is like doing momentum twice per iteration (I'd love to say "double
-momentum" but that's [already a thing](https://arxiv.org/abs/2102.07367)). If we
-expand the update to be in terms of $m^{\prime}_t$ rather than
-$m^{\prime}_{t+1}$ we get:
+Now let us express $b_{t+1}$ recursively in terms of the previous $b_{t}$:
 
 $$
 \begin{equation}
 \begin{split}
-v_{t+1} & = \mu_{t} \left( \mu_{t-1} m_t^{\prime} + s_t \right) + s_t \\
-& = \mu_{t-1} \mu_{t} m_t^{\prime} + \left(1 + \mu_t \right) s_t
+b_{t+1} & = \phi_{t+1} - \phi_{t} \\
+& = \left(\theta_{t} + s_{t} \right) - \phi_{t} \\
+& = \phi_{t} + \mu_{t-1} \left(\phi_{t} - \phi_{t-1} \right) + s_{t} - \phi_{t} \\
+& = \mu_{t-1} b_{t} + s_{t}
 \end{split}
 \end{equation}
 $$
+This is exactly the same form as the classical momentum update except with
+$b_t$ instead of $m_t$ or $v_t$. You can therefore define both forms of
+momentum in a similar way with an identical recursive momentum buffer 
+definition. 
 
-So here's the overall Dozat Nesterov momentum update, rearranged a bit to make
-the forthcoming un-rolling easier to write out:
-
-$$
-\theta_{t+1} = \theta_t + \left(1 + \mu_t \right) s_t + \mu_{t-1} \mu_{t} m_t^{\prime}
-$$
-
-At this point, I would love to say that I can get to this expression for NAG
-starting from the expression we have been using so far. But I admit that it's
-not obvious to me how to get from the general recursive-in-$v_t$ expression to
-one which is recursive in $m^{\prime}_t$. The key may be to notice the
-connection between this expression and two others: the Bengio Nesterov momentum
-expression and the expanded and rearranged NAG expression:
+Classical momentum looks like:
 
 $$
 \begin{equation}
 \begin{split}
-\theta_{t+1} & = \theta_t + \left(1 + \mu_t \right) s_t + \mu_{t-1} \mu_{t} m_t^{\prime} \\
-\theta_{t+1} & = \theta_t + \left(1 + \mu_t \right) s_t + \mu_{t-1} \mu_t b_t \\
-\theta_{t+1} & = \theta_t + \left(1 + \mu_t \right) s_t + \mu_t \left(v_t - s_{t-1} \right)
+m_{t+1} = \mu_t m_{t} + s_{t} \\
+\theta_{t+1} = \theta_{t} + m_{t+1}
 \end{split}
 \end{equation}
 $$
-
-This means that:
-
-$$
-m_t^{\prime} = b_t = \frac{\left(v_t - s_{t-1} \right)}{\mu_{t-1}}
-$$
-
-Perhaps one day I will return to this section and fill in the obvious details.
-For now, let's just unroll the first few iterations of the Dozat expression:
+and NAG looks like:
 
 $$
 \begin{equation}
 \begin{split}
-m^{\prime}_{0} & = 0\\
-\theta_1 & = \theta_0 + \left( 1 + \mu_0 \right) s_0 + \mu_0 \mu_{-1} m^{\prime}_{0} \\
-\theta_1 & = \theta_0 + \left( 1 + \mu_0 \right) s_0 \\
-\\
-m^{\prime}_{1} & = \mu_{-1} m^{\prime}_0 + s_0 \\
-& = s_0 \\
-\theta_2 & = \theta_1 + \left( 1 + \mu_1 \right) s_1 + \mu_1 \mu_0 m^{\prime}_{1} \\
- & = \theta_1 + \left(1 + \mu_1 \right) s_1 + \mu_1 \mu_0 s_0 \\
-\\
-m^{\prime}_{2} & = \mu_{0} m^{\prime}_1 + s_1 \\
-& = \mu_0 s_0 + s_1 \\
-\theta_3 & = \theta_2 + \left( 1 + \mu_2 \right) s_2 + \mu_2 \mu_1 m^{\prime}_{2} \\
-& = \theta_2 + \left(1 + \mu_2 \right) s_2 + \mu_2 \mu_1 s_1 + \mu_2 \mu_1 \mu_0 s_0 \\
-\\
-m^{\prime}_{3} & = \mu_{1} m^{\prime}_2 + s_2 \\
-& = \mu_1 \mu_0 s_0 + \mu_1 s_1 + s_2 \\
-\theta_4 & = \theta_3 + \left(1 + \mu_3 \right) s_3 + \mu_3 \mu_2 m^{\prime}_{3} \\
-& = \theta_3 + \left(1 + \mu_3 \right) s_3 + \mu_3 \mu_2 s_2 + \mu_3 \mu_2 \mu_1 s_1 + \mu_3 \mu_2 \mu_1 \mu_0 s_0
+b_{t+1} = \mu_{t-1} b_{t} + s_{t} \\
+\theta_{t+1} = \theta_{t} + s_{t} + \mu_{t} b_{t+1}
 \end{split}
 \end{equation}
 $$
 
-Yep, that's the NAG update alright.
-
-Note that for this implementation, you *don't* store the previous update, $v_t$,
-but the momentum update $m^{\prime}_t$. Also, you need to store the previous
-iterate's momentum coefficient $\mu_{t-1}$.
+So a very similar recursive form for the momentum buffer for both CM and NAG,
+but using momentum from a different time step, and then a different velocity 
+vector for the update. The Dozat paper uses a slightly different indexing 
+convention for the momentum coefficients (shifted by one time step), but that's
+just a cosmetic difference.
 
 ### The QHM-Dozat Nesterov Momentum Connection
 

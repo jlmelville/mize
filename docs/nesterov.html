@@ -2542,115 +2542,57 @@ here: each gradient needs re-weighting by a different <span class="math inline">
 </div>
 <div id="dozat-nesterov-momentum" class="section level2">
 <h2>Dozat Nesterov Momentum</h2>
-<p><em>18 December 2021</em>: A new section (currently in a serviceable
-but somewhat unsatisfactory state) on the expression for Nesterov
-momentum given by Timothy Dozat in the NAdam paper.</p>
 <p>A paper by <a href="https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ">Dozat
-integrating Nesterov momentum</a> into the <a href="https://arxiv.org/abs/1412.6980">Adam</a> stochastic gradient
-descent method shows how to get from the CM to NAG by re-weighting the
-CM update. As we just saw, allowing <span class="math inline">\(\mu\)</span> to vary at each iterate has
-complicated the relationship between CM and NAG, so we need to define a
-new CM-like update.</p>
-<p>Back when I defined CM, I said it would be useful to define the
-recursive momentum equation as <span class="math inline">\(m_t\)</span>,
-identifying as separate from the parameter update, <span class="math inline">\(v_{t}\)</span>, even though they coincide in CM.
-Here’s where it comes in useful to have separated those two concepts. We
-now need a CM-like definition, which differs from <span class="math inline">\(m_{t}\)</span> only in that we use the momentum
-coefficient from the previous iterate. This new definition I will label
-as <span class="math inline">\(m^{\prime}_{t}\)</span>:</p>
+integrating Nesterov momentum</a> into the <a href="https://arxiv.org/abs/1412.6980">Adam</a> gives a slightly
+different expression, that is quite closely related to the Bengio
+form:</p>
 <p><span class="math display">\[
 \begin{equation}
 \begin{split}
-m_{t+1} &amp; = \mu_{t} m_t + s_t\\
-m^{\prime}_{t+1} &amp; = \mu_{t-1} m^{\prime}_t + s_t\\
+\theta_{t+1} &amp; = \phi_{t+1} + \mu_{t}\left(\phi_{t+1} - \phi_{t}
+\right) \\
+&amp; = \phi_{t+1} + \mu_{t} b_{t+1} \\
+&amp; = \theta_{t} + s_{t} + \mu_{t} b_{t+1}
 \end{split}
 \end{equation}
-\]</span> For NAG, the update vector <span class="math inline">\(v_{t+1}\)</span> can now be defined in terms of
-<span class="math inline">\(m^{\prime}_{t+1}\)</span>, using the current
-iterate’s momentum coefficient:</p>
-<p><span class="math display">\[
-v_{t+1} = \mu_{t} m^{\prime}_{t+1} + s_t
-\]</span></p>
-<p>This is like doing momentum twice per iteration (I’d love to say
-“double momentum” but that’s <a href="https://arxiv.org/abs/2102.07367">already a thing</a>). If we
-expand the update to be in terms of <span class="math inline">\(m^{\prime}_t\)</span> rather than <span class="math inline">\(m^{\prime}_{t+1}\)</span> we get:</p>
+\]</span> Now let us express <span class="math inline">\(b_{t+1}\)</span> recursively in terms of the
+previous <span class="math inline">\(b_{t}\)</span>:</p>
 <p><span class="math display">\[
 \begin{equation}
 \begin{split}
-v_{t+1} &amp; = \mu_{t} \left( \mu_{t-1} m_t^{\prime} + s_t \right) +
-s_t \\
-&amp; = \mu_{t-1} \mu_{t} m_t^{\prime} + \left(1 + \mu_t \right) s_t
+b_{t+1} &amp; = \phi_{t+1} - \phi_{t} \\
+&amp; = \left(\theta_{t} + s_{t} \right) - \phi_{t} \\
+&amp; = \phi_{t} + \mu_{t-1} \left(\phi_{t} - \phi_{t-1} \right) + s_{t}
+- \phi_{t} \\
+&amp; = \mu_{t-1} b_{t} + s_{t}
 \end{split}
 \end{equation}
-\]</span></p>
-<p>So here’s the overall Dozat Nesterov momentum update, rearranged a
-bit to make the forthcoming un-rolling easier to write out:</p>
-<p><span class="math display">\[
-\theta_{t+1} = \theta_t + \left(1 + \mu_t \right) s_t + \mu_{t-1}
-\mu_{t} m_t^{\prime}
-\]</span></p>
-<p>At this point, I would love to say that I can get to this expression
-for NAG starting from the expression we have been using so far. But I
-admit that it’s not obvious to me how to get from the general
-recursive-in-<span class="math inline">\(v_t\)</span> expression to one
-which is recursive in <span class="math inline">\(m^{\prime}_t\)</span>.
-The key may be to notice the connection between this expression and two
-others: the Bengio Nesterov momentum expression and the expanded and
-rearranged NAG expression:</p>
+\]</span> This is exactly the same form as the classical momentum update
+except with <span class="math inline">\(b_t\)</span> instead of <span class="math inline">\(m_t\)</span> or <span class="math inline">\(v_t\)</span>. You can therefore define both forms
+of momentum in a similar way with an identical recursive momentum buffer
+definition.</p>
+<p>Classical momentum looks like:</p>
 <p><span class="math display">\[
 \begin{equation}
 \begin{split}
-\theta_{t+1} &amp; = \theta_t + \left(1 + \mu_t \right) s_t + \mu_{t-1}
-\mu_{t} m_t^{\prime} \\
-\theta_{t+1} &amp; = \theta_t + \left(1 + \mu_t \right) s_t + \mu_{t-1}
-\mu_t b_t \\
-\theta_{t+1} &amp; = \theta_t + \left(1 + \mu_t \right) s_t + \mu_t
-\left(v_t - s_{t-1} \right)
+m_{t+1} = \mu_t m_{t} + s_{t} \\
+\theta_{t+1} = \theta_{t} + m_{t+1}
 \end{split}
 \end{equation}
-\]</span></p>
-<p>This means that:</p>
-<p><span class="math display">\[
-m_t^{\prime} = b_t = \frac{\left(v_t - s_{t-1} \right)}{\mu_{t-1}}
-\]</span></p>
-<p>Perhaps one day I will return to this section and fill in the obvious
-details. For now, let’s just unroll the first few iterations of the
-Dozat expression:</p>
+\]</span> and NAG looks like:</p>
 <p><span class="math display">\[
 \begin{equation}
 \begin{split}
-m^{\prime}_{0} &amp; = 0\\
-\theta_1 &amp; = \theta_0 + \left( 1 + \mu_0 \right) s_0 + \mu_0
-\mu_{-1} m^{\prime}_{0} \\
-\theta_1 &amp; = \theta_0 + \left( 1 + \mu_0 \right) s_0 \\
-\\
-m^{\prime}_{1} &amp; = \mu_{-1} m^{\prime}_0 + s_0 \\
-&amp; = s_0 \\
-\theta_2 &amp; = \theta_1 + \left( 1 + \mu_1 \right) s_1 + \mu_1 \mu_0
-m^{\prime}_{1} \\
-&amp; = \theta_1 + \left(1 + \mu_1 \right) s_1 + \mu_1 \mu_0 s_0 \\
-\\
-m^{\prime}_{2} &amp; = \mu_{0} m^{\prime}_1 + s_1 \\
-&amp; = \mu_0 s_0 + s_1 \\
-\theta_3 &amp; = \theta_2 + \left( 1 + \mu_2 \right) s_2 + \mu_2 \mu_1
-m^{\prime}_{2} \\
-&amp; = \theta_2 + \left(1 + \mu_2 \right) s_2 + \mu_2 \mu_1 s_1 + \mu_2
-\mu_1 \mu_0 s_0 \\
-\\
-m^{\prime}_{3} &amp; = \mu_{1} m^{\prime}_2 + s_2 \\
-&amp; = \mu_1 \mu_0 s_0 + \mu_1 s_1 + s_2 \\
-\theta_4 &amp; = \theta_3 + \left(1 + \mu_3 \right) s_3 + \mu_3 \mu_2
-m^{\prime}_{3} \\
-&amp; = \theta_3 + \left(1 + \mu_3 \right) s_3 + \mu_3 \mu_2 s_2 + \mu_3
-\mu_2 \mu_1 s_1 + \mu_3 \mu_2 \mu_1 \mu_0 s_0
+b_{t+1} = \mu_{t-1} b_{t} + s_{t} \\
+\theta_{t+1} = \theta_{t} + s_{t} + \mu_{t} b_{t+1}
 \end{split}
 \end{equation}
 \]</span></p>
-<p>Yep, that’s the NAG update alright.</p>
-<p>Note that for this implementation, you <em>don’t</em> store the
-previous update, <span class="math inline">\(v_t\)</span>, but the
-momentum update <span class="math inline">\(m^{\prime}_t\)</span>. Also,
-you need to store the previous iterate’s momentum coefficient <span class="math inline">\(\mu_{t-1}\)</span>.</p>
+<p>So a very similar recursive form for the momentum buffer for both CM
+and NAG, but using momentum from a different time step, and then a
+different velocity vector for the update. The Dozat paper uses a
+slightly different indexing convention for the momentum coefficients
+(shifted by one time step), but that’s just a cosmetic difference.</p>
 <div id="the-qhm-dozat-nesterov-momentum-connection" class="section level3">
 <h3>The QHM-Dozat Nesterov Momentum Connection</h3>
 <p>Quasi-hyperbolic momentum and the Dozat version of Nesterov momentum
