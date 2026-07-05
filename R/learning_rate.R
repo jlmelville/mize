@@ -61,7 +61,12 @@ delta_bar_delta <- function(kappa = 1.1, kappa_fun = `*`,
     init = function(opt, stage, sub_stage, par, fg, iter) {
       sub_stage$delta_bar_old <- rep(0, length(par))
       sub_stage$gamma_old <- rep(1, length(par))
-      sub_stage$value <- rep(sub_stage$init_eps, length(par))
+      if (is.numeric(sub_stage$epsilon)) {
+        sub_stage$value <- rep(sub_stage$epsilon, length.out = length(par))
+      }
+      else {
+        sub_stage$value <- NULL
+      }
       list(sub_stage = sub_stage)
     },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
