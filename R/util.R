@@ -31,8 +31,7 @@ normalize <- function(v) {
   l <- norm2(v)
   if (l < .Machine$double.eps) {
     v
-  }
-  else {
+  } else {
     v / norm2(v)
   }
 }
@@ -55,9 +54,15 @@ sclamp <- function(x, min, max) {
 }
 
 vec_formatC <- function(v) {
-  paste(Map(function(x) {
-    formatC(x)
-  }, v), collapse = ", ")
+  paste(
+    Map(
+      function(x) {
+        formatC(x)
+      },
+      v
+    ),
+    collapse = ", "
+  )
 }
 
 # convert a list to a strng
@@ -69,12 +74,15 @@ format_list <- function(ll) {
         ifelse(nchar(acc) == 0, "", " "),
         elem,
         " = ",
-        ifelse(length(ll[[elem]]) == 1,
-          formatC(ll[[elem]]), vec_formatC(ll[[elem]])
+        ifelse(
+          length(ll[[elem]]) == 1,
+          formatC(ll[[elem]]),
+          vec_formatC(ll[[elem]])
         )
       )
     },
-    names(ll), ""
+    names(ll),
+    ""
   )
 }
 
@@ -96,15 +104,21 @@ is_finite_numeric <- function(x) {
 
 # Logging Hooks -----------------------------------------------------------
 
-
 require_log_vals <- function(opt, stage, par, fg, iter) {
   message(
-    iter, " ", substr(stage$type, 1, 2),
-    " par = ", vec_formatC(par),
-    " p = ", vec_formatC(stage$direction$value),
-    " a = ", formatC(stage$step_size$value),
-    " ap = ", vec_formatC(stage$result),
-    " f = ", formatC(fg$fn(par))
+    iter,
+    " ",
+    substr(stage$type, 1, 2),
+    " par = ",
+    vec_formatC(par),
+    " p = ",
+    vec_formatC(stage$direction$value),
+    " a = ",
+    formatC(stage$step_size$value),
+    " ap = ",
+    vec_formatC(stage$result),
+    " f = ",
+    formatC(fg$fn(par))
   )
   list(opt = opt)
 }

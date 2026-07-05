@@ -12,7 +12,16 @@ expect_equal_abs <- function(object, expected, tolerance, info = NULL) {
 
 # Step Size Expectation ---------------------------------------------------
 
-expect_step <- function(actual, x, f, df, alpha = x, nfev, tolerance = 1e-4, check_grad = TRUE) {
+expect_step <- function(
+  actual,
+  x,
+  f,
+  df,
+  alpha = x,
+  nfev,
+  tolerance = 1e-4,
+  check_grad = TRUE
+) {
   expect_equal(actual$step$par, x, tolerance = tolerance)
   expect_equal(actual$step$f, f, tolerance = tolerance)
   if (check_grad) {
@@ -30,8 +39,7 @@ gfd <- function(par, fn, rel_eps = sqrt(.Machine$double.eps)) {
     oldx <- par[i]
     if (oldx != 0) {
       eps <- oldx * rel_eps
-    }
-    else {
+    } else {
       eps <- 1e-3
     }
     par[i] <- oldx + eps
@@ -61,8 +69,7 @@ hfd <- function(par, fn, rel_eps = sqrt(.Machine$double.eps)) {
 
       if (oldxi != 0 && oldxj != 0) {
         eps <- min(oldxi, oldxj) * rel_eps
-      }
-      else {
+      } else {
         eps <- 1e-3
       }
       if (i != j) {
@@ -87,8 +94,7 @@ hfd <- function(par, fn, rel_eps = sqrt(.Machine$double.eps)) {
 
         hs[i, j] <- val
         hs[j, i] <- val
-      }
-      else {
+      } else {
         f <- fn(par)
         oldxi <- par[i]
 
@@ -250,7 +256,6 @@ make_step0 <- function(fg, x, pv, f = fg$fn(x), df = fg$gr(x)) {
 
 # More'-Thuente test functions --------------------------------------------
 
-
 # Test Function 1 ---------------------------------------------------------
 
 # 1 phi(a) = -(a) / (a^2 + b) phi'(a) = (a^2 - b) / (a^2 + b)^2 b = 2
@@ -338,13 +343,13 @@ gryanai2 <- function(alpha, beta) {
 
 # phi(a) = gamma(b_1)[(1-a)^2 + b_2^2]^1/2 + gamma(b_2)[a^2 + b_1^2]^1/2
 yanai <- function(alpha, beta1, beta2) {
-  yanaig(beta1) * yanai1(alpha, beta2) +
-    yanaig(beta2) * yanai2(alpha, beta1)
+  yanaig(beta1) * yanai1(alpha, beta2) + yanaig(beta2) * yanai2(alpha, beta1)
 }
 
 #   phi'(a) = -[gamma(b_1)(1-a)]/sqrt[(1-a)^2 + b_2^2] + gamma(b_2)a/sqrt([a^2 + b_1^2])
 gryanai <- function(alpha, beta1, beta2) {
-  (yanaig(beta1) * gryanai1(alpha, beta2)) + (yanaig(beta2) * gryanai2(alpha, beta1))
+  (yanaig(beta1) * gryanai1(alpha, beta2)) +
+    (yanaig(beta2) * gryanai2(alpha, beta1))
 }
 
 # Test Function 4 ---------------------------------------------------------
@@ -374,7 +379,6 @@ fcn5 <- function(x) {
 
 
 # Test Function 6 ---------------------------------------------------------
-
 
 fn6 <- function(alpha) {
   yanai(alpha, beta1 = 0.001, beta2 = 0.01)

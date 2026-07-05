@@ -42,18 +42,58 @@ test_that("can do MMDS with eurodist", {
   set.seed(42)
   ed0 <- rnorm(attr(datasets::eurodist, "Size") * 2)
   res <- mize(
-    par = ed0, fg = make_mmds_fg(datasets::eurodist), method = "L-BFGS",
-    rel_tol = 1e-8, step0 = 1, step_next_init = "quad"
+    par = ed0,
+    fg = make_mmds_fg(datasets::eurodist),
+    method = "L-BFGS",
+    rel_tol = 1e-8,
+    step0 = 1,
+    step_next_init = "quad"
   )
 
   # coordinates are abritrary, but hopefully repeatable thanks to set.seed
   coords <- c(
-    1735, 2143, 624.2, -768.1, -406.7, 50.9, -493.4, -126.8,
-    -467, -484, -483.5, 286.7, -1087, 657.1, 313.3, -17.1,
-    735.2, -1952, -757.3, 560.4, -610.4, 150.8, 123, -1941,
-    208.9, -178.1, 342.6, -1392, 509.3, -286.1, 441.6, 277.6,
-    80.96, 578.1, -237.7, -172.2, 1008, 690.4, -1757, 890.6,
-    181.8, 1026
+    1735,
+    2143,
+    624.2,
+    -768.1,
+    -406.7,
+    50.9,
+    -493.4,
+    -126.8,
+    -467,
+    -484,
+    -483.5,
+    286.7,
+    -1087,
+    657.1,
+    313.3,
+    -17.1,
+    735.2,
+    -1952,
+    -757.3,
+    560.4,
+    -610.4,
+    150.8,
+    123,
+    -1941,
+    208.9,
+    -178.1,
+    342.6,
+    -1392,
+    509.3,
+    -286.1,
+    441.6,
+    277.6,
+    80.96,
+    578.1,
+    -237.7,
+    -172.2,
+    1008,
+    690.4,
+    -1757,
+    890.6,
+    181.8,
+    1026
   )
   expect_equal(coords, res$par, tolerance = 1e-4)
   expect_equal(res$f, 3.356e6, tolerance = 1e-3)

@@ -25,19 +25,27 @@
 # @param int Interpolation constant. Prevents step size being too small.
 # @param max_fn Maximum number of function evaluations allowed per line search.
 # @return Line search function.
-# @seealso based on code written by Carl Edward Rasmussen for the Matlab 
+# @seealso based on code written by Carl Edward Rasmussen for the Matlab
 #  [GPML](https://www.gaussianprocess.org/gpml/code/matlab/doc/) package.
-rasmussen <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
-                      max_fn = Inf, xtol = 1e-6, eps = 1e-6, approx_armijo = FALSE,
-                      strong_curvature = TRUE, verbose = FALSE) {
+rasmussen <- function(
+  c1 = c2 / 2,
+  c2 = 0.1,
+  int = 0.1,
+  ext = 3.0,
+  max_fn = Inf,
+  xtol = 1e-6,
+  eps = 1e-6,
+  approx_armijo = FALSE,
+  strong_curvature = TRUE,
+  verbose = FALSE
+) {
   if (c2 < c1) {
     stop("rasmussen line search: c2 < c1")
   }
 
   if (approx_armijo) {
     armijo_check_fn <- make_approx_armijo_ok_step(eps)
-  }
-  else {
+  } else {
     armijo_check_fn <- armijo_ok_step
   }
 
@@ -47,18 +55,32 @@ rasmussen <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
     eps = eps
   )
 
-  function(phi, step0, alpha,
-           total_max_fn = Inf, total_max_gr = Inf, total_max_fg = Inf,
-           pm = NULL) {
+  function(
+    phi,
+    step0,
+    alpha,
+    total_max_fn = Inf,
+    total_max_gr = Inf,
+    total_max_fg = Inf,
+    pm = NULL
+  ) {
     maxfev <- min(max_fn, total_max_fn, total_max_gr, floor(total_max_fg / 2))
     if (maxfev <= 0) {
       return(list(step = step0, nfn = 0, ngr = 0))
     }
 
-    res <- ras_ls(phi, alpha, step0,
-      c1 = c1, c2 = c2, ext = ext, int = int,
-      max_fn = maxfev, armijo_check_fn = armijo_check_fn,
-      wolfe_ok_step_fn = wolfe_ok_step_fn, verbose = verbose
+    res <- ras_ls(
+      phi,
+      alpha,
+      step0,
+      c1 = c1,
+      c2 = c2,
+      ext = ext,
+      int = int,
+      max_fn = maxfev,
+      armijo_check_fn = armijo_check_fn,
+      wolfe_ok_step_fn = wolfe_ok_step_fn,
+      verbose = verbose
     )
     list(step = res$step, nfn = res$nfn, ngr = res$nfn)
   }
@@ -83,11 +105,20 @@ rasmussen <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
 #
 # * `step`: Valid step size or the last step size evaluated.
 # * `nfn`: Number of function evaluations.
-ras_ls <- function(phi, alpha, step0, c1 = 0.1, c2 = 0.1 / 2, ext = 3.0,
-                   int = 0.1, max_fn = Inf, xtol = 1e-6,
-                   armijo_check_fn = armijo_ok_step,
-                   wolfe_ok_step_fn = strong_wolfe_ok_step,
-                   verbose = verbose) {
+ras_ls <- function(
+  phi,
+  alpha,
+  step0,
+  c1 = 0.1,
+  c2 = 0.1 / 2,
+  ext = 3.0,
+  int = 0.1,
+  max_fn = Inf,
+  xtol = 1e-6,
+  armijo_check_fn = armijo_ok_step,
+  wolfe_ok_step_fn = strong_wolfe_ok_step,
+  verbose = verbose
+) {
   if (c2 < c1) {
     stop("Rasmussen line search: c2 < c1")
   }
@@ -96,8 +127,16 @@ ras_ls <- function(phi, alpha, step0, c1 = 0.1, c2 = 0.1 / 2, ext = 3.0,
   if (verbose) {
     message("Bracketing with initial step size = ", formatC(alpha))
   }
-  ex_result <- extrapolate_step_size(phi, alpha, step0, c1, c2, ext, int,
-    max_fn, armijo_check_fn,
+  ex_result <- extrapolate_step_size(
+    phi,
+    alpha,
+    step0,
+    c1,
+    c2,
+    ext,
+    int,
+    max_fn,
+    armijo_check_fn,
     verbose = verbose
   )
 
@@ -120,7 +159,14 @@ ras_ls <- function(phi, alpha, step0, c1 = 0.1, c2 = 0.1 / 2, ext = 3.0,
   }
 
   # interpolate until the Strong Wolfe conditions are met
-  int_result <- interpolate_step_size(phi, step0, step, c1, c2, int, max_fn,
+  int_result <- interpolate_step_size(
+    phi,
+    step0,
+    step,
+    c1,
+    c2,
+    int,
+    max_fn,
     xtol = xtol,
     armijo_check_fn = armijo_check_fn,
     wolfe_ok_step_fn = wolfe_ok_step_fn,
@@ -151,10 +197,18 @@ ras_ls <- function(phi, alpha, step0, c1 = 0.1, c2 = 0.1 / 2, ext = 3.0,
 #
 # * `step`: Valid step size or the last step size evaluated.
 # * `nfn`: Number of function evaluations.
-extrapolate_step_size <- function(phi, alpha, step0, c1, c2, ext, int,
-                                  max_fn = 20,
-                                  armijo_check_fn = armijo_ok_step,
-                                  verbose = FALSE) {
+extrapolate_step_size <- function(
+  phi,
+  alpha,
+  step0,
+  c1,
+  c2,
+  ext,
+  int,
+  max_fn = 20,
+  armijo_check_fn = armijo_ok_step,
+  verbose = FALSE
+) {
   # holds the largest finite-valued step
   finite_step <- step0
   ext_alpha <- alpha
@@ -235,11 +289,19 @@ tweaked_extrapolation <- function(step0, step, ext, int) {
 #
 # * `step`: Valid step size or the last step size evaluated.
 # * `nfn`: Number of function evaluations.
-interpolate_step_size <- function(phi, step0, step, c1, c2, int, max_fn = 20,
-                                  xtol = 1e-6,
-                                  armijo_check_fn = armijo_ok_step,
-                                  wolfe_ok_step_fn = strong_wolfe_ok_step,
-                                  verbose = FALSE) {
+interpolate_step_size <- function(
+  phi,
+  step0,
+  step,
+  c1,
+  c2,
+  int,
+  max_fn = 20,
+  xtol = 1e-6,
+  armijo_check_fn = armijo_ok_step,
+  wolfe_ok_step_fn = strong_wolfe_ok_step,
+  verbose = FALSE
+) {
   step2 <- step0
   step3 <- step
   nfn <- 0
@@ -262,18 +324,32 @@ interpolate_step_size <- function(phi, step0, step, c1, c2, int, max_fn = 20,
 
     if (verbose) {
       message(
-        "Bracket: ", format_bracket(list(step2, step4)),
-        " alpha: ", formatC(step3$alpha), " f: ", formatC(step3$f),
-        " d: ", formatC(step3$d), " nfn: ", nfn, " max_fn: ", max_fn
+        "Bracket: ",
+        format_bracket(list(step2, step4)),
+        " alpha: ",
+        formatC(step3$alpha),
+        " f: ",
+        formatC(step3$f),
+        " d: ",
+        formatC(step3$d),
+        " nfn: ",
+        nfn,
+        " max_fn: ",
+        max_fn
       )
     }
     step3$alpha <- tweak_interpolation(
-      step3$alpha, step2$alpha, step4$alpha,
+      step3$alpha,
+      step2$alpha,
+      step4$alpha,
       int
     )
     # Check interpolated step is finite, and bisect if not, as in extrapolation
     # stage
-    result <- find_finite(phi, step3$alpha, max_fn - nfn,
+    result <- find_finite(
+      phi,
+      step3$alpha,
+      max_fn - nfn,
       min_alpha = bracket_min_alpha(list(step2, step4))
     )
     nfn <- nfn + result$nfn
@@ -286,12 +362,13 @@ interpolate_step_size <- function(phi, step0, step, c1, c2, int, max_fn = 20,
     }
     step3 <- result$step
 
-
     if (bracket_width(list(step2, step4)) < xtol * step3$alpha) {
       if (verbose) {
         message(
-          "Bracket width: ", formatC(bracket_width(list(step2, step4))),
-          " reduced below tolerance ", formatC(xtol * step3$alpha)
+          "Bracket width: ",
+          formatC(bracket_width(list(step2, step4))),
+          " reduced below tolerance ",
+          formatC(xtol * step3$alpha)
         )
       }
       break

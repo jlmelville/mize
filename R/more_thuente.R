@@ -22,16 +22,20 @@
 # @seealso This code is based on a translation of the original MINPACK code
 #  for Matlab by
 #  [Dianne O'Leary](http://www.cs.umd.edu/users/oleary/software/).
-more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf, eps = 1e-6,
-                         alpha_max = Inf,
-                         approx_armijo = FALSE,
-                         strong_curvature = TRUE,
-                         safeguard_cubic = FALSE,
-                         verbose = FALSE) {
+more_thuente <- function(
+  c1 = 1e-4,
+  c2 = 0.1,
+  max_fn = Inf,
+  eps = 1e-6,
+  alpha_max = Inf,
+  approx_armijo = FALSE,
+  strong_curvature = TRUE,
+  safeguard_cubic = FALSE,
+  verbose = FALSE
+) {
   if (approx_armijo) {
     armijo_check_fn <- make_approx_armijo_ok_step(eps)
-  }
-  else {
+  } else {
     armijo_check_fn <- armijo_ok_step
   }
 
@@ -41,16 +45,27 @@ more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf, eps = 1e-6,
     eps = eps
   )
 
-  function(phi, step0, alpha,
-           total_max_fn = Inf, total_max_gr = Inf, total_max_fg = Inf,
-           pm = NULL) {
+  function(
+    phi,
+    step0,
+    alpha,
+    total_max_fn = Inf,
+    total_max_gr = Inf,
+    total_max_fg = Inf,
+    pm = NULL
+  ) {
     maxfev <- min(max_fn, total_max_fn, total_max_gr, floor(total_max_fg / 2))
     if (maxfev <= 0) {
       return(list(step = step0, nfn = 0, ngr = 0))
     }
-    res <- cvsrch(phi, step0,
-      alpha = alpha, c1 = c1, c2 = c2,
-      maxfev = maxfev, alpha_max = alpha_max,
+    res <- cvsrch(
+      phi,
+      step0,
+      alpha = alpha,
+      c1 = c1,
+      c2 = c2,
+      maxfev = maxfev,
+      alpha_max = alpha_max,
       armijo_check_fn = armijo_check_fn,
       wolfe_ok_step_fn = wolfe_ok_step_fn,
       safeguard_cubic = safeguard_cubic,
@@ -221,15 +236,22 @@ more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf, eps = 1e-6,
 #     Jorge J. More', David J. Thuente
 #
 #     **********
-cvsrch <- function(phi, step0, alpha = 1,
-                   c1 = 1e-4, c2 = 0.1, xtol = .Machine$double.eps,
-                   alpha_min = 0, alpha_max = Inf,
-                   maxfev = Inf, delta = 0.66,
-                   armijo_check_fn = armijo_ok_step,
-                   wolfe_ok_step_fn = strong_wolfe_ok_step,
-                   safeguard_cubic = FALSE,
-                   verbose = FALSE) {
-
+cvsrch <- function(
+  phi,
+  step0,
+  alpha = 1,
+  c1 = 1e-4,
+  c2 = 0.1,
+  xtol = .Machine$double.eps,
+  alpha_min = 0,
+  alpha_max = Inf,
+  maxfev = Inf,
+  delta = 0.66,
+  armijo_check_fn = armijo_ok_step,
+  wolfe_ok_step_fn = strong_wolfe_ok_step,
+  safeguard_cubic = FALSE,
+  verbose = FALSE
+) {
   # increase width by this amount during zoom phase
   xtrapf <- 4
   infoc <- 1
@@ -259,10 +281,15 @@ cvsrch <- function(phi, step0, alpha = 1,
   }
   if (alpha_max < alpha_min) {
     params_ok <- FALSE
-    problems <- c(problems, paste0(
-      "alpha_max ", formatC(alpha_max),
-      " < alpha_min ", formatC(alpha_min)
-    ))
+    problems <- c(
+      problems,
+      paste0(
+        "alpha_max ",
+        formatC(alpha_max),
+        " < alpha_min ",
+        formatC(alpha_min)
+      )
+    )
   }
   if (maxfev < 0) {
     params_ok <- FALSE
@@ -323,8 +350,12 @@ cvsrch <- function(phi, step0, alpha = 1,
 
     if (verbose) {
       message(
-        "Bracket: [", formatC(stmin), ", ", formatC(stmax),
-        "] alpha = ", formatC(step$alpha)
+        "Bracket: [",
+        formatC(stmin),
+        ", ",
+        formatC(stmax),
+        "] alpha = ",
+        formatC(step$alpha)
       )
     }
 
@@ -344,9 +375,20 @@ cvsrch <- function(phi, step0, alpha = 1,
     step <- ffres$step
 
     # Test for convergence.
-    info <- check_convergence(step0, step, brackt, infoc, stmin, stmax,
-      alpha_min, alpha_max, c1, c2, nfev,
-      maxfev, xtol,
+    info <- check_convergence(
+      step0,
+      step,
+      brackt,
+      infoc,
+      stmin,
+      stmax,
+      alpha_min,
+      alpha_max,
+      c1,
+      c2,
+      nfev,
+      maxfev,
+      xtol,
       armijo_check_fn = armijo_check_fn,
       wolfe_ok_step_fn = wolfe_ok_step_fn,
       verbose = verbose
@@ -395,7 +437,13 @@ cvsrch <- function(phi, step0, alpha = 1,
       stepym <- modify_step(stepy, dgtest)
       stepm <- modify_step(step, dgtest)
 
-      step_result <- cstep(stepxm, stepym, stepm, brackt, stmin, stmax,
+      step_result <- cstep(
+        stepxm,
+        stepym,
+        stepm,
+        brackt,
+        stmin,
+        stmax,
         safeguard_cubic = safeguard_cubic,
         verbose = verbose
       )
@@ -413,7 +461,13 @@ cvsrch <- function(phi, step0, alpha = 1,
     } else {
       # Call cstep to update the interval of uncertainty
       # and to compute the new step.
-      step_result <- cstep(stepx, stepy, step, brackt, stmin, stmax,
+      step_result <- cstep(
+        stepx,
+        stepy,
+        step,
+        brackt,
+        stmin,
+        stmax,
         safeguard_cubic = safeguard_cubic,
         verbose = verbose
       )
@@ -515,25 +569,43 @@ unmodify_step <- function(stepm, dgtest) {
 # NB dgtest was originally used in testing for min/max alpha test (code 4 and 5)
 # but has been replaced with a call to the curvature test using c1 instead of c2
 # so dgtest is no longer used in the body of the function.
-check_convergence <- function(step0, step, brackt, infoc, stmin, stmax,
-                              alpha_min, alpha_max, c1, c2, nfev,
-                              maxfev, xtol, armijo_check_fn = armijo_ok_step,
-                              wolfe_ok_step_fn = strong_wolfe_ok_step,
-                              verbose = FALSE) {
+check_convergence <- function(
+  step0,
+  step,
+  brackt,
+  infoc,
+  stmin,
+  stmax,
+  alpha_min,
+  alpha_max,
+  c1,
+  c2,
+  nfev,
+  maxfev,
+  xtol,
+  armijo_check_fn = armijo_ok_step,
+  wolfe_ok_step_fn = strong_wolfe_ok_step,
+  verbose = FALSE
+) {
   info <- 0
   if ((brackt && (step$alpha <= stmin || step$alpha >= stmax)) || infoc == 0) {
     if (verbose) {
       message(
         "MT: Rounding errors prevent further progress: stmin = ",
-        formatC(stmin), " stmax = ", formatC(stmax)
+        formatC(stmin),
+        " stmax = ",
+        formatC(stmax)
       )
     }
     # rounding errors prevent further progress
     info <- 6
   }
   # use of c1 in curvature check is on purpose (it's in the MINPACK code)
-  if (step$alpha == alpha_max && armijo_check_fn(step0, step, c1) &&
-    !curvature_ok_step(step0, step, c1)) {
+  if (
+    step$alpha == alpha_max &&
+      armijo_check_fn(step0, step, c1) &&
+      !curvature_ok_step(step0, step, c1)
+  ) {
     # reached alpha_max
     info <- 5
     if (verbose) {
@@ -541,8 +613,11 @@ check_convergence <- function(step0, step, brackt, infoc, stmin, stmax,
     }
   }
   # use of c1 in curvature check here is also in MINPACK code
-  if (step$alpha == alpha_min && (!armijo_check_fn(step0, step, c1) ||
-    curvature_ok_step(step0, step, c1))) {
+  if (
+    step$alpha == alpha_min &&
+      (!armijo_check_fn(step0, step, c1) ||
+        curvature_ok_step(step0, step, c1))
+  ) {
     # reached alpha_min
     info <- 4
     if (verbose) {
@@ -671,9 +746,16 @@ check_convergence <- function(step0, step, brackt, infoc, stmin, stmax,
 #     Jorge J. More', David J. Thuente
 #
 #     **********
-cstep <- function(stepx, stepy, step, brackt, stpmin, stpmax,
-                  safeguard_cubic = FALSE,
-                  verbose = FALSE) {
+cstep <- function(
+  stepx,
+  stepy,
+  step,
+  brackt,
+  stpmin,
+  stpmax,
+  safeguard_cubic = FALSE,
+  verbose = FALSE
+) {
   stx <- stepx$alpha
   fx <- stepx$f
   dx <- stepx$d
@@ -692,14 +774,19 @@ cstep <- function(stepx, stepy, step, brackt, stpmin, stpmax,
   delta <- 0.66
   info <- 0
   # Check the input parameters for errors.
-  if ((brackt && (stp <= min(stx, sty) ||
-    stp >= max(stx, sty))) ||
-    dx * (stp - stx) >= 0.0 || stpmax < stpmin) {
+  if (
+    (brackt &&
+      (stp <= min(stx, sty) ||
+        stp >= max(stx, sty))) ||
+      dx * (stp - stx) >= 0.0 ||
+      stpmax < stpmin
+  ) {
     list(
       stepx = stepx,
       stepy = stepy,
       step = step,
-      brackt = brackt, info = info
+      brackt = brackt,
+      info = info
     )
   }
   # Determine if the derivatives have opposite sign.
@@ -719,8 +806,7 @@ cstep <- function(stepx, stepy, step, brackt, stpmin, stpmax,
 
     if (is.nan(stpc)) {
       stpf <- stpq
-    }
-    else {
+    } else {
       if (abs(stpc - stx) < abs(stpq - stx)) {
         stpf <- ifelse(safeguard_cubic, ensure_min_alpha(stpc, stx, sty), stpc)
       } else {
@@ -741,8 +827,7 @@ cstep <- function(stepx, stepy, step, brackt, stpmin, stpmax,
     stpq <- quadratic_interpolateg(stp, dp, stx, dx)
     if (is.nan(stpc)) {
       stpf <- stpq
-    }
-    else {
+    } else {
       if (abs(stpc - stp) > abs(stpq - stp)) {
         stpf <- ifelse(safeguard_cubic, ensure_min_alpha(stpc, stx, sty), stpc)
       } else {
@@ -862,7 +947,8 @@ cstep <- function(stepx, stepy, step, brackt, stpmin, stpmax,
     stepx = list(alpha = stx, f = fx, d = dx, df = dfx),
     stepy = list(alpha = sty, f = fy, d = dy, df = dfy),
     step = list(alpha = stp, f = fp, d = dp, df = dfp),
-    brackt = brackt, info = info
+    brackt = brackt,
+    info = info
   )
 }
 

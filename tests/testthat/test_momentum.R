@@ -1,4 +1,3 @@
-
 test_that("momentum schedules", {
   constant_m <- make_constant(0.5)
   expect_equal(constant_m(1), 0.5)

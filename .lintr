@@ -1,0 +1,16 @@
+linters: linters_with_tags(
+    tags = "correctness",
+    object_usage_linter = NULL,
+    semicolon_linter = semicolon_linter(),
+    trailing_whitespace_linter = trailing_whitespace_linter(),
+    trailing_blank_lines_linter = trailing_blank_lines_linter(),
+    T_and_F_symbol_linter = T_and_F_symbol_linter()
+  )
+exclusions: list(
+    "vignettes",
+    "man",
+    "NAMESPACE",
+    "R/RcppExports.R",
+    "src/RcppExports.cpp"
+  )
+encoding: "UTF-8"

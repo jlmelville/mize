@@ -1,14 +1,17 @@
-
 test_that("can solve Ax = b", {
-
   # http://papers.nips.cc/paper/5322-a-differential-equation-for-modeling-nesterovs-accelerated-gradient-method-theory-and-insights.pdf
   # A is a 500×500 random
   # positive definite matrix and b a random vector.
   # The eigenvalues of A are between 0.001 and 1.
   # The vector b is generated as i. i. d. Gaussian random variables with mean 0 and variance 25.
 
-  posdef_quad_fg <- function(n = 500, min_eig = 0.001, max_eig = 1,
-                             bmean = 0, bvar = 25) {
+  posdef_quad_fg <- function(
+    n = 500,
+    min_eig = 0.001,
+    max_eig = 1,
+    bmean = 0,
+    bvar = 25
+  ) {
     b <- stats::rnorm(n = n, mean = bmean, sd = sqrt(bvar))
     A <- rposdef(n = n, ev = stats::runif(n = n, min = min_eig, max = max_eig))
     quad_matrix_fg(A, b)
@@ -61,8 +64,11 @@ test_that("can solve Ax = b", {
 
   n <- 250
   pd_fg <- posdef_quad_fg(
-    n = n, min_eig = 0.001, max_eig = 1,
-    bmean = 0, bvar = 25
+    n = n,
+    min_eig = 0.001,
+    max_eig = 1,
+    bmean = 0,
+    bvar = 25
   )
   pd_res <- mize(rep(0, n), fg = pd_fg, max_iter = 1000)
   expect_equal(pd_res$par, solve(pd_fg$A, pd_fg$b), tolerance = 1e-5)

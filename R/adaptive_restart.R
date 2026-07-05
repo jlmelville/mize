@@ -31,7 +31,9 @@ adaptive_restart <- function(opt, validation_type, wait = 1) {
   }
   opt$restart_wait <- wait
   append_depends(
-    opt, "momentum", "direction",
+    opt,
+    "momentum",
+    "direction",
     c("adaptive_restart", paste0("validate_", validation_type))
   )
 }
@@ -53,8 +55,7 @@ require_adaptive_restart <- function(opt, par, fg, iter, par0, update) {
   if (!opt$ok && can_restart(opt, iter)) {
     opt <- life_cycle_hook("momentum", "init", opt, par, fg, iter)
     opt$restart_at <- iter
-  }
-  else {
+  } else {
     opt$cache$update_old <- update
   }
   opt
@@ -65,8 +66,12 @@ attr(require_adaptive_restart, "name") <- "update_old"
 attr(require_adaptive_restart, "depends") <- "update_old_init"
 
 # Add a depend function to one of opt, a stage or sub stage
-append_depends <- function(opt, stage_type = NULL, sub_stage_type = NULL,
-                           new_depends) {
+append_depends <- function(
+  opt,
+  stage_type = NULL,
+  sub_stage_type = NULL,
+  new_depends
+) {
   if (!is.null(sub_stage_type)) {
     if (is.null(stage_type)) {
       stop("Must provide stage for sub_stage '", sub_stage_type, "'")
@@ -76,15 +81,13 @@ append_depends <- function(opt, stage_type = NULL, sub_stage_type = NULL,
       stop("No stage '", stage_type, "' exists for this optimizer")
     }
     depends <- stage[[sub_stage_type]]$depends
-  }
-  else if (!is.null(stage_type)) {
+  } else if (!is.null(stage_type)) {
     stage <- opt$stages[[stage_type]]
     if (is.null(stage)) {
       stop("No stage '", stage_type, "' exists for this optimizer")
     }
     depends <- stage$depends
-  }
-  else {
+  } else {
     depends <- opt$depends
   }
   if (is.null(depends)) {
@@ -95,11 +98,9 @@ append_depends <- function(opt, stage_type = NULL, sub_stage_type = NULL,
 
   if (!is.null(sub_stage_type)) {
     opt$stages[[stage_type]][[sub_stage_type]]$depends <- depends
-  }
-  else if (!is.null(stage_type)) {
+  } else if (!is.null(stage_type)) {
     opt$stages[[stage_type]]$depends <- depends
-  }
-  else {
+  } else {
     opt$depends <- depends
   }
 

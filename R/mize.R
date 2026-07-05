@@ -646,68 +646,71 @@
 #'   mom_schedule = 0.9, restart = "fn"
 #' )
 #' @export
-mize <- function(par, fg,
-                 method = "L-BFGS",
-                 norm_direction = FALSE,
-                 # L-BFGS
-                 memory = 5,
-                 scale_hess = TRUE,
-                 # CG
-                 cg_update = "PR+",
-                 # Preconditioning
-                 preconditioner = "",
-                 # TN
-                 tn_init = 0,
-                 tn_exit = "curvature",
-                 # NAG
-                 nest_q = 0, # 1 - SD,
-                 nest_convex_approx = FALSE,
-                 nest_burn_in = 0,
-                 # DBD
-                 step_up = 1.1,
-                 step_up_fun = "*",
-                 step_down = NULL,
-                 dbd_weight = 0.1,
-                 # Line Search configuration
-                 line_search = "More-Thuente",
-                 c1 = 1e-4,
-                 c2 = NULL,
-                 step0 = NULL,
-                 step_next_init = NULL,
-                 try_newton_step = NULL,
-                 ls_max_fn = 20,
-                 ls_max_gr = Inf,
-                 ls_max_fg = Inf,
-                 ls_max_alpha_mult = Inf,
-                 ls_max_alpha = Inf,
-                 ls_safe_cubic = FALSE,
-                 strong_curvature = NULL,
-                 approx_armijo = NULL,
-                 # Momentum
-                 mom_type = NULL,
-                 mom_schedule = NULL,
-                 mom_init = NULL,
-                 mom_final = NULL,
-                 mom_switch_iter = NULL,
-                 mom_linear_weight = FALSE,
-                 use_init_mom = FALSE,
-                 # Adaptive Restart
-                 restart = NULL,
-                 restart_wait = 10,
-                 # Termination criterion
-                 max_iter = 100,
-                 max_fn = Inf,
-                 max_gr = Inf,
-                 max_fg = Inf,
-                 abs_tol = sqrt(.Machine$double.eps),
-                 rel_tol = abs_tol,
-                 grad_tol = NULL,
-                 ginf_tol = NULL,
-                 step_tol = sqrt(.Machine$double.eps),
-                 check_conv_every = 1,
-                 log_every = check_conv_every,
-                 verbose = FALSE,
-                 store_progress = FALSE) {
+mize <- function(
+  par,
+  fg,
+  method = "L-BFGS",
+  norm_direction = FALSE,
+  # L-BFGS
+  memory = 5,
+  scale_hess = TRUE,
+  # CG
+  cg_update = "PR+",
+  # Preconditioning
+  preconditioner = "",
+  # TN
+  tn_init = 0,
+  tn_exit = "curvature",
+  # NAG
+  nest_q = 0, # 1 - SD,
+  nest_convex_approx = FALSE,
+  nest_burn_in = 0,
+  # DBD
+  step_up = 1.1,
+  step_up_fun = "*",
+  step_down = NULL,
+  dbd_weight = 0.1,
+  # Line Search configuration
+  line_search = "More-Thuente",
+  c1 = 1e-4,
+  c2 = NULL,
+  step0 = NULL,
+  step_next_init = NULL,
+  try_newton_step = NULL,
+  ls_max_fn = 20,
+  ls_max_gr = Inf,
+  ls_max_fg = Inf,
+  ls_max_alpha_mult = Inf,
+  ls_max_alpha = Inf,
+  ls_safe_cubic = FALSE,
+  strong_curvature = NULL,
+  approx_armijo = NULL,
+  # Momentum
+  mom_type = NULL,
+  mom_schedule = NULL,
+  mom_init = NULL,
+  mom_final = NULL,
+  mom_switch_iter = NULL,
+  mom_linear_weight = FALSE,
+  use_init_mom = FALSE,
+  # Adaptive Restart
+  restart = NULL,
+  restart_wait = 10,
+  # Termination criterion
+  max_iter = 100,
+  max_fn = Inf,
+  max_gr = Inf,
+  max_fg = Inf,
+  abs_tol = sqrt(.Machine$double.eps),
+  rel_tol = abs_tol,
+  grad_tol = NULL,
+  ginf_tol = NULL,
+  step_tol = sqrt(.Machine$double.eps),
+  check_conv_every = 1,
+  log_every = check_conv_every,
+  verbose = FALSE,
+  store_progress = FALSE
+) {
   opt <- make_mize(
     method = method,
     norm_direction = norm_direction,
@@ -715,18 +718,24 @@ mize <- function(par, fg,
     memory = memory,
     cg_update = cg_update,
     preconditioner = preconditioner,
-    tn_init = tn_init, tn_exit = tn_exit,
-    nest_q = nest_q, nest_convex_approx = nest_convex_approx,
+    tn_init = tn_init,
+    tn_exit = tn_exit,
+    nest_q = nest_q,
+    nest_convex_approx = nest_convex_approx,
     nest_burn_in = nest_burn_in,
     use_init_mom = use_init_mom,
     step_up = step_up,
     step_up_fun = step_up_fun,
     step_down = step_down,
     dbd_weight = dbd_weight,
-    line_search = line_search, step0 = step0, c1 = c1, c2 = c2,
+    line_search = line_search,
+    step0 = step0,
+    c1 = c1,
+    c2 = c2,
     step_next_init = step_next_init,
     try_newton_step = try_newton_step,
-    ls_max_fn = ls_max_fn, ls_max_gr = ls_max_gr,
+    ls_max_fn = ls_max_fn,
+    ls_max_gr = ls_max_gr,
     ls_max_fg = ls_max_fg,
     ls_max_alpha_mult = ls_max_alpha_mult,
     ls_max_alpha = ls_max_alpha,
@@ -740,9 +749,13 @@ mize <- function(par, fg,
     mom_switch_iter = mom_switch_iter,
     mom_linear_weight = mom_linear_weight,
     max_iter = max_iter,
-    max_fn = max_fn, max_gr = max_gr, max_fg = max_fg,
-    abs_tol = abs_tol, rel_tol = rel_tol,
-    grad_tol = grad_tol, ginf_tol = ginf_tol,
+    max_fn = max_fn,
+    max_gr = max_gr,
+    max_fg = max_fg,
+    abs_tol = abs_tol,
+    rel_tol = rel_tol,
+    grad_tol = grad_tol,
+    ginf_tol = ginf_tol,
     step_tol = step_tol,
     restart = restart,
     restart_wait = restart_wait
@@ -763,11 +776,18 @@ mize <- function(par, fg,
     stop("check_conv_every must be non-NULL if store_progress is TRUE")
   }
 
-  res <- opt_loop(opt, par, fg,
+  res <- opt_loop(
+    opt,
+    par,
+    fg,
     max_iter = max_iter,
-    max_fn = max_fn, max_gr = max_gr, max_fg = max_fg,
-    abs_tol = abs_tol, rel_tol = rel_tol,
-    grad_tol = grad_tol, ginf_tol = ginf_tol,
+    max_fn = max_fn,
+    max_gr = max_gr,
+    max_fg = max_fg,
+    abs_tol = abs_tol,
+    rel_tol = rel_tol,
+    grad_tol = grad_tol,
+    ginf_tol = ginf_tol,
     step_tol = step_tol,
     check_conv_every = check_conv_every,
     log_every = log_every,
@@ -778,7 +798,14 @@ mize <- function(par, fg,
   Filter(
     Negate(is.null),
     res[c(
-      "f", "g2n", "ginfn", "nf", "ng", "par", "iter", "terminate",
+      "f",
+      "g2n",
+      "ginfn",
+      "nf",
+      "ng",
+      "par",
+      "iter",
+      "terminate",
       "progress"
     )]
   )
@@ -960,57 +987,64 @@ mize <- function(par, fg,
 #'
 #' # Need to call mize_init separately:
 #' opt <- mize_init(opt, rb0, rosenbrock_fg)
-make_mize <- function(method = "L-BFGS",
-                      norm_direction = FALSE,
-                      # BFGS
-                      scale_hess = TRUE,
-                      memory = 5,
-                      # CG
-                      cg_update = "PR+",
-                      preconditioner = "",
-                      # TN
-                      tn_init = 0,
-                      tn_exit = "curvature",
-                      # NAG
-                      nest_q = 0,
-                      nest_convex_approx = FALSE,
-                      nest_burn_in = 0,
-                      # DBD
-                      step_up = 1.1,
-                      step_up_fun = c("*", "+"),
-                      step_down = NULL,
-                      dbd_weight = 0.1,
-                      # Line Search
-                      line_search = "More-Thuente",
-                      c1 = 1e-4, c2 = NULL,
-                      step0 = NULL,
-                      step_next_init = NULL,
-                      try_newton_step = NULL,
-                      ls_max_fn = 20,
-                      ls_max_gr = Inf,
-                      ls_max_fg = Inf,
-                      ls_max_alpha_mult = Inf,
-                      ls_max_alpha = Inf,
-                      ls_safe_cubic = FALSE,
-                      strong_curvature = NULL,
-                      approx_armijo = NULL,
-                      # Momentum
-                      mom_type = NULL,
-                      mom_schedule = NULL,
-                      mom_init = NULL,
-                      mom_final = NULL,
-                      mom_switch_iter = NULL,
-                      mom_linear_weight = FALSE,
-                      use_init_mom = FALSE,
-                      restart = NULL,
-                      restart_wait = 10,
-                      par = NULL,
-                      fg = NULL,
-                      max_iter = 100,
-                      max_fn = Inf, max_gr = Inf, max_fg = Inf,
-                      abs_tol = NULL,
-                      rel_tol = abs_tol, grad_tol = NULL, ginf_tol = NULL,
-                      step_tol = NULL) {
+make_mize <- function(
+  method = "L-BFGS",
+  norm_direction = FALSE,
+  # BFGS
+  scale_hess = TRUE,
+  memory = 5,
+  # CG
+  cg_update = "PR+",
+  preconditioner = "",
+  # TN
+  tn_init = 0,
+  tn_exit = "curvature",
+  # NAG
+  nest_q = 0,
+  nest_convex_approx = FALSE,
+  nest_burn_in = 0,
+  # DBD
+  step_up = 1.1,
+  step_up_fun = c("*", "+"),
+  step_down = NULL,
+  dbd_weight = 0.1,
+  # Line Search
+  line_search = "More-Thuente",
+  c1 = 1e-4,
+  c2 = NULL,
+  step0 = NULL,
+  step_next_init = NULL,
+  try_newton_step = NULL,
+  ls_max_fn = 20,
+  ls_max_gr = Inf,
+  ls_max_fg = Inf,
+  ls_max_alpha_mult = Inf,
+  ls_max_alpha = Inf,
+  ls_safe_cubic = FALSE,
+  strong_curvature = NULL,
+  approx_armijo = NULL,
+  # Momentum
+  mom_type = NULL,
+  mom_schedule = NULL,
+  mom_init = NULL,
+  mom_final = NULL,
+  mom_switch_iter = NULL,
+  mom_linear_weight = FALSE,
+  use_init_mom = FALSE,
+  restart = NULL,
+  restart_wait = 10,
+  par = NULL,
+  fg = NULL,
+  max_iter = 100,
+  max_fn = Inf,
+  max_gr = Inf,
+  max_fg = Inf,
+  abs_tol = NULL,
+  rel_tol = abs_tol,
+  grad_tol = NULL,
+  ginf_tol = NULL,
+  step_tol = NULL
+) {
   if (memory < 1) {
     stop("memory must be > 0")
   }
@@ -1025,8 +1059,8 @@ make_mize <- function(method = "L-BFGS",
   }
   step_up_fun <- match.arg(step_up_fun)
   if (!is.null(step_down) && !is_in_range(step_down, 0, 1)) {
-      stop("step_down must be between 0 and 1")
-    }
+    stop("step_down must be between 0 and 1")
+  }
   if (!is_in_range(dbd_weight, 0, 1)) {
     stop("dbd_weight must be between 0 and 1")
   }
@@ -1060,14 +1094,26 @@ make_mize <- function(method = "L-BFGS",
 
   # Gradient Descent Direction configuration
   dir_type <- NULL
-  method <- match.arg(tolower(method), c(
-    "sd", "newton", "phess", "cg", "bfgs",
-    "sr1", "l-bfgs", "nag", "momentum", "dbd",
-    "tn"
-  ))
+  method <- match.arg(
+    tolower(method),
+    c(
+      "sd",
+      "newton",
+      "phess",
+      "cg",
+      "bfgs",
+      "sr1",
+      "l-bfgs",
+      "nag",
+      "momentum",
+      "dbd",
+      "tn"
+    )
+  )
   preconditioner <- tolower(preconditioner)
 
-  switch(method,
+  switch(
+    method,
     sd = {
       dir_type <- sd_direction(normalize = norm_direction)
     },
@@ -1087,12 +1133,21 @@ make_mize <- function(method = "L-BFGS",
       cg_update <- match.arg(
         tolower(cg_update),
         c(
-          "fr", "cd", "dy",
-          "hs", "hs+", "pr", "pr+", "ls", "hz", "hz+",
+          "fr",
+          "cd",
+          "dy",
+          "hs",
+          "hs+",
+          "pr",
+          "pr+",
+          "ls",
+          "hz",
+          "hz+",
           "prfr"
         )
       )
-      cg_update_fn <- switch(cg_update,
+      cg_update_fn <- switch(
+        cg_update,
         fr = fr_update,
         cd = cd_update,
         dy = dy_update,
@@ -1148,8 +1203,10 @@ make_mize <- function(method = "L-BFGS",
       )
 
       dir_type <- tn_direction(
-        init = tn_init, exit_criterion = tn_exit,
-        preconditioner = preconditioner, memory = memory
+        init = tn_init,
+        exit_criterion = tn_exit,
+        preconditioner = preconditioner,
+        memory = memory
       )
       if (is.null(try_newton_step)) {
         try_newton_step <- TRUE
@@ -1169,17 +1226,14 @@ make_mize <- function(method = "L-BFGS",
   if (method == "dbd") {
     if (is.character(step0) || is.numeric(step0)) {
       eps_init <- step0
-    }
-    else {
+    } else {
       eps_init <- "rasmussen"
     }
     if (step_up_fun == "*") {
       step_up_fun <- `*`
-    }
-    else if (step_up_fun == "+") {
+    } else if (step_up_fun == "+") {
       step_up_fun <- `+`
-    }
-    else {
+    } else {
       stop("Unknown delta-bar-delta step_up function '", step_up_fun, "'")
     }
     if (is.null(step_down)) {
@@ -1187,12 +1241,13 @@ make_mize <- function(method = "L-BFGS",
     }
     step_type <- delta_bar_delta(
       epsilon = eps_init,
-      kappa = step_up, kappa_fun = step_up_fun,
-      phi = step_down, theta = dbd_weight,
+      kappa = step_up,
+      kappa_fun = step_up_fun,
+      phi = step_down,
+      theta = dbd_weight,
       use_momentum = !is.null(mom_schedule)
     )
-  }
-  else {
+  } else {
     if (method %in% c("newton", "phess", "bfgs", "l-bfgs", "tn")) {
       if (is.null(c2)) {
         c2 <- 0.9
@@ -1200,8 +1255,7 @@ make_mize <- function(method = "L-BFGS",
       if (is.null(try_newton_step)) {
         try_newton_step <- TRUE
       }
-    }
-    else {
+    } else {
       if (is.null(c2)) {
         c2 <- 0.1
       }
@@ -1213,11 +1267,17 @@ make_mize <- function(method = "L-BFGS",
     line_search <- match.arg(
       tolower(line_search),
       c(
-        "more-thuente", "mt", "rasmussen",
+        "more-thuente",
+        "mt",
+        "rasmussen",
         "bold driver",
-        "backtracking", "constant",
-        "schmidt", "minfunc", "armijo",
-        "hager-zhang", "hz"
+        "backtracking",
+        "constant",
+        "schmidt",
+        "minfunc",
+        "armijo",
+        "hager-zhang",
+        "hz"
       )
     )
     if (line_search == "hager-zhang") {
@@ -1241,10 +1301,16 @@ make_mize <- function(method = "L-BFGS",
 
     # Set Wolfe line search termination defaults
     # Most Wolfe Line Searches use the standard Strong Wolfe conditions
-    if (line_search %in% c(
-      "more-thuente", "mt", "rasmussen", "schmidt",
-      "minfunc"
-    )) {
+    if (
+      line_search %in%
+        c(
+          "more-thuente",
+          "mt",
+          "rasmussen",
+          "schmidt",
+          "minfunc"
+        )
+    ) {
       if (is.null(strong_curvature)) {
         strong_curvature <- TRUE
       }
@@ -1269,8 +1335,7 @@ make_mize <- function(method = "L-BFGS",
       if (is.null(step0)) {
         step0 <- "hz"
       }
-    }
-    else {
+    } else {
       if (is.null(step0)) {
         step0 <- "rasmussen"
       }
@@ -1282,9 +1347,11 @@ make_mize <- function(method = "L-BFGS",
     if (!is.numeric(step_next_init)) {
       step_next_init <- tolower(step_next_init)
     }
-    step_type <- switch(line_search,
+    step_type <- switch(
+      line_search,
       mt = more_thuente_ls(
-        c1 = c1, c2 = c2,
+        c1 = c1,
+        c2 = c2,
         initializer = step_next_init,
         initial_step_length = step0,
         try_newton_step = try_newton_step,
@@ -1298,7 +1365,8 @@ make_mize <- function(method = "L-BFGS",
         safeguard_cubic = ls_safe_cubic
       ),
       rasmussen = rasmussen_ls(
-        c1 = c1, c2 = c2,
+        c1 = c1,
+        c2 = c2,
         initializer = step_next_init,
         initial_step_length = step0,
         try_newton_step = try_newton_step,
@@ -1310,12 +1378,14 @@ make_mize <- function(method = "L-BFGS",
         approx_armijo = approx_armijo
       ),
       "bold driver" = bold_driver(
-        inc_mult = step_up, dec_mult = step_down,
+        inc_mult = step_up,
+        dec_mult = step_down,
         max_fn = ls_max_fn
       ),
       constant = constant_step_size(value = step0),
       schmidt = schmidt_ls(
-        c1 = c1, c2 = c2,
+        c1 = c1,
+        c2 = c2,
         initializer = step_next_init,
         initial_step_length = step0,
         try_newton_step = try_newton_step,
@@ -1338,7 +1408,8 @@ make_mize <- function(method = "L-BFGS",
         max_alpha_mult = ls_max_alpha_mult
       ),
       hz = hager_zhang_ls(
-        c1 = c1, c2 = c2,
+        c1 = c1,
+        c2 = c2,
         initializer = step_next_init,
         initial_step_length = step0,
         try_newton_step = try_newton_step,
@@ -1377,8 +1448,7 @@ make_mize <- function(method = "L-BFGS",
       mom_schedule <- "nsconvex"
     }
     mom_direction <- nesterov_momentum_direction()
-  }
-  else if (method == "momentum") {
+  } else if (method == "momentum") {
     # Default momentum values
     if (mom_type == "nesterov") {
       mom_direction <- nesterov_momentum_direction()
@@ -1395,20 +1465,19 @@ make_mize <- function(method = "L-BFGS",
         mu_fn = make_constant(value = mom_schedule),
         use_init_mom = use_init_mom
       )
-    }
-    else if (is.function(mom_schedule)) {
+    } else if (is.function(mom_schedule)) {
       mom_step <- make_momentum_step(
         mu_fn = make_user_momentum_schedule(mom_schedule),
         use_init_mom = use_init_mom
       )
-    }
-    else {
+    } else {
       mom_schedule <- match.arg(
         tolower(mom_schedule),
         c("ramp", "switch", "nsconvex")
       )
 
-      mom_step <- switch(mom_schedule,
+      mom_step <- switch(
+        mom_schedule,
         ramp = make_momentum_step(
           make_ramp(
             init_value = mom_init,
@@ -1426,7 +1495,8 @@ make_mize <- function(method = "L-BFGS",
           use_init_mom = use_init_mom
         ),
         nsconvex = nesterov_step(
-          burn_in = nest_burn_in, q = nest_q,
+          burn_in = nest_burn_in,
+          q = nest_q,
           use_approx = nest_convex_approx,
           use_init_mu = use_init_mom
         )
@@ -1576,8 +1646,7 @@ mize_step <- function(opt, par, fg) {
 
     if (is.null(step_result)) {
       step_result <- stage$result
-    }
-    else {
+    } else {
       step_result <- step_result + stage$result
     }
 
@@ -1599,12 +1668,24 @@ mize_step <- function(opt, par, fg) {
 
     # intercept whether we want to accept the new solution
     opt <- life_cycle_hook(
-      "validation", "before", opt, par, fg, iter,
-      par0, step_result
+      "validation",
+      "before",
+      opt,
+      par,
+      fg,
+      iter,
+      par0,
+      step_result
     )
     opt <- life_cycle_hook(
-      "validation", "during", opt, par, fg, iter,
-      par0, step_result
+      "validation",
+      "during",
+      opt,
+      par,
+      fg,
+      iter,
+      par0,
+      step_result
     )
   }
   # If the this solution was vetoed or the catastrophe happened,
@@ -1615,7 +1696,13 @@ mize_step <- function(opt, par, fg) {
 
   if (is.null(opt$terminate)) {
     opt <- life_cycle_hook(
-      "step", "after", opt, par, fg, iter, par0,
+      "step",
+      "after",
+      opt,
+      par,
+      fg,
+      iter,
+      par0,
       step_result
     )
   }
@@ -1705,12 +1792,20 @@ mize_step <- function(opt, par, fg) {
 #'   par <- res$par
 #'   opt <- res$opt
 #' }
-mize_init <- function(opt, par, fg,
-                      max_iter = Inf,
-                      max_fn = Inf, max_gr = Inf, max_fg = Inf,
-                      abs_tol = NULL,
-                      rel_tol = abs_tol, grad_tol = NULL, ginf_tol = NULL,
-                      step_tol = NULL) {
+mize_init <- function(
+  opt,
+  par,
+  fg,
+  max_iter = Inf,
+  max_fn = Inf,
+  max_gr = Inf,
+  max_fg = Inf,
+  abs_tol = NULL,
+  rel_tol = abs_tol,
+  grad_tol = NULL,
+  ginf_tol = NULL,
+  step_tol = NULL
+) {
   opt <- register_hooks(opt)
   opt$iter <- 0
   opt <- life_cycle_hook("opt", "init", opt, par, fg, opt$iter)
@@ -1820,8 +1915,7 @@ mize_step_summary <- function(opt, par, fg, par_old = NULL, calc_fn = NULL) {
   # without confusing the issue of the expected number of fn/gr evaluations
   if (!is.null(opt$count_res_fg)) {
     count_fg <- opt$count_res_fg
-  }
-  else {
+  } else {
     count_fg <- TRUE
   }
 
@@ -1849,8 +1943,7 @@ mize_step_summary <- function(opt, par, fg, par_old = NULL, calc_fn = NULL) {
         opt <- set_fn_curr(opt, f, iter + 1)
         opt$counts$fn <- opt$counts$fn + 1
       }
-    }
-    else {
+    } else {
       f <- opt$cache$fn_curr
     }
   }
@@ -1864,8 +1957,7 @@ mize_step_summary <- function(opt, par, fg, par_old = NULL, calc_fn = NULL) {
         opt <- set_gr_curr(opt, g, iter + 1)
         opt$counts$gr <- opt$counts$gr + 1
       }
-    }
-    else {
+    } else {
       g <- opt$cache$gr_curr
     }
     if (2 %in% gr_norms) {
@@ -1878,8 +1970,7 @@ mize_step_summary <- function(opt, par, fg, par_old = NULL, calc_fn = NULL) {
 
   if (!is.null(par_old)) {
     step_size <- norm2(par - par_old)
-  }
-  else {
+  } else {
     step_size <- 0
   }
 
@@ -1963,7 +2054,9 @@ check_mize_convergence <- function(mize_step_info) {
   convergence <- opt$convergence
 
   terminate <- check_counts(
-    opt, convergence$max_fn, convergence$max_gr,
+    opt,
+    convergence$max_fn,
+    convergence$max_gr,
     convergence$max_fg
   )
   if (!is.null(terminate)) {
@@ -1973,7 +2066,9 @@ check_mize_convergence <- function(mize_step_info) {
   }
 
   terminate <- check_step_conv(
-    opt, opt$iter, mize_step_info$step,
+    opt,
+    opt$iter,
+    mize_step_info$step,
     convergence$step_tol
   )
   if (!is.null(terminate)) {
@@ -1996,8 +2091,12 @@ check_mize_convergence <- function(mize_step_info) {
     opt$convergence <- convergence
 
     terminate <- check_fn_conv(
-      opt, opt$iter, fn_old, fn_new,
-      convergence$abs_tol, convergence$rel_tol
+      opt,
+      opt$iter,
+      fn_old,
+      fn_new,
+      convergence$abs_tol,
+      convergence$rel_tol
     )
     if (!is.null(terminate)) {
       opt$is_terminated <- TRUE

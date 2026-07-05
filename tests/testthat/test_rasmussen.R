@@ -1,12 +1,19 @@
-
-rls <- function(fg, x, pv = -fg$gr(x) / abs(fg$gr(x)), alpha, c1, c2,
-                xtol = 1e-6, eps = 1e-6, approx_armijo = FALSE,
-                strong_curvature = TRUE,
-                verbose = FALSE) {
+rls <- function(
+  fg,
+  x,
+  pv = -fg$gr(x) / abs(fg$gr(x)),
+  alpha,
+  c1,
+  c2,
+  xtol = 1e-6,
+  eps = 1e-6,
+  approx_armijo = FALSE,
+  strong_curvature = TRUE,
+  verbose = FALSE
+) {
   if (approx_armijo) {
     armijo_check_fn <- make_approx_armijo_ok_step(eps)
-  }
-  else {
+  } else {
     armijo_check_fn <- armijo_ok_step
   }
 
@@ -21,9 +28,13 @@ rls <- function(fg, x, pv = -fg$gr(x) / abs(fg$gr(x)), alpha, c1, c2,
     phi = make_phi_alpha(x, fg, pv, calc_gradient_default = TRUE),
     alpha,
     step0 = step0,
-    max_fn = 10000, xtol = xtol, c1 = c1, c2 = c2,
+    max_fn = 10000,
+    xtol = xtol,
+    c1 = c1,
+    c2 = c2,
     armijo_check_fn = armijo_check_fn,
-    wolfe_ok_step_fn = wolfe_ok_step_fn, verbose = verbose
+    wolfe_ok_step_fn = wolfe_ok_step_fn,
+    verbose = verbose
   )
   res$step$par <- x + res$step$alpha * pv
   res$step0 <- step0
@@ -106,9 +117,30 @@ test_that("Table 6", {
 
 test_that("Function modification", {
   res4m <- rls(fg = f4, x = 1, alpha = 1, c1 = 0.1, c2 = 0.9)
-  expect_step(res4m, x = 0.99278, f = 0.99907, df = 0.009454, alpha = 0.0072168, nfev = 6)
+  expect_step(
+    res4m,
+    x = 0.99278,
+    f = 0.99907,
+    df = 0.009454,
+    alpha = 0.0072168,
+    nfev = 6
+  )
   res5m <- rls(fg = f5, x = 1, alpha = 1, c1 = 0.1, c2 = 0.9)
-  expect_step(res5m, x = 0.99243, f = 0.99905, df = 0.017425, alpha = 0.0075707, nfev = 6)
+  expect_step(
+    res5m,
+    x = 0.99243,
+    f = 0.99905,
+    df = 0.017425,
+    alpha = 0.0075707,
+    nfev = 6
+  )
   res6m <- rls(fg = f6, x = 1, alpha = 1, c1 = 0.1, c2 = 0.9)
-  expect_step(res6m, x = 0.936501, f = 0.99140, df = 0.0032111, alpha = 0.063499, nfev = 4)
+  expect_step(
+    res6m,
+    x = 0.936501,
+    f = 0.99140,
+    df = 0.0032111,
+    alpha = 0.063499,
+    nfev = 4
+  )
 })

@@ -35,7 +35,12 @@ cubic_extrapolate <- function(x1, f1, g1, x2, f2, g2, ignoreWarnings = FALSE) {
 # @return Cubic extrapolated estimate of step size which minimizes the line
 #   function.
 cubic_extrapolate_step <- function(step1, step2) {
-  cubic_extrapolate(step1$alpha, step1$f, step1$d, step2$alpha, step2$f,
+  cubic_extrapolate(
+    step1$alpha,
+    step1$f,
+    step1$d,
+    step2$alpha,
+    step2$f,
     step2$d,
     ignoreWarnings = TRUE
   )
@@ -72,8 +77,7 @@ cubic_interpolate <- function(x1, f1, g1, x2, f2, g2, ignoreWarnings = FALSE) {
     suppressWarnings(
       d2 <- sign(x2 - x1) * sqrt(d1 * d1 - g1 * g2)
     )
-  }
-  else {
+  } else {
     d2 <- sign(x2 - x1) * sqrt(d1 * d1 - g1 * g2)
   }
   x2 - (x2 - x1) * ((g2 + d2 - d1) / (g2 - g1 + 2 * d2))
@@ -91,8 +95,12 @@ cubic_interpolate <- function(x1, f1, g1, x2, f2, g2, ignoreWarnings = FALSE) {
 #   function.
 cubic_interpolate_step <- function(step1, step2) {
   cubic_interpolate(
-    step1$alpha, step1$f, step1$d,
-    step2$alpha, step2$f, step2$d
+    step1$alpha,
+    step1$f,
+    step1$d,
+    step2$alpha,
+    step2$f,
+    step2$d
   )
 }
 
@@ -125,8 +133,11 @@ quadratic_interpolate <- function(x1, f1, g1, x2, f2) {
 #   function.
 quadratic_interpolate_step <- function(step1, step2) {
   quadratic_interpolate(
-    step1$alpha, step1$f, step1$d,
-    step2$alpha, step2$f
+    step1$alpha,
+    step1$f,
+    step1$d,
+    step2$alpha,
+    step2$f
   )
 }
 

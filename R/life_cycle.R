@@ -7,8 +7,7 @@ life_cycle_hook <- function(phase, advice_type, opt, par, fg, iter, ...) {
   handler <- life_cycle_handler(phase, advice_type, opt)
   if (is.null(handler)) {
     opt <- default_handler(phase, advice_type, opt, par, fg, iter, ...)
-  }
-  else {
+  } else {
     opt <- handler(opt, par, fg, iter, ...)
   }
   opt
@@ -84,8 +83,10 @@ register_hooks <- function(opt) {
         sub_stage_prop <- sub_stage[[sub_stage_prop_name]]
         if (!is.null(attr(sub_stage_prop, "event"))) {
           opt <- register_hook(
-            opt, sub_stage[[sub_stage_prop_name]],
-            stage$type, sub_stage_type
+            opt,
+            sub_stage[[sub_stage_prop_name]],
+            stage$type,
+            sub_stage_type
           )
         }
       }
@@ -105,9 +106,7 @@ register_hooks <- function(opt) {
 #  to fire.
 # Event can consist of the just the join point, e.g. "init" and the advice
 #   type is then implicitly assumed to be "during".
-register_hook <- function(opt, hook,
-                          stage_type = NULL,
-                          sub_stage_type = NULL) {
+register_hook <- function(opt, hook, stage_type = NULL, sub_stage_type = NULL) {
   name <- attr(hook, "name")
   if (is.null(name)) {
     stop("No 'name' attribute for function")
@@ -127,10 +126,11 @@ register_hook <- function(opt, hook,
 
   advice_type <- event_tok[1]
   join_point <- event_tok[2]
-  if (join_point == "stage"
-  || join_point == "gradient_descent"
-  || join_point == "momentum"
-    && is.null(stage_type)) {
+  if (
+    join_point == "stage" ||
+      join_point == "gradient_descent" ||
+      join_point == "momentum" && is.null(stage_type)
+  ) {
     stage_type <- join_point
   }
 
@@ -154,15 +154,13 @@ register_hook <- function(opt, hook,
       join_point <- paste0(stage_type, " ", join_point)
     }
     hook <- wrap_sub_stage_hook(hook, stage_type, sub_stage_type)
-  }
-  else if (!is.null(stage_type)) {
+  } else if (!is.null(stage_type)) {
     hook <- wrap_stage_hook(hook, stage_type)
   }
 
   if (name == "handler") {
     opt <- store_handler(opt, join_point, advice_type, hook)
-  }
-  else {
+  } else {
     # store the hook
     opt <- store_hook(opt, join_point, advice_type, name, hook)
   }
@@ -223,8 +221,7 @@ wrap_stage_hook <- function(stage_hook, stage_type) {
   function(opt, par, fg, iter, ...) {
     if (stage_type == "stage") {
       stage <- opt$stages[[opt$stage_i]]
-    }
-    else {
+    } else {
       stage <- opt$stages[[stage_type]]
     }
 
@@ -236,8 +233,7 @@ wrap_stage_hook <- function(stage_hook, stage_type) {
     if (!is.null(res$stage)) {
       if (stage_type == "stage") {
         opt$stages[[opt$stage_i]] <- res$stage
-      }
-      else {
+      } else {
         opt$stages[[stage_type]] <- res$stage
       }
     }
@@ -254,8 +250,7 @@ wrap_sub_stage_hook <- function(sub_stage_hook, stage_type, sub_stage_type) {
   function(opt, par, fg, iter, ...) {
     if (stage_type == "stage") {
       stage <- opt$stages[[opt$stage_i]]
-    }
-    else {
+    } else {
       stage <- opt$stages[[stage_type]]
     }
 
@@ -277,8 +272,7 @@ wrap_sub_stage_hook <- function(sub_stage_hook, stage_type, sub_stage_type) {
 
     if (stage_type == "stage") {
       opt$stages[[opt$stage_i]] <- stage
-    }
-    else {
+    } else {
       opt$stages[[stage_type]] <- stage
     }
 
@@ -287,8 +281,12 @@ wrap_sub_stage_hook <- function(sub_stage_hook, stage_type, sub_stage_type) {
 }
 
 # Convert all functions named in the depends vector of a phase into a hook
-depends_to_hooks <- function(opt, phase, stage_type = NULL,
-                             sub_stage_type = NULL) {
+depends_to_hooks <- function(
+  opt,
+  phase,
+  stage_type = NULL,
+  sub_stage_type = NULL
+) {
   if (is.null(phase$depends)) {
     return(opt)
   }
@@ -301,8 +299,12 @@ depends_to_hooks <- function(opt, phase, stage_type = NULL,
 }
 
 # Convert a specific named function (in depend) into a hook
-depend_to_hook <- function(opt, depend, stage_type = NULL,
-                           sub_stage_type = NULL) {
+depend_to_hook <- function(
+  opt,
+  depend,
+  stage_type = NULL,
+  sub_stage_type = NULL
+) {
   f_name <- paste0("require_", depend)
   f <- get0(f_name)
   if (!is.null(f)) {

@@ -1,8 +1,12 @@
 # Returns a termination list if step falls below step_tol
 # A zero step is allowed if this is a restart step
 check_step_conv <- function(opt, iter, step = NULL, step_tol = NULL) {
-  if (is.null(step) || is.null(step_tol) || is_restart_iter(opt, iter) ||
-    step >= step_tol) {
+  if (
+    is.null(step) ||
+      is.null(step_tol) ||
+      is_restart_iter(opt, iter) ||
+      step >= step_tol
+  ) {
     return()
   }
   list(what = "step_tol", val = step)
@@ -17,14 +21,12 @@ check_counts <- function(opt, max_fn, max_gr, max_fg) {
       what = "max_fn",
       val = opt$counts$fn
     )
-  }
-  else if (opt$counts$gr >= max_gr) {
+  } else if (opt$counts$gr >= max_gr) {
     terminate <- list(
       what = "max_gr",
       val = opt$counts$gr
     )
-  }
-  else if (opt$counts$fn + opt$counts$gr >= max_fg) {
+  } else if (opt$counts$fn + opt$counts$gr >= max_fg) {
     terminate <- list(
       what = "max_fg",
       val = opt$counts$fn + opt$counts$gr
@@ -92,12 +94,10 @@ check_fn_conv <- function(opt, iter, fn_old, fn_new, abs_tol, rel_tol) {
     rtol <- if (fdenom == 0) {
       if (fdelta == 0) {
         0
-      }
-      else {
+      } else {
         Inf
       }
-    }
-    else {
+    } else {
       fdelta / fdenom
     }
     if (rtol < rel_tol) {

@@ -1,4 +1,3 @@
-
 test_that("Newton direction uses inverse Hessian functions", {
   quadratic_fg <- list(
     fn = function(x) x[1]^2 + 3 * x[2]^2,
@@ -13,10 +12,17 @@ test_that("Newton direction uses inverse Hessian functions", {
     fg <- quadratic_fg
     fg$hi <- hi
 
-    res <- mize(c(2, -3), fg,
-      method = "NEWTON", line_search = "constant",
-      step0 = 1, max_iter = 1, check_conv_every = NULL,
-      abs_tol = NULL, rel_tol = NULL, grad_tol = NULL
+    res <- mize(
+      c(2, -3),
+      fg,
+      method = "NEWTON",
+      line_search = "constant",
+      step0 = 1,
+      max_iter = 1,
+      check_conv_every = NULL,
+      abs_tol = NULL,
+      rel_tol = NULL,
+      grad_tol = NULL
     )
 
     expect_equal(as.numeric(res$par), c(0, 0), tolerance = 1e-12)
@@ -57,22 +63,37 @@ test_that("L-BFGS memory trimming keeps only the newest updates", {
 })
 
 test_that("L-BFGS supports memory of one through the public API", {
-  res <- mize(rb0, rosen_no_hess,
-    method = "L-BFGS", memory = 1, max_iter = 3,
-    line_search = "mo", c1 = 5e-10, c2 = 1e-9,
-    step0 = "scipy", step_next_init = "q",
-    scale_hess = FALSE, grad_tol = 1e-5
+  res <- mize(
+    rb0,
+    rosen_no_hess,
+    method = "L-BFGS",
+    memory = 1,
+    max_iter = 3,
+    line_search = "mo",
+    c1 = 5e-10,
+    c2 = 1e-9,
+    step0 = "scipy",
+    step_next_init = "q",
+    scale_hess = FALSE,
+    grad_tol = 1e-5
   )
 
   expect_true(is.finite(res$f))
 })
 
 test_that("store_progress records infinity gradient norm", {
-  res <- mize(rb0, rosenbrock_fg,
-    method = "SD", max_iter = 1,
-    line_search = "const", step0 = 0.0001,
-    abs_tol = NULL, rel_tol = NULL, grad_tol = NULL,
-    ginf_tol = 1e-5, store_progress = TRUE
+  res <- mize(
+    rb0,
+    rosenbrock_fg,
+    method = "SD",
+    max_iter = 1,
+    line_search = "const",
+    step0 = 0.0001,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = 1e-5,
+    store_progress = TRUE
   )
 
   expect_true("ginfn" %in% names(res$progress))
@@ -97,11 +118,19 @@ test_that("function-valued momentum schedules may take iteration only", {
     0.5
   }
 
-  res <- mize(rb0, rosenbrock_fg,
-    method = "MOM", line_search = "const", step0 = 0.001,
-    mom_schedule = schedule, max_iter = 3,
-    check_conv_every = 1, abs_tol = NULL, rel_tol = NULL,
-    grad_tol = NULL, store_progress = TRUE
+  res <- mize(
+    rb0,
+    rosenbrock_fg,
+    method = "MOM",
+    line_search = "const",
+    step0 = 0.001,
+    mom_schedule = schedule,
+    max_iter = 3,
+    check_conv_every = 1,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    store_progress = TRUE
   )
 
   expect_equal(seen, c(2, 3))
@@ -109,12 +138,20 @@ test_that("function-valued momentum schedules may take iteration only", {
 })
 
 test_that("function-valued momentum schedules may still take max_iter", {
-  res <- mize(rb0, rosenbrock_fg,
-    method = "MOM", line_search = "const", step0 = 0.001,
+  res <- mize(
+    rb0,
+    rosenbrock_fg,
+    method = "MOM",
+    line_search = "const",
+    step0 = 0.001,
     mom_schedule = function(iter, max_iter) iter / max_iter,
-    use_init_mom = TRUE, max_iter = 2,
-    check_conv_every = 1, abs_tol = NULL, rel_tol = NULL,
-    grad_tol = NULL, store_progress = TRUE
+    use_init_mom = TRUE,
+    max_iter = 2,
+    check_conv_every = 1,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    store_progress = TRUE
   )
 
   expect_equal(tail(res$progress$mu, 1), 1)
@@ -133,17 +170,22 @@ test_that("append_depends handles optimizer, stage, and sub-stage dependencies",
   opt <- append_depends(opt, new_depends = "opt_dep")
   expect_equal(opt$depends, "opt_dep")
 
-  opt <- append_depends(opt, stage_type = "gradient_descent",
+  opt <- append_depends(
+    opt,
+    stage_type = "gradient_descent",
     new_depends = "stage_dep"
   )
   expect_true("stage_dep" %in% opt$stages$gradient_descent$depends)
 
-  opt <- append_depends(opt,
+  opt <- append_depends(
+    opt,
     stage_type = "gradient_descent",
     sub_stage_type = "direction",
     new_depends = "direction_dep"
   )
-  expect_true("direction_dep" %in% opt$stages$gradient_descent$direction$depends)
+  expect_true(
+    "direction_dep" %in% opt$stages$gradient_descent$direction$depends
+  )
 })
 
 test_that("CG helper updates default to the unpreconditioned gradient", {
@@ -168,10 +210,6 @@ test_that("relative function convergence handles zero baselines", {
     check_fn_conv(opt, 1, 0, 0, abs_tol = NULL, rel_tol = 1e-8),
     list(what = "rel_tol", val = 0)
   )
-  expect_null(check_fn_conv(opt, 1, 0, 1e-8,
-    abs_tol = NULL, rel_tol = 1e-8
-  ))
-  expect_null(check_fn_conv(opt, 1, 1e-8, 0,
-    abs_tol = NULL, rel_tol = 1e-8
-  ))
+  expect_null(check_fn_conv(opt, 1, 0, 1e-8, abs_tol = NULL, rel_tol = 1e-8))
+  expect_null(check_fn_conv(opt, 1, 1e-8, 0, abs_tol = NULL, rel_tol = 1e-8))
 })

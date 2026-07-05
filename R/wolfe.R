@@ -7,21 +7,24 @@
 # the line search stricter (i.e. forces it closer to a minimum).
 
 # More-Thuente ------------------------------------------------------------
-more_thuente_ls <- function(c1 = c2 / 2, c2 = 0.1,
-                            max_alpha = Inf,
-                            max_alpha_mult = Inf,
-                            min_step_size = .Machine$double.eps,
-                            initializer = "s",
-                            initial_step_length = 1,
-                            try_newton_step = FALSE,
-                            stop_at_min = TRUE,
-                            max_fn = Inf,
-                            max_gr = Inf,
-                            max_fg = Inf,
-                            approx_armijo = FALSE,
-                            strong_curvature = TRUE,
-                            safeguard_cubic = FALSE,
-                            debug = FALSE) {
+more_thuente_ls <- function(
+  c1 = c2 / 2,
+  c2 = 0.1,
+  max_alpha = Inf,
+  max_alpha_mult = Inf,
+  min_step_size = .Machine$double.eps,
+  initializer = "s",
+  initial_step_length = 1,
+  try_newton_step = FALSE,
+  stop_at_min = TRUE,
+  max_fn = Inf,
+  max_gr = Inf,
+  max_fg = Inf,
+  approx_armijo = FALSE,
+  strong_curvature = TRUE,
+  safeguard_cubic = FALSE,
+  debug = FALSE
+) {
   if (!is_in_range(c1, 0, 1, lopen = FALSE, ropen = FALSE)) {
     stop("c1 must be between 0 and 1")
   }
@@ -30,40 +33,49 @@ more_thuente_ls <- function(c1 = c2 / 2, c2 = 0.1,
   }
   max_ls_fn <- min(max_fn, max_gr, floor(max_fg / 2))
 
-  line_search(more_thuente(
-    c1 = c1, c2 = c2,
-    alpha_max = max_alpha,
-    max_fn = max_ls_fn,
-    strong_curvature = strong_curvature,
-    approx_armijo = approx_armijo,
-    safeguard_cubic = safeguard_cubic
-  ),
-  name = "more-thuente",
-  max_alpha_mult = max_alpha_mult,
-  min_step_size = min_step_size, stop_at_min = stop_at_min,
-  initializer = initializer,
-  initial_step_length = initial_step_length,
-  try_newton_step = try_newton_step,
-  debug = debug
+  line_search(
+    more_thuente(
+      c1 = c1,
+      c2 = c2,
+      alpha_max = max_alpha,
+      max_fn = max_ls_fn,
+      strong_curvature = strong_curvature,
+      approx_armijo = approx_armijo,
+      safeguard_cubic = safeguard_cubic
+    ),
+    name = "more-thuente",
+    max_alpha_mult = max_alpha_mult,
+    min_step_size = min_step_size,
+    stop_at_min = stop_at_min,
+    initializer = initializer,
+    initial_step_length = initial_step_length,
+    try_newton_step = try_newton_step,
+    debug = debug
   )
 }
 
 
 # Rasmussen ---------------------------------------------------------------
 
-rasmussen_ls <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
-                         max_alpha_mult = Inf,
-                         min_step_size = .Machine$double.eps,
-                         initializer = "s",
-                         initial_step_length = 1,
-                         try_newton_step = FALSE,
-                         stop_at_min = TRUE, eps = .Machine$double.eps,
-                         max_fn = Inf,
-                         max_gr = Inf,
-                         max_fg = Inf,
-                         strong_curvature = TRUE,
-                         approx_armijo = FALSE,
-                         debug = FALSE) {
+rasmussen_ls <- function(
+  c1 = c2 / 2,
+  c2 = 0.1,
+  int = 0.1,
+  ext = 3.0,
+  max_alpha_mult = Inf,
+  min_step_size = .Machine$double.eps,
+  initializer = "s",
+  initial_step_length = 1,
+  try_newton_step = FALSE,
+  stop_at_min = TRUE,
+  eps = .Machine$double.eps,
+  max_fn = Inf,
+  max_gr = Inf,
+  max_fg = Inf,
+  strong_curvature = TRUE,
+  approx_armijo = FALSE,
+  debug = FALSE
+) {
   if (!is_in_range(c1, 0, 1, lopen = FALSE, ropen = FALSE)) {
     stop("c1 must be between 0 and 1")
   }
@@ -73,39 +85,48 @@ rasmussen_ls <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
 
   max_ls_fn <- min(max_fn, max_gr, floor(max_fg / 2))
 
-  line_search(rasmussen(
-    c1 = c1, c2 = c2, int = int, ext = ext,
-    max_fn = max_ls_fn,
-    strong_curvature = strong_curvature,
-    approx_armijo = approx_armijo
-  ),
-  name = "rasmussen",
-  max_alpha_mult = max_alpha_mult,
-  min_step_size = min_step_size, stop_at_min = stop_at_min,
-  initializer = initializer,
-  initial_step_length = initial_step_length,
-  try_newton_step = try_newton_step,
-  eps = eps,
-  debug = debug
+  line_search(
+    rasmussen(
+      c1 = c1,
+      c2 = c2,
+      int = int,
+      ext = ext,
+      max_fn = max_ls_fn,
+      strong_curvature = strong_curvature,
+      approx_armijo = approx_armijo
+    ),
+    name = "rasmussen",
+    max_alpha_mult = max_alpha_mult,
+    min_step_size = min_step_size,
+    stop_at_min = stop_at_min,
+    initializer = initializer,
+    initial_step_length = initial_step_length,
+    try_newton_step = try_newton_step,
+    eps = eps,
+    debug = debug
   )
 }
 
 
 # Schmidt (minfunc) -------------------------------------------------------
 
-schmidt_ls <- function(c1 = c2 / 2, c2 = 0.1,
-                       max_alpha_mult = Inf,
-                       min_step_size = .Machine$double.eps,
-                       initializer = "s",
-                       initial_step_length = "schmidt",
-                       try_newton_step = FALSE,
-                       stop_at_min = TRUE, eps = .Machine$double.eps,
-                       max_fn = Inf,
-                       max_gr = Inf,
-                       max_fg = Inf,
-                       strong_curvature = TRUE,
-                       approx_armijo = FALSE,
-                       debug = FALSE) {
+schmidt_ls <- function(
+  c1 = c2 / 2,
+  c2 = 0.1,
+  max_alpha_mult = Inf,
+  min_step_size = .Machine$double.eps,
+  initializer = "s",
+  initial_step_length = "schmidt",
+  try_newton_step = FALSE,
+  stop_at_min = TRUE,
+  eps = .Machine$double.eps,
+  max_fn = Inf,
+  max_gr = Inf,
+  max_fg = Inf,
+  strong_curvature = TRUE,
+  approx_armijo = FALSE,
+  debug = FALSE
+) {
   if (!is_in_range(c1, 0, 1, lopen = FALSE, ropen = FALSE)) {
     stop("c1 must be between 0 and 1")
   }
@@ -115,72 +136,86 @@ schmidt_ls <- function(c1 = c2 / 2, c2 = 0.1,
 
   max_ls_fn <- min(max_fn, max_gr, floor(max_fg / 2))
 
-  line_search(schmidt(
-    c1 = c1, c2 = c2, max_fn = max_ls_fn,
-    strong_curvature = strong_curvature,
-    approx_armijo = approx_armijo
-  ),
-  name = "schmidt",
-  max_alpha_mult = max_alpha_mult,
-  min_step_size = min_step_size, stop_at_min = stop_at_min,
-  initializer = initializer,
-  initial_step_length = initial_step_length,
-  try_newton_step = try_newton_step,
-  eps = eps,
-  debug = debug
+  line_search(
+    schmidt(
+      c1 = c1,
+      c2 = c2,
+      max_fn = max_ls_fn,
+      strong_curvature = strong_curvature,
+      approx_armijo = approx_armijo
+    ),
+    name = "schmidt",
+    max_alpha_mult = max_alpha_mult,
+    min_step_size = min_step_size,
+    stop_at_min = stop_at_min,
+    initializer = initializer,
+    initial_step_length = initial_step_length,
+    try_newton_step = try_newton_step,
+    eps = eps,
+    debug = debug
   )
 }
 
 
-schmidt_armijo_ls <- function(c1 = 0.005,
-                              max_alpha_mult = Inf,
-                              min_step_size = .Machine$double.eps,
-                              initializer = "s",
-                              initial_step_length = "schmidt",
-                              try_newton_step = FALSE,
-                              step_down = NULL,
-                              stop_at_min = TRUE, eps = .Machine$double.eps,
-                              max_fn = Inf,
-                              max_gr = Inf,
-                              max_fg = Inf,
-                              debug = FALSE) {
+schmidt_armijo_ls <- function(
+  c1 = 0.005,
+  max_alpha_mult = Inf,
+  min_step_size = .Machine$double.eps,
+  initializer = "s",
+  initial_step_length = "schmidt",
+  try_newton_step = FALSE,
+  step_down = NULL,
+  stop_at_min = TRUE,
+  eps = .Machine$double.eps,
+  max_fn = Inf,
+  max_gr = Inf,
+  max_fg = Inf,
+  debug = FALSE
+) {
   if (!is_in_range(c1, 0, 1, lopen = FALSE, ropen = FALSE)) {
     stop("c1 must be between 0 and 1")
   }
 
   max_ls_fn <- min(max_fn, max_gr, floor(max_fg / 2))
 
-  line_search(schmidt_armijo_backtrack(
-    c1 = c1, max_fn = max_ls_fn,
-    step_down = step_down
-  ),
-  name = "schmidt_armijo",
-  max_alpha_mult = max_alpha_mult,
-  min_step_size = min_step_size, stop_at_min = stop_at_min,
-  initializer = initializer,
-  initial_step_length = initial_step_length,
-  try_newton_step = try_newton_step,
-  eps = eps,
-  debug = debug
+  line_search(
+    schmidt_armijo_backtrack(
+      c1 = c1,
+      max_fn = max_ls_fn,
+      step_down = step_down
+    ),
+    name = "schmidt_armijo",
+    max_alpha_mult = max_alpha_mult,
+    min_step_size = min_step_size,
+    stop_at_min = stop_at_min,
+    initializer = initializer,
+    initial_step_length = initial_step_length,
+    try_newton_step = try_newton_step,
+    eps = eps,
+    debug = debug
   )
 }
 
 
 # Hager-Zhang -------------------------------------------------------------
 
-hager_zhang_ls <- function(c1 = c2 / 2, c2 = 0.1,
-                           max_alpha_mult = Inf,
-                           min_step_size = .Machine$double.eps,
-                           initializer = "hz",
-                           initial_step_length = "hz",
-                           try_newton_step = FALSE,
-                           stop_at_min = TRUE, eps = .Machine$double.eps,
-                           max_fn = Inf,
-                           max_gr = Inf,
-                           max_fg = Inf,
-                           strong_curvature = FALSE,
-                           approx_armijo = TRUE,
-                           debug = FALSE) {
+hager_zhang_ls <- function(
+  c1 = c2 / 2,
+  c2 = 0.1,
+  max_alpha_mult = Inf,
+  min_step_size = .Machine$double.eps,
+  initializer = "hz",
+  initial_step_length = "hz",
+  try_newton_step = FALSE,
+  stop_at_min = TRUE,
+  eps = .Machine$double.eps,
+  max_fn = Inf,
+  max_gr = Inf,
+  max_fg = Inf,
+  strong_curvature = FALSE,
+  approx_armijo = TRUE,
+  debug = FALSE
+) {
   if (!is_in_range(c1, 0, 1, lopen = FALSE, ropen = FALSE)) {
     stop("c1 must be between 0 and 1")
   }
@@ -190,34 +225,40 @@ hager_zhang_ls <- function(c1 = c2 / 2, c2 = 0.1,
 
   max_ls_fn <- min(max_fn, max_gr, floor(max_fg / 2))
 
-  line_search(hager_zhang(
-    c1 = c1, c2 = c2, max_fn = max_ls_fn,
-    strong_curvature = strong_curvature,
-    approx_armijo = approx_armijo
-  ),
-  name = "hager-zhang",
-  max_alpha_mult = max_alpha_mult,
-  min_step_size = min_step_size, stop_at_min = stop_at_min,
-  initializer = initializer,
-  initial_step_length = initial_step_length,
-  try_newton_step = try_newton_step,
-  eps = eps,
-  debug = debug
+  line_search(
+    hager_zhang(
+      c1 = c1,
+      c2 = c2,
+      max_fn = max_ls_fn,
+      strong_curvature = strong_curvature,
+      approx_armijo = approx_armijo
+    ),
+    name = "hager-zhang",
+    max_alpha_mult = max_alpha_mult,
+    min_step_size = min_step_size,
+    stop_at_min = stop_at_min,
+    initializer = initializer,
+    initial_step_length = initial_step_length,
+    try_newton_step = try_newton_step,
+    eps = eps,
+    debug = debug
   )
 }
 
 # Line Search -------------------------------------------------------------
 
-line_search <- function(ls_fn,
-                        name,
-                        initializer = "slope ratio",
-                        try_newton_step = FALSE,
-                        initial_step_length = 1,
-                        max_alpha_mult = Inf,
-                        min_step_size = .Machine$double.eps,
-                        stop_at_min = TRUE,
-                        debug = FALSE,
-                        eps = .Machine$double.eps) {
+line_search <- function(
+  ls_fn,
+  name,
+  initializer = "slope ratio",
+  try_newton_step = FALSE,
+  initial_step_length = 1,
+  max_alpha_mult = Inf,
+  min_step_size = .Machine$double.eps,
+  stop_at_min = TRUE,
+  debug = FALSE,
+  eps = .Machine$double.eps
+) {
   if (!is.numeric(initializer)) {
     initializer <- match.arg(
       tolower(initializer),
@@ -232,15 +273,17 @@ line_search <- function(ls_fn,
     initializer0 <- match.arg(
       tolower(initial_step_length),
       c(
-        "rasmussen", "scipy", "schmidt",
-        "hz", "hager-zhang"
+        "rasmussen",
+        "scipy",
+        "schmidt",
+        "hz",
+        "hager-zhang"
       )
     )
     if (initializer0 == "hager-zhang") {
       initializer0 <- "hz"
     }
-  }
-  else {
+  } else {
     initializer0 <- initial_step_length
   }
 
@@ -248,7 +291,6 @@ line_search <- function(ls_fn,
     name = name,
     eps = eps,
     init = function(opt, stage, sub_stage, par, fg, iter) {
-
       if (!is_first_stage(opt, stage)) {
         # Requires knowing f at the current location
         # If this step size is part of any stage other than the first
@@ -277,8 +319,7 @@ line_search <- function(ls_fn,
 
       if (is_first_stage(opt, stage) && has_fn_curr(opt, iter)) {
         f0 <- opt$cache$fn_curr
-      }
-      else {
+      } else {
         opt <- calc_fn(opt, par, fg$fn)
         f0 <- opt$fn
       }
@@ -292,28 +333,33 @@ line_search <- function(ls_fn,
 
       alpha_prev <- sub_stage$value
 
-      phi_alpha <- make_phi_alpha(par, fg, pm,
-        calc_gradient_default = TRUE, debug = debug
+      phi_alpha <- make_phi_alpha(
+        par,
+        fg,
+        pm,
+        calc_gradient_default = TRUE,
+        debug = debug
       )
 
       alpha_next <- 0
       if (is.numeric(initializer)) {
         alpha_next <- initializer
-      }
-      else if (initializer == "slope ratio" && !is.null(sub_stage$d0)) {
+      } else if (initializer == "slope ratio" && !is.null(sub_stage$d0)) {
         # described on p59 of Nocedal and Wright
         alpha_next <- step_next_slope_ratio(
-          alpha_prev, sub_stage$d0,
-          step0, eps
+          alpha_prev,
+          sub_stage$d0,
+          step0,
+          eps
         )
-      }
-      else if (initializer == "quadratic" && !is.null(sub_stage$f0)) {
+      } else if (initializer == "quadratic" && !is.null(sub_stage$f0)) {
         # quadratic interpolation
-        alpha_next <- step_next_quad_interp(sub_stage$f0, step0,
+        alpha_next <- step_next_quad_interp(
+          sub_stage$f0,
+          step0,
           try_newton_step = try_newton_step
         )
-      }
-      else if (initializer == "hz" && !is.null(alpha_prev)) {
+      } else if (initializer == "hz" && !is.null(alpha_prev)) {
         step_next_res <- step_next_hz(phi_alpha, alpha_prev, step0)
         alpha_next <- step_next_res$alpha
         opt$counts$fn <- opt$counts$fn + step_next_res$fn
@@ -343,13 +389,19 @@ line_search <- function(ls_fn,
       max_fn <- Inf
       max_gr <- Inf
       max_fg <- Inf
-      if (!is.null(opt$convergence$max_fn) && is.finite(opt$convergence$max_fn)) {
+      if (
+        !is.null(opt$convergence$max_fn) && is.finite(opt$convergence$max_fn)
+      ) {
         max_fn <- opt$convergence$max_fn - opt$counts$fn
       }
-      if (!is.null(opt$convergence$max_gr) && is.finite(opt$convergence$max_gr)) {
+      if (
+        !is.null(opt$convergence$max_gr) && is.finite(opt$convergence$max_gr)
+      ) {
         max_gr <- opt$convergence$max_gr - opt$counts$gr
       }
-      if (!is.null(opt$convergence$max_fg) && is.finite(opt$convergence$max_fg)) {
+      if (
+        !is.null(opt$convergence$max_fg) && is.finite(opt$convergence$max_fg)
+      ) {
         max_fg <- opt$convergence$max_fg - (opt$counts$fn + opt$counts$gr)
       }
 
@@ -359,11 +411,15 @@ line_search <- function(ls_fn,
           opt <- set_fn_new(opt, step0$f, iter)
           sub_stage$df <- step0$df
         }
-      }
-      else {
-        ls_result <- ls_fn(phi_alpha, step0, sub_stage$value,
-          total_max_fn = max_fn, total_max_gr = max_gr,
-          total_max_fg = max_fg, pm = pm
+      } else {
+        ls_result <- ls_fn(
+          phi_alpha,
+          step0,
+          sub_stage$value,
+          total_max_fn = max_fn,
+          total_max_gr = max_gr,
+          total_max_fg = max_fg,
+          pm = pm
         )
         sub_stage$is_gr_curr <- ls_result$is_gr_curr
         sub_stage$value <- ls_result$step$alpha
@@ -374,8 +430,7 @@ line_search <- function(ls_fn,
           opt <- set_fn_new(opt, ls_result$step$f, iter)
           if (is.null(ls_result$step$df)) {
             sub_stage$df <- rep(sub_stage$eps, length(par))
-          }
-          else {
+          } else {
             sub_stage$df <- ls_result$step$df
           }
         }
@@ -383,15 +438,17 @@ line_search <- function(ls_fn,
 
       list(opt = opt, sub_stage = sub_stage)
     },
-    after_step = function(opt, stage, sub_stage, par, fg, iter, par0,
-                          update) {
+    after_step = function(opt, stage, sub_stage, par, fg, iter, par0, update) {
       if (opt$ok && is_last_stage(opt, stage) && has_fn_new(opt, iter)) {
         opt <- set_fn_curr(opt, opt$cache$fn_new, iter + 1)
       }
 
       # Armijo LS does not necessarily calculate gradients
-      if (opt$ok && is_single_stage(opt) && 
-          (is.null(sub_stage$is_gr_curr) || sub_stage$is_gr_curr)) {
+      if (
+        opt$ok &&
+          is_single_stage(opt) &&
+          (is.null(sub_stage$is_gr_curr) || sub_stage$is_gr_curr)
+      ) {
         opt <- set_gr_curr(opt, sub_stage$df, iter + 1)
       }
 
@@ -401,8 +458,13 @@ line_search <- function(ls_fn,
   ))
 }
 
-make_phi_alpha <- function(par, fg, pm,
-                           calc_gradient_default = FALSE, debug = FALSE) {
+make_phi_alpha <- function(
+  par,
+  fg,
+  pm,
+  calc_gradient_default = FALSE,
+  debug = FALSE
+) {
   # LS functions are responsible for updating fn and gr count
   function(alpha, calc_gradient = calc_gradient_default) {
     y_alpha <- par + (alpha * pm)
@@ -418,8 +480,7 @@ make_phi_alpha <- function(par, fg, pm,
         df = g,
         d = dot(g, pm)
       )
-    }
-    else {
+    } else {
       f <- fg$fn(y_alpha)
       step <- list(
         alpha = alpha,
@@ -483,13 +544,13 @@ step_is_finite <- function(step) {
 # Set the initial step length. If initial_step_length is a numeric scalar,
 # then use that as-is. Otherwise, use one of several variations based around
 # the only thing we know (the directional derivative)
-guess_alpha0 <- function(guess_type, x0, f0, gr0, d0,
-                         try_newton_step = FALSE) {
+guess_alpha0 <- function(guess_type, x0, f0, gr0, d0, try_newton_step = FALSE) {
   if (is.numeric(guess_type)) {
     return(guess_type)
   }
 
-  s <- switch(guess_type,
+  s <- switch(
+    guess_type,
     rasmussen = step0_rasmussen(d0),
     scipy = step0_scipy(gr0, d0),
     schmidt = step0_schmidt(gr0),
@@ -533,8 +594,7 @@ step0_hz <- function(x0, f0, gr0, psi0 = 0.01) {
     xinf_norm <- norm_inf(x0)
     if (xinf_norm != 0) {
       alpha <- psi0 * (xinf_norm / ginf_norm)
-    }
-    else if (is_finite_numeric(f0) && f0 != 0) {
+    } else if (is_finite_numeric(f0) && f0 != 0) {
       g2_norm2 <- sqnorm2(gr0)
       if (is_finite_numeric(g2_norm2) && g2_norm2 != 0) {
         alpha <- psi0 * (abs(f0) / ginf_norm^2)
@@ -788,23 +848,24 @@ wolfe_ok_step <- function(step0, step, c1, c2) {
 
 # Create a Wolfe Conditions check function allowing for either approximate or
 # exact Armijo condition and weak or strong curvature condition
-make_wolfe_ok_step_fn <- function(approx_armijo = FALSE,
-                                  strong_curvature = TRUE, eps = 1e-6) {
+make_wolfe_ok_step_fn <- function(
+  approx_armijo = FALSE,
+  strong_curvature = TRUE,
+  eps = 1e-6
+) {
   approx_armijo_ok_fn <- make_approx_armijo_ok_step(eps)
 
   function(step0, step, c1, c2) {
     if (approx_armijo) {
       ok <- approx_armijo_ok_fn(step0, step, c1)
-    }
-    else {
+    } else {
       ok <- armijo_ok_step(step0, step, c1)
     }
 
     if (ok) {
       if (strong_curvature) {
         ok <- strong_curvature_ok_step(step0, step, c2)
-      }
-      else {
+      } else {
         ok <- curvature_ok_step(step0, step, c2)
       }
     }
@@ -884,7 +945,10 @@ is_in_bracket <- function(bracket, alpha) {
 
 format_bracket <- function(bracket) {
   paste0(
-    "[", formatC(bracket[[1]]$alpha), ", ", formatC(bracket[[2]]$alpha),
+    "[",
+    formatC(bracket[[1]]$alpha),
+    ", ",
+    formatC(bracket[[2]]$alpha),
     "]"
   )
 }

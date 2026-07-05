@@ -45,10 +45,14 @@ sd_direction <- function(normalize = FALSE) {
 # cg_update - Function to generate the next direction using a method of e.g.
 #   Fletcher-Reeves or Polak-Ribiere. Pass one of the cg_update functions
 #   below, e.g. pr_plus_update
-cg_direction <- function(ortho_check = FALSE, nu = 0.1,
-                         cg_update = pr_plus_update,
-                         preconditioner = "", memory = 5,
-                         eps = .Machine$double.eps) {
+cg_direction <- function(
+  ortho_check = FALSE,
+  nu = 0.1,
+  cg_update = pr_plus_update,
+  preconditioner = "",
+  memory = 5,
+  eps = .Machine$double.eps
+) {
   cg <- make_direction(list(
     ortho_check = ortho_check,
     nu = nu,
@@ -78,9 +82,11 @@ cg_direction <- function(ortho_check = FALSE, nu = 0.1,
       pm <- -gm
       # wm = Pg or just g if we're not preconditioning
       wm <- gm
-      if (!is.null(gm_old)
-      && (!sub_stage$ortho_check
-        || !sub_stage$cg_restart(gm, gm_old, sub_stage$nu))) {
+      if (
+        !is.null(gm_old) &&
+          (!sub_stage$ortho_check ||
+            !sub_stage$cg_restart(gm, gm_old, sub_stage$nu))
+      ) {
         precondition_fn <- NULL
         if (preconditioner == "l-bfgs" && !is.null(opt$cache$gr_old)) {
           lbfgs <- sub_stage$preconditioner
@@ -96,7 +102,11 @@ cg_direction <- function(ortho_check = FALSE, nu = 0.1,
 
           sub_stage$preconditioner <- lbfgs
         }
-        beta <- sub_stage$cg_update(gm, gm_old, pm_old, sub_stage$eps,
+        beta <- sub_stage$cg_update(
+          gm,
+          gm_old,
+          pm_old,
+          sub_stage$eps,
           wm = wm,
           preconditioner = precondition_fn
         )
@@ -112,8 +122,7 @@ cg_direction <- function(ortho_check = FALSE, nu = 0.1,
 
       list(sub_stage = sub_stage)
     },
-    after_step = function(opt, stage, sub_stage, par, fg, iter, par0,
-                          update) {
+    after_step = function(opt, stage, sub_stage, par, fg, iter, par0, update) {
       sub_stage$pm_old <- sub_stage$value
       list(sub_stage = sub_stage)
     },
@@ -139,16 +148,20 @@ cg_direction <- function(ortho_check = FALSE, nu = 0.1,
 # it is easy to derive from the other examples.
 
 # Fletcher-Reeves update.
-fr_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
-                      wm = NULL,
-                      preconditioner = NULL) {
+fr_update <- function(
+  gm,
+  gm_old,
+  pm_old,
+  eps = .Machine$double.eps,
+  wm = NULL,
+  preconditioner = NULL
+) {
   if (!is.null(preconditioner)) {
     if (is.null(wm)) {
       wm <- preconditioner(gm)
     }
     wm_old <- preconditioner(gm_old)
-  }
-  else {
+  } else {
     if (is.null(wm)) {
       wm <- gm
     }
@@ -158,15 +171,19 @@ fr_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
 }
 
 # Conjugate Descent update due to Fletcher.
-cd_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
-                      wm = NULL,
-                      preconditioner = NULL) {
+cd_update <- function(
+  gm,
+  gm_old,
+  pm_old,
+  eps = .Machine$double.eps,
+  wm = NULL,
+  preconditioner = NULL
+) {
   if (!is.null(preconditioner)) {
     if (is.null(wm)) {
       wm <- preconditioner(gm)
     }
-  }
-  else {
+  } else {
     if (is.null(wm)) {
       wm <- gm
     }
@@ -175,16 +192,20 @@ cd_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
 }
 
 # The Dai-Yuan update.
-dy_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
-                      wm = NULL,
-                      preconditioner = NULL) {
+dy_update <- function(
+  gm,
+  gm_old,
+  pm_old,
+  eps = .Machine$double.eps,
+  wm = NULL,
+  preconditioner = NULL
+) {
   ym <- gm - gm_old
   if (!is.null(preconditioner)) {
     if (is.null(wm)) {
       wm <- preconditioner(gm)
     }
-  }
-  else {
+  } else {
     if (is.null(wm)) {
       wm <- gm
     }
@@ -197,16 +218,20 @@ dy_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
 # being known about their provable global convergence properties.
 
 # The Hestenes-Stiefel update.
-hs_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
-                      wm = NULL,
-                      preconditioner = NULL) {
+hs_update <- function(
+  gm,
+  gm_old,
+  pm_old,
+  eps = .Machine$double.eps,
+  wm = NULL,
+  preconditioner = NULL
+) {
   ym <- gm - gm_old
   if (!is.null(preconditioner)) {
     if (is.null(wm)) {
       wm <- preconditioner(gm)
     }
-  }
-  else {
+  } else {
     wm <- gm
   }
   dot(ym, wm) / (dot(pm_old, ym) + eps)
@@ -218,28 +243,42 @@ hs_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
 # Hager, W. W., & Zhang, H. (2006).
 # A survey of nonlinear conjugate gradient methods.
 # *Pacific journal of Optimization*, *2*(1), 35-58.
-hs_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
-                           wm = NULL,
-                           preconditioner = NULL) {
-  beta <- hs_update(gm, gm_old, pm_old, eps,
-    wm = wm, preconditioner = preconditioner
+hs_plus_update <- function(
+  gm,
+  gm_old,
+  pm_old,
+  eps = .Machine$double.eps,
+  wm = NULL,
+  preconditioner = NULL
+) {
+  beta <- hs_update(
+    gm,
+    gm_old,
+    pm_old,
+    eps,
+    wm = wm,
+    preconditioner = preconditioner
   )
   max(0, beta)
 }
 
 # The Polak-Ribiere method for updating the CG direction. Also known as
 # Polak-Ribiere-Polyak (PRP)
-pr_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
-                      wm = NULL,
-                      preconditioner = NULL) {
+pr_update <- function(
+  gm,
+  gm_old,
+  pm_old,
+  eps = .Machine$double.eps,
+  wm = NULL,
+  preconditioner = NULL
+) {
   ym <- gm - gm_old
   if (!is.null(preconditioner)) {
     if (is.null(wm)) {
       wm <- preconditioner(gm)
     }
     wm_old <- preconditioner(gm_old)
-  }
-  else {
+  } else {
     if (is.null(wm)) {
       wm <- gm
     }
@@ -251,25 +290,40 @@ pr_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
 # The "PR+" update due to Powell. Polak-Ribiere update, but if negative,
 # restarts the CG from steepest descent. Prevents a possible lack of
 # convergence when using a Wolfe line search.
-pr_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
-                           wm = NULL,
-                           preconditioner = NULL) {
-  beta <- pr_update(gm, gm_old, pm_old, eps,
-    wm = wm, preconditioner = preconditioner
+pr_plus_update <- function(
+  gm,
+  gm_old,
+  pm_old,
+  eps = .Machine$double.eps,
+  wm = NULL,
+  preconditioner = NULL
+) {
+  beta <- pr_update(
+    gm,
+    gm_old,
+    pm_old,
+    eps,
+    wm = wm,
+    preconditioner = preconditioner
   )
   max(0, beta)
 }
 
 # Liu-Storey update
-ls_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
-                      wm = NULL, preconditioner = NULL) {
+ls_update <- function(
+  gm,
+  gm_old,
+  pm_old,
+  eps = .Machine$double.eps,
+  wm = NULL,
+  preconditioner = NULL
+) {
   ym <- gm - gm_old
   if (!is.null(preconditioner)) {
     if (is.null(wm)) {
       wm <- preconditioner(gm)
     }
-  }
-  else {
+  } else {
     if (is.null(wm)) {
       wm <- gm
     }
@@ -278,17 +332,21 @@ ls_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
 }
 
 # Hager-Zhang update as used in CG_DESCENT, theta = 2
-hz_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
-                      wm = NULL,
-                      preconditioner = NULL) {
+hz_update <- function(
+  gm,
+  gm_old,
+  pm_old,
+  eps = .Machine$double.eps,
+  wm = NULL,
+  preconditioner = NULL
+) {
   ym <- gm - gm_old
   if (!is.null(preconditioner)) {
     vm <- preconditioner(ym)
     if (is.null(wm)) {
       wm <- preconditioner(gm)
     }
-  }
-  else {
+  } else {
     vm <- ym
     if (is.null(wm)) {
       wm <- gm
@@ -302,10 +360,21 @@ hz_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
 # convergence. Analogous to the PR+ and HS+ updates, but dynamically adjusts
 # the lower bound as convergence occurs. Choice of eta is from the CG_DESCENT
 # paper
-hz_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
-                           wm = NULL, preconditioner = NULL) {
-  beta <- hz_update(gm, gm_old, pm_old, eps,
-    wm = wm, preconditioner = preconditioner
+hz_plus_update <- function(
+  gm,
+  gm_old,
+  pm_old,
+  eps = .Machine$double.eps,
+  wm = NULL,
+  preconditioner = NULL
+) {
+  beta <- hz_update(
+    gm,
+    gm_old,
+    pm_old,
+    eps,
+    wm = wm,
+    preconditioner = preconditioner
   )
   eta <- 0.01
   eta_k <- -1 / (dot(pm_old) * min(eta, dot(gm_old)))
@@ -313,26 +382,37 @@ hz_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
 }
 
 # The PR-FR update suggested by Gilbert and Nocedal (1992)
-prfr_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
-                        wm = NULL, preconditioner = NULL) {
-  bpr <- pr_update(gm, gm_old, pm_old,
+prfr_update <- function(
+  gm,
+  gm_old,
+  pm_old,
+  eps = .Machine$double.eps,
+  wm = NULL,
+  preconditioner = NULL
+) {
+  bpr <- pr_update(
+    gm,
+    gm_old,
+    pm_old,
     eps = eps,
-    wm = wm, preconditioner = preconditioner
+    wm = wm,
+    preconditioner = preconditioner
   )
-  bfr <- fr_update(gm, gm_old, pm_old,
+  bfr <- fr_update(
+    gm,
+    gm_old,
+    pm_old,
     eps = eps,
-    wm = wm, preconditioner = preconditioner
+    wm = wm,
+    preconditioner = preconditioner
   )
   if (bpr < -bfr) {
     beta <- -bfr
-  }
-  else if (abs(bpr) <= bfr) {
+  } else if (abs(bpr) <= bfr) {
     beta <- bpr
-  }
-  else if (bpr > bfr) {
+  } else if (bpr > bfr) {
     beta <- bfr
-  }
-  else {
+  } else {
     stop("Problem in PR-FR Update")
   }
   beta
@@ -357,8 +437,7 @@ cg_restart <- function(g_new, g_old, nu = 0.1) {
 # The Broyden Fletcher Goldfarb Shanno method
 # scale_inverse - if TRUE, scale the inverse Hessian approximation on the first
 #   step.
-bfgs_direction <- function(eps = .Machine$double.eps,
-                           scale_inverse = FALSE) {
+bfgs_direction <- function(eps = .Machine$double.eps, scale_inverse = FALSE) {
   make_direction(list(
     eps = eps,
     init = function(opt, stage, sub_stage, par, fg, iter) {
@@ -374,8 +453,7 @@ bfgs_direction <- function(eps = .Machine$double.eps,
           hm <- diag(hm)
         }
         sub_stage$hm <- hm
-      }
-      else {
+      } else {
         sub_stage$hm <- diag(1, n)
       }
 
@@ -447,9 +525,13 @@ bfgs_update <- function(hm, sm, ym, eps) {
 #  Nocedal & Wright suggest using it with a trust-region approach rather than
 #  line search. Here we simply replace the SR1 update with the BFGS version to
 #  ensure a descent direction.
-sr1_direction <- function(eps = .Machine$double.eps,
-                          scale_inverse = FALSE, skip_bad_update = TRUE,
-                          tol = 1e-8, try_bfgs = TRUE) {
+sr1_direction <- function(
+  eps = .Machine$double.eps,
+  scale_inverse = FALSE,
+  skip_bad_update = TRUE,
+  tol = 1e-8,
+  try_bfgs = TRUE
+) {
   make_direction(list(
     eps = eps,
     init = function(opt, stage, sub_stage, par, fg, iter) {
@@ -465,8 +547,7 @@ sr1_direction <- function(eps = .Machine$double.eps,
           hm <- diag(hm)
         }
         sub_stage$hm <- hm
-      }
-      else {
+      } else {
         sub_stage$hm <- diag(1, n)
       }
 
@@ -501,8 +582,7 @@ sr1_direction <- function(eps = .Machine$double.eps,
         if (skip_bad_update && abs(up_den) <= tol * norm2(shy) * norm2(ym)) {
           # message("SR1: skipping bad update")
           sub_stage$hm <- hm
-        }
-        else {
+        } else {
           sub_stage$hm <- hm + outer(shy, shy) / up_den
         }
       }
@@ -518,13 +598,11 @@ sr1_direction <- function(eps = .Machine$double.eps,
           if (descent >= 0) {
             # This should never happen: BFGS H should always be pd.
             pm <- -gm
-          }
-          else {
+          } else {
             # Only store the BFGS H for next iteration if it's a descent
             sub_stage$hm <- hm_bfgs
           }
-        }
-        else {
+        } else {
           pm <- -gm
         }
       }
@@ -561,30 +639,33 @@ lbfgs_init <- function(opt, stage, sub_stage, par, fg, iter) {
 # Or you can set scale_inverse = FALSE and you will get q back directly, i.e.
 # Assume use H = I, which is also used when scale_inverse = TRUE on the first
 # iteration anyway
-lbfgs_guess <- function(qm, scale_inverse = TRUE,
-                        rho = NULL, ym = NULL, eps = NULL,
-                        fg = NULL, par = NULL) {
+lbfgs_guess <- function(
+  qm,
+  scale_inverse = TRUE,
+  rho = NULL,
+  ym = NULL,
+  eps = NULL,
+  fg = NULL,
+  par = NULL
+) {
   # User-defined hessian inverse approximations
   if (!is.null(fg) && !is.null(fg$hi)) {
     hm <- fg$hi(par)
     if (methods::is(hm, "matrix")) {
       # Full matrix: not necessarily a great idea for memory usage
       pm <- hm %*% qm
-    }
-    else {
+    } else {
       # It's a vector representing a diagonal matrix
       pm <- hm * qm
     }
-  }
-  else {
+  } else {
     # The usual L-BFGS guess
     if (!is.null(rho) && !is.null(ym) && scale_inverse) {
       # Eqn 7.20 in Nocedal & Wright
       gamma <- 1 / (rho * (dot(ym) + eps))
       hm <- rep(gamma, length(ym))
       pm <- hm * qm
-    }
-    else {
+    } else {
       # Effectively H = I
       # This will happen on the first iteration
       pm <- qm
@@ -599,8 +680,14 @@ lbfgs_guess <- function(qm, scale_inverse = TRUE,
 # usual L-BFGS guess is used. Otherwise, q is used.
 # Note that we usually want to find p = -Hg, so usually take the negative of
 # the return value
-lbfgs_solve <- function(qm, lbfgs_state, scale_inverse, eps,
-                        fg = NULL, par = NULL) {
+lbfgs_solve <- function(
+  qm,
+  lbfgs_state,
+  scale_inverse,
+  eps,
+  fg = NULL,
+  par = NULL
+) {
   sms <- lbfgs_state$sms
   yms <- lbfgs_state$yms
   rhos <- lbfgs_state$rhos
@@ -614,8 +701,13 @@ lbfgs_solve <- function(qm, lbfgs_state, scale_inverse, eps,
 
   # Choose estimate of inverse Hessian approximation
   pm <- lbfgs_guess(
-    qm, scale_inverse, rhos[[length(rhos)]], yms[[length(yms)]],
-    eps, fg, par
+    qm,
+    scale_inverse,
+    rhos[[length(rhos)]],
+    yms[[length(yms)]],
+    eps,
+    fg,
+    par
   )
 
   # loop forwards
@@ -661,8 +753,11 @@ lbfgs_memory_update <- function(lbfgs_state, ym, sm, eps) {
 #
 # memory - The number of previous updates to store.
 # scale_inverse - if TRUE, scale the inverse Hessian approximation at each step.
-lbfgs_direction <- function(memory = 5, scale_inverse = FALSE,
-                            eps = .Machine$double.eps) {
+lbfgs_direction <- function(
+  memory = 5,
+  scale_inverse = FALSE,
+  eps = .Machine$double.eps
+) {
   if (memory < 1) {
     stop("memory must be > 0")
   }
@@ -679,8 +774,7 @@ lbfgs_direction <- function(memory = 5, scale_inverse = FALSE,
         # First iteration do steepest descent unless we have home-brew
         # H approximation in fg
         pm <- lbfgs_guess(-gm, fg = fg, par = par)
-      }
-      else {
+      } else {
         # Update the memory
         # y_{k-1}, s_{k-1} using notation in Nocedal and Wright
         ym <- gm - gm_old
@@ -724,8 +818,7 @@ newton_direction <- function(try_safe_chol = FALSE) {
         if (methods::is(bm, "matrix")) {
           if (try_safe_chol) {
             rm <- safe_chol(bm)
-          }
-          else {
+          } else {
             chol_result <- try(
               {
                 # O(N^3)
@@ -741,29 +834,24 @@ newton_direction <- function(try_safe_chol = FALSE) {
           if (is.null(rm)) {
             # message("Hessian is not positive-definite, resetting to SD")
             pm <- -gm
-          }
-          else {
+          } else {
             # Forward and back solving is "only" O(N^2)
             pm <- hessian_solve(rm, gm)
           }
-        }
-        else {
+        } else {
           # vector: assume it's a diagonal approximation of B
           pm <- -(1 / bm) * gm
         }
-      }
-      else if (!is.null(fg$hi)) {
+      } else if (!is.null(fg$hi)) {
         # H, an approximation to (or exact) inverse of the Hessian
         hm <- fg$hi(par)
         if (methods::is(hm, "matrix")) {
           pm <- -hm %*% gm
-        }
-        else {
+        } else {
           # vector: assume it's a diagonal approximation of H
           pm <- -hm * gm
         }
-      }
-      else {
+      } else {
         stop("No hi or hs function available for Hessian information")
       }
 
@@ -859,7 +947,6 @@ safe_chol <- function(hm, eps = 1e-10) {
     silent = TRUE
   )
   if (methods::is(chol_result, "try-error")) {
-
     # Also O(N^3)
     eig <- eigen(hm)
     eig$values[eig$values < 0] <- 1e-10
@@ -881,9 +968,13 @@ safe_chol <- function(hm, eps = 1e-10) {
 # See Nocedal & Wright Chapter 7, algorithm 7.1
 # L-BFGS preconditioner suggested e.g. by Hager & Zhang (2006)
 # also implemented in minfunc
-tn_direction <- function(init = 0, exit_criterion = "curvature",
-                         preconditioner = "", memory = 5,
-                         eps = .Machine$double.eps) {
+tn_direction <- function(
+  init = 0,
+  exit_criterion = "curvature",
+  preconditioner = "",
+  memory = 5,
+  eps = .Machine$double.eps
+) {
   tn <- make_direction(list(
     init = function(opt, stage, sub_stage, par, fg, iter) {
       if (preconditioner == "l-bfgs") {
@@ -921,29 +1012,30 @@ tn_direction <- function(init = 0, exit_criterion = "curvature",
         # Standard initialization. Saves on a finite difference gradient
         # calculation because we know the residual is g
         zm <- 0
-      }
-      else if (init == "l-bfgs" && preconditioner == "l-bfgs") {
+      } else if (init == "l-bfgs" && preconditioner == "l-bfgs") {
         # Use the L-BFGS guess as we've done a lot of the work already
         # A potentially bad idea of my own invention
         if (!is.null(opt$cache$gr_old)) {
           lbfgs <- sub_stage$preconditioner
           zm <- -lbfgs_solve(gm, lbfgs, scale_inverse = TRUE, eps = lbfgs$eps)
-        }
-        else {
+        } else {
           zm <- 0
         }
-      }
-      else {
+      } else {
         # "previous", i.e. use the result from the last iteration
         # Martens (2010)
         if (!is.null(sub_stage$value)) {
           zm <- sub_stage$value
-        }
-        else {
+        } else {
           zm <- 0
         }
       }
-      inner_res <- tn_inner_cg(opt, fg, par, gm, precondition_fn,
+      inner_res <- tn_inner_cg(
+        opt,
+        fg,
+        par,
+        gm,
+        precondition_fn,
         zm = zm,
         exit_criterion = exit_criterion
       )
@@ -979,15 +1071,22 @@ tn_direction <- function(init = 0, exit_criterion = "curvature",
 #  anyway. Default is from TNPACK (Xie and Schlick 1999).
 # exit_criterion: either "curvature" (check negative curvature) or "descent",
 #  a comparison of descent direction used in TNPACK (Xie and Schlick 1999)
-tn_inner_cg <- function(opt, fg, par, gm, preconditioner = NULL, zm = 0,
-                        exit_criterion = "curvature", max_iter = 40) {
+tn_inner_cg <- function(
+  opt,
+  fg,
+  par,
+  gm,
+  preconditioner = NULL,
+  zm = 0,
+  exit_criterion = "curvature",
+  max_iter = 40
+) {
   gn <- norm2(gm)
   eps <- min(0.5, sqrt(gn)) * gn
 
   if (length(zm) == 1 && zm == 0) {
     rm <- gm
-  }
-  else {
+  } else {
     if (opt$counts$gr >= opt$convergence$max_gr) {
       zm <- -gm
       return(list(
@@ -1002,8 +1101,7 @@ tn_inner_cg <- function(opt, fg, par, gm, preconditioner = NULL, zm = 0,
   }
   if (!is.null(preconditioner)) {
     ym <- preconditioner(rm)
-  }
-  else {
+  } else {
     ym <- rm
   }
 
@@ -1046,8 +1144,7 @@ tn_inner_cg <- function(opt, fg, par, gm, preconditioner = NULL, zm = 0,
       if (dot(gm, zm) >= dot(gm, zm_old) + 1e-15) {
         if (j == 0) {
           zm <- -gm
-        }
-        else {
+        } else {
           zm <- zm_old
         }
 
@@ -1062,8 +1159,7 @@ tn_inner_cg <- function(opt, fg, par, gm, preconditioner = NULL, zm = 0,
 
     if (!is.null(preconditioner)) {
       ym <- preconditioner(rm)
-    }
-    else {
+    } else {
       ym <- rm
     }
 
@@ -1090,9 +1186,13 @@ tn_inner_cg <- function(opt, fg, par, gm, preconditioner = NULL, zm = 0,
 # Found in:
 # http://timvieira.github.io/blog/post/2014/02/10/gradient-vector-product/
 # Something similar is used in minfunc
-bd_approx <- function(fg, par, dm, gm,
-                      h = 2 * sqrt(.Machine$double.eps) *
-                        (1 + norm2(par)) / norm2(dm)) {
+bd_approx <- function(
+  fg,
+  par,
+  dm,
+  gm,
+  h = 2 * sqrt(.Machine$double.eps) * (1 + norm2(par)) / norm2(dm)
+) {
   g_fwd <- fg$gr(par + h * dm)
   (g_fwd - gm) / h
 }

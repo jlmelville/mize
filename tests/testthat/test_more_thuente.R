@@ -1,16 +1,23 @@
-
 # This test uses input parameters, directions and step sizes from using the MT
 # line search with a few steps of the CG solver. The expected values come
 # from plugging the input values into Dianne O'Leary's Matlab code (running
 # under GNU Octave).
 
-mtls <- function(fg, x, pv = -fg$gr(x) / abs(fg$gr(x)), alpha, c1, c2,
-                 eps = 1e-6, approx_armijo = FALSE, strong_curvature = TRUE,
-                 safeguard_cubic = FALSE) {
+mtls <- function(
+  fg,
+  x,
+  pv = -fg$gr(x) / abs(fg$gr(x)),
+  alpha,
+  c1,
+  c2,
+  eps = 1e-6,
+  approx_armijo = FALSE,
+  strong_curvature = TRUE,
+  safeguard_cubic = FALSE
+) {
   if (approx_armijo) {
     armijo_check_fn <- make_approx_armijo_ok_step(eps)
-  }
-  else {
+  } else {
     armijo_check_fn <- armijo_ok_step
   }
 
@@ -22,7 +29,9 @@ mtls <- function(fg, x, pv = -fg$gr(x) / abs(fg$gr(x)), alpha, c1, c2,
   res <- cvsrch(
     phi = make_phi_alpha(x, fg, pv, calc_gradient_default = TRUE),
     alpha,
-    step0 = make_step0(fg, x, pv), c1 = c1, c2 = c2,
+    step0 = make_step0(fg, x, pv),
+    c1 = c1,
+    c2 = c2,
     armijo_check_fn = armijo_check_fn,
     wolfe_ok_step_fn = wolfe_ok_step_fn,
     safeguard_cubic = safeguard_cubic
@@ -120,12 +129,20 @@ test_that("Table 6", {
 test_that("Safeguard Cubic", {
   # Only test examples that give different results
   res32c <- mtls(
-    fg = f3, x = 0, alpha = 1e-1, c1 = 0.1, c2 = 0.1,
+    fg = f3,
+    x = 0,
+    alpha = 1e-1,
+    c1 = 0.1,
+    c2 = 0.1,
     safeguard_cubic = TRUE
   )
   expect_step(res32c, x = 1.0, f = -0.011160, df = -1.5842e-10, nfev = 13)
   res64c <- mtls(
-    fg = f6, x = 0, alpha = 1e3, c1 = 0.001, c2 = 0.001,
+    fg = f6,
+    x = 0,
+    alpha = 1e3,
+    c1 = 0.001,
+    c2 = 0.001,
     safeguard_cubic = TRUE
   )
   expect_step(res64c, x = 0.92525, f = 0.99138, df = -1.2989e-4, nfev = 10)
@@ -136,9 +153,30 @@ test_that("Safeguard Cubic", {
 # tests below do exercise that part.
 test_that("Function modification", {
   res4m <- mtls(fg = f4, x = 1, alpha = 1, c1 = 0.1, c2 = 0.9)
-  expect_step(res4m, x = 0.99615, f = 0.99913, df = 0.032049, alpha = 0.0038522, nfev = 6)
+  expect_step(
+    res4m,
+    x = 0.99615,
+    f = 0.99913,
+    df = 0.032049,
+    alpha = 0.0038522,
+    nfev = 6
+  )
   res5m <- mtls(fg = f5, x = 1, alpha = 1, c1 = 0.1, c2 = 0.9)
-  expect_step(res5m, x = 0.99599, f = 0.99914, df = 0.038284, alpha = 0.0040126, nfev = 6)
+  expect_step(
+    res5m,
+    x = 0.99599,
+    f = 0.99914,
+    df = 0.038284,
+    alpha = 0.0040126,
+    nfev = 6
+  )
   res6m <- mtls(fg = f6, x = 1, alpha = 1, c1 = 0.1, c2 = 0.9)
-  expect_step(res6m, x = 0.95655, f = 0.99157, df = 0.016504, alpha = 0.043447, nfev = 4)
+  expect_step(
+    res6m,
+    x = 0.95655,
+    f = 0.99157,
+    df = 0.016504,
+    alpha = 0.043447,
+    nfev = 4
+  )
 })

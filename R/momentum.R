@@ -28,11 +28,13 @@ momentum_direction <- function(normalize = FALSE) {
 #  this could result in the resulting step length being shorter or longer
 #  than would be otherwise expected. If FALSE, then the momentum coefficient
 #  is always zero.
-make_momentum_step <- function(mu_fn,
-                               min_momentum = 0,
-                               max_momentum = 1,
-                               use_init_mom = FALSE,
-                               verbose = FALSE) {
+make_momentum_step <- function(
+  mu_fn,
+  min_momentum = 0,
+  max_momentum = 1,
+  use_init_mom = FALSE,
+  verbose = FALSE
+) {
   make_step_size(list(
     name = "momentum_step",
     init = function(opt, stage, sub_stage, par, fg, iter) {
@@ -43,18 +45,17 @@ make_momentum_step <- function(mu_fn,
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
       if (!use_init_mom && sub_stage$t <= 1) {
         sub_stage$value <- 0
-      }
-      else {
+      } else {
         sub_stage$value <-
-          sclamp(sub_stage$mu_fn(sub_stage$t, opt$convergence$max_iter),
+          sclamp(
+            sub_stage$mu_fn(sub_stage$t, opt$convergence$max_iter),
             min = sub_stage$min_value,
             max = sub_stage$max_value
           )
       }
       list(sub_stage = sub_stage)
     },
-    after_step = function(opt, stage, sub_stage, par, fg, iter, par0,
-                          update) {
+    after_step = function(opt, stage, sub_stage, par, fg, iter, par0, update) {
       sub_stage$t <- sub_stage$t + 1
 
       list(sub_stage = sub_stage)
@@ -74,8 +75,7 @@ make_user_momentum_schedule <- function(mu_fn) {
     function(iter, max_iter) {
       mu_fn(iter, max_iter)
     }
-  }
-  else {
+  } else {
     function(iter, max_iter) {
       mu_fn(iter)
     }
@@ -87,13 +87,15 @@ make_user_momentum_schedule <- function(mu_fn) {
 
 # A function that switches from one momentum value to another at the
 # specified iteration.
-make_switch <- function(init_value = 0.5, final_value = 0.8,
-                        switch_iter = 250) {
+make_switch <- function(
+  init_value = 0.5,
+  final_value = 0.8,
+  switch_iter = 250
+) {
   function(iter, max_iter) {
     if (iter >= switch_iter) {
       return(final_value)
-    }
-    else {
+    } else {
       return(init_value)
     }
   }
@@ -109,9 +111,7 @@ make_switch <- function(init_value = 0.5, final_value = 0.8,
 # where in most cases the momentum on the first iteration would be either
 # ignored or the value overridden and set to zero anyway. Stops a larger than
 # expected jump on iteration 2.
-make_ramp <- function(init_value = 0,
-                      final_value = 0.9,
-                      wait = 0) {
+make_ramp <- function(init_value = 0, final_value = 0.9, wait = 0) {
   function(iter, max_iter) {
     # actual number of iterations
     iters <- max_iter - 1 - wait

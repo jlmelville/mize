@@ -27,8 +27,7 @@ nesterov_momentum_direction <- function() {
       sub_stage$value <- grad_update + sub_stage$update
       list(sub_stage = sub_stage)
     },
-    after_step = function(opt, stage, sub_stage, par, fg, iter, par0,
-                          update) {
+    after_step = function(opt, stage, sub_stage, par, fg, iter, par0, update) {
       sub_stage$update <- update - opt$stages[["gradient_descent"]]$result
       list(sub_stage = sub_stage)
     }
@@ -49,8 +48,12 @@ nesterov_momentum_direction <- function() {
 #   the calculated non-zero value, otherwise use zero. Because velocity is
 #   normally zero initially, this rarely has an effect, unless linear weighting
 #   of the momentum is being used. Ignored if use_approx is FALSE.
-nesterov_step <- function(burn_in = 0, q = 0, use_approx = FALSE,
-                          use_init_mu = FALSE) {
+nesterov_step <- function(
+  burn_in = 0,
+  q = 0,
+  use_approx = FALSE,
+  use_init_mu = FALSE
+) {
   if (!is_in_range(q, 0, 1)) {
     stop("q must be between 0 and 1")
   }
@@ -63,8 +66,7 @@ nesterov_step <- function(burn_in = 0, q = 0, use_approx = FALSE,
       burn_in = burn_in,
       use_init_mu = use_init_mu
     )
-  }
-  else {
+  } else {
     nesterov_convex_step(q = q, burn_in = burn_in)
   }
 }
@@ -112,11 +114,10 @@ make_nesterov_convex_approx <- function(burn_in = 0, use_init_mu = FALSE) {
 #  on the first step, and you will get a 60% longer step size if using NAG.
 nesterov_convex_approx_step <- function(burn_in = 0, use_init_mu = FALSE) {
   make_momentum_step(
-    mu_fn =
-      make_nesterov_convex_approx(
-        burn_in = burn_in,
-        use_init_mu = use_init_mu
-      ),
+    mu_fn = make_nesterov_convex_approx(
+      burn_in = burn_in,
+      use_init_mu = use_init_mu
+    ),
     min_momentum = 0,
     max_momentum = 1,
     use_init_mom = use_init_mu
@@ -135,8 +136,7 @@ nesterov_convex_step <- function(burn_in = 0, q = 0) {
   if (q == 0) {
     # Use the expression for momentum from the Sutskever paper appendix
     nesterov_strong_convex_step(burn_in = burn_in)
-  }
-  else {
+  } else {
     # Use the expression for momentum from Candes paper which includes q term
     nesterov_convex_step_q(q = q, burn_in = burn_in)
   }
@@ -159,8 +159,7 @@ nesterov_strong_convex_step <- function(burn_in) {
       if (iter < burn_in) {
         sub_stage$value <- 0
         sub_stage$a <- 1
-      }
-      else {
+      } else {
         a_old <- sub_stage$a_old
         a <- (1 + sqrt(4 * a_old * a_old + 1)) / 2
         sub_stage$value <- (a_old - 1) / a
@@ -168,12 +167,10 @@ nesterov_strong_convex_step <- function(burn_in) {
       }
       list(sub_stage = sub_stage)
     },
-    after_step = function(opt, stage, sub_stage, par, fg, iter, par0,
-                          update) {
+    after_step = function(opt, stage, sub_stage, par, fg, iter, par0, update) {
       if (!opt$ok) {
         sub_stage$a_old <- 1
-      }
-      else {
+      } else {
         sub_stage$a_old <- sub_stage$a
       }
       list(sub_stage = sub_stage)
@@ -198,8 +195,7 @@ nesterov_convex_step_q <- function(q, burn_in = 0) {
       if (iter < burn_in) {
         sub_stage$value <- 0
         sub_stage$theta_old <- 1
-      }
-      else {
+      } else {
         theta_old <- sub_stage$theta_old
         thetas <- solve_theta(theta_old, q)
         theta <- max(thetas)
@@ -210,14 +206,15 @@ nesterov_convex_step_q <- function(q, burn_in = 0) {
         # A q of 1 causes momentum to be zero. A q of 0 gives the same results as
         # the Sutskever momentum (not the approximation he gives, but the actual
         # expression given in the appendix/thesis).
-        sub_stage$value <- theta_old * (1 - theta_old) / (theta_old * theta_old + theta)
+        sub_stage$value <- theta_old *
+          (1 - theta_old) /
+          (theta_old * theta_old + theta)
         sub_stage$theta_old <- theta
         # message("Nesterov momentum = ", formatC(sub_stage$value))
       }
       list(sub_stage = sub_stage)
     },
-    after_step = function(opt, stage, sub_stage, par, fg, iter, par0,
-                          update) {
+    after_step = function(opt, stage, sub_stage, par, fg, iter, par0, update) {
       # message("nesterov_convex: after step")
       if (!opt$ok) {
         sub_stage$theta_old <- 1
