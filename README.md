@@ -1,6 +1,5 @@
 # mize
 
-[![AppVeyor build status](https://ci.appveyor.com/api/projects/status/github/jlmelville/mize?branch=master&svg=true)](https://ci.appveyor.com/project/jlmelville/mize)
 [![Coverage status](https://codecov.io/gh/jlmelville/mize/branch/master/graph/badge.svg)](https://codecov.io/github/jlmelville/mize?branch=master)
 [![R-CMD-check](https://github.com/jlmelville/mize/workflows/R-CMD-check/badge.svg)](https://github.com/jlmelville/mize/actions)
 [![CRAN Status Badge](http://www.r-pkg.org/badges/version/mize)](https://cran.r-project.org/package=mize)
