@@ -77,7 +77,7 @@ append_depends <- function(opt, stage_type = NULL, sub_stage_type = NULL,
     }
     depends <- stage[[sub_stage_type]]$depends
   }
-  else if (!is.null(stage)) {
+  else if (!is.null(stage_type)) {
     stage <- opt$stages[[stage_type]]
     if (is.null(stage)) {
       stop("No stage '", stage_type, "' exists for this optimizer")
@@ -96,7 +96,7 @@ append_depends <- function(opt, stage_type = NULL, sub_stage_type = NULL,
   if (!is.null(sub_stage_type)) {
     opt$stages[[stage_type]][[sub_stage_type]]$depends <- depends
   }
-  else if (!is.null(stage)) {
+  else if (!is.null(stage_type)) {
     opt$stages[[stage_type]]$depends <- depends
   }
   else {
