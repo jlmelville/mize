@@ -1,4 +1,3 @@
-context("Rasmussen Line Search")
 
 rls <- function(fg, x, pv = -fg$gr(x) / abs(fg$gr(x)), alpha, c1, c2,
                 xtol = 1e-6, eps = 1e-6, approx_armijo = FALSE,

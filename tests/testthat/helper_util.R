@@ -1,12 +1,22 @@
 # Functions used only for testing
 
+# testthat edition 3 delegates explicit numeric tolerances to waldo's relative
+# comparison. Use this helper only where optimizer traces intentionally need an
+# absolute tolerance around rounded reference values.
+expect_equal_abs <- function(object, expected, tolerance, info = NULL) {
+  testthat::expect_true(
+    max(abs(object - expected)) < tolerance,
+    info = info
+  )
+}
+
 # Step Size Expectation ---------------------------------------------------
 
 expect_step <- function(actual, x, f, df, alpha = x, nfev, tolerance = 1e-4, check_grad = TRUE) {
   expect_equal(actual$step$par, x, tolerance = tolerance)
   expect_equal(actual$step$f, f, tolerance = tolerance)
   if (check_grad) {
-    expect_equal(actual$step$df, df, tolerance = tolerance)
+    expect_equal_abs(actual$step$df, df, tolerance = tolerance)
   }
   expect_equal(actual$step$alpha, alpha, tolerance = tolerance)
   expect_equal(actual$nfn, nfev)

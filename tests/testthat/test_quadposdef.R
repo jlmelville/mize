@@ -1,4 +1,3 @@
-context("Solve Quadratic Positive Definite")
 
 test_that("can solve Ax = b", {
 
@@ -66,5 +65,5 @@ test_that("can solve Ax = b", {
     bmean = 0, bvar = 25
   )
   pd_res <- mize(rep(0, n), fg = pd_fg, max_iter = 1000)
-  expect_equal(pd_res$par, solve(pd_fg$A, pd_fg$b), tol = 1e-5)
+  expect_equal(pd_res$par, solve(pd_fg$A, pd_fg$b), tolerance = 1e-5)
 })

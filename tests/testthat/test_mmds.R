@@ -1,4 +1,3 @@
-context("MMDS")
 test_that("can do MMDS with eurodist", {
   make_mmds_fg <- function(distmat) {
     R <- as.matrix(distmat)

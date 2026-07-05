@@ -1,4 +1,3 @@
-context("Schmidt (MinFunc) Line Search")
 
 # Test values produced by running the original minFunc WolfeLineSearch function
 # using Octave 4.2.0

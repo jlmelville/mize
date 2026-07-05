@@ -1,4 +1,3 @@
-context("Newton Method")
 
 test_that("Newton with basic backtracking works ok", {
   opt <- make_opt(
@@ -46,11 +45,11 @@ test_that("Newton with basic backtracking works ok", {
   par <- c(1, 1)
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$alpha, alphas, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal(res$progress$alpha, alphas, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 # From https://math.stackexchange.com/questions/1130002/newton-optimization-algorithm-with-non-positive-definite-hessian
@@ -74,5 +73,5 @@ test_that("Newton method can survive non-positive definite Hessian", {
 
   par <- c(3, 0.5)
 
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })

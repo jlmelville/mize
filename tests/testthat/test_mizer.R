@@ -1,4 +1,3 @@
-context("Basic Tests")
 test_that("steepest descent with constant step size", {
   opt <- make_opt(
     make_stages(
@@ -27,10 +26,10 @@ test_that("steepest descent with constant step size", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 
   expect_equal(res$f, min(res$progress$f))
   expect_equal(res$g2n, min(res$progress$g2n))
@@ -69,10 +68,10 @@ test_that("counting result fun grad calls increases counts", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 
   expect_equal(res$f, min(res$progress$f))
   expect_equal(res$g2n, min(res$progress$g2n))
@@ -112,10 +111,10 @@ test_that("can check convergence less often and get fewer fn/gr calls", {
   expect_equal(rownames(res$progress), progress_iters)
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 
   expect_equal(res$f, min(res$progress$f))
   expect_equal(res$g2n, min(res$progress$g2n))
@@ -150,11 +149,11 @@ test_that("no grad norm returned or stored in progress when grad_tol is NULL", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
   expect_true(is.null(res$progress$g2n))
   expect_true(is.null(res$g2n))
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("steepest descent with constant step size and normalized direction", {
@@ -184,10 +183,10 @@ test_that("steepest descent with constant step size and normalized direction", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("steepest descent with bold driver", {
@@ -217,10 +216,10 @@ test_that("steepest descent with bold driver", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 
@@ -258,11 +257,11 @@ test_that("classical momentum with 0 step size should be like using no momentum"
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("classical momentum with constant step size", {
@@ -299,11 +298,11 @@ test_that("classical momentum with constant step size", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("eager classical momentum with constant step size should give same results as non-eager", {
@@ -341,11 +340,11 @@ test_that("eager classical momentum with constant step size should give same res
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 
@@ -381,11 +380,11 @@ test_that("classical momentum with bold driver", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("eager classical momentum with bold driver same as 'lazy' result", {
@@ -422,11 +421,11 @@ test_that("eager classical momentum with bold driver same as 'lazy' result", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("linear weighted classical momentum with bold driver", {
@@ -463,11 +462,11 @@ test_that("linear weighted classical momentum with bold driver", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("linear weighted eager classical momentum with bold driver", {
@@ -506,11 +505,11 @@ test_that("linear weighted eager classical momentum with bold driver", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("bold classical momentum with bold driver", {
@@ -547,11 +546,11 @@ test_that("bold classical momentum with bold driver", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("bold classical momentum with bold driver without cache gives same results, but requires extra work", {
@@ -586,11 +585,11 @@ test_that("bold classical momentum with bold driver without cache gives same res
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("classical momentum with bold driver and fn adaptive restart, same results as without when everything is ok", {
@@ -630,11 +629,11 @@ test_that("classical momentum with bold driver and fn adaptive restart, same res
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("classical momentum with bold driver and gr adaptive restart, same results as without when everything is ok", {
@@ -672,11 +671,11 @@ test_that("classical momentum with bold driver and gr adaptive restart, same res
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("classical momentum with bold driver aggressive momentum can cause cost increase", {
@@ -711,11 +710,11 @@ test_that("classical momentum with bold driver aggressive momentum can cause cos
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("classical momentum with bold driver adaptive gr momentum prevents cost increase", {
@@ -752,11 +751,11 @@ test_that("classical momentum with bold driver adaptive gr momentum prevents cos
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("classical momentum with bold driver adaptive fn momentum prevents cost increase", {
@@ -793,11 +792,11 @@ test_that("classical momentum with bold driver adaptive fn momentum prevents cos
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("classical momentum with constant function factory", {
@@ -840,11 +839,11 @@ test_that("classical momentum with constant function factory", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("classical momentum with ramp function", {
@@ -886,11 +885,11 @@ test_that("classical momentum with ramp function", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("classical momentum with switch function", {
@@ -932,11 +931,11 @@ test_that("classical momentum with switch function", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("sutskever nesterov momentum with bold driver", {
@@ -973,13 +972,13 @@ test_that("sutskever nesterov momentum with bold driver", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 
-  expect_equal(res$f, min(fs), tol = 1e-3)
+  expect_equal(res$f, min(fs), tolerance = 1e-3)
 })
 
 test_that("nesterov momentum with bold driver and adaptive fn", {
@@ -1017,11 +1016,11 @@ test_that("nesterov momentum with bold driver and adaptive fn", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("nesterov accelerated gradient with wolfe line search", {
@@ -1062,12 +1061,12 @@ test_that("nesterov accelerated gradient with wolfe line search", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
-  expect_equal(res$opt$all_fs, all_fs, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
+  expect_equal(res$opt$all_fs, all_fs, tolerance = 1e-3)
 })
 
 test_that("nesterov momentum with wolfe line search is like NAG", {
@@ -1116,12 +1115,12 @@ test_that("nesterov momentum with wolfe line search is like NAG", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
-  expect_equal(res$opt$all_fs, all_fs, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
+  expect_equal(res$opt$all_fs, all_fs, tolerance = 1e-3)
 })
 
 test_that("NAG with q = 1 is steepest descent", {
@@ -1155,11 +1154,11 @@ test_that("NAG with q = 1 is steepest descent", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("NAG with q close to 0 is the same as == 0", {
@@ -1198,11 +1197,11 @@ test_that("NAG with q close to 0 is the same as == 0", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("NAG with q = 0.5 between full NAG and SD", {
@@ -1235,11 +1234,11 @@ test_that("NAG with q = 0.5 between full NAG and SD", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("NAG with approximate convex momentum", {
@@ -1274,11 +1273,11 @@ test_that("NAG with approximate convex momentum", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("NAG with approximate convex momentum and mu = 0.5 at t = 1", {
@@ -1314,11 +1313,11 @@ test_that("NAG with approximate convex momentum and mu = 0.5 at t = 1", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 
@@ -1351,10 +1350,10 @@ test_that("Polak Ribiere CG with Rasmussen LS", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("BFGS with More-Thuente LS", {
@@ -1387,10 +1386,10 @@ test_that("BFGS with More-Thuente LS", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 
@@ -1424,10 +1423,10 @@ test_that("L-BFGS with More-Thuente LS gives same results as BFGS with sufficien
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("delta bar delta adaptive learning rate", {
@@ -1461,10 +1460,10 @@ test_that("delta bar delta adaptive learning rate", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("delta bar delta adaptive learning rate using momentum", {
@@ -1507,11 +1506,11 @@ test_that("delta bar delta adaptive learning rate using momentum", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("delta bar delta adaptive learning rate using momentum and additive increase", {
@@ -1556,9 +1555,9 @@ test_that("delta bar delta adaptive learning rate using momentum and additive in
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$progress$mu, mus, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })

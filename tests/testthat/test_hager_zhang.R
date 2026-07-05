@@ -1,4 +1,3 @@
-context("Hager-Zhang Line Search")
 
 # Results for the step size and number of function evaluations were generated
 # by comparing with the output of the implementation of HZ line search in

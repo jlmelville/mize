@@ -1,4 +1,3 @@
-context("API tests")
 
 # Repeat some of the basic tests, using the consumer API
 test_that("steepest descent with constant step size", {
@@ -10,9 +9,9 @@ test_that("steepest descent with constant step size", {
 
   expect_equal(res$nf, 1)
   expect_equal(res$ng, 4)
-  expect_equal(res$f, 12.81, tol = 1e-3)
-  expect_equal(res$g2n, 147.11, tol = 1e-3)
-  expect_equal(res$par, c(-1.144, 1.023), tol = 1e-3)
+  expect_equal(res$f, 12.81, tolerance = 1e-3)
+  expect_equal(res$g2n, 147.11, tolerance = 1e-3)
+  expect_equal(res$par, c(-1.144, 1.023), tolerance = 1e-3)
 })
 
 test_that("grad norm not returned (or calculated) if grad tol is NULL", {
@@ -24,9 +23,9 @@ test_that("grad norm not returned (or calculated) if grad tol is NULL", {
 
   expect_equal(res$nf, 1)
   expect_equal(res$ng, 3)
-  expect_equal(res$f, 12.81, tol = 1e-3)
+  expect_equal(res$f, 12.81, tolerance = 1e-3)
   expect_true(is.null(res$g2n))
-  expect_equal(res$par, c(-1.144, 1.023), tol = 1e-3)
+  expect_equal(res$par, c(-1.144, 1.023), tolerance = 1e-3)
 })
 
 
@@ -40,9 +39,9 @@ test_that("L-BFGS with More-Thuente LS", {
 
   expect_equal(res$nf, 17)
   expect_equal(res$ng, 17)
-  expect_equal(res$f, 3.53, tol = 1e-3)
-  expect_equal(res$g2n, 24.98, tol = 1e-3)
-  expect_equal(res$par, c(-0.785, 0.558), tol = 1e-3)
+  expect_equal(res$f, 3.53, tolerance = 1e-3)
+  expect_equal(res$g2n, 24.98, tolerance = 1e-3)
+  expect_equal(res$par, c(-0.785, 0.558), tolerance = 1e-3)
 })
 
 test_that("L-BFGS with More-Thuente LS and inv Hess initial guess", {
@@ -54,9 +53,9 @@ test_that("L-BFGS with More-Thuente LS and inv Hess initial guess", {
 
   expect_equal(res$nf, 19)
   expect_equal(res$ng, 19)
-  expect_equal(res$f, 3.71, tol = 1e-3)
-  expect_equal(res$g2n, 27.40, tol = 1e-3)
-  expect_equal(res$par, c(-0.820, 0.610), tol = 1e-3)
+  expect_equal(res$f, 3.71, tolerance = 1e-3)
+  expect_equal(res$g2n, 27.40, tolerance = 1e-3)
+  expect_equal(res$par, c(-0.820, 0.610), tolerance = 1e-3)
 })
 
 
@@ -71,9 +70,9 @@ test_that("L-BFGS with More-Thuente LS and max alpha guess increase", {
   # Get to the same result as without ls_max_alpha_mult but more evaluations
   expect_equal(res$nf, 21)
   expect_equal(res$ng, 21)
-  expect_equal(res$f, 3.53, tol = 1e-3)
-  expect_equal(res$g2n, 24.98, tol = 1e-3)
-  expect_equal(res$par, c(-0.785, 0.558), tol = 1e-3)
+  expect_equal(res$f, 3.53, tolerance = 1e-3)
+  expect_equal(res$g2n, 24.98, tolerance = 1e-3)
+  expect_equal(res$par, c(-0.785, 0.558), tolerance = 1e-3)
 })
 
 
@@ -87,9 +86,9 @@ test_that("BFGS with Hessian inverse diagonal", {
 
   expect_equal(res$nf, 4)
   expect_equal(res$ng, 4)
-  expect_equal(res$f, 4.461, tol = 1e-3)
-  expect_equal(res$g2n, 6.524, tol = 1e-3)
-  expect_equal(res$par, c(-1.112, 1.231), tol = 1e-3)
+  expect_equal(res$f, 4.461, tolerance = 1e-3)
+  expect_equal(res$g2n, 6.524, tolerance = 1e-3)
+  expect_equal(res$par, c(-1.112, 1.231), tolerance = 1e-3)
 })
 
 test_that("BFGS with Hessian inverse matrix", {
@@ -106,9 +105,9 @@ test_that("BFGS with Hessian inverse matrix", {
 
   expect_equal(res$nf, 4)
   expect_equal(res$ng, 4)
-  expect_equal(res$f, 4.968, tol = 1e-3)
-  expect_equal(res$g2n, 31.81, tol = 1e-3)
-  expect_equal(res$par, c(-1.160, 1.290), tol = 1e-3)
+  expect_equal(res$f, 4.968, tolerance = 1e-3)
+  expect_equal(res$g2n, 31.81, tolerance = 1e-3)
+  expect_equal(res$par, c(-1.160, 1.290), tolerance = 1e-3)
 })
 
 test_that("BFGS with More-Thuente LS and max alpha", {
@@ -121,9 +120,9 @@ test_that("BFGS with More-Thuente LS and max alpha", {
 
   expect_equal(res$nf, 14)
   expect_equal(res$ng, 14)
-  expect_equal(res$f, 3.726, tol = 1e-3)
-  expect_equal(res$g2n, 18.83, tol = 1e-3)
-  expect_equal(res$par, c(-0.893, 0.760), tol = 1e-3)
+  expect_equal(res$f, 3.726, tolerance = 1e-3)
+  expect_equal(res$g2n, 18.83, tolerance = 1e-3)
+  expect_equal(res$par, c(-0.893, 0.760), tolerance = 1e-3)
 })
 
 test_that("BFGS with More-Thuente LS and fixed initial alpha guess", {
@@ -136,9 +135,9 @@ test_that("BFGS with More-Thuente LS and fixed initial alpha guess", {
   # Get to the same result as without step_next_init but more evaluations
   expect_equal(res$nf, 21)
   expect_equal(res$ng, 21)
-  expect_equal(res$f, 3.53, tol = 1e-3)
-  expect_equal(res$g2n, 24.98, tol = 1e-3)
-  expect_equal(res$par, c(-0.785, 0.558), tol = 1e-3)
+  expect_equal(res$f, 3.53, tolerance = 1e-3)
+  expect_equal(res$g2n, 24.98, tolerance = 1e-3)
+  expect_equal(res$par, c(-0.785, 0.558), tolerance = 1e-3)
 })
 
 test_that("SR1 with More-Thuente LS", {
@@ -151,9 +150,9 @@ test_that("SR1 with More-Thuente LS", {
 
   expect_equal(res$nf, 6)
   expect_equal(res$ng, 6)
-  expect_equal(res$f, 3.47, tol = 1e-3)
-  expect_equal(res$g2n, 17.87, tol = 1e-3)
-  expect_equal(res$par, c(-0.824, 0.641), tol = 1e-3)
+  expect_equal(res$f, 3.47, tolerance = 1e-3)
+  expect_equal(res$g2n, 17.87, tolerance = 1e-3)
+  expect_equal(res$par, c(-0.824, 0.641), tolerance = 1e-3)
 })
 
 test_that("SR1 with approx Hessian init", {
@@ -166,9 +165,9 @@ test_that("SR1 with approx Hessian init", {
 
   expect_equal(res$nf, 4)
   expect_equal(res$ng, 4)
-  expect_equal(res$f, 4.432, tol = 1e-3)
-  expect_equal(res$g2n, 5.289, tol = 1e-3)
-  expect_equal(res$par, c(-1.105, 1.219), tol = 1e-3)
+  expect_equal(res$f, 4.432, tolerance = 1e-3)
+  expect_equal(res$g2n, 5.289, tolerance = 1e-3)
+  expect_equal(res$par, c(-1.105, 1.219), tolerance = 1e-3)
 })
 
 test_that("CG with Schmidt LS", {
@@ -184,9 +183,9 @@ test_that("CG with Schmidt LS", {
 
   expect_equal(res$nf, 10)
   expect_equal(res$ng, 10)
-  expect_equal(res$f, 2.859, tol = 1e-3)
-  expect_equal(res$g2n, 3.650, tol = 1e-3)
-  expect_equal(res$par, c(-0.682, 0.483), tol = 1e-3)
+  expect_equal(res$f, 2.859, tolerance = 1e-3)
+  expect_equal(res$g2n, 3.650, tolerance = 1e-3)
+  expect_equal(res$par, c(-0.682, 0.483), tolerance = 1e-3)
 })
 
 # Tests error referenced in https://github.com/jlmelville/mize/pull/1
@@ -202,9 +201,9 @@ test_that("ls_max_fn", {
 
   expect_equal(res$nf, 7)
   expect_equal(res$ng, 7)
-  expect_equal(res$f, 3.947, tol = 1e-3)
-  expect_equal(res$g2n, 1.872, tol = 1e-3)
-  expect_equal(res$par, c(-0.986, 0.978), tol = 1e-3)
+  expect_equal(res$f, 3.947, tolerance = 1e-3)
+  expect_equal(res$g2n, 1.872, tolerance = 1e-3)
+  expect_equal(res$par, c(-0.986, 0.978), tolerance = 1e-3)
 })
 
 test_that("CG with Rasmussen LS", {
@@ -220,9 +219,9 @@ test_that("CG with Rasmussen LS", {
 
   expect_equal(res$nf, 27)
   expect_equal(res$ng, 27)
-  expect_equal(res$f, 3.53, tol = 1e-3)
-  expect_equal(res$g2n, 24.98, tol = 1e-3)
-  expect_equal(res$par, c(-0.785, 0.558), tol = 1e-3)
+  expect_equal(res$f, 3.53, tolerance = 1e-3)
+  expect_equal(res$g2n, 24.98, tolerance = 1e-3)
+  expect_equal(res$par, c(-0.785, 0.558), tolerance = 1e-3)
 })
 
 test_that("HZ CG with HZ LS", {
@@ -238,9 +237,9 @@ test_that("HZ CG with HZ LS", {
 
   expect_equal(res$nf, 10)
   expect_equal(res$ng, 8)
-  expect_equal(res$f, 4.09, tol = 1e-3)
-  expect_equal(res$g2n, 1.789, tol = 1e-3)
-  expect_equal(res$par, c(-1.020, 1.050), tol = 1e-3)
+  expect_equal(res$f, 4.09, tolerance = 1e-3)
+  expect_equal(res$g2n, 1.789, tolerance = 1e-3)
+  expect_equal(res$par, c(-1.020, 1.050), tolerance = 1e-3)
 })
 
 
@@ -255,9 +254,9 @@ test_that("CG with Rasmussen LS and max_fn termination", {
 
   expect_equal(res$nf, 20)
   expect_equal(res$ng, 20)
-  expect_equal(res$f, 3.54, tol = 1e-3)
-  expect_equal(res$g2n, 23.23, tol = 1e-3)
-  expect_equal(res$par, c(-0.806, 0.596), tol = 1e-3)
+  expect_equal(res$f, 3.54, tolerance = 1e-3)
+  expect_equal(res$g2n, 23.23, tolerance = 1e-3)
+  expect_equal(res$par, c(-0.806, 0.596), tolerance = 1e-3)
 })
 
 
@@ -274,9 +273,9 @@ test_that("NAG with Rasmussen LS", {
 
   expect_equal(res$nf, 29)
   expect_equal(res$ng, 29)
-  expect_equal(res$f, 3.56, tol = 1e-3)
-  expect_equal(res$g2n, 7.2, tol = 1e-3)
-  expect_equal(res$par, c(-0.869, 0.781), tol = 1e-3)
+  expect_equal(res$f, 3.56, tolerance = 1e-3)
+  expect_equal(res$g2n, 7.2, tolerance = 1e-3)
+  expect_equal(res$par, c(-0.869, 0.781), tolerance = 1e-3)
 })
 
 test_that("bold driver SD and classical momentum", {
@@ -290,9 +289,9 @@ test_that("bold driver SD and classical momentum", {
 
   expect_equal(res$nf, 12)
   expect_equal(res$ng, 5) # extra grad eval needed to get data for best found
-  expect_equal(res$f, 4.38, tol = 1e-3)
-  expect_equal(res$g2n, 23.21, tol = 1e-3)
-  expect_equal(res$par, c(-1.006, 1.071), tol = 1e-3)
+  expect_equal(res$f, 4.38, tolerance = 1e-3)
+  expect_equal(res$g2n, 23.21, tolerance = 1e-3)
+  expect_equal(res$par, c(-1.006, 1.071), tolerance = 1e-3)
 })
 
 test_that("bold driver SD and nesterov momentum", {
@@ -306,9 +305,9 @@ test_that("bold driver SD and nesterov momentum", {
 
   expect_equal(res$nf, 12)
   expect_equal(res$ng, 5)
-  expect_equal(res$f, 4.38, tol = 1e-3)
-  expect_equal(res$g2n, 23.21, tol = 1e-3)
-  expect_equal(res$par, c(-1.006, 1.071), tol = 1e-3)
+  expect_equal(res$f, 4.38, tolerance = 1e-3)
+  expect_equal(res$g2n, 23.21, tolerance = 1e-3)
+  expect_equal(res$par, c(-1.006, 1.071), tolerance = 1e-3)
 })
 
 test_that("Delta bar delta adaptive learning rate and nesterov momentum", {
@@ -322,9 +321,9 @@ test_that("Delta bar delta adaptive learning rate and nesterov momentum", {
 
   expect_equal(res$nf, 1)
   expect_equal(res$ng, 4)
-  expect_equal(res$f, 4.84, tol = 1e-3)
-  expect_equal(res$g2n, 37.85, tol = 1e-3)
-  expect_equal(res$par, c(-0.993, 1.079), tol = 1e-3)
+  expect_equal(res$f, 4.84, tolerance = 1e-3)
+  expect_equal(res$g2n, 37.85, tolerance = 1e-3)
+  expect_equal(res$par, c(-0.993, 1.079), tolerance = 1e-3)
 })
 
 test_that("Terminates semi-gracefully if function value is non-finite", {
@@ -351,7 +350,7 @@ test_that("Step tolerance is triggered when progress stalls", {
   )
   expect_equal(res$nf, 57)
   expect_equal(res$ng, 57)
-  expect_equal(res$f, 0, tol = 1e-3)
+  expect_equal(res$f, 0, tolerance = 1e-3)
   expect_equal(res$par, c(1, 1))
   expect_equal(res$terminate$what, "step_tol")
 })
@@ -379,7 +378,7 @@ test_that("max_fn errs on the side of caution", {
   expect_equal(res$terminate$what, "max_fn")
   expect_equal(res$terminate$val, 14)
   expect_equal(res$nf, 14)
-  expect_equal(res$f, 4.08, tol = 1e-3)
+  expect_equal(res$f, 4.08, tolerance = 1e-3)
 })
 
 test_that("max_fg also errs on the side of caution", {
@@ -391,7 +390,7 @@ test_that("max_fg also errs on the side of caution", {
   expect_equal(res$terminate$val, 29)
   expect_equal(res$nf, 15)
   expect_equal(res$ng, 14)
-  expect_equal(res$f, 4.08, tol = 1e-3)
+  expect_equal(res$f, 4.08, tolerance = 1e-3)
 })
 
 test_that("max_fn with DBD", {
@@ -402,7 +401,7 @@ test_that("max_fn with DBD", {
   expect_equal(res$terminate$val, 30)
   expect_equal(res$nf, 30)
   expect_equal(res$ng, 30)
-  expect_equal(res$f, 4.133, tol = 1e-3)
+  expect_equal(res$f, 4.133, tolerance = 1e-3)
 })
 
 test_that("max_fg with DBD", {
@@ -411,7 +410,7 @@ test_that("max_fg with DBD", {
   expect_equal(res$terminate$val, 30)
   expect_equal(res$nf, 15)
   expect_equal(res$ng, 15)
-  expect_equal(res$f, 7.914, tol = 1e-3)
+  expect_equal(res$f, 7.914, tolerance = 1e-3)
 })
 
 test_that("max functions per line search", {
@@ -425,7 +424,7 @@ test_that("max functions per line search", {
   expect_equal(res$terminate$val, 0)
   expect_equal(res$nf, 21)
   expect_equal(res$ng, 21)
-  expect_equal(res$f, 0, tol = 1e-3)
+  expect_equal(res$f, 0, tolerance = 1e-3)
 })
 
 test_that("backtracking line search", {
@@ -435,8 +434,8 @@ test_that("backtracking line search", {
   )
   expect_equal(res$nf, 7)
   expect_equal(res$ng, 6)
-  expect_equal(res$f, 20.44, tol = 1e-3)
-  expect_equal(res$par, c(-1.184, 1.006), tol = 1e-3)
+  expect_equal(res$f, 20.44, tolerance = 1e-3)
+  expect_equal(res$par, c(-1.184, 1.006), tolerance = 1e-3)
 })
 
 test_that("MT safeguard cubic", {
@@ -449,11 +448,11 @@ test_that("MT safeguard cubic", {
   # These three should be different from ls_safe_cubic = FALSE
   expect_equal(res$nf, 25) # 24 otherwise
   expect_equal(res$ng, 25)
-  expect_equal(res$g2n, 4.604, tol = 1e-3) # approx 4.627 otherwise
+  expect_equal(res$g2n, 4.604, tolerance = 1e-3) # approx 4.627 otherwise
 
   # These are the same within tolerance
-  expect_equal(res$f, 2.8, tol = 1e-3)
-  expect_equal(res$par, c(-0.6605, 0.4568), tol = 1e-3)
+  expect_equal(res$f, 2.8, tolerance = 1e-3)
+  expect_equal(res$par, c(-0.6605, 0.4568), tolerance = 1e-3)
 })
 
 test_that("Truncated Newton with constant step size", {
@@ -465,9 +464,9 @@ test_that("Truncated Newton with constant step size", {
 
   expect_equal(res$nf, 1)
   expect_equal(res$ng, 8)
-  expect_equal(res$f, 4.118, tol = 1e-3)
-  expect_equal(res$g2n, 4.219, tol = 1e-3)
-  expect_equal(res$par, c(-1.023, 1.062), tol = 1e-3)
+  expect_equal(res$f, 4.118, tolerance = 1e-3)
+  expect_equal(res$g2n, 4.219, tolerance = 1e-3)
+  expect_equal(res$par, c(-1.023, 1.062), tolerance = 1e-3)
 })
 
 # Ensure TN direction can't exceed gr budget
@@ -483,8 +482,8 @@ test_that("Truncated Newton with max_gr", {
   expect_equal(res$nf, 1)
   # If grad_tol or ginf_tol was calculated we would get max_gr + 1
   expect_equal(res$ng, 6)
-  expect_equal(res$f, 4.118, tol = 1e-3)
-  expect_equal(res$par, c(-1.023, 1.062), tol = 1e-3)
+  expect_equal(res$f, 4.118, tolerance = 1e-3)
+  expect_equal(res$par, c(-1.023, 1.062), tolerance = 1e-3)
 })
 
 
@@ -500,4 +499,3 @@ test_that("Report ng correctly with simple backtracking line search", {
   expect_equal(res$nf, 3)
   expect_equal(res$ng, 3)
 })
-

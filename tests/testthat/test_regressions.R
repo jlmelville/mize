@@ -1,4 +1,3 @@
-context("Regression tests")
 
 test_that("Newton direction uses inverse Hessian functions", {
   quadratic_fg <- list(

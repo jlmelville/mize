@@ -1,4 +1,3 @@
-context("PR-CG with Rasmussen step size")
 test_that("CG gives same results as minimize.m webpage", {
   # example from (http://learning.eng.cam.ac.uk/carl/code/minimize/ -- this
   # link is now dead, but code can be found at
@@ -52,10 +51,10 @@ test_that("CG gives same results as minimize.m webpage", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })
 
 test_that("CG without fg helper function gives same results", {
@@ -107,8 +106,8 @@ test_that("CG without fg helper function gives same results", {
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tol = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tol = 1e-3)
-  expect_equal(res$progress$step, steps, tol = 1e-3)
-  expect_equal(res$par, par, tol = 1e-3)
+  expect_equal(res$progress$f, fs, tolerance = 1e-3)
+  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
+  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
+  expect_equal(res$par, par, tolerance = 1e-3)
 })

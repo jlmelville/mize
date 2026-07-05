@@ -1,4 +1,3 @@
-context("Momentum")
 
 test_that("momentum schedules", {
   constant_m <- make_constant(0.5)
@@ -25,7 +24,7 @@ test_that("momentum schedules", {
 
   linear_m <- make_ramp(init_value = 0.1, final_value = 0.8)
   expect_equal(linear_m(1, max_iter = 1000), 0.1)
-  expect_equal(linear_m(500, max_iter = 1000), 0.45, tol = 1e-3)
+  expect_equal(linear_m(500, max_iter = 1000), 0.45, tolerance = 1e-3)
   expect_equal(linear_m(1000, max_iter = 1000), 0.8)
 
   nest_m <- make_nesterov_convex_approx(burn_in = 0, use_init_mu = FALSE)

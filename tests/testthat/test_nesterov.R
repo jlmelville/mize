@@ -1,4 +1,3 @@
-context("Nesterov Momentum")
 
 # From the table in https://jlmelville.github.io/mize/nesterov.html
 # Uses R code, but nothing from mize
@@ -10,7 +9,7 @@ test_that("classical momentum with constant step size", {
   )
 
   expect_equal(res$progress$f, c(24.20, 5.35, 25.54, 22.49, 4.32, 18.83),
-    tol = 1e-3
+    tolerance = 1e-3
   )
 })
 
@@ -23,7 +22,7 @@ test_that("nesterov momentum with constant step size", {
   )
 
   expect_equal(res$progress$f, c(24.20, 34.96, 7.04, 5.02, 3.85, 3.75),
-    tol = 1e-3
+    tolerance = 1e-3
   )
 })
 
@@ -36,7 +35,7 @@ test_that("NAG with constant step size", {
   )
 
   expect_equal(res$progress$f, c(24.20, 34.96, 7.04, 5.02, 3.85, 3.75),
-    tol = 1e-3
+    tolerance = 1e-3
   )
 })
 
@@ -48,7 +47,7 @@ test_that("classical momentum  using initial momentum should make no difference"
   )
 
   expect_equal(res$progress$f, c(24.20, 5.35, 25.54, 22.49, 4.32, 18.83),
-    tol = 1e-3
+    tolerance = 1e-3
   )
 })
 
@@ -61,7 +60,7 @@ test_that("nesterov momentum with constant step size force gradient descent firs
   )
 
   expect_equal(res$progress$f, c(24.20, 5.35, 5.26, 4.13, 4.10, 4.07),
-    tol = 1e-3
+    tolerance = 1e-3
   )
 })
 
@@ -74,6 +73,6 @@ test_that("NAG with constant step size force gradient descent first iteration", 
   )
 
   expect_equal(res$progress$f, c(24.20, 5.35, 5.26, 4.13, 4.10, 4.07),
-    tol = 1e-3
+    tolerance = 1e-3
   )
 })
