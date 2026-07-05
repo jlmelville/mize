@@ -637,17 +637,18 @@ lbfgs_memory_update <- function(lbfgs_state, ym, sm, eps) {
   sms <- lbfgs_state$sms
   yms <- lbfgs_state$yms
 
-  # discard oldest values if we've reached memory limit
-  if (length(sms) == lbfgs_state$memory) {
-    sms <- sms[2:length(sms)]
-    yms <- yms[2:length(yms)]
-    rhos <- rhos[2:length(rhos)]
-  }
-
   # append latest values to memory
   sms <- c(sms, list(sm))
   yms <- c(yms, list(ym))
   rhos <- c(rhos, list(rho))
+
+  # discard oldest values if we've exceeded the memory limit
+  if (length(sms) > lbfgs_state$memory) {
+    keep <- seq.int(length(sms) - lbfgs_state$memory + 1L, length(sms))
+    sms <- sms[keep]
+    yms <- yms[keep]
+    rhos <- rhos[keep]
+  }
 
   lbfgs_state$sms <- sms
   lbfgs_state$yms <- yms
