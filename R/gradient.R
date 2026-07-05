@@ -753,7 +753,7 @@ newton_direction <- function(try_safe_chol = FALSE) {
       }
       else if (!is.null(fg$hi)) {
         # H, an approximation to (or exact) inverse of the Hessian
-        hm <- fg$hs(par)
+        hm <- fg$hi(par)
         if (methods::is(hm, "matrix")) {
           pm <- -hm %*% gm
         }
