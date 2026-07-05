@@ -87,7 +87,19 @@ check_fn_conv <- function(opt, iter, fn_old, fn_new, abs_tol, rel_tol) {
   }
 
   if (!is.null(rel_tol)) {
-    rtol <- abs(fn_old - fn_new) / min(abs(fn_new), abs(fn_old))
+    fdelta <- abs(fn_old - fn_new)
+    fdenom <- min(abs(fn_new), abs(fn_old))
+    rtol <- if (fdenom == 0) {
+      if (fdelta == 0) {
+        0
+      }
+      else {
+        Inf
+      }
+    }
+    else {
+      fdelta / fdenom
+    }
     if (rtol < rel_tol) {
       return(list(what = "rel_tol", val = rtol))
     }
