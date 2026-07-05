@@ -4,15 +4,14 @@
 #
 # Line search algorithm originally written by Carl Edward Rasmussen in his
 # conjugate gradient routine. It consists of two main parts:
-# \enumerate{
-#  \item Using cubic extrapolation from an initial starting guess for the step
+#
+# 1. Using cubic extrapolation from an initial starting guess for the step
 #    size until either the sufficient decrease condition is not met or the
 #    curvature condition is met.
-#  \item Interpolation (quadratic or cubic) between that point and the start
+# 2. Interpolation (quadratic or cubic) between that point and the start
 #    point of the search until either a step size is found which meets the
 #    Strong Wolfe conditions or the maximum number of allowed function
 #    evaluations is reached.
-# }
 #
 # The extrapolation and interpolation steps are bounded at each stage to ensure
 # they don't represent too large or small a change to the step size.
@@ -27,7 +26,7 @@
 # @param max_fn Maximum number of function evaluations allowed per line search.
 # @return Line search function.
 # @seealso based on code written by Carl Edward Rasmussen for the Matlab 
-#  \href{(https://www.gaussianprocess.org/gpml/code/matlab/doc/)}{GPML} package.
+#  [GPML](https://www.gaussianprocess.org/gpml/code/matlab/doc/) package.
 rasmussen <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
                       max_fn = Inf, xtol = 1e-6, eps = 1e-6, approx_armijo = FALSE,
                       strong_curvature = TRUE, verbose = FALSE) {
@@ -81,10 +80,9 @@ rasmussen <- function(c1 = c2 / 2, c2 = 0.1, int = 0.1, ext = 3.0,
 # @param int Interpolation constant. Prevents step size being too small.
 # @param max_fn Maximum number of function evaluations allowed.
 # @return List containing:
-# \itemize{
-#   \item step Valid step size or the last step size evaluated.
-#   \item nfn Number of function evaluations.
-# }
+#
+# * `step`: Valid step size or the last step size evaluated.
+# * `nfn`: Number of function evaluations.
 ras_ls <- function(phi, alpha, step0, c1 = 0.1, c2 = 0.1 / 2, ext = 3.0,
                    int = 0.1, max_fn = Inf, xtol = 1e-6,
                    armijo_check_fn = armijo_ok_step,
@@ -150,10 +148,9 @@ ras_ls <- function(phi, alpha, step0, c1 = 0.1, c2 = 0.1 / 2, ext = 3.0,
 #   too small.
 # @param max_fn Maximum number of function evaluations allowed.
 # @return List containing:
-# \itemize{
-#   \item step Valid step size or the last step size evaluated.
-#   \item nfn Number of function evaluations.
-# }
+#
+# * `step`: Valid step size or the last step size evaluated.
+# * `nfn`: Number of function evaluations.
 extrapolate_step_size <- function(phi, alpha, step0, c1, c2, ext, int,
                                   max_fn = 20,
                                   armijo_check_fn = armijo_ok_step,
@@ -235,10 +232,9 @@ tweaked_extrapolation <- function(step0, step, ext, int) {
 # @param int Interpolation constant. Prevents step size being too small.
 # @param max_fn Maximum number of function evaluations allowed.
 # @return List containing:
-# \itemize{
-#   \item step Valid step size or the last step size evaluated.
-#   \item nfn Number of function evaluations.
-# }
+#
+# * `step`: Valid step size or the last step size evaluated.
+# * `nfn`: Number of function evaluations.
 interpolate_step_size <- function(phi, step0, step, c1, c2, int, max_fn = 20,
                                   xtol = 1e-6,
                                   armijo_check_fn = armijo_ok_step,

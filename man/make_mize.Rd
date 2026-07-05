@@ -57,7 +57,7 @@ make_mize(
 )
 }
 \arguments{
-\item{method}{Optimization method. See 'Details' of \code{\link{mize}}.}
+\item{method}{Optimization method. See 'Details' of \code{\link[=mize]{mize()}}.}
 
 \item{norm_direction}{If \code{TRUE}, then the steepest descent direction is
 normalized to unit length. Useful for adaptive step size methods where the
@@ -124,7 +124,7 @@ and only if no momentum scheme is provided. Must be an integer between 0
 and 1.}
 
 \item{line_search}{Type of line search to use. See 'Details' of
-\code{\link{mize}}.}
+\code{\link[=mize]{mize()}}.}
 
 \item{c1}{Sufficient decrease parameter for Wolfe-type line searches. Should
 be a value between 0 and 1.}
@@ -133,11 +133,11 @@ be a value between 0 and 1.}
 searches. Should be a value between \code{c1} and 1.}
 
 \item{step0}{Initial value for the line search on the first step. See
-'Details' of \code{\link{mize}}.}
+'Details' of \code{\link[=mize]{mize()}}.}
 
 \item{step_next_init}{For Wolfe-type line searches only, how to initialize
 the line search on iterations after the first. See 'Details' of
-\code{\link{mize}}.}
+\code{\link[=mize]{mize()}}.}
 
 \item{try_newton_step}{For Wolfe-type line searches only, try the line step
 value of 1 as the initial step size whenever \code{step_next_init} suggests
@@ -168,16 +168,16 @@ Only applies for \code{line_search = "more-thuente"}.}
 
 \item{strong_curvature}{(Optional). If \code{TRUE} use the strong
 curvature condition in Wolfe line search. See the 'Line Search' section of
-\code{\link{mize}} for details.}
+\code{\link[=mize]{mize()}} for details.}
 
 \item{approx_armijo}{(Optional). If \code{TRUE} use the approximate Armijo
 condition in Wolfe line search. See the 'Line Search' section of
-\code{\link{mize}} for details.}
+\code{\link[=mize]{mize()}} for details.}
 
 \item{mom_type}{Momentum type, either \code{"classical"} or
 \code{"nesterov"}.}
 
-\item{mom_schedule}{Momentum schedule. See 'Details' of \code{\link{mize}}.}
+\item{mom_schedule}{Momentum schedule. See 'Details' of \code{\link[=mize]{mize()}}.}
 
 \item{mom_init}{Initial momentum value.}
 
@@ -194,7 +194,7 @@ first iteration is non-zero. Otherwise, it's zero. Only applies if using a
 momentum schedule.}
 
 \item{restart}{Momentum restart type. Can be one of "fn" or "gr". See
-'Details' of \code{\link{mize}}.}
+'Details' of \code{\link[=mize]{mize()}}.}
 
 \item{restart_wait}{Number of iterations to wait between restarts. Ignored if
 \code{restart} is \code{NULL}.}
@@ -202,38 +202,38 @@ momentum schedule.}
 \item{par}{(Optional) Initial values for the function to be optimized over.}
 
 \item{fg}{(Optional). Function and gradient list. See 'Details' of
-\code{\link{mize}}.}
+\code{\link[=mize]{mize()}}.}
 
 \item{max_iter}{(Optional). Maximum number of iterations. See the
-'Convergence' section of \code{\link{mize}} for details.}
+'Convergence' section of \code{\link[=mize]{mize()}} for details.}
 
 \item{max_fn}{(Optional). Maximum number of function evaluations. See the
-'Convergence' section of \code{\link{mize}} for details.}
+'Convergence' section of \code{\link[=mize]{mize()}} for details.}
 
 \item{max_gr}{(Optional). Maximum number of gradient evaluations. See the
-'Convergence' section of \code{\link{mize}} for details.}
+'Convergence' section of \code{\link[=mize]{mize()}} for details.}
 
 \item{max_fg}{(Optional). Maximum number of function or gradient evaluations.
-See the 'Convergence' section of \code{\link{mize}} for details.}
+See the 'Convergence' section of \code{\link[=mize]{mize()}} for details.}
 
 \item{abs_tol}{(Optional). Absolute tolerance for comparing two function
-evaluations. See the 'Convergence' section of \code{\link{mize}} for
+evaluations. See the 'Convergence' section of \code{\link[=mize]{mize()}} for
 details.}
 
 \item{rel_tol}{(Optional). Relative tolerance for comparing two function
-evaluations. See the 'Convergence' section of \code{\link{mize}} for
+evaluations. See the 'Convergence' section of \code{\link[=mize]{mize()}} for
 details.}
 
 \item{grad_tol}{(Optional). Absolute tolerance for the length (l2-norm) of
-the gradient vector. See the 'Convergence' section of \code{\link{mize}}
+the gradient vector. See the 'Convergence' section of \code{\link[=mize]{mize()}}
 for details.}
 
 \item{ginf_tol}{(Optional). Absolute tolerance for the infinity norm (maximum
 absolute component) of the gradient vector. See the 'Convergence' section
-of \code{\link{mize}} for details.}
+of \code{\link[=mize]{mize()}} for details.}
 
 \item{step_tol}{(Optional). Absolute tolerance for the size of the parameter
-update. See the 'Convergence' section of \code{\link{mize}} for details.}
+update. See the 'Convergence' section of \code{\link[=mize]{mize()}} for details.}
 }
 \description{
 Factory function for creating a (possibly uninitialized) optimizer.
@@ -241,21 +241,21 @@ Factory function for creating a (possibly uninitialized) optimizer.
 \details{
 If the function to be optimized and starting point are not present at
 creation time, then the optimizer should be initialized using
-\code{\link{mize_init}} before being used with \code{\link{mize_step}}.
+\code{\link[=mize_init]{mize_init()}} before being used with \code{\link[=mize_step]{mize_step()}}.
 
-See the documentation to \code{\link{mize}} for an explanation of all the
+See the documentation to \code{\link[=mize]{mize()}} for an explanation of all the
 parameters.
 
 Details of the \code{fg} list containing the function to be optimized and its
-gradient can be found in the 'Details' section of \code{\link{mize}}. It is
+gradient can be found in the 'Details' section of \code{\link[=mize]{mize()}}. It is
 optional for this function, but if it is passed to this function, along with
 the vector of initial values, \code{par}, the optimizer will be returned
-already initialized for this function. Otherwise, \code{\link{mize_init}}
+already initialized for this function. Otherwise, \code{\link[=mize_init]{mize_init()}}
 must be called before optimization begins.
 
 Additionally, optional convergence parameters may also be passed here, for
-use with \code{\link{check_mize_convergence}}. They are optional here if you
-plan to call \code{\link{mize_init}} later, or if you want to do your own
+use with \code{\link[=check_mize_convergence]{check_mize_convergence()}}. They are optional here if you
+plan to call \code{\link[=mize_init]{mize_init()}} later, or if you want to do your own
 convergence checking.
 }
 \examples{

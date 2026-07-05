@@ -251,37 +251,37 @@ value.}
 \value{
 A list with components:
 \itemize{
-\item{\code{par}} Optimized parameters. Normally, this is the best set of
+\item \code{par}: Optimized parameters. Normally, this is the best set of
 parameters seen during optimization, i.e. the set that produced the minimum
 function value. This requires that convergence checking with is carried out,
 including function evaluation where necessary. See the 'Convergence'
 section for details.
-\item{\code{nf}} Total number of function evaluations carried out. This
+\item \code{nf}: Total number of function evaluations carried out. This
 includes any extra evaluations required for convergence calculations. Also,
 a function evaluation may be required to calculate the value of \code{f}
 returned in this list (see below). Additionally, if the \code{verbose}
 parameter is \code{TRUE}, then function and gradient information for the
 initial value of \code{par} will be logged to the console. These values
 are cached for subsequent use by the optimizer.
-\item{\code{ng}} Total number of gradient evaluations carried out. This
+\item \code{ng}: Total number of gradient evaluations carried out. This
 includes any extra evaluations required for convergence calculations using
 \code{grad_tol}. As with \code{nf}, additional gradient calculations beyond
 what you're expecting may have been needed for logging, convergence and
 calculating the value of \code{g2n} or \code{ginfn} (see below).
-\item{\code{f}} Value of the function, evaluated at the returned
+\item \code{f}: Value of the function, evaluated at the returned
 value of \code{par}.
-\item{\code{g2n}} Optional: the length (Euclidean or l2-norm) of the
+\item \code{g2n}: Optional: the length (Euclidean or l2-norm) of the
 gradient vector, evaluated at the returned value of \code{par}. Calculated
 only if \code{grad_tol} is non-null.
-\item{\code{ginfn}} Optional: the infinity norm (maximum absolute component)
+\item \code{ginfn}: Optional: the infinity norm (maximum absolute component)
 of the gradient vector, evaluated at the returned value of \code{par}.
 Calculated only if \code{ginf_tol} is non-null.
-\item{\code{iter}} The number of iterations the optimization was carried
+\item \code{iter}: The number of iterations the optimization was carried
 out for.
-\item{\code{terminate}} List containing items: \code{what}, indicating what
+\item \code{terminate}: List containing items: \code{what}, indicating what
 convergence criterion was met, and \code{val} specifying the value at
 convergence. See the 'Convergence' section for more details.
-\item{\code{progress}} Optional data frame containing information on the
+\item \code{progress}: Optional data frame containing information on the
 value of the function, gradient, momentum, and step sizes evaluated at each
 iteration where convergence is checked. Only present if
 \code{store_progress} is set to \code{TRUE}. Could get quite large if the
@@ -325,7 +325,6 @@ function can save time if there is a lot of shared work.
 \section{Optimization Methods}{
 
 The \code{method} specifies the optimization method:
-
 \itemize{
 \item \code{"SD"} is plain steepest descent. Not very effective on its own,
 but can be combined with various momentum approaches.
@@ -359,9 +358,9 @@ steepest descent if conjugacy is lost. The default.
 in CG_DESCENT.
 \item \code{"PRFR"} The modified PR-FR method of Gilbert and Nocedal
 (1992).
-}
 The \code{"PR+"} and \code{"HZ+"} are likely to be most robust in practice.
 Other updates are available more for curiosity purposes.
+}
 \item \code{"TN"} is the Truncated Newton method, which approximately solves
 the Newton step without explicitly calculating the Hessian (at the expense
 of extra gradient calculations).
@@ -376,12 +375,12 @@ compatibility guarantees as the other methods.
 form of the momentum update in this method can be controlled with the
 following parameters:
 \itemize{
-\item{\code{nest_q}} Strong convexity parameter. Must take a value
+\item \code{nest_q}: Strong convexity parameter. Must take a value
 between 0 (strongly convex) and 1 (zero momentum). Ignored if
 \code{nest_convex_approx} is \code{TRUE}.
-\item{\code{nest_convex_approx}} If \code{TRUE}, then use an approximation
+\item \code{nest_convex_approx}: If \code{TRUE}, then use an approximation
 due to Sutskever for calculating the momentum parameter.
-\item{\code{nest_burn_in}} Number of iterations to wait before using a
+\item \code{nest_burn_in}: Number of iterations to wait before using a
 non-zero momentum.
 }
 \item \code{"DBD"} is the Delta-Bar-Delta method of Jacobs.
@@ -397,7 +396,6 @@ L-BFGS and CG methods, see Nocedal and Wright.
 
 The parameter \code{line_search} determines the line search to be carried
 out:
-
 \itemize{
 \item \code{"Rasmussen"} carries out a line search using the strong Wolfe
 conditions as implemented by Carl Edward Rasmussen's minimize.m routines.
@@ -429,57 +427,58 @@ If using one of the methods: \code{"BFGS"}, \code{"L-BFGS"}, \code{"CG"} or
 \code{"More-Thuente"}, \code{"Schmidt"} or \code{"Hager-Zhang"} should be
 used, otherwise very poor performance is likely to be encountered. The
 following parameters can be used to control the line search:
-
 \itemize{
-\item{\code{c1}} The sufficient decrease condition. Normally left at its
+\item \code{c1}: The sufficient decrease condition. Normally left at its
 default value of 1e-4.
-\item{\code{c2}} The sufficient curvature condition. Defaults to 0.9 if
+\item \code{c2}: The sufficient curvature condition. Defaults to 0.9 if
 using the methods \code{"BFGS"} and \code{"L-BFGS"}, and to 0.1 for
 every other method, more or less in line with the recommendations given
 by Nocedal and Wright. The smaller the value of \code{c2}, the stricter
 the line search, but it should not be set to smaller than \code{c1}.
-\item{\code{step0}} Initial value for the line search on the first step.
+\item \code{step0}: Initial value for the line search on the first step.
 If a positive numeric value is passed as an argument, that value is used
 as-is. Otherwise, by passing a string as an argument, a guess is made
 based on values of the gradient, function or parameters, at the starting
 point:
 \itemize{
-\item{\code{"rasmussen"}} As used by Rasmussen in \code{minimize.m}:
+\item \code{"rasmussen"}: As used by Rasmussen in \code{minimize.m}:
 \deqn{\frac{1}{1+\left|g\right|^2}}{1 / 1 + (|g|^2)}
-\item{\code{"scipy"}} As used in \code{optimize.py} in the python
+\item \code{"scipy"}: As used in \code{optimize.py} in the python
 library Scipy.
 \deqn{\frac{1}{\left|g\right|}}{1 / |g|}
-\item{\code{"schmidt"}} As used by Schmidt in \code{minFunc.m}
+\item \code{"schmidt"}: As used by Schmidt in \code{minFunc.m}
 (the reciprocal of the l1 norm of g)
 \deqn{\frac{1}{\left|g\right|_1}}{1 / |g|1}
-\item{\code{"hz"}} The method suggested by Hager and Zhang (2006) for
+\item \code{"hz"}: The method suggested by Hager and Zhang (2006) for
 the CG_DESCENT software.
 }
+
 These arguments can be abbreviated.
-\item{\code{step_next_init}} How to initialize alpha value of subsequent
+\item \code{step_next_init}: How to initialize alpha value of subsequent
 line searches after the first, using results from the previous line search:
 \itemize{
-\item{\code{"slope ratio"}} Slope ratio method.
-\item{\code{"quadratic"}} Quadratic interpolation method.
-\item{\code{"hz"}} The QuadStep method of Hager and Zhang (2006) for
+\item \code{"slope ratio"}: Slope ratio method.
+\item \code{"quadratic"}: Quadratic interpolation method.
+\item \code{"hz"}: The QuadStep method of Hager and Zhang (2006) for
 the CG_DESCENT software.
-\item{scalar numeric} Set to a numeric value (e.g.
+\item scalar numeric: Set to a numeric value (e.g.
 \code{step_next_init = 1}) to explicitly set alpha to this value
 initially.
 }
+
 These arguments can be abbreviated. Details on the first two methods
 are provided by Nocedal and Wright.
-\item{\code{try_newton_step}} For quasi-Newton methods (e.g. \code{"TN"},
+\item \code{try_newton_step}: For quasi-Newton methods (e.g. \code{"TN"},
 \code{"BFGS"} and \code{"L-BFGS"}), setting this to \code{TRUE} will try
 the "natural" step size of 1, whenever the \code{step_next_init} method
 suggests an initial step size larger than that.
-\item{\code{strong_curvature}} If \code{TRUE}, then the strong curvature
+\item \code{strong_curvature}: If \code{TRUE}, then the strong curvature
 condition will be used to check termination in Wolfe line search methods.
 If \code{FALSE}, then the standard curvature condition will be used. The
 default is \code{NULL} which lets the different Wolfe line searches choose
 whichever is their default behavior. This option is ignored if not using
 a Wolfe line search method.
-\item{\code{approx_armijo}} If \code{TRUE}, then the approximate Armijo
+\item \code{approx_armijo}: If \code{TRUE}, then the approximate Armijo
 sufficient decrease condition (Hager and Zhang, 2005) will be used to
 check termination in Wolfe line search methods. If \code{FALSE}, then the
 exact curvature condition will be used. The default is \code{NULL} which
@@ -503,15 +502,14 @@ If the \code{"DBD"} is used for the optimization \code{"method"}, then the
 \code{line_search} parameter is ignored, because this method controls both
 the direction of the search and the step size simultaneously. The following
 parameters can be used to control the step size:
-
 \itemize{
-\item{\code{step_up}} The amount by which to increase the step size in a
+\item \code{step_up}: The amount by which to increase the step size in a
 direction where the current step size is deemed to be too short. This
 should be a positive scalar.
-\item{\code{step_down}} The amount by which to decrease the step size in a
+\item \code{step_down}: The amount by which to decrease the step size in a
 direction where the currents step size is deemed to be too long. This
 should be a positive scalar smaller than 1. Default is 0.5.
-\item{\code{step_up_fun}} How to increase the step size: either the method of
+\item \code{step_up_fun}: How to increase the step size: either the method of
 Jacobs (addition of \code{step_up}) or Janet and co-workers (multiplication
 by \code{step_up}). Note that the step size decrease \code{step_down} is always
 a multiplication.
@@ -529,31 +527,31 @@ previously found step size by \code{step_up}.
 
 For \code{method} \code{"Momentum"}, momentum schemes can be accessed
 through the momentum arguments:
-
 \itemize{
-\item{\code{mom_type}} Momentum type, either \code{"classical"} or
+\item \code{mom_type}: Momentum type, either \code{"classical"} or
 \code{"nesterov"} (case insensitive, can be abbreviated). Using
 \code{"nesterov"} applies the momentum step before the
 gradient descent as suggested by Sutskever, emulating the behavior of the
 Nesterov Accelerated Gradient method.
-\item{\code{mom_schedule}} How the momentum changes over the course of the
+\item \code{mom_schedule}: How the momentum changes over the course of the
 optimization:
 \itemize{
-\item{If a numerical scalar is provided, a constant momentum will be
-applied throughout.}
-\item{\code{"nsconvex"}} Use the momentum schedule from the Nesterov
+\item If a numerical scalar is provided, a constant momentum will be
+applied throughout.
+\item \code{"nsconvex"}: Use the momentum schedule from the Nesterov
 Accelerated Gradient method suggested for non-strongly convex functions.
 Parameters which control the NAG momentum
 can also be used in combination with this option.
-\item{\code{"switch"}} Switch from one momentum value (specified via
+\item \code{"switch"}: Switch from one momentum value (specified via
 \code{mom_init}) to another (\code{mom_final}) at a
 a specified iteration (\code{mom_switch_iter}).
-\item{\code{"ramp"}} Linearly increase from one momentum value
+\item \code{"ramp"}: Linearly increase from one momentum value
 (\code{mom_init}) to another (\code{mom_final}).
-\item{If a function is provided, this will be invoked to provide a momentum
+\item If a function is provided, this will be invoked to provide a momentum
 value. It must take one argument (the current iteration number) and return
-a scalar.}
+a scalar.
 }
+
 String arguments are case insensitive and can be abbreviated.
 }
 
@@ -562,11 +560,11 @@ optimization appears to be not be making progress, inspired by the method
 of O'Donoghue and Candes (2013) and Su and co-workers (2014). There are three
 strategies:
 \itemize{
-\item{\code{"fn"}} A restart is applied if the function does not decrease
+\item \code{"fn"}: A restart is applied if the function does not decrease
 on consecutive iterations.
-\item{\code{"gr"}} A restart is applied if the direction of the
+\item \code{"gr"}: A restart is applied if the direction of the
 optimization is not a descent direction.
-\item{\code{"speed"}} A restart is applied if the update vector is not
+\item \code{"speed"}: A restart is applied if the update vector is not
 longer (as measured by Euclidean 2-norm) in consecutive iterations.
 }
 
@@ -594,33 +592,32 @@ termination, and \code{val}, the value of the termination criterion that
 caused termination.
 
 The following parameters control various stopping criteria:
-
 \itemize{
-\item{\code{max_iter}} Maximum number of iterations to calculate. Reaching
+\item \code{max_iter}: Maximum number of iterations to calculate. Reaching
 this limit is indicated by \code{terminate$what} being \code{"max_iter"}.
-\item{\code{max_fn}} Maximum number of function evaluations allowed.
+\item \code{max_fn}: Maximum number of function evaluations allowed.
 Indicated by \code{terminate$what} being \code{"max_fn"}.
-\item{\code{max_gr}} Maximum number of gradient evaluations allowed.
+\item \code{max_gr}: Maximum number of gradient evaluations allowed.
 Indicated by \code{terminate$what} being \code{"max_gr"}.
-\item{\code{max_fg}} Maximum number of gradient evaluations allowed.
+\item \code{max_fg}: Maximum number of gradient evaluations allowed.
 Indicated by \code{terminate$what} being \code{"max_fg"}.
-\item{\code{abs_tol}} Absolute tolerance of the function value. If the
+\item \code{abs_tol}: Absolute tolerance of the function value. If the
 absolute value of the function falls below this threshold,
 \code{terminate$what} will be \code{"abs_tol"}. Will only be triggered if
 the objective function has a minimum value of zero.
-\item{\code{rel_tol}} Relative tolerance of the function value, comparing
+\item \code{rel_tol}: Relative tolerance of the function value, comparing
 consecutive function evaluation results. Indicated by \code{terminate$what}
 being \code{"rel_tol"}.
-\item{\code{grad_tol}} Absolute tolerance of the l2 (Euclidean) norm of
+\item \code{grad_tol}: Absolute tolerance of the l2 (Euclidean) norm of
 the gradient. Indicated by \code{terminate$what} being \code{"grad_tol"}.
 Note that the gradient norm is not a very reliable stopping criterion
 (see Nocedal and co-workers 2002), but is quite commonly used, so this
 might be useful for comparison with results from other optimization
 software.
-\item{\code{ginf_tol}} Absolute tolerance of the infinity norm (maximum
+\item \code{ginf_tol}: Absolute tolerance of the infinity norm (maximum
 absolute component) of the gradient. Indicated by \code{terminate$what}
 being \code{"ginf_tol"}.
-\item{\code{step_tol}} Absolute tolerance of the step size, i.e. the
+\item \code{step_tol}: Absolute tolerance of the step size, i.e. the
 Euclidean distance between values of \code{par} fell below the specified
 value. Indicated by \code{terminate$what} being \code{"step_tol"}.
 For those optimization methods which allow for abandoning the result of an

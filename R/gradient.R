@@ -217,7 +217,7 @@ hs_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
 # suggested this modification.
 # Hager, W. W., & Zhang, H. (2006).
 # A survey of nonlinear conjugate gradient methods.
-# \emph{Pacific journal of Optimization}, \emph{2}(1), 35-58.
+# *Pacific journal of Optimization*, *2*(1), 35-58.
 hs_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
                            wm = NULL,
                            preconditioner = NULL) {

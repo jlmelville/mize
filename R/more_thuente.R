@@ -6,22 +6,22 @@
 #
 # Returns a line search function using a variant of the More-Thuente
 #  line search originally implemented in
-#  \href{http://www.netlib.org/minpack/}{MINPACK}.
+#  [MINPACK](http://www.netlib.org/minpack/).
 #
 # @param c1 Constant used in sufficient decrease condition. Should take a value
 #   between 0 and 1.
 # @param c2 Constant used in curvature condition. Should take a value between
-#   \code{c1} and 1.
+#   `c1` and 1.
 # @param max_fn Maximum number of function evaluations allowed.
 # @return Line search function.
 # @references
 # More, J. J., & Thuente, D. J. (1994).
 # Line search algorithms with guaranteed sufficient decrease.
-# \emph{ACM Transactions on Mathematical Software (TOMS)}, \emph{20}(3),
+# *ACM Transactions on Mathematical Software (TOMS)*, *20*(3),
 # 286-307.
 # @seealso This code is based on a translation of the original MINPACK code
 #  for Matlab by
-#  \href{http://www.cs.umd.edu/users/oleary/software/}{Dianne O'Leary}.
+#  [Dianne O'Leary](http://www.cs.umd.edu/users/oleary/software/).
 more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf, eps = 1e-6,
                          alpha_max = Inf,
                          approx_armijo = FALSE,
@@ -80,11 +80,10 @@ more_thuente <- function(c1 = 1e-4, c2 = 0.1, max_fn = Inf, eps = 1e-6,
 # @param delta Value to force sufficient decrease of interval size on
 #   successive iterations. Should be a positive value less than 1.
 # @return List containing:
-# \itemize{
-#   \item \code{step} Best step found and associated line search info.
-#   \item \code{info} Return code from convergence check.
-#   \item \code{nfn}  Number of function evaluations.
-# }
+#
+# * `step`: Best step found and associated line search info.
+# * `info`: Return code from convergence check.
+# * `nfn`: Number of function evaluations.
 #   Translation of minpack subroutine cvsrch
 #   Dianne O'Leary   July 1991
 #     **********
@@ -503,17 +502,16 @@ unmodify_step <- function(stepm, dgtest) {
 # @param xtol Relative width tolerance: convergence is reached if width falls
 #   below xtol * stmax.
 # @return Integer code indicating convergence state:
-#  \itemize{
-#   \item \code{0} No convergence.
-#   \item \code{1} The sufficient decrease condition and the directional
+#
+# * `0`: No convergence.
+# * `1`: The sufficient decrease condition and the directional
 #     derivative condition hold.
-# 	  \item \code{2} Relative width of the interval of uncertainty
-# 		    is at most xtol.
-# 	  \item \code{3} Number of calls to fcn has reached maxfev.
-# 	  \item \code{4} The step is at the lower bound alpha_min.
-# 	  \item \code{5} The step is at the upper bound alpha_max.
-# 	  \item \code{6} Rounding errors prevent further progress.
-# }
+# * `2`: Relative width of the interval of uncertainty
+#     is at most xtol.
+# * `3`: Number of calls to fcn has reached maxfev.
+# * `4`: The step is at the lower bound alpha_min.
+# * `5`: The step is at the upper bound alpha_max.
+# * `6`: Rounding errors prevent further progress.
 # NB dgtest was originally used in testing for min/max alpha test (code 4 and 5)
 # but has been replaced with a call to the curvature test using c1 instead of c2
 # so dgtest is no longer used in the body of the function.
@@ -595,16 +593,15 @@ check_convergence <- function(step0, step, brackt, infoc, stmin, stmax,
 # @param stpmin Minimum allowed interval length.
 # @param stpmax Maximum allowed interval length.
 # @return List containing:
-# \itemize{
-#   \item \code{stepx} One side of the updated step interval, and the associated
+#
+# * `stepx`: One side of the updated step interval, and the associated
 #     line search values.
-#   \item \code{stepy} Other side of the updated step interval, and the
+# * `stepy`: Other side of the updated step interval, and the
 #     associated line search values.
-#   \item \code{step} Updated optimal step size and associated line search
+# * `step`: Updated optimal step size and associated line search
 #     value.
-#   \item \code{brackt} TRUE if the interval has been bracketed.
-#   \item \code{info} Integer return code.
-# }
+# * `brackt`: TRUE if the interval has been bracketed.
+# * `info`: Integer return code.
 # The possible integer return codes refer to the cases 1-4 enumerated in the
 # original More'-Thuente paper that correspond to different line search values
 # at the ends of the interval and the current best step size (and therefore

@@ -20,43 +20,43 @@ mize_init(
 )
 }
 \arguments{
-\item{opt}{Optimizer, created by \code{\link{make_mize}}.}
+\item{opt}{Optimizer, created by \code{\link[=make_mize]{make_mize()}}.}
 
 \item{par}{Vector of initial values for the function to be optimized over.}
 
 \item{fg}{Function and gradient list. See the documentation of
-\code{\link{mize}}.}
+\code{\link[=mize]{mize()}}.}
 
 \item{max_iter}{(Optional). Maximum number of iterations. See the
-'Convergence' section of \code{\link{mize}} for details.}
+'Convergence' section of \code{\link[=mize]{mize()}} for details.}
 
 \item{max_fn}{(Optional). Maximum number of function evaluations. See the
-'Convergence' section of \code{\link{mize}} for details.}
+'Convergence' section of \code{\link[=mize]{mize()}} for details.}
 
 \item{max_gr}{(Optional). Maximum number of gradient evaluations. See the
-'Convergence' section of \code{\link{mize}} for details.}
+'Convergence' section of \code{\link[=mize]{mize()}} for details.}
 
 \item{max_fg}{(Optional). Maximum number of function or gradient evaluations.
-See the 'Convergence' section of \code{\link{mize}} for details.}
+See the 'Convergence' section of \code{\link[=mize]{mize()}} for details.}
 
 \item{abs_tol}{(Optional). Absolute tolerance for comparing two function
-evaluations. See the 'Convergence' section of \code{\link{mize}} for
+evaluations. See the 'Convergence' section of \code{\link[=mize]{mize()}} for
 details.}
 
 \item{rel_tol}{(Optional). Relative tolerance for comparing two function
-evaluations. See the 'Convergence' section of \code{\link{mize}} for
+evaluations. See the 'Convergence' section of \code{\link[=mize]{mize()}} for
 details.}
 
 \item{grad_tol}{(Optional). Absolute tolerance for the length (l2-norm) of
-the gradient vector. See the 'Convergence' section of \code{\link{mize}}
+the gradient vector. See the 'Convergence' section of \code{\link[=mize]{mize()}}
 for details.}
 
 \item{ginf_tol}{(Optional). Absolute tolerance for the infinity norm (maximum
 absolute component) of the gradient vector. See the 'Convergence' section
-of \code{\link{mize}} for details.}
+of \code{\link[=mize]{mize()}} for details.}
 
 \item{step_tol}{(Optional). Absolute tolerance for the size of the parameter
-update. See the 'Convergence' section of \code{\link{mize}} for details.}
+update. See the 'Convergence' section of \code{\link[=mize]{mize()}} for details.}
 }
 \value{
 Initialized optimizer.
@@ -65,19 +65,19 @@ Initialized optimizer.
 Prepares the optimizer for use with a specific function and starting point.
 }
 \details{
-Should be called after creating an optimizer with \code{\link{make_mize}} and
-before beginning any optimization with \code{\link{mize_step}}. Alternatively,
+Should be called after creating an optimizer with \code{\link[=make_mize]{make_mize()}} and
+before beginning any optimization with \code{\link[=mize_step]{mize_step()}}. Alternatively,
 if \code{fg} and \code{par} are available when calling
-\code{\link{make_mize}}, they can be passed to that function and the returned
-optimizer will already be initialized. \code{\link{mize_step}} requires an
+\code{\link[=make_mize]{make_mize()}}, they can be passed to that function and the returned
+optimizer will already be initialized. \code{\link[=mize_step]{mize_step()}} requires an
 initialized optimizer and does not carry out initialization itself.
 
 Optional convergence parameters may also be passed here, for use with
-\code{\link{check_mize_convergence}}. They are optional if you do your own
+\code{\link[=check_mize_convergence]{check_mize_convergence()}}. They are optional if you do your own
 convergence checking.
 
 Details of the \code{fg} list can be found in the 'Details' section of
-\code{\link{mize}}.
+\code{\link[=mize]{mize()}}.
 }
 \examples{
 

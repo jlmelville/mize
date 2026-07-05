@@ -451,12 +451,11 @@ make_phi_alpha <- function(par, fg, pm,
 # @param min_alpha Minimum step size.
 # @param max_fn Maximum number of function evaluations allowed.
 # @return List containing:
-# \itemize{
-#   \item step Valid step size or the last step size evaluated, or NULL if
+#
+# * `step`: Valid step size or the last step size evaluated, or NULL if
 #     max_fn == 0.
-#   \item nfn Number of function evaluations.
-#   \item ok If a valid step was found
-# }
+# * `nfn`: Number of function evaluations.
+# * `ok`: If a valid step was found.
 find_finite <- function(phi, alpha, min_alpha = 0, max_fn = 20) {
   nfn <- 0
   ok <- FALSE
@@ -620,7 +619,7 @@ step_next_hz <- function(phi, alpha_prev, step0, psi1 = 0.1, psi2 = 2) {
 # @param fa Value of function at alpha.
 # @param c1 the sufficient decrease constant. Should take a value between 0 and
 #   1.
-# @return \code{TRUE} if the step \code{alpha} represents a sufficient decrease.
+# @return `TRUE` if the step `alpha` represents a sufficient decrease.
 armijo_ok <- function(f0, d0, alpha, fa, c1) {
   fa <= f0 + c1 * alpha * d0
 }
@@ -645,7 +644,7 @@ armijo_ok <- function(f0, d0, alpha, fa, c1) {
 # @param step Line search value at a step along the line.
 # @param c1 the sufficient decrease constant. Should take a value between 0 and
 #   1.
-# @return \code{TRUE} if the step represents a sufficient decrease.
+# @return `TRUE` if the step represents a sufficient decrease.
 armijo_ok_step <- function(step0, step, c1) {
   armijo_ok(step0$f, step0$d, step$alpha, step$f, c1)
 }
@@ -660,14 +659,14 @@ armijo_ok_step <- function(step0, step, c1) {
 # line at the starting point of the search. This condition is used to stop step
 # sizes being too small.
 #
-# In combination with the sufficient decrease condition \code{\link{armijo_ok}}
+# In combination with the sufficient decrease condition [armijo_ok()]
 # these conditions make up the Wolfe conditions.
 #
 # @param d0 Directional derivative at starting point.
 # @param da Directional derivative at step alpha.
-# @param c2 Curvature condition constant. Should take a value between \code{c1}
+# @param c2 Curvature condition constant. Should take a value between `c1`
 #  (the constant used in the sufficient decrease condition check) and 1.
-# @return \code{TRUE} if the curvature condition is met.
+# @return `TRUE` if the curvature condition is met.
 curvature_ok <- function(d0, da, c2) {
   da > c2 * d0
 }
@@ -681,14 +680,14 @@ curvature_ok <- function(d0, da, c2) {
 # line at the starting point of the search. This condition is used to stop step
 # sizes being too small.
 #
-# In combination with the sufficient decrease condition \code{\link{armijo_ok}}
+# In combination with the sufficient decrease condition [armijo_ok()]
 # these conditions make up the Wolfe conditions.
 #
 # @param step0 Line search values at starting point.
 # @param step Line search value at a step along the line.
-# @param c2 Curvature condition constant. Should take a value between \code{c1}
+# @param c2 Curvature condition constant. Should take a value between `c1`
 #  (the constant used in the sufficient decrease condition check) and 1.
-# @return \code{TRUE} if the curvature condition is met.
+# @return `TRUE` if the curvature condition is met.
 curvature_ok_step <- function(step0, step, c2) {
   curvature_ok(step0$d, step$d, c2)
 }
@@ -705,14 +704,14 @@ curvature_ok_step <- function(step0, step, c2) {
 # size where the sign of the gradient changed (e.g. the minimum had been
 # skipped) would not be acceptable for the strong curvature condition.
 #
-# In combination with the sufficient decrease condition \code{\link{armijo_ok}}
+# In combination with the sufficient decrease condition [armijo_ok()]
 # these conditions make up the Strong Wolfe conditions.
 #
 # @param d0 Directional derivative at starting point.
 # @param da Directrional derivative at step alpha.
-# @param c2 Curvature condition constant. Should take a value between \code{c1}
+# @param c2 Curvature condition constant. Should take a value between `c1`
 #  (the constant used in the sufficient decrease condition check) and 1.
-# @return \code{TRUE} if the strong curvature condition is met.
+# @return `TRUE` if the strong curvature condition is met.
 strong_curvature_ok <- function(d0, da, c2) {
   abs(da) <= -c2 * d0
 }
@@ -729,14 +728,14 @@ strong_curvature_ok <- function(d0, da, c2) {
 # size where the sign of the gradient changed (e.g. the minimum had been
 # skipped) would not be acceptable for the strong curvature condition.
 #
-# In combination with the sufficient decrease condition \code{\link{armijo_ok}}
+# In combination with the sufficient decrease condition [armijo_ok()]
 # these conditions make up the Strong Wolfe conditions.
 #
 # @param step0 Line search values at starting point.
 # @param step Line search value at a step along the line.
-# @param c2 Curvature condition constant. Should take a value between \code{c1}
+# @param c2 Curvature condition constant. Should take a value between `c1`
 #  (the constant used in the sufficient decrease condition check) and 1.
-# @return \code{TRUE} if the curvature condition is met.
+# @return `TRUE` if the curvature condition is met.
 strong_curvature_ok_step <- function(step0, step, c2) {
   strong_curvature_ok(step0$d, step$d, c2)
 }

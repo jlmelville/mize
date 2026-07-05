@@ -8,13 +8,13 @@ mize_step_summary(opt, par, fg, par_old = NULL, calc_fn = NULL)
 }
 \arguments{
 \item{opt}{Optimizer to generate summary for, from return value of
-\code{\link{mize_step}}.}
+\code{\link[=mize_step]{mize_step()}}.}
 
 \item{par}{Vector of parameters at the end of the iteration, from return value
-of \code{\link{mize_step}}.}
+of \code{\link[=mize_step]{mize_step()}}.}
 
 \item{fg}{Function and gradient list. See the documentation of
-\code{\link{mize}}.}
+\code{\link[=mize]{mize()}}.}
 
 \item{par_old}{(Optional). Vector of parameters at the end of the previous
 iteration. Used to calculate step size.}
@@ -24,29 +24,21 @@ not already cached in \code{opt}, even if it would not be needed for
 convergence checking.}
 }
 \value{
-A list with the following items: \itemize{
-
-\item \code{opt} Optimizer with updated state (e.g. function and gradient
+A list with the following items:
+\itemize{
+\item \code{opt}: Optimizer with updated state (e.g. function and gradient
 counts).
-
-\item \code{iter} Iteration number.
-
-\item \code{f} Function value at \code{par}.
-
-\item \code{g2n} 2-norm of the gradient at \code{par}.
-
-\item \code{ginfn} Infinity-norm of the gradient at \code{par}.
-
-\item \code{nf} Number of function evaluations so far.
-
-\item \code{ng} Number of gradient evaluations so far.
-
-\item \code{step} Size of the step between \code{par_old} and \code{par},
+\item \code{iter}: Iteration number.
+\item \code{f}: Function value at \code{par}.
+\item \code{g2n}: 2-norm of the gradient at \code{par}.
+\item \code{ginfn}: Infinity-norm of the gradient at \code{par}.
+\item \code{nf}: Number of function evaluations so far.
+\item \code{ng}: Number of gradient evaluations so far.
+\item \code{step}: Size of the step between \code{par_old} and \code{par},
 if \code{par_old} is provided.
-
-\item \code{alpha} Step length of the gradient descent part of the step.
-
-\item \code{mu} Momentum coefficient for this iteration}
+\item \code{alpha}: Step length of the gradient descent part of the step.
+\item \code{mu}: Momentum coefficient for this iteration.
+}
 }
 \description{
 Produces a result summary for an optimization iteration. Information such as

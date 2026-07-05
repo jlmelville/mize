@@ -153,13 +153,13 @@ quadratic_interpolateg <- function(x1, g1, x2, g2) {
 # @param xnew 1D position of the new point.
 # @param x1 1D position of the first points used in the extrapolation.
 # @param x2 1D position of the second point used in the extrapolation.
-# @param ext Maximum multiple of \code{x2} that \code{xnew} is allowed to be
+# @param ext Maximum multiple of `x2` that `xnew` is allowed to be
 #  extrapolated to.
-# @param int Given the distance between \code{x1} and \code{x2}, specified what
-#  multiple of that distance is the minimum allowed distance for \code{xnew}
-#  from \code{x2}.
-# @return A value of \code{xnew} that obeys the minimum and maximum distance
-#  constraints from \code{x2}.
+# @param int Given the distance between `x1` and `x2`, specified what
+#  multiple of that distance is the minimum allowed distance for `xnew`
+#  from `x2`.
+# @return A value of `xnew` that obeys the minimum and maximum distance
+#  constraints from `x2`.
 tweak_extrapolation <- function(xnew, x1, x2, ext, int) {
   # num prob | wrong sign?
   if (!is.double(xnew) || is.nan(xnew) || is.infinite(xnew) || xnew < 0) {
@@ -186,11 +186,11 @@ tweak_extrapolation <- function(xnew, x1, x2, ext, int) {
 # @param xnew Position of the interpolated point.
 # @param x1 Position of the first point used for interpolation.
 # @param x2 Position of the second point used for interpolation.
-# @param int Given the distance between \code{x1} and \code{x2}, specifies what
-#  multiple of that distance is the minimum allowed distance for \code{xnew}
-#  from \code{x1} or \code{x2}.
-# @return Tweaked position of \code{xnew} such that it is not too close to
-#  either \code{x1} or \code{x2}.
+# @param int Given the distance between `x1` and `x2`, specifies what
+#  multiple of that distance is the minimum allowed distance for `xnew`
+#  from `x1` or `x2`.
+# @return Tweaked position of `xnew` such that it is not too close to
+#  either `x1` or `x2`.
 tweak_interpolation <- function(xnew, x1, x2, int) {
   if (is.nan(xnew) || is.infinite(xnew)) {
     # if we had a numerical problem then bisect

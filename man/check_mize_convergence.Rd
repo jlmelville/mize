@@ -8,7 +8,7 @@ check_mize_convergence(mize_step_info)
 }
 \arguments{
 \item{mize_step_info}{Step info for this iteration, created by
-\code{\link{mize_step_summary}}}
+\code{\link[=mize_step_summary]{mize_step_summary()}}}
 }
 \value{
 \code{opt} updated with convergence and termination data. See
@@ -20,19 +20,19 @@ signaling if the optimization process should stop.
 }
 \details{
 On returning from this function, the updated value of \code{opt} will
-contain: \itemize{
-
+contain:
+\itemize{
 \item A boolean value \code{is_terminated} which is \code{TRUE} if
 termination has been indicated, and \code{FALSE} otherwise.
-
 \item A list \code{terminate} if \code{is_terminated} is \code{TRUE}. This
 contains two items: \code{what}, a short string describing what caused the
 termination, and \code{val}, the value of the termination criterion that
 caused termination. This list will not be present if \code{is_terminated} is
-\code{FALSE}.}
+\code{FALSE}.
+}
 
 Convergence criteria are only checked here. To set these criteria, use
-\code{\link{make_mize}} or \code{\link{mize_init}}.
+\code{\link[=make_mize]{make_mize()}} or \code{\link[=mize_init]{mize_init()}}.
 }
 \examples{
 rb_fg <- list(
