@@ -303,7 +303,7 @@ hz_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
 # the lower bound as convergence occurs. Choice of eta is from the CG_DESCENT
 # paper
 hz_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
-                           wm = wm, preconditioner = NULL) {
+                           wm = NULL, preconditioner = NULL) {
   beta <- hz_update(gm, gm_old, pm_old, eps,
     wm = wm, preconditioner = preconditioner
   )
@@ -314,7 +314,7 @@ hz_plus_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
 
 # The PR-FR update suggested by Gilbert and Nocedal (1992)
 prfr_update <- function(gm, gm_old, pm_old, eps = .Machine$double.eps,
-                        wm = wm, preconditioner = NULL) {
+                        wm = NULL, preconditioner = NULL) {
   bpr <- pr_update(gm, gm_old, pm_old,
     eps = eps,
     wm = wm, preconditioner = preconditioner
