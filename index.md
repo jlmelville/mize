@@ -1,6 +1,6 @@
 # mize
 
-[![codecov](https://codecov.io/github/jlmelville/mize/graph/badge.svg?token=v14HaDPD2g)](https://codecov.io/github/jlmelville/mize)
+[![codecov](https://codecov.io/github/jlmelville/mize/branch/master/graph/badge.svg?token=v14HaDPD2g)](https://codecov.io/github/jlmelville/mize)
 [![R-CMD-check](https://github.com/jlmelville/mize/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/jlmelville/mize/actions/workflows/R-CMD-check.yaml)
 [![CRAN
 status](https://www.r-pkg.org/badges/version/mize)](https://cran.r-project.org/package=mize)
