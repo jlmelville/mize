@@ -1,0 +1,67 @@
+url: https://jlmelville.github.io/mize/
+destination: pkgdown-site
+
+template:
+  bootstrap: 5
+  math-rendering: mathjax
+
+navbar:
+  structure:
+    left: [intro, reference, articles, news]
+    right: [search, github]
+  components:
+    intro:
+      text: Get started
+      href: articles/mize.html
+    articles:
+      text: Articles
+      menu:
+        - text: Package guides
+        - text: Getting started
+          href: articles/mize.html
+        - text: Convergence
+          href: articles/convergence.html
+        - text: Stateful optimization
+          href: articles/stateful.html
+        - text: Metric MDS
+          href: articles/mmds.html
+        - text: Background notes
+        - text: Nesterov accelerated gradient and momentum
+          href: articles/nesterov.html
+        - text: Quasi-hyperbolic momentum
+          href: articles/qhm.html
+
+home:
+  title: mize
+  description: Unconstrained numerical optimization algorithms implemented in R.
+  links:
+    - text: Browse source
+      href: https://github.com/jlmelville/mize
+    - text: Report a bug
+      href: https://github.com/jlmelville/mize/issues
+
+reference:
+  - title: Main optimizer
+    contents:
+      - mize
+      - make_mize
+  - title: Stateful optimization
+    contents:
+      - mize_init
+      - mize_step
+      - mize_step_summary
+      - check_mize_convergence
+
+articles:
+  - title: Package guides
+    navbar: Package guides
+    contents:
+      - mize
+      - convergence
+      - stateful
+      - mmds
+  - title: Background notes
+    navbar: Background notes
+    contents:
+      - articles/nesterov
+      - articles/qhm

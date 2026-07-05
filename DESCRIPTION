@@ -17,10 +17,12 @@ Suggests:
     testthat,
     knitr,
     rmarkdown,
-    covr
+    covr,
+    pkgdown
 Config/testthat/edition: 3
 Roxygen: list(markdown = TRUE)
-URL: https://github.com/jlmelville/mize
+URL: https://jlmelville.github.io/mize/, https://github.com/jlmelville/mize
 BugReports: https://github.com/jlmelville/mize/issues
 VignetteBuilder: knitr
+Config/Needs/website: pkgdown
 Config/roxygen2/version: 8.0.0

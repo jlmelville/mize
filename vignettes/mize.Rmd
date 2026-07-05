@@ -357,9 +357,9 @@ deep learning applications) given was "manual tuning".
 
 There are connections between NAG and classical momentum, and there is some
 evidence (at least in deep learning) that replacing classical momentum
-with the NAG method, but using the same momentum schedule (see below) can 
-improve results. I have written more (much more) on the subject 
-[here](https://jlmelville.github.io/mize/nesterov.html).
+with the NAG method, but using the same momentum schedule (see below) can
+improve results. I have written more (much more) on the subject
+[here](https://jlmelville.github.io/mize/articles/nesterov.html).
 
 ### Classical Momentum (`"MOM"`)
 

@@ -4,4 +4,5 @@
 .Ruserdata
 *.Rproj
 inst/doc
+pkgdown-site/
 **/*DONTCHECKMEIN*

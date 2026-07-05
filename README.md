@@ -1,93 +1,97 @@
 # mize
 
-[![Coverage status](https://codecov.io/gh/jlmelville/mize/branch/master/graph/badge.svg)](https://codecov.io/github/jlmelville/mize?branch=master)
-[![R-CMD-check](https://github.com/jlmelville/mize/workflows/R-CMD-check/badge.svg)](https://github.com/jlmelville/mize/actions)
-[![CRAN Status Badge](http://www.r-pkg.org/badges/version/mize)](https://cran.r-project.org/package=mize)
-[![CRAN Monthly Downloads](https://cranlogs.r-pkg.org/badges/mize)](https://cran.r-project.org/package=mize)
-![CRAN Downloads](http://cranlogs.r-pkg.org/badges/grand-total/mize)
-[![Last Commit](https://img.shields.io/github/last-commit/jlmelville/mize)](https://github.com/jlmelville/mize)
+[![Coverage status](https://codecov.io/gh/jlmelville/mize/branch/master/graph/badge.svg)](https://app.codecov.io/gh/jlmelville/mize?branch=master)
+[![R-CMD-check](https://github.com/jlmelville/mize/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/jlmelville/mize/actions/workflows/R-CMD-check.yaml)
+[![CRAN status](https://www.r-pkg.org/badges/version/mize)](https://cran.r-project.org/package=mize)
+[![CRAN monthly downloads](https://cranlogs.r-pkg.org/badges/mize)](https://cran.r-project.org/package=mize)
+[![CRAN total downloads](https://cranlogs.r-pkg.org/badges/grand-total/mize)](https://cran.r-project.org/package=mize)
+[![Last commit](https://img.shields.io/github/last-commit/jlmelville/mize)](https://github.com/jlmelville/mize)
 
-Unconstrained Numerical Optimization Algorithms.
+Unconstrained numerical optimization algorithms implemented in R.
 
-`mize` can be used as a standalone function like the `stats::optim` function,
-or can be integrated into other packages by creating a stateful optimizer and
-handling the iterations, convergence, logging and so on externally.
+`mize` can be used as a standalone optimizer like `stats::optim()`, or it can
+be integrated into other packages by creating a stateful optimizer and handling
+iterations, convergence, and logging externally.
 
-`mize` knows how to do Broyden-Fletcher-Goldfarb-Shanno (BFGS),
-the limited-memory BFGS (L-BFGS), various flavors of Conjugate Gradient (CG),
-Nesterov Accelerated Gradient (NAG) and momentum-based methods, among others.
+`mize` includes Broyden-Fletcher-Goldfarb-Shanno (BFGS), limited-memory BFGS
+(L-BFGS), conjugate gradient (CG), Nesterov accelerated gradient (NAG),
+momentum-based methods, and related line searches.
 
-## Installing
+## Installation
 
-```R
-# Install from CRAN:
+```r
 install.packages("mize")
+```
 
-# Or install the development version from GitHub:
+Install the development version from GitHub with:
+
+```r
 # install.packages("devtools")
 devtools::install_github("jlmelville/mize")
 ```
 
-## Documentation
+## Quick Start
 
-```R
-?mize
+```r
+library(mize)
+
+rosenbrock_fg <- list(
+  fn = function(x) {
+    100 * (x[2] - x[1] * x[1])^2 + (1 - x[1])^2
+  },
+  gr = function(x) {
+    c(
+      -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+      200 * (x[2] - x[1] * x[1])
+    )
+  }
+)
+
+res <- mize(c(-1.2, 1), rosenbrock_fg, method = "L-BFGS")
+res$par
+res$f
 ```
 
-There are also some vignettes:
+For stateful optimization, create an optimizer and call `mize_step()` manually:
 
-* `mize.Rmd`, which goes through many of the options available.
-* `mmds.Rmd`, which does a simple, but non-trivial, application of `mize` to
-carry out metric Multi-Dimensional Scaling on the `eurodist` data set.
-* `stateful.Rmd`, which demonstrates how to use `mize` statefully, so you can
-manually and externally invoke each iteration step.
+```r
+opt <- make_mize(method = "L-BFGS", par = c(-1.2, 1), fg = rosenbrock_fg)
+par <- c(-1.2, 1)
 
-## Examples
-
-```R
-# Make a list containing the function and gradient:
-rosenbrock_fg <- list(
-   fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
-   gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
-                          200 *        (x[2] - x[1] * x[1])) })
-# Starting point:
-rb0 <- c(-1.2, 1)
-
-# Minimize using L-BFGS
-res <- mize(rb0, rosenbrock_fg, method = "L-BFGS")
-# Optimized parameters are in res$par
-
-# Or create an optimizer and then loop manually
-opt <- make_mize(method = "L-BFGS")
-opt <- mize_init(opt, rb0, rosenbrock_fg)
-
-par <- rb0
-done <- FALSE
-iter <- 0
-while (!done) {
-  iter <- iter + 1
-  res <- mize_step(opt, par, rosenbrock_fg)
-  par <- res$par
-  opt <- res$opt
-  # Look at res$f for current function value
-  # you get to (i.e. have to) decide when to stop
-  done <- iter > 30
+for (i in seq_len(30)) {
+  step <- mize_step(opt, par, rosenbrock_fg)
+  par <- step$par
+  opt <- step$opt
 }
 ```
 
-## See also
+## Documentation
 
-The Wolfe line searches use conversion of Mark Schmidt's
-[minFunc routines](http://www.cs.ubc.ca/~schmidtm/Software/minFunc.html),
+The package website is <https://jlmelville.github.io/mize/>.
+
+Start with:
+
+- [Getting started](https://jlmelville.github.io/mize/articles/mize.html)
+- [Convergence](https://jlmelville.github.io/mize/articles/convergence.html)
+- [Stateful optimization](https://jlmelville.github.io/mize/articles/stateful.html)
+- [Metric MDS example](https://jlmelville.github.io/mize/articles/mmds.html)
+- [Function reference](https://jlmelville.github.io/mize/reference/index.html)
+
+The CRAN package also includes the main vignettes.
+
+## See Also
+
+The Wolfe line searches use conversions of Mark Schmidt's
+[minFunc routines](https://www.cs.ubc.ca/~schmidtm/Software/minFunc.html),
 Carl Edward Rasmussen's
-[Matlab code](https://gaussianprocess.org/gpml/code/matlab/doc/) and Dianne
+[Matlab code](https://gaussianprocess.org/gpml/code/matlab/doc/), and Dianne
 O'Leary's Matlab translation of the
-[Moré-Thuente line search](http://www.cs.umd.edu/users/oleary/software/)
-algorithm from [MINPACK](http://www.netlib.org/minpack/).
+[More-Thuente line search](https://www.cs.umd.edu/users/oleary/software/)
+algorithm from [MINPACK](https://www.netlib.org/minpack/).
 
-I also maintain the [funconstrain](https://github.com/jlmelville/funconstrain) package, which contains a large number of test
-problems for numerical optimization. See this [gist](https://gist.github.com/jlmelville/2cb8905edd0dbc23806d3122a7a05c5d) for functions
-to use mize with funconstrain.
+I also maintain the
+[funconstrain](https://github.com/jlmelville/funconstrain) package, which
+contains test problems for numerical optimization.
 
 ## License
 

@@ -9,3 +9,6 @@
 ^CRAN-RELEASE$
 ^\.github$
 ^CRAN-SUBMISSION$
+^_pkgdown\.yml$
+^pkgdown$
+^pkgdown-site$
