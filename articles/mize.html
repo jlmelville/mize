@@ -227,17 +227,17 @@ the <code>verbose</code> option to <code>TRUE</code>:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span><span class="va">rb0</span>, <span class="va">rb_fg</span>, grad_tol <span class="op">=</span> <span class="fl">1e-3</span>, ginf_tol <span class="op">=</span> <span class="fl">1e-3</span>, max_iter <span class="op">=</span> <span class="fl">10</span>, </span>
 <span>            verbose <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="co">#&gt; 20:57:38 iter 0 f = 24.2 g2 = 232.9 ginf = 215.6 nf = 1 ng = 1 step = 0 alpha = 0</span></span>
-<span><span class="co">#&gt; 20:57:38 iter 1 f = 19.5 g2 = 200.9 ginf = 185.6 nf = 3 ng = 3 step = 0.02169 alpha = 9.312e-05</span></span>
-<span><span class="co">#&gt; 20:57:38 iter 2 f = 11.57 g2 = 135.4 ginf = 124.6 nf = 4 ng = 4 step = 0.04729 alpha = 0.3469</span></span>
-<span><span class="co">#&gt; 20:57:38 iter 3 f = 4.281 g2 = 17.28 ginf = 16.27 nf = 5 ng = 5 step = 0.09809 alpha = 1</span></span>
-<span><span class="co">#&gt; 20:57:38 iter 4 f = 4.144 g2 = 2.588 ginf = 2.469 nf = 6 ng = 6 step = 0.01426 alpha = 1</span></span>
-<span><span class="co">#&gt; 20:57:38 iter 5 f = 4.139 g2 = 1.773 ginf = 1.626 nf = 7 ng = 7 step = 0.002565 alpha = 1</span></span>
-<span><span class="co">#&gt; 20:57:38 iter 6 f = 4.132 g2 = 2.44 ginf = 2.327 nf = 8 ng = 8 step = 0.004716 alpha = 1</span></span>
-<span><span class="co">#&gt; 20:57:38 iter 7 f = 4.12 g2 = 3.727 ginf = 3.033 nf = 9 ng = 9 step = 0.009086 alpha = 0.4616</span></span>
-<span><span class="co">#&gt; 20:57:38 iter 8 f = 4.098 g2 = 5.427 ginf = 3.863 nf = 10 ng = 10 step = 0.01724 alpha = 0.2631</span></span>
-<span><span class="co">#&gt; 20:57:38 iter 9 f = 2.569 g2 = 8.248 ginf = 7.431 nf = 16 ng = 16 step = 0.8311 alpha = 4.743</span></span>
-<span><span class="co">#&gt; 20:57:38 iter 10 f = 2.553 g2 = 11.67 ginf = 9.996 nf = 18 ng = 18 step = 0.04657 alpha = 0.05068</span></span></code></pre></div>
+<span><span class="co">#&gt; 21:18:28 iter 0 f = 24.2 g2 = 232.9 ginf = 215.6 nf = 1 ng = 1 step = 0 alpha = 0</span></span>
+<span><span class="co">#&gt; 21:18:28 iter 1 f = 19.5 g2 = 200.9 ginf = 185.6 nf = 3 ng = 3 step = 0.02169 alpha = 9.312e-05</span></span>
+<span><span class="co">#&gt; 21:18:28 iter 2 f = 11.57 g2 = 135.4 ginf = 124.6 nf = 4 ng = 4 step = 0.04729 alpha = 0.3469</span></span>
+<span><span class="co">#&gt; 21:18:28 iter 3 f = 4.281 g2 = 17.28 ginf = 16.27 nf = 5 ng = 5 step = 0.09809 alpha = 1</span></span>
+<span><span class="co">#&gt; 21:18:28 iter 4 f = 4.144 g2 = 2.588 ginf = 2.469 nf = 6 ng = 6 step = 0.01426 alpha = 1</span></span>
+<span><span class="co">#&gt; 21:18:28 iter 5 f = 4.139 g2 = 1.773 ginf = 1.626 nf = 7 ng = 7 step = 0.002565 alpha = 1</span></span>
+<span><span class="co">#&gt; 21:18:28 iter 6 f = 4.132 g2 = 2.44 ginf = 2.327 nf = 8 ng = 8 step = 0.004716 alpha = 1</span></span>
+<span><span class="co">#&gt; 21:18:28 iter 7 f = 4.12 g2 = 3.727 ginf = 3.033 nf = 9 ng = 9 step = 0.009086 alpha = 0.4616</span></span>
+<span><span class="co">#&gt; 21:18:28 iter 8 f = 4.098 g2 = 5.427 ginf = 3.863 nf = 10 ng = 10 step = 0.01724 alpha = 0.2631</span></span>
+<span><span class="co">#&gt; 21:18:28 iter 9 f = 2.569 g2 = 8.248 ginf = 7.431 nf = 16 ng = 16 step = 0.8311 alpha = 4.743</span></span>
+<span><span class="co">#&gt; 21:18:28 iter 10 f = 2.553 g2 = 11.67 ginf = 9.996 nf = 18 ng = 18 step = 0.04657 alpha = 0.05068</span></span></code></pre></div>
 <p>As you can see, information about the state of the optimization is
 logged to the console every time the convergence criteria are checked.
 The values logged are:</p>
@@ -271,11 +271,11 @@ also set the <code>log_every</code> parameter to make logging slightly
 less noisy:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span><span class="va">rb0</span>, <span class="va">rb_fg</span>, grad_tol <span class="op">=</span> <span class="fl">1e-3</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span>, log_every <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
-<span><span class="co">#&gt; 20:57:38 iter 0 f = 24.2 g2 = 232.9 nf = 1 ng = 1 step = 0 alpha = 0</span></span>
-<span><span class="co">#&gt; 20:57:38 iter 10 f = 2.553 g2 = 11.67 nf = 18 ng = 18 step = 0.04657 alpha = 0.05068</span></span>
-<span><span class="co">#&gt; 20:57:38 iter 20 f = 0.5142 g2 = 3.001 nf = 31 ng = 31 step = 0.1319 alpha = 1</span></span>
-<span><span class="co">#&gt; 20:57:38 iter 30 f = 0.009862 g2 = 3.333 nf = 42 ng = 42 step = 0.03554 alpha = 0.1706</span></span>
-<span><span class="co">#&gt; 20:57:38 iter 37 f = 4.522e-10 g2 = 0.0009379 nf = 49 ng = 49 step = 0.0002131 alpha = 1</span></span></code></pre></div>
+<span><span class="co">#&gt; 21:18:28 iter 0 f = 24.2 g2 = 232.9 nf = 1 ng = 1 step = 0 alpha = 0</span></span>
+<span><span class="co">#&gt; 21:18:28 iter 10 f = 2.553 g2 = 11.67 nf = 18 ng = 18 step = 0.04657 alpha = 0.05068</span></span>
+<span><span class="co">#&gt; 21:18:28 iter 20 f = 0.5142 g2 = 3.001 nf = 31 ng = 31 step = 0.1319 alpha = 1</span></span>
+<span><span class="co">#&gt; 21:18:28 iter 30 f = 0.009862 g2 = 3.333 nf = 42 ng = 42 step = 0.03554 alpha = 0.1706</span></span>
+<span><span class="co">#&gt; 21:18:28 iter 37 f = 4.522e-10 g2 = 0.0009379 nf = 49 ng = 49 step = 0.0002131 alpha = 1</span></span></code></pre></div>
 <p>On the assumption that you probably want to see information about the
 last iteration, this is also reported, even if it wouldn’t normally be
 reported according to the setting for <code>log_every</code>.</p>

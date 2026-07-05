@@ -284,15 +284,15 @@ can reduce the frequency with which it is carried out with the
 ``` r
 
 res <- mize(rb0, rb_fg, grad_tol = 1e-3, check_conv_every = 5, verbose = TRUE)
-#> 20:57:36 iter 0 f = 24.2 g2 = 232.9 nf = 1 ng = 1 step = 0 alpha = 0
-#> 20:57:36 iter 5 f = 4.139 g2 = 1.773 nf = 7 ng = 7 step = 0.002565 alpha = 1
-#> 20:57:36 iter 10 f = 2.553 g2 = 11.67 nf = 18 ng = 18 step = 0.04657 alpha = 0.05068
-#> 20:57:36 iter 15 f = 1.37 g2 = 6.954 nf = 25 ng = 25 step = 0.0922 alpha = 0.405
-#> 20:57:36 iter 20 f = 0.5142 g2 = 3.001 nf = 31 ng = 31 step = 0.1319 alpha = 1
-#> 20:57:36 iter 25 f = 0.1203 g2 = 2.398 nf = 37 ng = 37 step = 0.03943 alpha = 0.9408
-#> 20:57:36 iter 30 f = 0.009862 g2 = 3.333 nf = 42 ng = 42 step = 0.03554 alpha = 0.1706
-#> 20:57:36 iter 35 f = 2.304e-06 g2 = 0.01537 nf = 47 ng = 47 step = 0.01136 alpha = 1
-#> 20:57:36 iter 40 f = 4.147e-18 g2 = 4.386e-08 nf = 52 ng = 52 step = 6.386e-07 alpha = 1
+#> 21:18:26 iter 0 f = 24.2 g2 = 232.9 nf = 1 ng = 1 step = 0 alpha = 0
+#> 21:18:26 iter 5 f = 4.139 g2 = 1.773 nf = 7 ng = 7 step = 0.002565 alpha = 1
+#> 21:18:26 iter 10 f = 2.553 g2 = 11.67 nf = 18 ng = 18 step = 0.04657 alpha = 0.05068
+#> 21:18:26 iter 15 f = 1.37 g2 = 6.954 nf = 25 ng = 25 step = 0.0922 alpha = 0.405
+#> 21:18:26 iter 20 f = 0.5142 g2 = 3.001 nf = 31 ng = 31 step = 0.1319 alpha = 1
+#> 21:18:26 iter 25 f = 0.1203 g2 = 2.398 nf = 37 ng = 37 step = 0.03943 alpha = 0.9408
+#> 21:18:26 iter 30 f = 0.009862 g2 = 3.333 nf = 42 ng = 42 step = 0.03554 alpha = 0.1706
+#> 21:18:26 iter 35 f = 2.304e-06 g2 = 0.01537 nf = 47 ng = 47 step = 0.01136 alpha = 1
+#> 21:18:26 iter 40 f = 4.147e-18 g2 = 4.386e-08 nf = 52 ng = 52 step = 6.386e-07 alpha = 1
 ```
 
 This also has the side effect of producing less output to the console

@@ -157,12 +157,12 @@ ed0 <- rnorm(attr(eurodist, 'Size') * 2)
 res_euro <- mize(ed0, list(fn = mmds_fn, gr = mmds_gr), 
                 method = "L-BFGS", verbose = TRUE, 
                 grad_tol = 1e-5, check_conv_every = 10)
-#> 20:57:45 iter 0 f = 6.432e+08 g2 = 1.979e+05 nf = 1 ng = 1 step = 0 alpha = 0
-#> 20:57:45 iter 10 f = 5.291e+07 g2 = 1.767e+04 nf = 26 ng = 26 step = 1291 alpha = 0.6507
-#> 20:57:45 iter 20 f = 1.087e+07 g2 = 1.223e+04 nf = 39 ng = 39 step = 920.1 alpha = 0.4846
-#> 20:57:45 iter 30 f = 3.357e+06 g2 = 129.3 nf = 49 ng = 49 step = 4.665 alpha = 0.5486
-#> 20:57:45 iter 40 f = 3.356e+06 g2 = 0.2007 nf = 60 ng = 60 step = 0.03083 alpha = 1
-#> 20:57:45 iter 50 f = 3.356e+06 g2 = 0.0003381 nf = 71 ng = 71 step = 2.863e-05 alpha = 1
+#> 21:18:35 iter 0 f = 6.432e+08 g2 = 1.979e+05 nf = 1 ng = 1 step = 0 alpha = 0
+#> 21:18:35 iter 10 f = 5.291e+07 g2 = 1.767e+04 nf = 26 ng = 26 step = 1291 alpha = 0.6507
+#> 21:18:35 iter 20 f = 1.087e+07 g2 = 1.223e+04 nf = 39 ng = 39 step = 920.1 alpha = 0.4846
+#> 21:18:35 iter 30 f = 3.357e+06 g2 = 129.3 nf = 49 ng = 49 step = 4.665 alpha = 0.5486
+#> 21:18:35 iter 40 f = 3.356e+06 g2 = 0.2007 nf = 60 ng = 60 step = 0.03083 alpha = 1
+#> 21:18:35 iter 50 f = 3.356e+06 g2 = 0.0003381 nf = 71 ng = 71 step = 2.863e-05 alpha = 1
 ```
 
 It takes 90 iterations to converge, but we get there. Now for the moment
@@ -272,12 +272,12 @@ We can then run the MMDS optimization as before:
 res_euro <- mize(ed0, make_fg(eurodist), 
                 method = "L-BFGS", verbose = TRUE, 
                 grad_tol = 1e-5, check_conv_every = 10)
-#> 20:57:45 iter 0 f = 6.432e+08 g2 = 1.979e+05 nf = 1 ng = 1 step = 0 alpha = 0
-#> 20:57:45 iter 10 f = 5.291e+07 g2 = 1.767e+04 nf = 26 ng = 26 step = 1291 alpha = 0.6507
-#> 20:57:45 iter 20 f = 1.087e+07 g2 = 1.223e+04 nf = 39 ng = 39 step = 920.1 alpha = 0.4846
-#> 20:57:45 iter 30 f = 3.357e+06 g2 = 129.3 nf = 49 ng = 49 step = 4.665 alpha = 0.5486
-#> 20:57:45 iter 40 f = 3.356e+06 g2 = 0.2007 nf = 60 ng = 60 step = 0.03083 alpha = 1
-#> 20:57:45 iter 50 f = 3.356e+06 g2 = 0.0003381 nf = 71 ng = 71 step = 2.863e-05 alpha = 1
+#> 21:18:35 iter 0 f = 6.432e+08 g2 = 1.979e+05 nf = 1 ng = 1 step = 0 alpha = 0
+#> 21:18:35 iter 10 f = 5.291e+07 g2 = 1.767e+04 nf = 26 ng = 26 step = 1291 alpha = 0.6507
+#> 21:18:35 iter 20 f = 1.087e+07 g2 = 1.223e+04 nf = 39 ng = 39 step = 920.1 alpha = 0.4846
+#> 21:18:35 iter 30 f = 3.357e+06 g2 = 129.3 nf = 49 ng = 49 step = 4.665 alpha = 0.5486
+#> 21:18:36 iter 40 f = 3.356e+06 g2 = 0.2007 nf = 60 ng = 60 step = 0.03083 alpha = 1
+#> 21:18:36 iter 50 f = 3.356e+06 g2 = 0.0003381 nf = 71 ng = 71 step = 2.863e-05 alpha = 1
 ```
 
 The same results are achieved, but it runs a tiny bit faster, although
