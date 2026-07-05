@@ -10,5 +10,7 @@
 ^\.github$
 ^CRAN-SUBMISSION$
 ^_pkgdown\.yml$
+^\.air\.toml$
+^\.lintr$
 ^pkgdown$
 ^pkgdown-site$
