@@ -330,15 +330,15 @@ you can reduce the frequency with which it is carried out with the
 <code>check_conv_every</code> parameter:</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span><span class="va">rb0</span>, <span class="va">rb_fg</span>, grad_tol <span class="op">=</span> <span class="fl">1e-3</span>, check_conv_every <span class="op">=</span> <span class="fl">5</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="co">#&gt; 19:55:09 iter 0 f = 24.2 g2 = 232.9 nf = 1 ng = 1 step = 0 alpha = 0</span></span>
-<span><span class="co">#&gt; 19:55:09 iter 5 f = 4.139 g2 = 1.773 nf = 7 ng = 7 step = 0.002565 alpha = 1</span></span>
-<span><span class="co">#&gt; 19:55:09 iter 10 f = 2.553 g2 = 11.67 nf = 18 ng = 18 step = 0.04657 alpha = 0.05068</span></span>
-<span><span class="co">#&gt; 19:55:09 iter 15 f = 1.37 g2 = 6.954 nf = 25 ng = 25 step = 0.0922 alpha = 0.405</span></span>
-<span><span class="co">#&gt; 19:55:09 iter 20 f = 0.5142 g2 = 3.001 nf = 31 ng = 31 step = 0.1319 alpha = 1</span></span>
-<span><span class="co">#&gt; 19:55:09 iter 25 f = 0.1203 g2 = 2.398 nf = 37 ng = 37 step = 0.03943 alpha = 0.9408</span></span>
-<span><span class="co">#&gt; 19:55:09 iter 30 f = 0.009862 g2 = 3.333 nf = 42 ng = 42 step = 0.03554 alpha = 0.1706</span></span>
-<span><span class="co">#&gt; 19:55:09 iter 35 f = 2.304e-06 g2 = 0.01537 nf = 47 ng = 47 step = 0.01136 alpha = 1</span></span>
-<span><span class="co">#&gt; 19:55:09 iter 40 f = 4.147e-18 g2 = 4.386e-08 nf = 52 ng = 52 step = 6.386e-07 alpha = 1</span></span></code></pre></div>
+<span><span class="co">#&gt; 20:23:02 iter 0 f = 24.2 g2 = 232.9 nf = 1 ng = 1 step = 0 alpha = 0</span></span>
+<span><span class="co">#&gt; 20:23:02 iter 5 f = 4.139 g2 = 1.773 nf = 7 ng = 7 step = 0.002565 alpha = 1</span></span>
+<span><span class="co">#&gt; 20:23:02 iter 10 f = 2.553 g2 = 11.67 nf = 18 ng = 18 step = 0.04657 alpha = 0.05068</span></span>
+<span><span class="co">#&gt; 20:23:02 iter 15 f = 1.37 g2 = 6.954 nf = 25 ng = 25 step = 0.0922 alpha = 0.405</span></span>
+<span><span class="co">#&gt; 20:23:02 iter 20 f = 0.5142 g2 = 3.001 nf = 31 ng = 31 step = 0.1319 alpha = 1</span></span>
+<span><span class="co">#&gt; 20:23:02 iter 25 f = 0.1203 g2 = 2.398 nf = 37 ng = 37 step = 0.03943 alpha = 0.9408</span></span>
+<span><span class="co">#&gt; 20:23:02 iter 30 f = 0.009862 g2 = 3.333 nf = 42 ng = 42 step = 0.03554 alpha = 0.1706</span></span>
+<span><span class="co">#&gt; 20:23:02 iter 35 f = 2.304e-06 g2 = 0.01537 nf = 47 ng = 47 step = 0.01136 alpha = 1</span></span>
+<span><span class="co">#&gt; 20:23:02 iter 40 f = 4.147e-18 g2 = 4.386e-08 nf = 52 ng = 52 step = 6.386e-07 alpha = 1</span></span></code></pre></div>
 <p>This also has the side effect of producing less output to the console
 when <code>verbose = TRUE</code>, because <code>log_every</code> is set
 to the same value of <code>check_conv_every</code> by default. If you

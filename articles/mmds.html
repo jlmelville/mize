@@ -223,12 +223,12 @@ well begin from a random location:</p>
 <span><span class="va">res_euro</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span><span class="va">ed0</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>fn <span class="op">=</span> <span class="va">mmds_fn</span>, gr <span class="op">=</span> <span class="va">mmds_gr</span><span class="op">)</span>, </span>
 <span>                method <span class="op">=</span> <span class="st">"L-BFGS"</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span>, </span>
 <span>                grad_tol <span class="op">=</span> <span class="fl">1e-5</span>, check_conv_every <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
-<span><span class="co">#&gt; 19:55:17 iter 0 f = 6.432e+08 g2 = 1.979e+05 nf = 1 ng = 1 step = 0 alpha = 0</span></span>
-<span><span class="co">#&gt; 19:55:17 iter 10 f = 5.291e+07 g2 = 1.767e+04 nf = 26 ng = 26 step = 1291 alpha = 0.6507</span></span>
-<span><span class="co">#&gt; 19:55:17 iter 20 f = 1.087e+07 g2 = 1.223e+04 nf = 39 ng = 39 step = 920.1 alpha = 0.4846</span></span>
-<span><span class="co">#&gt; 19:55:17 iter 30 f = 3.357e+06 g2 = 129.3 nf = 49 ng = 49 step = 4.665 alpha = 0.5486</span></span>
-<span><span class="co">#&gt; 19:55:17 iter 40 f = 3.356e+06 g2 = 0.2007 nf = 60 ng = 60 step = 0.03083 alpha = 1</span></span>
-<span><span class="co">#&gt; 19:55:17 iter 50 f = 3.356e+06 g2 = 0.0003381 nf = 71 ng = 71 step = 2.863e-05 alpha = 1</span></span></code></pre></div>
+<span><span class="co">#&gt; 20:23:10 iter 0 f = 6.432e+08 g2 = 1.979e+05 nf = 1 ng = 1 step = 0 alpha = 0</span></span>
+<span><span class="co">#&gt; 20:23:10 iter 10 f = 5.291e+07 g2 = 1.767e+04 nf = 26 ng = 26 step = 1291 alpha = 0.6507</span></span>
+<span><span class="co">#&gt; 20:23:10 iter 20 f = 1.087e+07 g2 = 1.223e+04 nf = 39 ng = 39 step = 920.1 alpha = 0.4846</span></span>
+<span><span class="co">#&gt; 20:23:10 iter 30 f = 3.357e+06 g2 = 129.3 nf = 49 ng = 49 step = 4.665 alpha = 0.5486</span></span>
+<span><span class="co">#&gt; 20:23:10 iter 40 f = 3.356e+06 g2 = 0.2007 nf = 60 ng = 60 step = 0.03083 alpha = 1</span></span>
+<span><span class="co">#&gt; 20:23:10 iter 50 f = 3.356e+06 g2 = 0.0003381 nf = 71 ng = 71 step = 2.863e-05 alpha = 1</span></span></code></pre></div>
 <p>It takes 90 iterations to converge, but we get there. Now for the
 moment of truth: are the cities laid out in a way we’d expect? Here’s a
 function that will plot the <code>par</code> results:</p>
@@ -322,12 +322,12 @@ and <code>gr</code> separately.</p>
 <code class="sourceCode R"><span><span class="va">res_euro</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span><span class="va">ed0</span>, <span class="fu">make_fg</span><span class="op">(</span><span class="va">eurodist</span><span class="op">)</span>, </span>
 <span>                method <span class="op">=</span> <span class="st">"L-BFGS"</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span>, </span>
 <span>                grad_tol <span class="op">=</span> <span class="fl">1e-5</span>, check_conv_every <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
-<span><span class="co">#&gt; 19:55:17 iter 0 f = 6.432e+08 g2 = 1.979e+05 nf = 1 ng = 1 step = 0 alpha = 0</span></span>
-<span><span class="co">#&gt; 19:55:17 iter 10 f = 5.291e+07 g2 = 1.767e+04 nf = 26 ng = 26 step = 1291 alpha = 0.6507</span></span>
-<span><span class="co">#&gt; 19:55:18 iter 20 f = 1.087e+07 g2 = 1.223e+04 nf = 39 ng = 39 step = 920.1 alpha = 0.4846</span></span>
-<span><span class="co">#&gt; 19:55:18 iter 30 f = 3.357e+06 g2 = 129.3 nf = 49 ng = 49 step = 4.665 alpha = 0.5486</span></span>
-<span><span class="co">#&gt; 19:55:18 iter 40 f = 3.356e+06 g2 = 0.2007 nf = 60 ng = 60 step = 0.03083 alpha = 1</span></span>
-<span><span class="co">#&gt; 19:55:18 iter 50 f = 3.356e+06 g2 = 0.0003381 nf = 71 ng = 71 step = 2.863e-05 alpha = 1</span></span></code></pre></div>
+<span><span class="co">#&gt; 20:23:11 iter 0 f = 6.432e+08 g2 = 1.979e+05 nf = 1 ng = 1 step = 0 alpha = 0</span></span>
+<span><span class="co">#&gt; 20:23:11 iter 10 f = 5.291e+07 g2 = 1.767e+04 nf = 26 ng = 26 step = 1291 alpha = 0.6507</span></span>
+<span><span class="co">#&gt; 20:23:11 iter 20 f = 1.087e+07 g2 = 1.223e+04 nf = 39 ng = 39 step = 920.1 alpha = 0.4846</span></span>
+<span><span class="co">#&gt; 20:23:11 iter 30 f = 3.357e+06 g2 = 129.3 nf = 49 ng = 49 step = 4.665 alpha = 0.5486</span></span>
+<span><span class="co">#&gt; 20:23:11 iter 40 f = 3.356e+06 g2 = 0.2007 nf = 60 ng = 60 step = 0.03083 alpha = 1</span></span>
+<span><span class="co">#&gt; 20:23:11 iter 50 f = 3.356e+06 g2 = 0.0003381 nf = 71 ng = 71 step = 2.863e-05 alpha = 1</span></span></code></pre></div>
 <p>The same results are achieved, but it runs a tiny bit faster,
 although unless you are using a very slow computer you will have to take
 my word for it. However, as the work done to create the data that will
