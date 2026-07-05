@@ -71,3 +71,36 @@ test_that("reinitializing produces the same results", {
   expect_equal(norm2(rosen_no_hess$gr(par)), 17.29, tolerance = 1e-3)
   expect_equal(res$par, c(-1.048, 1.070), tolerance = 1e-3)
 })
+
+test_that("cache predicates require exact value fields", {
+  old <- options(warnPartialMatchDollar = TRUE)
+  on.exit(options(old), add = TRUE)
+
+  opt <- list(
+    cache = list(
+      fn_new_iter = 1,
+      fn_curr_iter = 1,
+      gr_curr_iter = 1
+    )
+  )
+
+  expect_warning(fn_new <- has_fn_new(opt, 1), NA)
+  expect_warning(fn_curr <- has_fn_curr(opt, 1), NA)
+  expect_warning(gr_curr <- has_gr_curr(opt, 1), NA)
+
+  expect_false(fn_new)
+  expect_false(fn_curr)
+  expect_false(gr_curr)
+
+  opt$cache$fn_new <- 1
+  opt$cache$fn_curr <- 2
+  opt$cache$gr_curr <- c(1, 2)
+
+  expect_warning(fn_new <- has_fn_new(opt, 1), NA)
+  expect_warning(fn_curr <- has_fn_curr(opt, 1), NA)
+  expect_warning(gr_curr <- has_gr_curr(opt, 1), NA)
+
+  expect_true(fn_new)
+  expect_true(fn_curr)
+  expect_true(gr_curr)
+})

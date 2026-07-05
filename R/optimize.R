@@ -527,21 +527,27 @@ grad_is_first_stage <- function(opt) {
 
 # Has fn_new already been calculated for the specified iteration
 has_fn_new <- function(opt, iter) {
-  (!is.null(opt$cache$fn_new) &&
-    !is.null(opt$cache$fn_new_iter) &&
-    opt$cache$fn_new_iter == iter)
+  fn_new <- opt$cache[["fn_new"]]
+  fn_new_iter <- opt$cache[["fn_new_iter"]]
+  (!is.null(fn_new) &&
+    !is.null(fn_new_iter) &&
+    fn_new_iter == iter)
 }
 
 # Has fn_curr already been calculated for the specified iteration
 has_fn_curr <- function(opt, iter) {
-  (!is.null(opt$cache$fn_curr) &&
-    !is.null(opt$cache$fn_curr_iter) &&
-    opt$cache$fn_curr_iter == iter)
+  fn_curr <- opt$cache[["fn_curr"]]
+  fn_curr_iter <- opt$cache[["fn_curr_iter"]]
+  (!is.null(fn_curr) &&
+    !is.null(fn_curr_iter) &&
+    fn_curr_iter == iter)
 }
 
 # Has gr_curr already been calculated for the specified iteration
 has_gr_curr <- function(opt, iter) {
-  (!is.null(opt$cache$gr_curr) &&
-    !is.null(opt$cache$gr_curr_iter) &&
-    opt$cache$gr_curr_iter == iter)
+  gr_curr <- opt$cache[["gr_curr"]]
+  gr_curr_iter <- opt$cache[["gr_curr_iter"]]
+  (!is.null(gr_curr) &&
+    !is.null(gr_curr_iter) &&
+    gr_curr_iter == iter)
 }
