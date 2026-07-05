@@ -1404,7 +1404,7 @@ make_mize <- function(method = "L-BFGS",
     }
     else if (is.function(mom_schedule)) {
       mom_step <- make_momentum_step(
-        mu_fn = mom_schedule,
+        mu_fn = make_user_momentum_schedule(mom_schedule),
         use_init_mom = use_init_mom
       )
     }

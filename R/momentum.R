@@ -66,6 +66,22 @@ make_momentum_step <- function(mu_fn,
   ))
 }
 
+make_user_momentum_schedule <- function(mu_fn) {
+  mu_args <- names(formals(mu_fn))
+  accepts_max_iter <- "..." %in% mu_args || length(mu_args) >= 2
+
+  if (accepts_max_iter) {
+    function(iter, max_iter) {
+      mu_fn(iter, max_iter)
+    }
+  }
+  else {
+    function(iter, max_iter) {
+      mu_fn(iter)
+    }
+  }
+}
+
 
 # Function Factories ------------------------------------------------------
 
