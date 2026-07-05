@@ -222,7 +222,7 @@ opt_report <- function(step_info, print_time = FALSE, print_par = FALSE,
 
 # Transfers data from the result object to the progress data frame
 update_progress <- function(step_info, progress) {
-  res_names <- c("f", "g2n", "ginf", "nf", "ng", "step", "alpha", "mu")
+  res_names <- c("f", "g2n", "ginfn", "nf", "ng", "step", "alpha", "mu")
   res_names <- Filter(function(x) {
     !is.null(step_info[[x]])
   }, res_names)
