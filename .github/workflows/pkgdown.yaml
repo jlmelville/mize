@@ -46,7 +46,7 @@ jobs:
       # Pinned to a full-length commit SHA for immutability; Dependabot updates this reference.
       - name: Upload site artifact
         if: github.event_name != 'pull_request'
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: pkgdown-site
           path: pkgdown-site
