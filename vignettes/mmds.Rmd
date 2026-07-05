@@ -266,6 +266,5 @@ res_euro <- mize(ed0, make_fg(eurodist),
 The same results are achieved, but it runs a tiny bit faster, although
 unless you are using a very slow computer you will have to take my word for it.
 However, as the work done to create the data that will be used for the gradient
-and function calculation grows larger, you should consider making use of the \code{fg}
+and function calculation grows larger, you should consider making use of the `fg`
 item.
-

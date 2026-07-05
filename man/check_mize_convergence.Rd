@@ -12,7 +12,7 @@ check_mize_convergence(mize_step_info)
 }
 \value{
 \code{opt} updated with convergence and termination data. See
-  'Details'.
+'Details'.
 }
 \description{
 Updates the optimizer with information about convergence or termination,

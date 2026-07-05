@@ -16,7 +16,7 @@ Bug fix release.
 ## Bug fixes
 
 * Removed `LazyData` from the `DESCRIPTION` file.
-* Some flaky unit tests where removed.
+* Some flaky unit tests were removed.
 
 # mize 0.2.4
 
@@ -96,11 +96,11 @@ gradient update suggested by Gilbert and Nocedal.
 
 ## Bug fixes
 
-* Error occurred when checking if a step size was finite during line search.
+* An error occurred when checking if a step size was finite during line search.
 * DBD method didn't use momentum when asked to.
 * Fix incorrectly specified conjugate gradient descent methods: 
-Hestenes-Stiefel (`cg_udpate = "hs"`), Conjugate Descent (`cg_udpate = "cd"`), 
-Dai-Yuan (`cg_udpate = "dy"`) and Liu-Storey (`cg_udpate = "ls"`).
+Hestenes-Stiefel (`cg_update = "hs"`), Conjugate Descent (`cg_update = "cd"`),
+Dai-Yuan (`cg_update = "dy"`) and Liu-Storey (`cg_update = "ls"`).
 
 # mize 0.1.1
 

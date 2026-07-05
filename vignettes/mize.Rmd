@@ -33,7 +33,7 @@ and its gradient separately. By contrast, `mize` asks you to bundle them up
 in a list, which I lazily refer to as an `fg` list. Here, for example, is the 
 venerable Rosenbrock function:
 
-```{r Definining a function and gradient to optimize}
+```{r Defining a function and gradient to optimize}
 rb_fg <- list(
    fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
    gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
@@ -83,7 +83,7 @@ and `gr`.
 
 ## The parameters to optimize
 
-The parameters to optimize as passed as a numeric vector, `par`.
+The parameters to optimize are passed as a numeric vector, `par`.
 
 As well as using the `rb_fg` list we defined above to describe the Rosenbrock
 function, we'll also start from the following starting point:

@@ -3,31 +3,28 @@
 #' Numerical optimization including conjugate gradient,
 #' Broyden-Fletcher-Goldfarb-Shanno (BFGS), and the limited memory BFGS.
 #'
-#' The function to be optimized should be passed as a list to the \code{fg}
+#' The function to be optimized should be passed as a list to the `fg`
 #' parameter. This should consist of:
-#' \itemize{
-#' \item{\code{fn}}. The function to be optimized. Takes a vector of parameters
-#'   and returns a scalar.
-#' \item{\code{gr}}. The gradient of the function. Takes a vector of parameters
-#' and returns a vector with the same length as the input parameter vector.
-#' \item{\code{fg}}. (Optional) function which calculates the function and
-#' gradient in the same routine. Takes a vector of parameters and returns a list
-#' containing the function result as \code{fn} and the gradient result as
-#' \code{gr}.
-#' \item{\code{hs}}. (Optional) Hessian of the function. Takes a vector of
-#' parameters and returns a square matrix with dimensions the same as the
-#' length of the input vector, containing the second derivatives. For
-#' \code{"NEWTON"}, it may also return a vector, which is treated as the
-#' diagonal of the Hessian. Required by \code{"PHESS"} and by \code{"NEWTON"}
-#' when no \code{hi} function is provided.
-#' \item{\code{hi}}. (Optional) inverse Hessian of the function. Takes a vector
-#' of parameters and returns either a square matrix with dimensions the same as
-#' the length of the input vector or a vector, which is treated as the diagonal
-#' of the inverse Hessian. Used by \code{"NEWTON"} when \code{hs} is not
-#' provided, by \code{"BFGS"} and \code{"SR1"} to initialize their
-#' inverse-Hessian approximation, and by \code{"L-BFGS"} as the initial
-#' inverse-Hessian approximation in its two-loop recursion.
-#' }
+#'
+#' * `fn`. The function to be optimized. Takes a vector of parameters and
+#'   returns a scalar.
+#' * `gr`. The gradient of the function. Takes a vector of parameters and
+#'   returns a vector with the same length as the input parameter vector.
+#' * `fg`. (Optional) function which calculates the function and gradient in the
+#'   same routine. Takes a vector of parameters and returns a list containing
+#'   the function result as `fn` and the gradient result as `gr`.
+#' * `hs`. (Optional) Hessian of the function. Takes a vector of parameters and
+#'   returns a square matrix with dimensions the same as the length of the input
+#'   vector, containing the second derivatives. For `"NEWTON"`, it may also
+#'   return a vector, which is treated as the diagonal of the Hessian. Required
+#'   by `"PHESS"` and by `"NEWTON"` when no `hi` function is provided.
+#' * `hi`. (Optional) inverse Hessian of the function. Takes a vector of
+#'   parameters and returns either a square matrix with dimensions the same as
+#'   the length of the input vector or a vector, which is treated as the
+#'   diagonal of the inverse Hessian. Used by `"NEWTON"` when `hs` is not
+#'   provided, by `"BFGS"` and `"SR1"` to initialize their inverse-Hessian
+#'   approximation, and by `"L-BFGS"` as the initial inverse-Hessian
+#'   approximation in its two-loop recursion.
 #'
 #' The \code{fg} function is optional, but for some methods (e.g. line search
 #' methods based on the Wolfe criteria), both the function and gradient values
@@ -1504,12 +1501,12 @@ make_mize <- function(method = "L-BFGS",
 #' visualization.
 #'
 #' Normally calling this function should return a more optimized vector of
-#' parameters than the input, or at  least leave the parameters unchanged if no
+#' parameters than the input, or at least leave the parameters unchanged if no
 #' improvement was found, although this is determined by how the optimizer was
 #' configured by \code{\link{make_mize}}. It is very possible to create an
 #' optimizer that can cause a solution to diverge. It is the responsibility of
 #' the caller to check that the result of the optimization step has actually
-#' reduced the value returned from function being optimized.
+#' reduced the value returned from the function being optimized.
 #'
 #' Details of the \code{fg} list can be found in the 'Details' section of
 #' \code{\link{mize}}.
@@ -1522,7 +1519,7 @@ make_mize <- function(method = "L-BFGS",
 #'  \itemize{
 #'
 #'  \item{\code{opt}}. Updated version of the optimizer passed to the \code{opt}
-#'  argument Should be passed as the \code{opt} argument in the next iteration.
+#'  argument. Should be passed as the \code{opt} argument in the next iteration.
 #'
 #'  \item{\code{par}}. Updated version of the parameters passed to the
 #'  \code{par} argument. Should be passed as the \code{par} argument in the next

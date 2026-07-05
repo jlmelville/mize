@@ -16,28 +16,28 @@ mize_step(opt, par, fg)
 }
 \value{
 Result of the current optimization step, a list with components:
- \itemize{
+\itemize{
 
- \item{\code{opt}}. Updated version of the optimizer passed to the \code{opt}
- argument Should be passed as the \code{opt} argument in the next iteration.
+\item{\code{opt}}. Updated version of the optimizer passed to the \code{opt}
+argument. Should be passed as the \code{opt} argument in the next iteration.
 
- \item{\code{par}}. Updated version of the parameters passed to the
- \code{par} argument. Should be passed as the \code{par} argument in the next
- iteration.
+\item{\code{par}}. Updated version of the parameters passed to the
+\code{par} argument. Should be passed as the \code{par} argument in the next
+iteration.
 
- \item{\code{nf}}. Running total number of function evaluations carried out
- since iteration 1.
+\item{\code{nf}}. Running total number of function evaluations carried out
+since iteration 1.
 
- \item{\code{ng}}. Running total number of gradient evaluations carried out
- since iteration 1.
+\item{\code{ng}}. Running total number of gradient evaluations carried out
+since iteration 1.
 
- \item{\code{f}}. Optional. The new value of the function, evaluated at the
- returned value of \code{par}. Only present if calculated as part of the
- optimization step (e.g. during a line search calculation).
+\item{\code{f}}. Optional. The new value of the function, evaluated at the
+returned value of \code{par}. Only present if calculated as part of the
+optimization step (e.g. during a line search calculation).
 
- \item{\code{g}}. Optional. The gradient vector, evaluated at the returned
- value of \code{par}. Only present if the gradient was calculated as part of
- the optimization step (e.g. during a line search calculation.)}
+\item{\code{g}}. Optional. The gradient vector, evaluated at the returned
+value of \code{par}. Only present if the gradient was calculated as part of
+the optimization step (e.g. during a line search calculation.)}
 }
 \description{
 Performs one iteration of optimization using a specified optimizer.
@@ -53,12 +53,12 @@ logging and so on, as well as take other action between iterations, e.g.
 visualization.
 
 Normally calling this function should return a more optimized vector of
-parameters than the input, or at  least leave the parameters unchanged if no
+parameters than the input, or at least leave the parameters unchanged if no
 improvement was found, although this is determined by how the optimizer was
 configured by \code{\link{make_mize}}. It is very possible to create an
 optimizer that can cause a solution to diverge. It is the responsibility of
 the caller to check that the result of the optimization step has actually
-reduced the value returned from function being optimized.
+reduced the value returned from the function being optimized.
 
 Details of the \code{fg} list can be found in the 'Details' section of
 \code{\link{mize}}.
@@ -90,7 +90,7 @@ for (iter in 1:3) {
 }
 \seealso{
 \code{\link{make_mize}} to create a value to pass to \code{opt},
- \code{\link{mize_init}} to initialize \code{opt} before passing it to this
- function for the first time. \code{\link{mize}} creates an optimizer and
- carries out a full optimization with it.
+\code{\link{mize_init}} to initialize \code{opt} before passing it to this
+function for the first time. \code{\link{mize}} creates an optimizer and
+carries out a full optimization with it.
 }

@@ -26,27 +26,27 @@ convergence checking.}
 \value{
 A list with the following items: \itemize{
 
- \item \code{opt} Optimizer with updated state (e.g. function and gradient
- counts).
+\item \code{opt} Optimizer with updated state (e.g. function and gradient
+counts).
 
- \item \code{iter} Iteration number.
+\item \code{iter} Iteration number.
 
- \item \code{f} Function value at \code{par}.
+\item \code{f} Function value at \code{par}.
 
- \item \code{g2n} 2-norm of the gradient at \code{par}.
+\item \code{g2n} 2-norm of the gradient at \code{par}.
 
- \item \code{ginfn} Infinity-norm of the gradient at \code{par}.
+\item \code{ginfn} Infinity-norm of the gradient at \code{par}.
 
- \item \code{nf} Number of function evaluations so far.
+\item \code{nf} Number of function evaluations so far.
 
- \item \code{ng} Number of gradient evaluations so far.
+\item \code{ng} Number of gradient evaluations so far.
 
- \item \code{step} Size of the step between \code{par_old} and \code{par},
- if \code{par_old} is provided.
+\item \code{step} Size of the step between \code{par_old} and \code{par},
+if \code{par_old} is provided.
 
- \item \code{alpha} Step length of the gradient descent part of the step.
+\item \code{alpha} Step length of the gradient descent part of the step.
 
- \item \code{mu} Momentum coefficient for this iteration}
+\item \code{mu} Momentum coefficient for this iteration}
 }
 \description{
 Produces a result summary for an optimization iteration. Information such as
