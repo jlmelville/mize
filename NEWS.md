@@ -1,5 +1,14 @@
 # mize (development version)
 
+## Bug fixes
+
+* Fixed several optimizer edge cases found during cleanup: `NEWTON` now uses
+`fg$hi`, L-BFGS memory trimming handles `memory = 1`, stored progress keeps
+`ginfn`, Delta-Bar-Delta respects `step0`, one-argument user momentum schedules
+work as documented, adaptive restart dependency insertion no longer references
+an undefined stage, CG helper defaults no longer self-reference, and
+zero-valued relative function convergence no longer errors.
+
 # mize 0.2.5
 
 Bug fix release.

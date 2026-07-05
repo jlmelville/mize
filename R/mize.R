@@ -15,14 +15,18 @@
 #' containing the function result as \code{fn} and the gradient result as
 #' \code{gr}.
 #' \item{\code{hs}}. (Optional) Hessian of the function. Takes a vector of
-#' parameters and returns a square matrix with dimensions the same as the length
-#' of the input vector, containing the second derivatives. Only required to be
-#' present if using the \code{"NEWTON"} method. If present, it will be used
-#' during initialization for the \code{"BFGS"} and \code{"SR1"} quasi-Newton
-#' methods (otherwise, they will use the identity matrix). The quasi-Newton
-#' methods are implemented using the inverse of the Hessian, and rather than
-#' directly invert the provided Hessian matrix, will use the inverse of the
-#' diagonal of the provided Hessian only.
+#' parameters and returns a square matrix with dimensions the same as the
+#' length of the input vector, containing the second derivatives. For
+#' \code{"NEWTON"}, it may also return a vector, which is treated as the
+#' diagonal of the Hessian. Required by \code{"PHESS"} and by \code{"NEWTON"}
+#' when no \code{hi} function is provided.
+#' \item{\code{hi}}. (Optional) inverse Hessian of the function. Takes a vector
+#' of parameters and returns either a square matrix with dimensions the same as
+#' the length of the input vector or a vector, which is treated as the diagonal
+#' of the inverse Hessian. Used by \code{"NEWTON"} when \code{hs} is not
+#' provided, by \code{"BFGS"} and \code{"SR1"} to initialize their
+#' inverse-Hessian approximation, and by \code{"L-BFGS"} as the initial
+#' inverse-Hessian approximation in its two-loop recursion.
 #' }
 #'
 #' The \code{fg} function is optional, but for some methods (e.g. line search
@@ -72,6 +76,13 @@
 #' \item \code{"TN"} is the Truncated Newton method, which approximately solves
 #' the Newton step without explicitly calculating the Hessian (at the expense
 #' of extra gradient calculations).
+#' \item \code{"NEWTON"} is Newton's method using a Hessian or inverse Hessian
+#' supplied in \code{fg}. It is supported, but is less commonly used than the
+#' quasi-Newton and truncated Newton methods.
+#' \item \code{"PHESS"} is a partial-Hessian Newton variant that reuses a
+#' Hessian factorization. It is accepted by \code{make_mize}, but should be
+#' treated as experimental/internal and may change without the same
+#' compatibility guarantees as the other methods.
 #' \item \code{"NAG"} is the Nesterov Accelerated Gradient method. The exact
 #' form of the momentum update in this method can be controlled with the
 #' following parameters:
@@ -526,13 +537,13 @@
 #'  includes any extra evaluations required for convergence calculations using
 #'  \code{grad_tol}. As with \code{nf}, additional gradient calculations beyond
 #'  what you're expecting may have been needed for logging, convergence and
-#'  calculating the value of \code{g2} or \code{ginf} (see below).
+#'  calculating the value of \code{g2n} or \code{ginfn} (see below).
 #'  \item{\code{f}} Value of the function, evaluated at the returned
 #'  value of \code{par}.
-#'  \item{\code{g2}} Optional: the length (Euclidean or l2-norm) of the
+#'  \item{\code{g2n}} Optional: the length (Euclidean or l2-norm) of the
 #'  gradient vector, evaluated at the returned value of \code{par}. Calculated
 #'  only if \code{grad_tol} is non-null.
-#'  \item{\code{ginf}} Optional: the infinity norm (maximum absolute component)
+#'  \item{\code{ginfn}} Optional: the infinity norm (maximum absolute component)
 #'  of the gradient vector, evaluated at the returned value of \code{par}.
 #'  Calculated only if \code{ginf_tol} is non-null.
 #'  \item{\code{iter}} The number of iterations the optimization was carried
@@ -1647,10 +1658,11 @@ mize_step <- function(opt, par, fg) {
 #' Prepares the optimizer for use with a specific function and starting point.
 #'
 #' Should be called after creating an optimizer with \code{\link{make_mize}} and
-#' before beginning any optimization with \code{\link{mize_step}}. Note that if
-#' \code{fg} and \code{par} are available at the time \code{\link{mize_step}} is
-#' called, they can be passed to that function and initialization will be
-#' carried out automatically, avoiding the need to call \code{mize_init}.
+#' before beginning any optimization with \code{\link{mize_step}}. Alternatively,
+#' if \code{fg} and \code{par} are available when calling
+#' \code{\link{make_mize}}, they can be passed to that function and the returned
+#' optimizer will already be initialized. \code{\link{mize_step}} requires an
+#' initialized optimizer and does not carry out initialization itself.
 #'
 #' Optional convergence parameters may also be passed here, for use with
 #' \code{\link{check_mize_convergence}}. They are optional if you do your own
@@ -1707,7 +1719,7 @@ mize_step <- function(opt, par, fg) {
 #' rb0 <- c(-1.2, 1)
 #'
 #' # Initialize with function and starting point before commencing optimization
-#' opt <- mize_init(opt, rb0, rosebrock_fg)
+#' opt <- mize_init(opt, rb0, rosenbrock_fg)
 #'
 #' # Finally, can commence the optimization loop
 #' par <- rb0

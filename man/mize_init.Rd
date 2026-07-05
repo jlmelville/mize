@@ -66,10 +66,11 @@ Prepares the optimizer for use with a specific function and starting point.
 }
 \details{
 Should be called after creating an optimizer with \code{\link{make_mize}} and
-before beginning any optimization with \code{\link{mize_step}}. Note that if
-\code{fg} and \code{par} are available at the time \code{\link{mize_step}} is
-called, they can be passed to that function and initialization will be
-carried out automatically, avoiding the need to call \code{mize_init}.
+before beginning any optimization with \code{\link{mize_step}}. Alternatively,
+if \code{fg} and \code{par} are available when calling
+\code{\link{make_mize}}, they can be passed to that function and the returned
+optimizer will already be initialized. \code{\link{mize_step}} requires an
+initialized optimizer and does not carry out initialization itself.
 
 Optional convergence parameters may also be passed here, for use with
 \code{\link{check_mize_convergence}}. They are optional if you do your own
@@ -98,7 +99,7 @@ rosenbrock_fg <- list(
 rb0 <- c(-1.2, 1)
 
 # Initialize with function and starting point before commencing optimization
-opt <- mize_init(opt, rb0, rosebrock_fg)
+opt <- mize_init(opt, rb0, rosenbrock_fg)
 
 # Finally, can commence the optimization loop
 par <- rb0
