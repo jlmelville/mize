@@ -29,6 +29,9 @@
 #' @param calc_fn (Optional). If `TRUE`, force calculation of function if
 #'  not already cached in `opt`, even if it would not be needed for
 #'  convergence checking.
+#' @param calc_gr (Optional). If `TRUE`, force calculation of gradient if
+#'  not already cached in `opt`, even if it would not be needed for
+#'  convergence checking.
 #' @return A list with the following items:
 #'
 #' * `opt`: Optimizer with updated state (e.g. function and gradient
@@ -62,7 +65,14 @@
 #' mize_res <- mize_step(opt = opt, par = rb0, fg = rb_fg)
 #' # Get info about first step, use rb0 to compare new par with initial value
 #' step_info <- mize_step_summary(mize_res$opt, mize_res$par, rb_fg, rb0)
-mize_step_summary <- function(opt, par, fg, par_old = NULL, calc_fn = NULL) {
+mize_step_summary <- function(
+  opt,
+  par,
+  fg,
+  par_old = NULL,
+  calc_fn = NULL,
+  calc_gr = NULL
+) {
   iter <- opt$iter
   # An internal flag useful for unit tests: if FALSE, doesn't count any
   # fn/gr calculations towards their counts. Can still get back fn/gr values
@@ -87,7 +97,14 @@ mize_step_summary <- function(opt, par, fg, par_old = NULL, calc_fn = NULL) {
   if (is_finite_numeric(opt$convergence$ginf_tol)) {
     gr_norms <- c(gr_norms, Inf)
   }
-  calc_gr <- length(gr_norms) > 0
+  if (isTRUE(calc_gr)) {
+    gr_norms <- unique(c(gr_norms, 2, Inf))
+  }
+  if (is.null(calc_gr)) {
+    calc_gr <- length(gr_norms) > 0
+  } else {
+    calc_gr <- isTRUE(calc_gr)
+  }
 
   f <- NULL
   if (calc_fn || has_fn_curr(opt, iter + 1)) {

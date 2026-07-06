@@ -4,7 +4,7 @@
 \alias{mize_step_summary}
 \title{Mize Step Summary}
 \usage{
-mize_step_summary(opt, par, fg, par_old = NULL, calc_fn = NULL)
+mize_step_summary(opt, par, fg, par_old = NULL, calc_fn = NULL, calc_gr = NULL)
 }
 \arguments{
 \item{opt}{Optimizer to generate summary for, from return value of
@@ -20,6 +20,10 @@ of \code{\link[=mize_step]{mize_step()}}.}
 iteration. Used to calculate step size.}
 
 \item{calc_fn}{(Optional). If \code{TRUE}, force calculation of function if
+not already cached in \code{opt}, even if it would not be needed for
+convergence checking.}
+
+\item{calc_gr}{(Optional). If \code{TRUE}, force calculation of gradient if
 not already cached in \code{opt}, even if it would not be needed for
 convergence checking.}
 }
