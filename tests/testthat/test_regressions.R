@@ -29,6 +29,19 @@ test_that("Newton direction uses inverse Hessian functions", {
   }
 })
 
+test_that("BFGS update skips bad curvature pairs", {
+  hm <- matrix(c(2, 0.25, 0.25, 1), nrow = 2)
+
+  expect_equal(
+    bfgs_update(hm, sm = c(1, 0), ym = c(-1, 0), eps = 0),
+    hm
+  )
+  expect_equal(
+    bfgs_update(hm, sm = c(1, 0), ym = c(1e-12, 1), eps = 0),
+    hm
+  )
+})
+
 test_that("L-BFGS memory trimming keeps only the newest updates", {
   state <- list(
     memory = 1,
@@ -60,6 +73,24 @@ test_that("L-BFGS memory trimming keeps only the newest updates", {
   expect_equal(state$yms[[2]], c(2, 2))
   expect_equal(state$rhos[[1]], 0.5)
   expect_equal(state$rhos[[2]], 0.25)
+})
+
+test_that("L-BFGS memory update skips bad curvature pairs", {
+  state <- list(
+    memory = 2,
+    sms = list(c(1, 0)),
+    yms = list(c(2, 0)),
+    rhos = list(0.5)
+  )
+
+  expect_equal(
+    lbfgs_memory_update(state, ym = c(-1, 0), sm = c(1, 0), eps = 0),
+    state
+  )
+  expect_equal(
+    lbfgs_memory_update(state, ym = c(1e-12, 1), sm = c(1, 0), eps = 0),
+    state
+  )
 })
 
 test_that("L-BFGS supports memory of one through the public API", {

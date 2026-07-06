@@ -40,7 +40,7 @@ bfgs_direction <- function(eps = .Machine$double.eps, scale_inverse = FALSE) {
         # Nocedal suggests this heuristic for scaling the first
         # approximation in Chapter 6 Section "Implementation"
         # Also used in the definition of L-BFGS
-        if (iter == 2 && scale_inverse) {
+        if (iter == 2 && scale_inverse && has_bfgs_curvature(ym, sm)) {
           gamma <- dot(sm, ym) / dot(ym)
           hm <- gamma * hm
         }
@@ -64,7 +64,14 @@ bfgs_direction <- function(eps = .Machine$double.eps, scale_inverse = FALSE) {
 # H - inverse Hessian
 # s - difference in iterates x
 # y - difference in gradient of x
-bfgs_update <- function(hm, sm, ym, eps) {
+bfgs_update <- function(hm, sm, ym, eps, eps_curv = 1e-8) {
+  # Nocedal & Wright caution that skipping can discard useful curvature
+  # information and prefer damped BFGS for this situation. This guard is a
+  # narrow fallback for steps that do not satisfy Wolfe curvature.
+  if (!has_bfgs_curvature(ym, sm, eps_curv)) {
+    return(hm)
+  }
+
   rho <- 1 / (dot(ym, sm) + eps)
   im <- diag(1, nrow(hm))
 
@@ -73,6 +80,14 @@ bfgs_update <- function(hm, sm, ym, eps) {
   irys <- im - rho * outer(ym, sm)
 
   (irsy %*% (hm %*% irys)) + rss
+}
+
+# Check if the curvature condition is satisfied for BFGS updates.
+has_bfgs_curvature <- function(ym, sm, eps_curv = 1e-8) {
+  ys <- dot(ym, sm)
+  curvature_scale <- eps_curv * norm2(ym) * norm2(sm)
+
+  is.finite(ys) && is.finite(curvature_scale) && ys > curvature_scale
 }
 
 # SR1 ---------------------------------------------------------------------
@@ -288,7 +303,11 @@ lbfgs_solve <- function(
 # Update lbfgs_state with new ym, sm, rho, removing old values if we've
 # reached the memory limit
 # One real calculation (rho), otherwise just lots of boring housekeeping
-lbfgs_memory_update <- function(lbfgs_state, ym, sm, eps) {
+lbfgs_memory_update <- function(lbfgs_state, ym, sm, eps, eps_curv = 1e-8) {
+  if (!has_bfgs_curvature(ym, sm, eps_curv)) {
+    return(lbfgs_state)
+  }
+
   rho <- 1 / (dot(ym, sm) + eps)
 
   rhos <- lbfgs_state$rhos
