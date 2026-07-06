@@ -188,16 +188,16 @@ backtracking <- function(
 
         d0 <- dot(opt$cache$gr_curr, pm)
 
+        max_fn <- max_fn_per_ls(opt, max_fn)
         alpha <- sub_stage$value
         para <- par + pm * alpha
         opt <- calc_fn(opt, para, fg$fn)
-
-        max_fn <- max_fn_per_ls(opt, max_fn)
+        num_steps <- 0
 
         while (
           (!is.finite(opt$fn) || !armijo_ok(f0, d0, alpha, opt$fn, c1)) &&
             alpha > sub_stage$min_value &&
-            opt$counts$fn < max_fn
+            num_steps < max_fn
         ) {
           alpha <- sclamp(
             alpha * rho,
@@ -207,6 +207,7 @@ backtracking <- function(
 
           para <- par + pm * alpha
           opt <- calc_fn(opt, para, fg$fn)
+          num_steps <- num_steps + 1
         }
         sub_stage$value <- alpha
         if (!is.finite(opt$fn)) {
