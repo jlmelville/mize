@@ -306,12 +306,19 @@ depend_to_hook <- function(
   sub_stage_type = NULL
 ) {
   f_name <- paste0("require_", depend)
-  f <- get0(f_name)
-  if (!is.null(f)) {
-    opt <- register_hook(opt, f, stage_type, sub_stage_type)
+  f <- get0(f_name, mode = "function")
+  if (is.null(f)) {
+    stop(
+      "Missing lifecycle dependency '",
+      depend,
+      "'; expected function ",
+      f_name,
+      "()",
+      call. = FALSE
+    )
   }
 
-  opt
+  register_hook(opt, f, stage_type, sub_stage_type)
 }
 
 # Lists all functions and the phases/events they should fire for.
