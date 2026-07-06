@@ -82,6 +82,36 @@ test_that("Newton reaches SPD quadratic minimizer in one exact step", {
   }
 })
 
+test_that("PHESS reuses the initial Hessian on SPD quadratics", {
+  quadratic_fg <- make_spd_quadratic()
+  par <- c(3, -1, 2)
+  hs_calls <- 0
+
+  phess_fg <- quadratic_fg
+  phess_fg$hi <- NULL
+  phess_fg$hs <- function(x) {
+    hs_calls <<- hs_calls + 1
+    quadratic_fg$a
+  }
+
+  res <- mize(
+    par,
+    phess_fg,
+    method = "PHESS",
+    line_search = "constant",
+    step0 = 1,
+    max_iter = 2,
+    check_conv_every = NULL,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL
+  )
+
+  expect_equal(as.numeric(res$par), quadratic_fg$xmin, tolerance = 1e-12)
+  expect_equal(phess_fg$gr(as.numeric(res$par)), rep(0, 3), tolerance = 1e-12)
+  expect_equal(hs_calls, 1)
+})
+
 test_that("CG reaches SPD quadratic minimizer under exact line search", {
   quadratic_fg <- make_spd_quadratic()
   par <- c(3, -1, 2)

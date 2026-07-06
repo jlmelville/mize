@@ -226,6 +226,44 @@ test_that("Hager-Zhang returned steps satisfy approximate weak Wolfe conditions"
   }
 })
 
+test_that("Hager-Zhang U3 bracket update bisects to a positive-slope bound", {
+  hz_step <- function(alpha, f, d) {
+    list(alpha = alpha, f = f, d = d, df = d)
+  }
+
+  step0 <- hz_step(alpha = 0, f = 0, d = -1)
+  bracket <- list(
+    hz_step(alpha = 1, f = -1, d = -1),
+    hz_step(alpha = 8, f = 2, d = 1)
+  )
+  step_c <- hz_step(alpha = 8, f = 2, d = -1)
+  phi <- function(alpha) {
+    if (alpha > 4) {
+      hz_step(alpha, f = 1, d = -1)
+    } else if (alpha < 3) {
+      hz_step(alpha, f = -1, d = -1)
+    } else {
+      hz_step(alpha, f = -0.5, d = 1)
+    }
+  }
+
+  res <- update_bracket_hz(
+    bracket = bracket,
+    step_c = step_c,
+    step0 = step0,
+    phi = phi,
+    eps = 0,
+    max_fn = 5,
+    theta = 0.5
+  )
+
+  expect_true(res$ok)
+  expect_equal(res$nfn, 3)
+  expect_equal(unname(bracket_props(res$bracket, "alpha")), c(2.75, 3.625))
+  expect_equal(unname(bracket_props(res$bracket, "d")), c(-1, 1))
+  expect_true(res$bracket[[1]]$f <= step0$f)
+})
+
 test_that("line searches return the initial step when evaluation budgets are exhausted", {
   c1 <- 1e-4
   c2 <- 0.1

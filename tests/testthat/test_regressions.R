@@ -29,6 +29,66 @@ test_that("Newton direction uses inverse Hessian functions", {
   }
 })
 
+test_that("make_mize validates public configuration values", {
+  cases <- list(
+    list(args = list(memory = 0), pattern = "memory must be > 0"),
+    list(
+      args = list(nest_q = -0.1),
+      pattern = "nest_q must be between 0 and 1"
+    ),
+    list(
+      args = list(nest_burn_in = -1),
+      pattern = "nest_burn_in must be non-negative"
+    ),
+    list(args = list(step_up = 0), pattern = "step_up must be positive"),
+    list(
+      args = list(step_down = -0.1),
+      pattern = "step_down must be between 0 and 1"
+    ),
+    list(
+      args = list(dbd_weight = -0.1),
+      pattern = "dbd_weight must be between 0 and 1"
+    ),
+    list(args = list(c1 = -0.1), pattern = "c1 must be between 0 and 1"),
+    list(
+      args = list(c1 = 0.5, c2 = 0.4),
+      pattern = "c2 must be between c1 and 1"
+    ),
+    list(
+      args = list(ls_max_fn = -1),
+      pattern = "ls_max_fn must be non-negative"
+    ),
+    list(
+      args = list(ls_max_gr = -1),
+      pattern = "ls_max_gr must be non-negative"
+    ),
+    list(
+      args = list(ls_max_fg = -1),
+      pattern = "ls_max_fg must be non-negative"
+    ),
+    list(
+      args = list(ls_max_alpha_mult = 0),
+      pattern = "ls_max_alpha_mult must be positive"
+    ),
+    list(
+      args = list(ls_max_alpha = 0),
+      pattern = "ls_max_alpha must be positive"
+    ),
+    list(
+      args = list(restart_wait = 0),
+      pattern = "restart_wait must be a positive integer"
+    ),
+    list(
+      args = list(step_next_init = 0),
+      pattern = "numeric argument for step_next_init must be positive"
+    )
+  )
+
+  for (case in cases) {
+    expect_error(do.call(make_mize, case$args), case$pattern)
+  }
+})
+
 test_that("BFGS update skips bad curvature pairs", {
   hm <- matrix(c(2, 0.25, 0.25, 1), nrow = 2)
 
