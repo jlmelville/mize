@@ -6,7 +6,7 @@ such as function value, gradient norm and step size may be returned.
 ## Usage
 
 ``` r
-mize_step_summary(opt, par, fg, par_old = NULL, calc_fn = NULL)
+mize_step_summary(opt, par, fg, par_old = NULL, calc_fn = NULL, calc_gr = NULL)
 ```
 
 ## Arguments
@@ -34,6 +34,12 @@ mize_step_summary(opt, par, fg, par_old = NULL, calc_fn = NULL)
 - calc_fn:
 
   (Optional). If `TRUE`, force calculation of function if not already
+  cached in `opt`, even if it would not be needed for convergence
+  checking.
+
+- calc_gr:
+
+  (Optional). If `TRUE`, force calculation of gradient if not already
   cached in `opt`, even if it would not be needed for convergence
   checking.
 

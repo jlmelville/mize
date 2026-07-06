@@ -60,7 +60,7 @@ function value, gradient norm and step size may be returned.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">mize_step_summary</span><span class="op">(</span><span class="va">opt</span>, <span class="va">par</span>, <span class="va">fg</span>, par_old <span class="op">=</span> <span class="cn">NULL</span>, calc_fn <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">mize_step_summary</span><span class="op">(</span><span class="va">opt</span>, <span class="va">par</span>, <span class="va">fg</span>, par_old <span class="op">=</span> <span class="cn">NULL</span>, calc_fn <span class="op">=</span> <span class="cn">NULL</span>, calc_gr <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -89,6 +89,12 @@ iteration. Used to calculate step size.</p></dd>
 
 <dt id="arg-calc-fn">calc_fn<a class="anchor" aria-label="anchor" href="#arg-calc-fn"></a></dt>
 <dd><p>(Optional). If <code>TRUE</code>, force calculation of function if
+not already cached in <code>opt</code>, even if it would not be needed for
+convergence checking.</p></dd>
+
+
+<dt id="arg-calc-gr">calc_gr<a class="anchor" aria-label="anchor" href="#arg-calc-gr"></a></dt>
+<dd><p>(Optional). If <code>TRUE</code>, force calculation of gradient if
 not already cached in <code>opt</code>, even if it would not be needed for
 convergence checking.</p></dd>
 
