@@ -282,6 +282,13 @@ tn_inner_cg <- function(
   max_iter = 40
 ) {
   gn <- norm2(gm)
+  if (!is.finite(gn) || gn == 0) {
+    return(list(
+      opt = opt,
+      zm = rep(0, length(gm))
+    ))
+  }
+
   eps <- min(0.5, sqrt(gn)) * gn
 
   if (length(zm) == 1 && zm == 0) {
@@ -307,6 +314,12 @@ tn_inner_cg <- function(
 
   dm <- -ym
   dot_rm_ym <- dot(rm, ym)
+  if (!is.finite(dot_rm_ym) || dot_rm_ym <= 0) {
+    return(list(
+      opt = opt,
+      zm = -gm
+    ))
+  }
 
   j <- 0
   while (j < max_iter) {
@@ -324,18 +337,22 @@ tn_inner_cg <- function(
     opt$counts$gr <- opt$counts$gr + 1
 
     dBd <- dot(dm, Bd)
-    if (exit_criterion == "curvature") {
-      if (dBd <= 0) {
-        # -ve curvature, bail out
-        if (j == 0) {
-          # Use steepest descent if the initial Bd estimate is unusable
-          zm <- -gm
-        }
-        break
+    if (!is.finite(dBd) || dBd <= 0) {
+      # -ve or unusable curvature, bail out
+      if (j == 0) {
+        # Use steepest descent if the initial Bd estimate is unusable
+        zm <- -gm
       }
+      break
     }
 
     alpha <- dot_rm_ym / dBd
+    if (!is.finite(alpha)) {
+      if (j == 0) {
+        zm <- -gm
+      }
+      break
+    }
     # only used in the strong curvature criterion
     zm_old <- zm
     zm <- zm + alpha * dm
@@ -353,7 +370,8 @@ tn_inner_cg <- function(
     }
 
     rm <- rm + alpha * Bd
-    if (norm2(rm) < eps) {
+    rm_norm <- norm2(rm)
+    if (!is.finite(rm_norm) || rm_norm < eps) {
       break
     }
 
@@ -391,8 +409,45 @@ bd_approx <- function(
   par,
   dm,
   gm,
-  h = 2 * sqrt(.Machine$double.eps) * (1 + norm2(par)) / norm2(dm)
+  h = NULL
 ) {
+  if (is.null(h)) {
+    h <- bd_approx_step(par, dm)
+  }
+  if (!is.finite(h) || h <= 0) {
+    return(rep(0, length(dm)))
+  }
+
+  step <- h * dm
+  if (any(!is.finite(step))) {
+    return(rep(0, length(dm)))
+  }
+
   g_fwd <- fg$gr(par + h * dm)
-  (g_fwd - gm) / h
+  bd <- (g_fwd - gm) / h
+  if (any(!is.finite(bd))) {
+    return(rep(0, length(dm)))
+  }
+
+  bd
+}
+
+bd_approx_step <- function(par, dm) {
+  par_norm <- norm2(par)
+  if (!is.finite(par_norm)) {
+    par_norm <- norm_inf(par)
+  }
+  if (!is.finite(par_norm)) {
+    return(NA_real_)
+  }
+
+  dm_norm <- norm2(dm)
+  if (!is.finite(dm_norm) || dm_norm <= 0) {
+    dm_norm <- norm_inf(dm)
+  }
+  if (!is.finite(dm_norm) || dm_norm <= 0) {
+    return(NA_real_)
+  }
+
+  2 * sqrt(.Machine$double.eps) * (1 + par_norm) / dm_norm
 }

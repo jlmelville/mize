@@ -134,3 +134,57 @@ expect_equal(
   c(1, 0.771, 0.707, 0.528, 0.483, 0.352),
   tolerance = 1e-3
 )
+
+test_that("bd_approx handles zero and badly scaled directions", {
+  # Internal helper coverage protects TN's Hessian-vector product invariant.
+  quadratic_fg <- list(
+    gr = function(x) {
+      c(2 * x[1], 6 * x[2])
+    }
+  )
+  par <- c(1, -2)
+  gm <- quadratic_fg$gr(par)
+
+  expect_equal(
+    bd_approx(quadratic_fg, par, dm = c(0, 0), gm = gm),
+    c(0, 0)
+  )
+
+  tiny_dm <- c(1e-300, -1e-300)
+  tiny_bd <- bd_approx(quadratic_fg, par, dm = tiny_dm, gm = gm)
+  expect_true(all(is.finite(tiny_bd)))
+  expect_equal(tiny_bd / tiny_dm, c(2, 6), tolerance = 1e-6)
+
+  huge_dm <- c(4e307, -2e307)
+  huge_bd <- bd_approx(quadratic_fg, par, dm = huge_dm, gm = gm)
+  expect_true(all(is.finite(huge_bd)))
+  expect_equal(huge_bd / huge_dm, c(2, 6), tolerance = 1e-6)
+})
+
+test_that("TN stationary starts terminate without non-finite inner state", {
+  quadratic_fg <- list(
+    fn = function(x) {
+      sum(x^2)
+    },
+    gr = function(x) {
+      2 * x
+    }
+  )
+
+  res <- mize(
+    c(0, 0),
+    quadratic_fg,
+    method = "TN",
+    line_search = "constant",
+    step0 = 1,
+    max_iter = 1,
+    check_conv_every = NULL,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL
+  )
+
+  expect_equal(res$terminate$what, "max_iter")
+  expect_equal(res$par, c(0, 0))
+  expect_equal(res$f, 0)
+})
