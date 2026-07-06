@@ -188,6 +188,56 @@ test_that("append_depends handles optimizer, stage, and sub-stage dependencies",
   )
 })
 
+test_that("representative optimizers register lifecycle dependency hooks", {
+  opt <- make_mize(
+    method = "SD",
+    line_search = "constant",
+    step0 = 0.1,
+    par = c(1),
+    fg = list(fn = function(x) x[1]^2, gr = function(x) 2 * x)
+  )
+  expect_true("gradient" %in% names(opt$hooks$gradient_descent$before))
+
+  opt <- make_mize(
+    method = "L-BFGS",
+    line_search = "constant",
+    step0 = 0.1,
+    par = rb0,
+    fg = rosen_no_hess
+  )
+  after_step_hooks <- names(opt$hooks$step$after)
+  expect_true("gradient_old" %in% after_step_hooks)
+  expect_true("update_old" %in% after_step_hooks)
+
+  opt <- make_mize(
+    method = "MOM",
+    line_search = "constant",
+    step0 = 0.001,
+    mom_schedule = 0.9,
+    restart = "fn",
+    par = rb0,
+    fg = rosenbrock_fg
+  )
+  expect_true("fn_curr" %in% names(opt$hooks$step$before))
+  expect_true("update_fn_cache" %in% names(opt$hooks$step$after))
+  expect_true("save_cache_on_failure" %in% names(opt$hooks$step$after))
+  expect_true("fn_new" %in% names(opt$hooks$validation$before))
+  expect_true("validate_fn" %in% names(opt$hooks$validation$during))
+})
+
+test_that("missing lifecycle dependencies fail loudly", {
+  opt <- make_mize(method = "SD", line_search = "constant", step0 = 0.1)
+  opt$stages$gradient_descent$depends <- c(
+    opt$stages$gradient_descent$depends,
+    "gradinet"
+  )
+
+  expect_error(
+    mize_init(opt, c(1), list(fn = function(x) x[1]^2, gr = function(x) 2 * x)),
+    "Missing lifecycle dependency 'gradinet'"
+  )
+})
+
 test_that("CG helper updates default to the unpreconditioned gradient", {
   gm <- c(1, 2)
   gm_old <- c(2, 1)
@@ -212,4 +262,87 @@ test_that("relative function convergence handles zero baselines", {
   )
   expect_null(check_fn_conv(opt, 1, 0, 1e-8, abs_tol = NULL, rel_tol = 1e-8))
   expect_null(check_fn_conv(opt, 1, 1e-8, 0, abs_tol = NULL, rel_tol = 1e-8))
+})
+
+test_that("best gradient restore does not cache an infinite function value", {
+  double_well <- list(
+    fn = function(x) {
+      (x[1]^2 - 1)^2
+    },
+    gr = function(x) {
+      4 * x[1] * (x[1]^2 - 1)
+    }
+  )
+
+  res <- mize(
+    c(1.2),
+    double_well,
+    method = "SD",
+    line_search = "constant",
+    step0 = 0.3,
+    max_iter = 3,
+    check_conv_every = 1,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = 0
+  )
+
+  expect_true(is.finite(res$f))
+  expect_equal(res$f, double_well$fn(res$par))
+  expect_equal(res$par, 1.028033, tolerance = 1e-6)
+})
+
+test_that("mize_step_summary can force gradient norm calculation", {
+  quadratic_fg <- list(
+    fn = function(x) {
+      sum(x^2)
+    },
+    gr = function(x) {
+      2 * x
+    }
+  )
+  opt <- make_mize(
+    method = "SD",
+    line_search = "constant",
+    step0 = 0.1,
+    par = c(1, -2),
+    fg = quadratic_fg,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL
+  )
+  step <- mize_step(opt, c(1, -2), quadratic_fg)
+
+  default_summary <- mize_step_summary(step$opt, step$par, quadratic_fg)
+  expect_null(default_summary$g2n)
+  expect_null(default_summary$ginfn)
+  expect_equal(default_summary$ng, step$ng)
+
+  forced_summary <- mize_step_summary(
+    step$opt,
+    step$par,
+    quadratic_fg,
+    calc_gr = TRUE
+  )
+  grad <- quadratic_fg$gr(step$par)
+  expect_equal(forced_summary$g2n, norm2(grad))
+  expect_equal(forced_summary$ginfn, norm_inf(grad))
+  expect_equal(forced_summary$ng, step$ng + 1)
+})
+
+test_that("verbose requires convergence checks to define logging cadence", {
+  expect_error(
+    mize(
+      rb0,
+      rosenbrock_fg,
+      method = "SD",
+      line_search = "constant",
+      step0 = 0.0001,
+      max_iter = 1,
+      check_conv_every = NULL,
+      verbose = TRUE
+    ),
+    "check_conv_every must be non-NULL if verbose is TRUE"
+  )
 })

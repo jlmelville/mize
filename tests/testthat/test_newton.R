@@ -168,6 +168,41 @@ test_that("Newton with basic backtracking works ok", {
   expect_equal(res$par, par, tolerance = 1e-3)
 })
 
+test_that("internal backtracking uses a per-search function budget", {
+  # The public backtracking line search uses Schmidt Armijo. This test covers
+  # the legacy internal helper because it is still used by direct optimizer
+  # construction tests and should not confuse cumulative counts with local
+  # line-search budget.
+  quadratic_fg <- list(
+    fn = function(x) {
+      x[1]^2
+    },
+    gr = function(x) {
+      2 * x
+    }
+  )
+  opt <- make_opt(
+    make_stages(
+      gradient_stage(
+        direction = sd_direction(),
+        step_size = backtracking(rho = 0.5, c1 = 1e-4, max_fn = 1)
+      )
+    )
+  )
+  opt$convergence <- list(max_fn = 103, max_fg = Inf)
+  opt$counts$fn <- 100
+  opt <- set_gr_curr(opt, quadratic_fg$gr(c(1)), 1)
+
+  stage <- opt$stages$gradient_descent
+  stage$direction$value <- -opt$cache$gr_curr
+  sub_stage <- stage$step_size
+
+  res <- sub_stage$calculate(opt, stage, sub_stage, c(1), quadratic_fg, 1)
+
+  expect_equal(res$sub_stage$value, 0.5)
+  expect_equal(res$opt$counts$fn, 103)
+})
+
 # From https://math.stackexchange.com/questions/1130002/newton-optimization-algorithm-with-non-positive-definite-hessian
 # At starting location, Hessian is not positive definite and cholesky fails
 # Details of minimization probably aren't important, but it should reach
