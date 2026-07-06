@@ -186,6 +186,11 @@ mize_step_summary <- function(
 #'
 #' * A boolean value `is_terminated` which is `TRUE` if
 #' termination has been indicated, and `FALSE` otherwise.
+#' * A boolean value `converged` which is `TRUE` only if
+#' termination was caused by a convergence tolerance.
+#' * A string `status` classifying the termination as `"converged"`,
+#' `"budget_exhausted"`, `"failed"`, or `"terminated"`.
+#' * A string `message` describing the termination.
 #' * A list `terminate` if `is_terminated` is `TRUE`. This
 #' contains two items: `what`, a short string describing what caused the
 #' termination, and `val`, the value of the termination criterion that
@@ -231,9 +236,7 @@ check_mize_convergence <- function(mize_step_info) {
     convergence$max_fg
   )
   if (!is.null(terminate)) {
-    opt$terminate <- terminate
-    opt$is_terminated <- TRUE
-    return(opt)
+    return(set_mize_termination(opt, terminate))
   }
 
   terminate <- check_step_conv(
@@ -243,16 +246,12 @@ check_mize_convergence <- function(mize_step_info) {
     convergence$step_tol
   )
   if (!is.null(terminate)) {
-    opt$terminate <- terminate
-    opt$is_terminated <- TRUE
-    return(opt)
+    return(set_mize_termination(opt, terminate))
   }
 
   terminate <- check_gr_conv(opt, convergence$grad_tol, convergence$ginf_tol)
   if (!is.null(terminate)) {
-    opt$terminate <- terminate
-    opt$is_terminated <- TRUE
-    return(opt)
+    return(set_mize_termination(opt, terminate))
   }
 
   if (!is.null(opt$cache$fn_curr)) {
@@ -270,15 +269,15 @@ check_mize_convergence <- function(mize_step_info) {
       convergence$rel_tol
     )
     if (!is.null(terminate)) {
-      opt$is_terminated <- TRUE
-      opt$terminate <- terminate
-      return(opt)
+      return(set_mize_termination(opt, terminate))
     }
   }
 
   if (opt$iter == convergence$max_iter) {
-    opt$is_terminated <- TRUE
-    opt$terminate <- list(what = "max_iter", val = convergence$max_iter)
+    opt <- set_mize_termination(
+      opt,
+      list(what = "max_iter", val = convergence$max_iter)
+    )
   }
 
   opt

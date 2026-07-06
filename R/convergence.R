@@ -111,3 +111,44 @@ check_fn_conv <- function(opt, iter, fn_old, fn_new, abs_tol, rel_tol) {
 is_restart_iter <- function(opt, iter) {
   !is.null(opt$restart_at) && opt$restart_at == iter
 }
+
+mize_termination_summary <- function(terminate) {
+  what <- terminate[["what"]]
+  converged_whats <- c("abs_tol", "rel_tol", "grad_tol", "ginf_tol", "step_tol")
+  budget_whats <- c("max_iter", "max_fn", "max_gr", "max_fg")
+  failure_whats <- c("fn_inf", "gr_inf")
+
+  if (what %in% converged_whats) {
+    status <- "converged"
+    converged <- TRUE
+    message <- paste0("Converged: ", what, " reached.")
+  } else if (what %in% budget_whats) {
+    status <- "budget_exhausted"
+    converged <- FALSE
+    message <- paste0("Budget exhausted: ", what, " reached.")
+  } else if (what %in% failure_whats) {
+    status <- "failed"
+    converged <- FALSE
+    message <- paste0("Failed: ", what, " encountered.")
+  } else {
+    status <- "terminated"
+    converged <- FALSE
+    message <- paste0("Terminated: ", what, ".")
+  }
+
+  list(
+    converged = converged,
+    status = status,
+    message = message
+  )
+}
+
+set_mize_termination <- function(opt, terminate) {
+  summary <- mize_termination_summary(terminate)
+  opt$terminate <- terminate
+  opt$is_terminated <- TRUE
+  opt$converged <- summary$converged
+  opt$status <- summary$status
+  opt$message <- summary$message
+  opt
+}

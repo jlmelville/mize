@@ -6,11 +6,13 @@ require_gradient <- function(opt, stage, par, fg, iter) {
     opt <- calc_gr_curr(opt, par, fg$gr, iter)
 
     if (any(!is.finite(opt$cache$gr_curr))) {
-      opt$terminate <- list(
-        what = "gr_inf",
-        val = Inf
+      opt <- set_mize_termination(
+        opt,
+        list(
+          what = "gr_inf",
+          val = Inf
+        )
       )
-      opt$is_terminated <- TRUE
     }
   }
 

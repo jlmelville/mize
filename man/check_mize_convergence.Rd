@@ -24,6 +24,11 @@ contain:
 \itemize{
 \item A boolean value \code{is_terminated} which is \code{TRUE} if
 termination has been indicated, and \code{FALSE} otherwise.
+\item A boolean value \code{converged} which is \code{TRUE} only if
+termination was caused by a convergence tolerance.
+\item A string \code{status} classifying the termination as \code{"converged"},
+\code{"budget_exhausted"}, \code{"failed"}, or \code{"terminated"}.
+\item A string \code{message} describing the termination.
 \item A list \code{terminate} if \code{is_terminated} is \code{TRUE}. This
 contains two items: \code{what}, a short string describing what caused the
 termination, and \code{val}, the value of the termination criterion that

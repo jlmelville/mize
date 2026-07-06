@@ -283,6 +283,14 @@
 #' termination, and `val`, the value of the termination criterion that
 #' caused termination.
 #'
+#' The `converged`, `status`, and `message` return values summarize
+#' `terminate` without replacing it. `converged` is `TRUE` only for tolerance
+#' based termination (`"abs_tol"`, `"rel_tol"`, `"grad_tol"`,
+#' `"ginf_tol"`, or `"step_tol"`). The `status` value is `"converged"` for
+#' those tolerance exits, `"budget_exhausted"` for `"max_iter"`, `"max_fn"`,
+#' `"max_gr"`, or `"max_fg"`, `"failed"` for `"fn_inf"` or `"gr_inf"`,
+#' and `"terminated"` for any other termination reason.
+#'
 #' The following parameters control various stopping criteria:
 #'
 #'
@@ -524,6 +532,17 @@
 #'  calculating the value of `g2n` or `ginfn` (see below).
 #' * `f`: Value of the function, evaluated at the returned
 #'  value of `par`.
+#' * `best_par`: The best parameters returned by `mize()`. This is
+#'  currently the same value as `par`, and is provided so callers can use an
+#'  explicit best-vs-last naming convention.
+#' * `best_f`: Value of the function at `best_par`. This is currently
+#'  the same value as `f`.
+#' * `last_par`: Parameters from the last optimizer state before any final
+#'  best-result restoration. This is the same as `par` unless `mize()` returns
+#'  an earlier best point.
+#' * `last_f`: Value of the function at `last_par` when it is known without
+#'  requiring an extra function evaluation. If `last_par` differs from `par`
+#'  and the function value was not already available, this is `NA_real_`.
 #' * `g2n`: Optional: the length (Euclidean or l2-norm) of the
 #'  gradient vector, evaluated at the returned value of `par`. Calculated
 #'  only if `grad_tol` is non-null.
@@ -535,6 +554,11 @@
 #' * `terminate`: List containing items: `what`, indicating what
 #'  convergence criterion was met, and `val` specifying the value at
 #'  convergence. See the 'Convergence' section for more details.
+#' * `converged`: Logical value indicating whether `terminate$what` is one of
+#'  the tolerance-based convergence criteria.
+#' * `status`: Short string classifying the termination reason. One of
+#'  `"converged"`, `"budget_exhausted"`, `"failed"`, or `"terminated"`.
+#' * `message`: Human-readable summary of the termination reason.
 #' * `progress`: Optional data frame containing information on the
 #'  value of the function, gradient, momentum, and step sizes evaluated at each
 #'  iteration where convergence is checked. Only present if
@@ -807,7 +831,14 @@ mize <- function(
       "nf",
       "ng",
       "par",
+      "best_par",
+      "best_f",
+      "last_par",
+      "last_f",
       "iter",
+      "converged",
+      "status",
+      "message",
       "terminate",
       "progress"
     )]

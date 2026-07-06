@@ -147,12 +147,26 @@ opt_loop <- function(
     }
   }
 
+  last_par <- par
+  last_f <- NULL
+  if (!is.null(step_info) &&
+    !is.null(step_info$iter) &&
+    step_info$iter == iter &&
+    !is.null(step_info$f)) {
+    last_f <- step_info$f
+  } else if (has_fn_curr(opt, iter + 1)) {
+    last_f <- opt$cache$fn_curr
+  }
+
+  restored_best <- FALSE
+
   # If we were keeping track of the best result and that's not currently par:
   if (
     !is.null(best_par) &&
       ((best_crit == "fn" && best_fn != opt$cache$fn_curr) ||
         (best_crit == "gr" && best_grn != norm_inf(opt$cache$gr_curr)))
   ) {
+    restored_best <- TRUE
     par <- best_par
     opt <- opt_clear_cache(opt)
     if (best_crit == "fn" || is.finite(best_fn)) {
@@ -170,6 +184,11 @@ opt_loop <- function(
     step_info <- mize_step_summary(opt, par, fg, par0, calc_fn = TRUE)
     opt <- step_info$opt
   }
+  if (!restored_best) {
+    last_f <- step_info$f
+  } else if (is.null(last_f)) {
+    last_f <- NA_real_
+  }
   if (verbose && iter %% log_every != 0) {
     opt_report(step_info, print_time = TRUE, print_par = FALSE)
   }
@@ -180,15 +199,30 @@ opt_loop <- function(
   if (store_progress) {
     step_info$progress <- progress
   }
-  if (!ret_opt) {
-    step_info["opt"] <- NULL
-  }
 
   if (is.null(opt$terminate)) {
-    opt$terminate <- list(what = "max_iter", val = opt$convergence$max_iter)
+    opt <- set_mize_termination(
+      opt,
+      list(what = "max_iter", val = opt$convergence$max_iter)
+    )
+  } else {
+    opt <- set_mize_termination(opt, opt$terminate)
   }
+  termination_summary <- mize_termination_summary(opt$terminate)
   step_info$terminate <- opt$terminate
+  step_info$converged <- termination_summary$converged
+  step_info$status <- termination_summary$status
+  step_info$message <- termination_summary$message
   step_info$par <- par
+  step_info$best_par <- par
+  step_info$best_f <- step_info$f
+  step_info$last_par <- last_par
+  step_info$last_f <- last_f
+  if (ret_opt) {
+    step_info$opt <- opt
+  } else {
+    step_info["opt"] <- NULL
+  }
   Filter(Negate(is.null), step_info)
 }
 

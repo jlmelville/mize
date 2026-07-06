@@ -1,13 +1,13 @@
 # mize (development version)
 
-## Bug fixes
+## Bug fixes and minor improvements
 
-* Fixed several optimizer edge cases found during cleanup: `NEWTON` now uses
-`fg$hi`, L-BFGS memory trimming handles `memory = 1`, stored progress keeps
-`ginfn`, Delta-Bar-Delta respects `step0`, one-argument user momentum schedules
-work as documented, adaptive restart dependency insertion no longer references
-an undefined stage, CG helper defaults no longer self-reference, and
-zero-valued relative function convergence no longer errors.
+* Fixed several optimizer edge cases found during cleanup.
+* New function: `check_mize_convergence()`, which will compare your an analytic
+gradient with a finite-different approximation.
+* `mize()` now returns additive status fields more status fields: `converged`,
+`status`, and `message`, plus explicit best/last result fields (`best_par`,
+`best_f`, `last_par`, and `last_f`).
 
 # mize 0.2.5
 
@@ -25,12 +25,12 @@ Bug fix release.
 ## Bug fixes.
 
 * If using `line_search = "backtracking"` with a specified `step_down`
-parameter, an incorrectly large number of gradient calculations was being 
+parameter, an incorrectly large number of gradient calculations was being
 reported.
-* The documentation now specifies that if you *don't* provide a `step_down` 
+* The documentation now specifies that if you *don't* provide a `step_down`
 argument with `line_search = "backtracking"`, interpolation using function
 and gradient evaluations is carried out. To get a typical Armijo-style
-backtracking line search, specify a value for `step_down` (e.g. 
+backtracking line search, specify a value for `step_down` (e.g.
 `step_down = 0.5` to halve the step size), and only function evaluations are
 used.
 
@@ -50,8 +50,8 @@ A patch release for a bug fix.
 ## Bug fixes
 
 * Fixed a bug where if the maximum number of function evaluations for the
-Schmidt line search is exceeded (controlled by the `ls_max_fn` parameter), a 
-`'bracket_step' not found` error could result. Thank you to reporter Charles 
+Schmidt line search is exceeded (controlled by the `ls_max_fn` parameter), a
+`'bracket_step' not found` error could result. Thank you to reporter Charles
 Driver.
 * Fixed a couple of vignette links that were missing the "http://" at the front.
 
@@ -70,7 +70,7 @@ stage was being incorrectly checked.
 
 * New method: Truncated Newton (`method = "TN"`). Can be controlled using the
 `tn_init` and `tn_exit` options.
-* New method: SR1 (`method = "SR1"`), falling back to the BFGS direction if a 
+* New method: SR1 (`method = "SR1"`), falling back to the BFGS direction if a
 descent direction is not found.
 * New option `preconditioner`, which applies to the conjugate gradient and
 truncated newton methods. The only value currently available is `preconditioner
@@ -91,14 +91,14 @@ search, to the final value of alpha of the previous line search. Used to stop
 line searches diverging due to very large initial guesses.
 * `ls_safe_cubic` (for `line_search = "More-Thuente"` only): if `TRUE`,
 use the safe-guarded cubic modification suggested by Xie and Schlick.
-* `cg_update = "prfr"`, the "PR-FR" (Polak-Ribiere/Fletcher-Reeves) conjugate 
+* `cg_update = "prfr"`, the "PR-FR" (Polak-Ribiere/Fletcher-Reeves) conjugate
 gradient update suggested by Gilbert and Nocedal.
 
 ## Bug fixes
 
 * An error occurred when checking if a step size was finite during line search.
 * DBD method didn't use momentum when asked to.
-* Fix incorrectly specified conjugate gradient descent methods: 
+* Fix incorrectly specified conjugate gradient descent methods:
 Hestenes-Stiefel (`cg_update = "hs"`), Conjugate Descent (`cg_update = "cd"`),
 Dai-Yuan (`cg_update = "dy"`) and Liu-Storey (`cg_update = "ls"`).
 

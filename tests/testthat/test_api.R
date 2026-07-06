@@ -465,6 +465,9 @@ test_that("Delta bar delta adaptive learning rate and nesterov momentum", {
 test_that("Terminates semi-gracefully if function value is non-finite", {
   res <- mize(rb0, rosenbrock_fg, "DBD", step0 = 1, check_conv_every = 1)
   expect_equal(res$terminate$what, "fn_inf")
+  expect_false(res$converged)
+  expect_equal(res$status, "failed")
+  expect_true(grepl("fn_inf", res$message, fixed = TRUE))
   expect_equal(res$iter, 4)
 })
 
@@ -474,6 +477,9 @@ test_that("Terminates semi-gracefully if gradient is non-finite", {
   # terminate early even if not on a convergence check iteration
   res <- mize(rb0, rosenbrock_fg, "DBD", step0 = 1, check_conv_every = 10)
   expect_equal(res$terminate$what, "gr_inf")
+  expect_false(res$converged)
+  expect_equal(res$status, "failed")
+  expect_true(grepl("gr_inf", res$message, fixed = TRUE))
   expect_equal(res$iter, 6)
 })
 
@@ -494,6 +500,13 @@ test_that("Step tolerance is triggered when progress stalls", {
   expect_equal(res$f, 0, tolerance = 1e-3)
   expect_equal(res$par, c(1, 1))
   expect_equal(res$terminate$what, "step_tol")
+  expect_true(res$converged)
+  expect_equal(res$status, "converged")
+  expect_true(grepl("step_tol", res$message, fixed = TRUE))
+  expect_equal(res$best_par, res$par)
+  expect_equal(res$best_f, res$f)
+  expect_equal(res$last_par, res$par)
+  expect_equal(res$last_f, res$f)
 })
 
 test_that("Step tolerance is not triggered when restarting", {
@@ -508,6 +521,31 @@ test_that("Step tolerance is not triggered when restarting", {
   expect_equal(res$iter, 55)
   expect_equal(res$progress["52", "step"], 0)
   expect_equal(res$terminate$what, "max_iter")
+})
+
+test_that("Budget status reports best and last results separately", {
+  res <- mize(
+    rb0,
+    rosenbrock_fg,
+    method = "MOM",
+    norm_direction = TRUE,
+    line_search = "bold",
+    mom_type = "classical",
+    mom_schedule = 0.6,
+    max_iter = 3,
+    grad_tol = 1e-5,
+    store_progress = TRUE
+  )
+
+  expect_equal(res$terminate$what, "max_iter")
+  expect_false(res$converged)
+  expect_equal(res$status, "budget_exhausted")
+  expect_true(grepl("max_iter", res$message, fixed = TRUE))
+  expect_equal(res$best_par, res$par)
+  expect_equal(res$best_f, res$f)
+  expect_gt(res$last_f, res$best_f)
+  expect_equal(res$last_f, tail(res$progress$f, 1), tolerance = 1e-12)
+  expect_false(isTRUE(all.equal(res$last_par, res$best_par)))
 })
 
 test_that("max_fn errs on the side of caution", {

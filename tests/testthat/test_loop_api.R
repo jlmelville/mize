@@ -104,3 +104,22 @@ test_that("cache predicates require exact value fields", {
   expect_true(fn_curr)
   expect_true(gr_curr)
 })
+
+test_that("stateful convergence reports status fields", {
+  opt <- make_mize(
+    method = "SD",
+    line_search = "const",
+    step0 = 0.0001,
+    max_iter = 1
+  )
+  opt <- mize_init(opt, rb0, rosenbrock_fg)
+  step <- mize_step(opt, rb0, rosenbrock_fg)
+  step_info <- mize_step_summary(step$opt, step$par, rosenbrock_fg, rb0)
+  opt <- check_mize_convergence(step_info)
+
+  expect_true(opt$is_terminated)
+  expect_equal(opt$terminate$what, "max_iter")
+  expect_false(opt$converged)
+  expect_equal(opt$status, "budget_exhausted")
+  expect_true(grepl("max_iter", opt$message, fixed = TRUE))
+})

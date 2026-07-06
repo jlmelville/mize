@@ -270,6 +270,17 @@ what you're expecting may have been needed for logging, convergence and
 calculating the value of \code{g2n} or \code{ginfn} (see below).
 \item \code{f}: Value of the function, evaluated at the returned
 value of \code{par}.
+\item \code{best_par}: The best parameters returned by \code{mize()}. This is
+currently the same value as \code{par}, and is provided so callers can use an
+explicit best-vs-last naming convention.
+\item \code{best_f}: Value of the function at \code{best_par}. This is currently
+the same value as \code{f}.
+\item \code{last_par}: Parameters from the last optimizer state before any final
+best-result restoration. This is the same as \code{par} unless \code{mize()} returns
+an earlier best point.
+\item \code{last_f}: Value of the function at \code{last_par} when it is known without
+requiring an extra function evaluation. If \code{last_par} differs from \code{par}
+and the function value was not already available, this is \code{NA_real_}.
 \item \code{g2n}: Optional: the length (Euclidean or l2-norm) of the
 gradient vector, evaluated at the returned value of \code{par}. Calculated
 only if \code{grad_tol} is non-null.
@@ -281,6 +292,11 @@ out for.
 \item \code{terminate}: List containing items: \code{what}, indicating what
 convergence criterion was met, and \code{val} specifying the value at
 convergence. See the 'Convergence' section for more details.
+\item \code{converged}: Logical value indicating whether \code{terminate$what} is one of
+the tolerance-based convergence criteria.
+\item \code{status}: Short string classifying the termination reason. One of
+\code{"converged"}, \code{"budget_exhausted"}, \code{"failed"}, or \code{"terminated"}.
+\item \code{message}: Human-readable summary of the termination reason.
 \item \code{progress}: Optional data frame containing information on the
 value of the function, gradient, momentum, and step sizes evaluated at each
 iteration where convergence is checked. Only present if
@@ -590,6 +606,14 @@ termination is communicated by a two-item list \code{terminate} in the return
 value, consisting of \code{what}, a short string describing what caused the
 termination, and \code{val}, the value of the termination criterion that
 caused termination.
+
+The \code{converged}, \code{status}, and \code{message} return values summarize
+\code{terminate} without replacing it. \code{converged} is \code{TRUE} only for tolerance
+based termination (\code{"abs_tol"}, \code{"rel_tol"}, \code{"grad_tol"},
+\code{"ginf_tol"}, or \code{"step_tol"}). The \code{status} value is \code{"converged"} for
+those tolerance exits, \code{"budget_exhausted"} for \code{"max_iter"}, \code{"max_fn"},
+\code{"max_gr"}, or \code{"max_fg"}, \code{"failed"} for \code{"fn_inf"} or \code{"gr_inf"},
+and \code{"terminated"} for any other termination reason.
 
 The following parameters control various stopping criteria:
 \itemize{
