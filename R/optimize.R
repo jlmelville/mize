@@ -155,7 +155,9 @@ opt_loop <- function(
   ) {
     par <- best_par
     opt <- opt_clear_cache(opt)
-    opt <- set_fn_curr(opt, best_fn, iter + 1)
+    if (best_crit == "fn" || is.finite(best_fn)) {
+      opt <- set_fn_curr(opt, best_fn, iter + 1)
+    }
     # recalculate result for this iteration
     step_info <- mize_step_summary(opt, par, fg, par0)
     if (verbose) {
