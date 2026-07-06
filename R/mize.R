@@ -775,6 +775,9 @@ mize <- function(
   if (store_progress && is.null(check_conv_every)) {
     stop("check_conv_every must be non-NULL if store_progress is TRUE")
   }
+  if (verbose && is.null(check_conv_every)) {
+    stop("check_conv_every must be non-NULL if verbose is TRUE")
+  }
 
   res <- opt_loop(
     opt,
