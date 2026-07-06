@@ -14,3 +14,4 @@
 ^\.lintr$
 ^pkgdown$
 ^pkgdown-site$
+^scripts$
