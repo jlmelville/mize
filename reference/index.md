@@ -17,3 +17,8 @@
   : Mize Step Summary
 - [`check_mize_convergence()`](https://jlmelville.github.io/mize/reference/check_mize_convergence.md)
   : Check Optimization Convergence
+
+## Diagnostics
+
+- [`check_mize_gradient()`](https://jlmelville.github.io/mize/reference/check_mize_gradient.md)
+  : Check Gradient Consistency

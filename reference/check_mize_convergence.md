@@ -28,6 +28,14 @@ contain:
 - A boolean value `is_terminated` which is `TRUE` if termination has
   been indicated, and `FALSE` otherwise.
 
+- A boolean value `converged` which is `TRUE` only if termination was
+  caused by a convergence tolerance.
+
+- A string `status` classifying the termination as `"converged"`,
+  `"budget_exhausted"`, `"failed"`, or `"terminated"`.
+
+- A string `message` describing the termination.
+
 - A list `terminate` if `is_terminated` is `TRUE`. This contains two
   items: `what`, a short string describing what caused the termination,
   and `val`, the value of the termination criterion that caused

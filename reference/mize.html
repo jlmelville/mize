@@ -435,6 +435,17 @@ what you're expecting may have been needed for logging, convergence and
 calculating the value of <code>g2n</code> or <code>ginfn</code> (see below).</p></li>
 <li><p><code>f</code>: Value of the function, evaluated at the returned
 value of <code>par</code>.</p></li>
+<li><p><code>best_par</code>: The best parameters returned by <code>mize()</code>. This is
+currently the same value as <code>par</code>, and is provided so callers can use an
+explicit best-vs-last naming convention.</p></li>
+<li><p><code>best_f</code>: Value of the function at <code>best_par</code>. This is currently
+the same value as <code>f</code>.</p></li>
+<li><p><code>last_par</code>: Parameters from the last optimizer state before any final
+best-result restoration. This is the same as <code>par</code> unless <code>mize()</code> returns
+an earlier best point.</p></li>
+<li><p><code>last_f</code>: Value of the function at <code>last_par</code> when it is known without
+requiring an extra function evaluation. If <code>last_par</code> differs from <code>par</code>
+and the function value was not already available, this is <code>NA_real_</code>.</p></li>
 <li><p><code>g2n</code>: Optional: the length (Euclidean or l2-norm) of the
 gradient vector, evaluated at the returned value of <code>par</code>. Calculated
 only if <code>grad_tol</code> is non-null.</p></li>
@@ -446,6 +457,11 @@ out for.</p></li>
 <li><p><code>terminate</code>: List containing items: <code>what</code>, indicating what
 convergence criterion was met, and <code>val</code> specifying the value at
 convergence. See the 'Convergence' section for more details.</p></li>
+<li><p><code>converged</code>: Logical value indicating whether <code>terminate$what</code> is one of
+the tolerance-based convergence criteria.</p></li>
+<li><p><code>status</code>: Short string classifying the termination reason. One of
+<code>"converged"</code>, <code>"budget_exhausted"</code>, <code>"failed"</code>, or <code>"terminated"</code>.</p></li>
+<li><p><code>message</code>: Human-readable summary of the termination reason.</p></li>
 <li><p><code>progress</code>: Optional data frame containing information on the
 value of the function, gradient, momentum, and step sizes evaluated at each
 iteration where convergence is checked. Only present if
@@ -709,6 +725,13 @@ termination is communicated by a two-item list <code>terminate</code> in the ret
 value, consisting of <code>what</code>, a short string describing what caused the
 termination, and <code>val</code>, the value of the termination criterion that
 caused termination.</p>
+<p>The <code>converged</code>, <code>status</code>, and <code>message</code> return values summarize
+<code>terminate</code> without replacing it. <code>converged</code> is <code>TRUE</code> only for tolerance
+based termination (<code>"abs_tol"</code>, <code>"rel_tol"</code>, <code>"grad_tol"</code>,
+<code>"ginf_tol"</code>, or <code>"step_tol"</code>). The <code>status</code> value is <code>"converged"</code> for
+those tolerance exits, <code>"budget_exhausted"</code> for <code>"max_iter"</code>, <code>"max_fn"</code>,
+<code>"max_gr"</code>, or <code>"max_fg"</code>, <code>"failed"</code> for <code>"fn_inf"</code> or <code>"gr_inf"</code>,
+and <code>"terminated"</code> for any other termination reason.</p>
 <p>The following parameters control various stopping criteria:</p><ul><li><p><code>max_iter</code>: Maximum number of iterations to calculate. Reaching
 this limit is indicated by <code>terminate$what</code> being <code>"max_iter"</code>.</p></li>
 <li><p><code>max_fn</code>: Maximum number of function evaluations allowed.

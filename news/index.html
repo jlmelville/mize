@@ -53,8 +53,11 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="mize-development-version">mize (development version)<a class="anchor" aria-label="anchor" href="#mize-development-version"></a></h2>
 <div class="section level3">
-<h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
-<ul><li>Fixed several optimizer edge cases found during cleanup: <code>NEWTON</code> now uses <code>fg$hi</code>, L-BFGS memory trimming handles <code>memory = 1</code>, stored progress keeps <code>ginfn</code>, Delta-Bar-Delta respects <code>step0</code>, one-argument user momentum schedules work as documented, adaptive restart dependency insertion no longer references an undefined stage, CG helper defaults no longer self-reference, and zero-valued relative function convergence no longer errors.</li>
+<h3 id="bug-fixes-and-minor-improvements-development-version">Bug fixes and minor improvements<a class="anchor" aria-label="anchor" href="#bug-fixes-and-minor-improvements-development-version"></a></h3>
+<ul><li>Fixed several optimizer edge cases found during cleanup.</li>
+<li>New function: <code><a href="../reference/check_mize_convergence.html">check_mize_convergence()</a></code>, which will compare your an analytic gradient with a finite-different approximation.</li>
+<li>
+<code><a href="../reference/mize.html">mize()</a></code> now returns additive status fields more status fields: <code>converged</code>, <code>status</code>, and <code>message</code>, plus explicit best/last result fields (<code>best_par</code>, <code>best_f</code>, <code>last_par</code>, and <code>last_f</code>).</li>
 </ul></div>
 </div>
     <div class="section level2">
@@ -72,7 +75,7 @@
 <div class="section level3">
 <h3 id="bug-fixes-0-2-4">Bug fixes.<a class="anchor" aria-label="anchor" href="#bug-fixes-0-2-4"></a></h3>
 <ul><li>If using <code>line_search = "backtracking"</code> with a specified <code>step_down</code> parameter, an incorrectly large number of gradient calculations was being reported.</li>
-<li>The documentation now specifies that if you <em>don’t</em> provide a <code>step_down</code> argument with <code>line_search = "backtracking"</code>, interpolation using function and gradient evaluations is carried out. To get a typical Armijo-style backtracking line search, specify a value for <code>step_down</code> (e.g.  <code>step_down = 0.5</code> to halve the step size), and only function evaluations are used.</li>
+<li>The documentation now specifies that if you <em>don’t</em> provide a <code>step_down</code> argument with <code>line_search = "backtracking"</code>, interpolation using function and gradient evaluations is carried out. To get a typical Armijo-style backtracking line search, specify a value for <code>step_down</code> (e.g. <code>step_down = 0.5</code> to halve the step size), and only function evaluations are used.</li>
 </ul></div>
 </div>
     <div class="section level2">

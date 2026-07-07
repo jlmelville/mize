@@ -2,15 +2,17 @@
 
 ## mize (development version)
 
-### Bug fixes
+### Bug fixes and minor improvements
 
-- Fixed several optimizer edge cases found during cleanup: `NEWTON` now
-  uses `fg$hi`, L-BFGS memory trimming handles `memory = 1`, stored
-  progress keeps `ginfn`, Delta-Bar-Delta respects `step0`, one-argument
-  user momentum schedules work as documented, adaptive restart
-  dependency insertion no longer references an undefined stage, CG
-  helper defaults no longer self-reference, and zero-valued relative
-  function convergence no longer errors.
+- Fixed several optimizer edge cases found during cleanup.
+- New function:
+  [`check_mize_convergence()`](https://jlmelville.github.io/mize/reference/check_mize_convergence.md),
+  which will compare your an analytic gradient with a finite-different
+  approximation.
+- [`mize()`](https://jlmelville.github.io/mize/reference/mize.md) now
+  returns additive status fields more status fields: `converged`,
+  `status`, and `message`, plus explicit best/last result fields
+  (`best_par`, `best_f`, `last_par`, and `last_f`).
 
 ## mize 0.2.5
 
@@ -38,8 +40,8 @@ Bug fix release.
   `step_down` argument with `line_search = "backtracking"`,
   interpolation using function and gradient evaluations is carried out.
   To get a typical Armijo-style backtracking line search, specify a
-  value for `step_down` (e.g.  `step_down = 0.5` to halve the step
-  size), and only function evaluations are used.
+  value for `step_down` (e.g. `step_down = 0.5` to halve the step size),
+  and only function evaluations are used.
 
 ## mize 0.2.3
 
