@@ -149,10 +149,12 @@ opt_loop <- function(
 
   last_par <- par
   last_f <- NULL
-  if (!is.null(step_info) &&
-    !is.null(step_info$iter) &&
-    step_info$iter == iter &&
-    !is.null(step_info$f)) {
+  if (
+    !is.null(step_info) &&
+      !is.null(step_info$iter) &&
+      step_info$iter == iter &&
+      !is.null(step_info$f)
+  ) {
     last_f <- step_info$f
   } else if (has_fn_curr(opt, iter + 1)) {
     last_f <- opt$cache$fn_curr
@@ -358,6 +360,7 @@ make_stage <- function(type, direction, step_size, depends = NULL) {
       for (sub_stage_name in c("direction", "step_size")) {
         phase <- paste0(stage$type, " ", sub_stage_name)
         opt <- life_cycle_hook(phase, "after", opt, par, fg, iter)
+        stage <- opt$stages[[stage$type]]
       }
       stage$result <- stage$direction$value * stage$step_size$value
       list(stage = stage)
