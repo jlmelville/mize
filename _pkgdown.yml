@@ -51,6 +51,9 @@ reference:
       - mize_step
       - mize_step_summary
       - check_mize_convergence
+  - title: Diagnostics
+    contents:
+      - check_mize_gradient
 
 articles:
   - title: Package guides
