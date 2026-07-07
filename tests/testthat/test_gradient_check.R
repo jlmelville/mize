@@ -1,9 +1,15 @@
 make_gradient_check_quadratic <- function() {
   a <- matrix(
     c(
-      4, 1, 0,
-      1, 3, 0.5,
-      0, 0.5, 2
+      4,
+      1,
+      0,
+      1,
+      3,
+      0.5,
+      0,
+      0.5,
+      2
     ),
     nrow = 3
   )

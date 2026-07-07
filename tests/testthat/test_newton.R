@@ -231,3 +231,37 @@ test_that("Newton method can survive non-positive definite Hessian", {
 
   expect_equal(res$par, par, tolerance = 1e-3)
 })
+
+test_that("Newton safe Cholesky path repairs indefinite Hessians", {
+  gradient <- c(1, 1)
+  indefinite_fg <- list(
+    hs = function(x) {
+      matrix(c(1, 0, 0, -1), nrow = 2)
+    }
+  )
+  opt <- list(cache = list(gr_curr = gradient))
+
+  safe_direction <- newton_direction(try_safe_chol = TRUE)
+  safe_res <- safe_direction$calculate(
+    opt,
+    stage = list(),
+    sub_stage = safe_direction,
+    par = c(0, 0),
+    fg = indefinite_fg,
+    iter = 1
+  )
+
+  plain_direction <- newton_direction(try_safe_chol = FALSE)
+  plain_res <- plain_direction$calculate(
+    opt,
+    stage = list(),
+    sub_stage = plain_direction,
+    par = c(0, 0),
+    fg = indefinite_fg,
+    iter = 1
+  )
+
+  expect_equal(plain_res$sub_stage$value, -gradient)
+  expect_equal(safe_res$sub_stage$value, c(-1, -1e10), tolerance = 1e-12)
+  expect_lt(dot(gradient, safe_res$sub_stage$value), 0)
+})

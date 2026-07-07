@@ -20,9 +20,21 @@ condition_setup <- function(fg, x, pv = -fg$gr(x) / abs(fg$gr(x))) {
 
 test_that("Armijo backtracking accepts steps with sufficient decrease", {
   cases <- list(
-    list(name = "f1 small initial step", fg = f1, x = 0, alpha = 1e-1, c1 = 0.001),
+    list(
+      name = "f1 small initial step",
+      fg = f1,
+      x = 0,
+      alpha = 1e-1,
+      c1 = 0.001
+    ),
     list(name = "f2 large initial step", fg = f2, x = 0, alpha = 1e1, c1 = 0.1),
-    list(name = "f4 very large initial step", fg = f4, x = 0, alpha = 1e3, c1 = 0.001)
+    list(
+      name = "f4 very large initial step",
+      fg = f4,
+      x = 0,
+      alpha = 1e3,
+      c1 = 0.001
+    )
   )
 
   for (case in cases) {
@@ -52,10 +64,38 @@ test_that("Armijo backtracking accepts steps with sufficient decrease", {
 
 test_that("More-Thuente successful steps satisfy strong Wolfe conditions", {
   cases <- list(
-    list(name = "f1 small initial step", fg = f1, x = 0, alpha = 1e-3, c1 = 0.001, c2 = 0.1),
-    list(name = "f2 small initial step", fg = f2, x = 0, alpha = 1e-3, c1 = 0.1, c2 = 0.1),
-    list(name = "f5 large initial step", fg = f5, x = 0, alpha = 1e1, c1 = 0.001, c2 = 0.001),
-    list(name = "function modification", fg = f6, x = 1, alpha = 1, c1 = 0.1, c2 = 0.9)
+    list(
+      name = "f1 small initial step",
+      fg = f1,
+      x = 0,
+      alpha = 1e-3,
+      c1 = 0.001,
+      c2 = 0.1
+    ),
+    list(
+      name = "f2 small initial step",
+      fg = f2,
+      x = 0,
+      alpha = 1e-3,
+      c1 = 0.1,
+      c2 = 0.1
+    ),
+    list(
+      name = "f5 large initial step",
+      fg = f5,
+      x = 0,
+      alpha = 1e1,
+      c1 = 0.001,
+      c2 = 0.001
+    ),
+    list(
+      name = "function modification",
+      fg = f6,
+      x = 1,
+      alpha = 1,
+      c1 = 0.1,
+      c2 = 0.9
+    )
   )
 
   for (case in cases) {
@@ -191,9 +231,30 @@ test_that("weak Wolfe configuration does not require strong curvature", {
 
 test_that("Hager-Zhang returned steps satisfy approximate weak Wolfe conditions", {
   cases <- list(
-    list(name = "f1 small initial step", fg = f1, x = 0, alpha = 1e-3, c1 = 0.001, c2 = 0.1),
-    list(name = "f2 large initial step", fg = f2, x = 0, alpha = 1e3, c1 = 0.1, c2 = 0.1),
-    list(name = "f5 large initial step", fg = f5, x = 0, alpha = 1e1, c1 = 0.001, c2 = 0.001)
+    list(
+      name = "f1 small initial step",
+      fg = f1,
+      x = 0,
+      alpha = 1e-3,
+      c1 = 0.001,
+      c2 = 0.1
+    ),
+    list(
+      name = "f2 large initial step",
+      fg = f2,
+      x = 0,
+      alpha = 1e3,
+      c1 = 0.1,
+      c2 = 0.1
+    ),
+    list(
+      name = "f5 large initial step",
+      fg = f5,
+      x = 0,
+      alpha = 1e1,
+      c1 = 0.001,
+      c2 = 0.001
+    )
   )
 
   for (case in cases) {

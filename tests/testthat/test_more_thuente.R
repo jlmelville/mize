@@ -180,3 +180,82 @@ test_that("Function modification", {
     nfev = 4
   )
 })
+
+test_that("More-Thuente convergence guard reports non-success statuses", {
+  step0 <- list(alpha = 0, f = 1, d = -1, df = -1)
+  cases <- list(
+    alpha_min = list(
+      expected = 4,
+      step = list(alpha = 0, f = 2, d = -1, df = -1),
+      brackt = FALSE,
+      infoc = 1,
+      stmin = 0,
+      stmax = 4,
+      alpha_min = 0,
+      alpha_max = 10,
+      nfev = 1,
+      maxfev = 10,
+      xtol = 1e-8
+    ),
+    alpha_max = list(
+      expected = 5,
+      step = list(alpha = 10, f = 0.5, d = -2, df = -2),
+      brackt = FALSE,
+      infoc = 1,
+      stmin = 0,
+      stmax = 10,
+      alpha_min = 0,
+      alpha_max = 10,
+      nfev = 1,
+      maxfev = 10,
+      xtol = 1e-8
+    ),
+    rounding = list(
+      expected = 6,
+      step = list(alpha = 2, f = 2, d = -1, df = -1),
+      brackt = FALSE,
+      infoc = 0,
+      stmin = 0,
+      stmax = 4,
+      alpha_min = 0,
+      alpha_max = 10,
+      nfev = 1,
+      maxfev = 10,
+      xtol = 1e-8
+    ),
+    narrow_bracket = list(
+      expected = 2,
+      step = list(alpha = 1 + 5e-13, f = 2, d = -1, df = -1),
+      brackt = TRUE,
+      infoc = 1,
+      stmin = 1,
+      stmax = 1 + 1e-12,
+      alpha_min = 0,
+      alpha_max = 10,
+      nfev = 1,
+      maxfev = 10,
+      xtol = 1e-6
+    )
+  )
+
+  for (case_name in names(cases)) {
+    case <- cases[[case_name]]
+    info <- check_convergence(
+      step0 = step0,
+      step = case$step,
+      brackt = case$brackt,
+      infoc = case$infoc,
+      stmin = case$stmin,
+      stmax = case$stmax,
+      alpha_min = case$alpha_min,
+      alpha_max = case$alpha_max,
+      c1 = 1e-4,
+      c2 = 0.9,
+      nfev = case$nfev,
+      maxfev = case$maxfev,
+      xtol = case$xtol
+    )
+
+    expect_equal(info, case$expected, info = case_name)
+  }
+})
