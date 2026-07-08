@@ -53,6 +53,70 @@ exact_quadratic_step_size <- function(a) {
   ))
 }
 
+cg_update_variants <- function() {
+  list(
+    fr = fr_update,
+    cd = cd_update,
+    dy = dy_update,
+    hs = hs_update,
+    "hs+" = hs_plus_update,
+    pr = pr_update,
+    "pr+" = pr_plus_update,
+    ls = ls_update,
+    hz = hz_update,
+    "hz+" = hz_plus_update,
+    prfr = prfr_update
+  )
+}
+
+exact_quadratic_cg_trace <- function(cg_update, par, fg) {
+  opt <- make_opt(
+    make_stages(
+      gradient_stage(
+        direction = cg_direction(cg_update = cg_update),
+        step_size = exact_quadratic_step_size(fg$a)
+      ),
+      verbose = FALSE
+    )
+  )
+  opt$count_res_fg <- FALSE
+  opt <- mize_init(
+    opt,
+    par,
+    fg,
+    max_iter = length(par),
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL
+  )
+
+  par_trace <- matrix(NA_real_, nrow = length(par) + 1, ncol = length(par))
+  direction_trace <- matrix(NA_real_, nrow = length(par), ncol = length(par))
+  alpha <- rep(NA_real_, length(par))
+  par_trace[1, ] <- par
+
+  for (iter in seq_along(par)) {
+    step <- mize_step(opt, par, fg)
+    opt <- step$opt
+    par <- as.numeric(step$par)
+
+    direction_trace[iter, ] <- as.numeric(
+      opt$stages$gradient_descent$direction$value
+    )
+    alpha[iter] <- opt$stages$gradient_descent$step_size$value
+    par_trace[iter + 1, ] <- par
+  }
+
+  list(
+    iter = opt$iter,
+    par = par,
+    gradient = fg$gr(par),
+    par_trace = par_trace,
+    direction_trace = direction_trace,
+    alpha = alpha
+  )
+}
+
 expect_fg_consistent <- function(fg, par) {
   combined <- fg$fg(par)
 
@@ -118,38 +182,47 @@ test_that("PHESS reuses the initial Hessian on SPD quadratics", {
   expect_equal(hs_calls, 1)
 })
 
-test_that("CG reaches SPD quadratic minimizer under exact line search", {
+test_that("CG updates reach SPD quadratic minimizer under exact line search", {
   quadratic_fg <- make_spd_quadratic()
   par <- c(3, -1, 2)
+  updates <- cg_update_variants()
+  reference_trace <- exact_quadratic_cg_trace(updates$fr, par, quadratic_fg)
 
-  opt <- make_opt(
-    make_stages(
-      gradient_stage(
-        direction = cg_direction(cg_update = fr_update),
-        step_size = exact_quadratic_step_size(quadratic_fg$a)
-      ),
-      verbose = FALSE
+  for (update_name in names(updates)) {
+    trace <- exact_quadratic_cg_trace(updates[[update_name]], par, quadratic_fg)
+
+    expect_equal(trace$iter, length(par), info = update_name)
+    expect_equal(
+      trace$par,
+      quadratic_fg$xmin,
+      tolerance = 1e-12,
+      info = update_name
     )
-  )
-  opt$count_res_fg <- FALSE
-
-  res <- opt_loop(
-    opt,
-    par,
-    quadratic_fg,
-    max_iter = length(par),
-    check_conv_every = NULL,
-    abs_tol = NULL,
-    rel_tol = NULL,
-    grad_tol = NULL
-  )
-
-  expect_equal(as.numeric(res$par), quadratic_fg$xmin, tolerance = 1e-12)
-  expect_equal(
-    quadratic_fg$gr(as.numeric(res$par)),
-    rep(0, 3),
-    tolerance = 1e-11
-  )
+    expect_equal(
+      trace$gradient,
+      rep(0, 3),
+      tolerance = 1e-11,
+      info = update_name
+    )
+    expect_equal(
+      trace$par_trace,
+      reference_trace$par_trace,
+      tolerance = 1e-12,
+      info = update_name
+    )
+    expect_equal(
+      trace$direction_trace,
+      reference_trace$direction_trace,
+      tolerance = 1e-11,
+      info = update_name
+    )
+    expect_equal(
+      trace$alpha,
+      reference_trace$alpha,
+      tolerance = 1e-12,
+      info = update_name
+    )
+  }
 })
 
 test_that("BFGS and L-BFGS directions are descent after accepted curvature", {
