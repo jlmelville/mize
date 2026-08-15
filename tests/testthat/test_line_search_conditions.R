@@ -306,6 +306,44 @@ test_that("Hager-Zhang returned steps satisfy approximate weak Wolfe conditions"
   }
 })
 
+test_that("Hager-Zhang initial exhaustion distinguishes acceptance from fallback", {
+  quartic_start <- list(alpha = 0, f = 1, df = 4, d = -16)
+  quartic_trial <- list(alpha = 1, f = 81, df = -108, d = 432)
+
+  expect_true(curvature_ok_step(quartic_start, quartic_trial, c2 = 0.5))
+  expect_false(strong_curvature_ok_step(quartic_start, quartic_trial, c2 = 0.5))
+  expect_false(armijo_ok_step(quartic_start, quartic_trial, c1 = 0.1))
+  expect_false(approx_armijo_ok_step(quartic_start, quartic_trial, c1 = 0.1))
+  expect_false(
+    hz_ok_step(
+      quartic_trial,
+      quartic_start,
+      c1 = 0.1,
+      c2 = 0.5,
+      eps = 1e-6,
+      strong_curvature = FALSE,
+      approx_armijo = TRUE
+    )
+  )
+
+  linear_start <- list(alpha = 0, f = 1, df = -1, d = -1)
+  linear_trial <- list(alpha = 1, f = 0, df = -1, d = -1)
+
+  expect_true(armijo_ok_step(linear_start, linear_trial, c1 = 0.1))
+  expect_false(curvature_ok_step(linear_start, linear_trial, c2 = 0.5))
+  expect_false(
+    hz_ok_step(
+      linear_trial,
+      linear_start,
+      c1 = 0.1,
+      c2 = 0.5,
+      eps = 1e-6,
+      strong_curvature = FALSE,
+      approx_armijo = TRUE
+    )
+  )
+})
+
 test_that("Hager-Zhang U3 bracket update bisects to a positive-slope bound", {
   hz_step <- function(alpha, f, d) {
     list(alpha = alpha, f = f, d = d, df = d)

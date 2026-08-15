@@ -144,6 +144,22 @@ line_search_hz <- function(
     if (verbose) {
       message("max fn reached after initial step")
     }
+    step_is_safe <- step_is_finite(step_c) &&
+      (isTRUE(
+        hz_ok_step(
+          step_c,
+          step0,
+          c1,
+          c2,
+          eps_k,
+          strong_curvature = strong_curvature,
+          approx_armijo = approx_armijo
+        )
+      ) ||
+        isTRUE(step_c$f < step0$f))
+    if (!step_is_safe) {
+      step_c <- step0
+    }
     return(list(step = step_c, nfn = nfn))
   }
 

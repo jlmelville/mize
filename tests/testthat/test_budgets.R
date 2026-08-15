@@ -116,6 +116,10 @@ make_rasmussen_witness <- function(fn, gr) {
   )
 }
 
+make_hager_zhang_witness <- function(fn, gr) {
+  make_rasmussen_witness(fn, gr)
+}
+
 make_schmidt_wolfe_witness <- function(fn, gr) {
   calls <- new.env(parent = emptyenv())
   calls$fn_par <- numeric()
@@ -153,6 +157,41 @@ run_rasmussen_witness <- function(
     c1 = c1,
     c2 = c2,
     ls_max_fn = ls_max_fn,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+  opt <- mize_init(opt, par, witness$fg)
+  mize_step(opt, par, witness$fg)
+}
+
+run_hager_zhang_witness <- function(
+  witness,
+  par = 0,
+  step0 = 1,
+  c1 = 0.1,
+  c2 = 0.5,
+  ls_max_fn = 1,
+  ls_max_gr = ls_max_fn,
+  ls_max_fg = 2 * ls_max_fn,
+  max_fn = Inf,
+  max_gr = Inf,
+  max_fg = Inf
+) {
+  opt <- make_mize(
+    method = "SD",
+    line_search = "hager-zhang",
+    step0 = step0,
+    c1 = c1,
+    c2 = c2,
+    ls_max_fn = ls_max_fn,
+    ls_max_gr = ls_max_gr,
+    ls_max_fg = ls_max_fg,
+    max_fn = max_fn,
+    max_gr = max_gr,
+    max_fg = max_fg,
     abs_tol = NULL,
     rel_tol = NULL,
     grad_tol = NULL,
@@ -962,6 +1001,148 @@ test_that("Schmidt Wolfe preserves safe final evaluations", {
     expect_equal(result$f, case$f, info = name)
     expect_equal(result$g, case$g, info = name)
   }
+})
+
+test_that("Hager-Zhang rejects an unsafe initial exhausted trial", {
+  witness <- make_hager_zhang_witness(
+    fn = function(x) x^4,
+    gr = function(x) 4 * x^3
+  )
+  step_result <- run_hager_zhang_witness(
+    witness,
+    par = 1,
+    max_fn = 2,
+    max_gr = 2,
+    max_fg = 4
+  )
+  result <- mize_step(
+    step_result$opt,
+    step_result$par,
+    witness$fg
+  )
+
+  expect_equal(witness$fn_par(), c(1, -3))
+  expect_equal(witness$gr_par(), c(1, -3))
+  expect_identical(witness$counts(), c(fn = 2L, gr = 2L))
+  expect_budget_counts(result, witness)
+  expect_equal(result$opt$terminate$what, "max_fn")
+  expect_equal(result$par, 1)
+  expect_equal(step_result$f, 1)
+  expect_equal(step_result$g, 4)
+})
+
+test_that("Hager-Zhang makes no line-search callback at zero allowance", {
+  witness <- make_hager_zhang_witness(
+    fn = function(x) 1 - x,
+    gr = function(x) -1
+  )
+  result <- run_hager_zhang_witness(witness, ls_max_fn = 0)
+
+  expect_equal(witness$fn_par(), 0)
+  expect_equal(witness$gr_par(), 0)
+  expect_identical(witness$counts(), c(fn = 1L, gr = 1L))
+  expect_budget_counts(result, witness)
+  expect_equal(result$par, 0)
+  expect_equal(result$f, 1)
+  expect_equal(result$g, -1)
+})
+
+test_that("Hager-Zhang preserves safe initial exhausted trials", {
+  cases <- list(
+    condition = list(
+      witness = make_hager_zhang_witness(
+        fn = function(x) (x - 1)^2,
+        gr = function(x) 2 * (x - 1)
+      ),
+      step0 = 0.5,
+      g = 0
+    ),
+    strict_decrease = list(
+      witness = make_hager_zhang_witness(
+        fn = function(x) 1 - x,
+        gr = function(x) -1
+      ),
+      step0 = 1,
+      g = -1
+    )
+  )
+
+  for (name in names(cases)) {
+    case <- cases[[name]]
+    result <- run_hager_zhang_witness(
+      case$witness,
+      step0 = case$step0
+    )
+
+    expect_equal(case$witness$fn_par(), c(0, 1), info = name)
+    expect_equal(case$witness$gr_par(), c(0, 1), info = name)
+    expect_budget_counts(result, case$witness)
+    expect_equal(result$par, 1, info = name)
+    expect_equal(result$f, 0, info = name)
+    expect_equal(result$g, case$g, info = name)
+  }
+})
+
+test_that("Hager-Zhang rejects unusable initial exhausted trials", {
+  cases <- list(
+    equal = list(
+      fn = function(x) (x - 1)^2,
+      gr = function(x) 2 * (x - 1),
+      trial = 2,
+      g = -2
+    ),
+    nonfinite_objective = list(
+      fn = function(x) if (x == 0) 1 else Inf,
+      gr = function(x) -1,
+      trial = 1,
+      g = -1
+    ),
+    nonfinite_derivative = list(
+      fn = function(x) 1 - x,
+      gr = function(x) if (x == 0) -1 else Inf,
+      trial = 1,
+      g = -1
+    )
+  )
+
+  for (name in names(cases)) {
+    case <- cases[[name]]
+    witness <- make_hager_zhang_witness(case$fn, case$gr)
+    result <- run_hager_zhang_witness(witness)
+
+    expect_equal(witness$fn_par(), c(0, case$trial), info = name)
+    expect_equal(witness$gr_par(), c(0, case$trial), info = name)
+    expect_identical(
+      witness$counts(),
+      c(fn = 2L, gr = 2L),
+      info = name
+    )
+    expect_budget_counts(result, witness)
+    expect_equal(result$par, 0, info = name)
+    expect_equal(result$f, 1, info = name)
+    expect_equal(result$g, case$g, info = name)
+  }
+})
+
+test_that("Hager-Zhang preserves a later exhausted decrease", {
+  witness <- make_hager_zhang_witness(
+    fn = function(x) 1 - x,
+    gr = function(x) -1
+  )
+  result <- run_hager_zhang_witness(
+    witness,
+    ls_max_fn = 2,
+    ls_max_gr = 2,
+    ls_max_fg = 4
+  )
+
+  expect_equal(witness$fn_par(), c(0, 1, 5))
+  expect_equal(witness$gr_par(), c(0, 1, 5))
+  expect_identical(witness$counts(), c(fn = 3L, gr = 3L))
+  expect_budget_counts(result, witness)
+  expect_equal(result$par, 5)
+  expect_equal(result$f, -4)
+  expect_equal(result$g, -1)
 })
 
 test_that("Schmidt Armijo rejects a failure at the exact global function cap", {
