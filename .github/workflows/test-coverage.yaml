@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   test-coverage:
+    name: Test coverage
     runs-on: ubuntu-latest
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -33,9 +34,23 @@ jobs:
       # Pinned to a full-length commit SHA for immutability; Dependabot updates this reference.
       - uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
         with:
-          extra-packages: any::covr
+          extra-packages: |
+            any::covr
+            any::xml2
           needs: coverage
 
-      - name: Test coverage
-        run: covr::codecov(quiet = FALSE)
+      - name: Calculate test coverage
+        run: |
+          coverage <- covr::package_coverage(quiet = FALSE)
+          print(coverage)
+          covr::to_cobertura(coverage, filename = "cobertura.xml")
         shell: Rscript {0}
+
+      - name: Upload coverage to Codecov
+        if: github.actor != 'dependabot[bot]'
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          disable_search: true
+          fail_ci_if_error: true
+          files: cobertura.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
