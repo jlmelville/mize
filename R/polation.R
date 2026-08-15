@@ -19,9 +19,12 @@ cubic_extrapolate <- function(x1, f1, g1, x2, f2, g2, ignoreWarnings = FALSE) {
   B <- 3 * (f2 - f1) - (2 * g1 + g2) * (x2 - x1)
   if (ignoreWarnings) {
     suppressWarnings(
-      x1 - g1 * (x2 - x1)^2 / (B + sqrt(B * B - A * g1 * (x2 - x1)))
+      xnew <- x1 - g1 * (x2 - x1)^2 / (B + sqrt(B * B - A * g1 * (x2 - x1)))
     )
+  } else {
+    xnew <- x1 - g1 * (x2 - x1)^2 / (B + sqrt(B * B - A * g1 * (x2 - x1)))
   }
+  xnew
 }
 
 # Estimate Step Size Minimum By Cubic Extrapolation

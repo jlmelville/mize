@@ -41,6 +41,35 @@ rls <- function(
   res
 }
 
+test_that("Rasmussen line search defaults to non-verbose operation", {
+  phi <- function(alpha) {
+    list(alpha = alpha, f = (alpha - 1)^2, d = 2 * (alpha - 1))
+  }
+  step0 <- phi(0)
+
+  explicit_result <- ras_ls(
+    phi,
+    alpha = 0.5,
+    step0 = step0,
+    c1 = 0.01,
+    c2 = 0.1,
+    max_fn = 20,
+    verbose = FALSE
+  )
+  default_result <- ras_ls(
+    phi,
+    alpha = 0.5,
+    step0 = step0,
+    c1 = 0.01,
+    c2 = 0.1,
+    max_fn = 20
+  )
+
+  expect_equal(default_result, explicit_result)
+  expect_equal(default_result$nfn, 2)
+  expect_equal(default_result$step, list(alpha = 1, f = 0, d = 0))
+})
+
 ## Test data from the More'-Thuente paper.
 
 # Table 1

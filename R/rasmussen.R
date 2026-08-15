@@ -117,7 +117,7 @@ ras_ls <- function(
   xtol = 1e-6,
   armijo_check_fn = armijo_ok_step,
   wolfe_ok_step_fn = strong_wolfe_ok_step,
-  verbose = verbose
+  verbose = FALSE
 ) {
   if (c2 < c1) {
     stop("Rasmussen line search: c2 < c1")
