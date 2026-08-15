@@ -25,4 +25,4 @@ URL: https://jlmelville.github.io/mize/, https://github.com/jlmelville/mize
 BugReports: https://github.com/jlmelville/mize/issues
 VignetteBuilder: knitr
 Config/Needs/website: pkgdown
-Config/roxygen2/version: 8.0.0
+Config/roxygen2/version: 8.1.0
