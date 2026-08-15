@@ -172,6 +172,167 @@ test_that("L-BFGS supports memory of one through the public API", {
   expect_true(is.finite(res$f))
 })
 
+test_that("rejected first L-BFGS pairs use an empty-history fallback", {
+  constant_gradient_fg <- list(
+    fn = function(x) sum(x),
+    gr = function(x) rep(1, length(x))
+  )
+  configurations <- list(
+    list(method = "L-BFGS"),
+    list(method = "CG", preconditioner = "L-BFGS"),
+    list(method = "TN", preconditioner = "L-BFGS")
+  )
+
+  for (configuration in configurations) {
+    res <- do.call(
+      mize,
+      c(
+        list(
+          par = c(1, -1),
+          fg = constant_gradient_fg,
+          line_search = "constant",
+          step0 = 0.25,
+          max_iter = 2,
+          check_conv_every = NULL,
+          abs_tol = NULL,
+          rel_tol = NULL,
+          grad_tol = NULL,
+          ginf_tol = NULL,
+          step_tol = NULL
+        ),
+        configuration
+      )
+    )
+
+    expect_equal(res$par, c(0.5, -1.5), info = configuration$method)
+    expect_true(all(is.finite(res$par)), info = configuration$method)
+  }
+})
+
+test_that("empty L-BFGS history honors the user inverse Hessian", {
+  constant_gradient_fg <- list(
+    fn = function(x) sum(x),
+    gr = function(x) rep(1, length(x)),
+    hi = function(x) c(2, 0.5)
+  )
+
+  res <- mize(
+    c(1, -1),
+    constant_gradient_fg,
+    method = "L-BFGS",
+    line_search = "constant",
+    step0 = 0.25,
+    max_iter = 2,
+    check_conv_every = NULL,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+
+  expect_equal(res$par, c(0, -1.25))
+})
+
+test_that("SR1 falls back from a non-descent initial inverse Hessian", {
+  quadratic_fg <- list(
+    fn = function(x) sum(x^2) / 2,
+    gr = function(x) x
+  )
+  inverse_hessians <- list(
+    function(x) c(0, 0),
+    function(x) matrix(0, nrow = 2, ncol = 2),
+    function(x) c(-1, -1),
+    function(x) -diag(2)
+  )
+
+  for (hi in inverse_hessians) {
+    fg <- quadratic_fg
+    fg$hi <- hi
+
+    res <- mize(
+      c(1, 2),
+      fg,
+      method = "SR1",
+      line_search = "constant",
+      step0 = 0.25,
+      max_iter = 1,
+      check_conv_every = NULL,
+      abs_tol = NULL,
+      rel_tol = NULL,
+      grad_tol = NULL,
+      ginf_tol = NULL,
+      step_tol = NULL
+    )
+
+    expect_equal(res$par, c(0.75, 1.5))
+    expect_true(all(is.finite(res$par)))
+  }
+})
+
+test_that("SR1 does not scale its initial Hessian without curvature", {
+  constant_gradient_fg <- list(
+    fn = function(x) sum(x),
+    gr = function(x) rep(1, length(x))
+  )
+
+  res <- mize(
+    c(1, -1),
+    constant_gradient_fg,
+    method = "SR1",
+    line_search = "constant",
+    step0 = 0.25,
+    scale_hess = TRUE,
+    max_iter = 2,
+    check_conv_every = NULL,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+
+  expect_equal(res$par, c(0.5, -1.5))
+  expect_true(all(is.finite(res$par)))
+})
+
+test_that("SR1 rejects invalid initial inverse Hessians informatively", {
+  quadratic_fg <- list(
+    fn = function(x) sum(x^2) / 2,
+    gr = function(x) x
+  )
+  invalid_inverse_hessians <- list(
+    function(x) "invalid",
+    function(x) 1,
+    function(x) matrix(1, nrow = 2, ncol = 3),
+    function(x) c(1, Inf),
+    function(x) matrix(c(1, 0, 0, NA_real_), nrow = 2)
+  )
+
+  for (hi in invalid_inverse_hessians) {
+    fg <- quadratic_fg
+    fg$hi <- hi
+
+    expect_error(
+      mize(
+        c(1, 2),
+        fg,
+        method = "SR1",
+        line_search = "constant",
+        step0 = 0.25,
+        max_iter = 1,
+        check_conv_every = NULL,
+        abs_tol = NULL,
+        rel_tol = NULL,
+        grad_tol = NULL,
+        ginf_tol = NULL,
+        step_tol = NULL
+      ),
+      "fg\\$hi must return a finite numeric"
+    )
+  }
+})
+
 test_that("store_progress records infinity gradient norm", {
   res <- mize(
     rb0,

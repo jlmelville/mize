@@ -1,3 +1,26 @@
+# Inverse Hessian validation ----------------------------------------------
+
+validate_inverse_hessian <- function(hm, n) {
+  valid_vector <- is.numeric(hm) && is.null(dim(hm)) && length(hm) == n
+  valid_matrix <- is.matrix(hm) &&
+    is.numeric(hm) &&
+    identical(dim(hm), c(n, n))
+
+  if ((!valid_vector && !valid_matrix) || any(!is.finite(hm))) {
+    stop(
+      "fg$hi must return a finite numeric vector of length ",
+      n,
+      " or a ",
+      n,
+      " x ",
+      n,
+      " numeric matrix"
+    )
+  }
+
+  hm
+}
+
 # BFGS --------------------------------------------------------------------
 
 # The Broyden Fletcher Goldfarb Shanno method
@@ -11,8 +34,8 @@ bfgs_direction <- function(eps = .Machine$double.eps, scale_inverse = FALSE) {
       sub_stage$value <- rep(0, n)
 
       if (!is.null(fg$hi)) {
-        hm <- fg$hi(par)
-        if (methods::is(hm, "numeric")) {
+        hm <- validate_inverse_hessian(fg$hi(par), n)
+        if (!is.matrix(hm)) {
           # Allow for just a vector to be passed, representing a diagonal
           # approximation to the Hessian inverse. But we'll store it as the
           # full matrix.
@@ -120,8 +143,8 @@ sr1_direction <- function(
       sub_stage$value <- rep(0, n)
 
       if (!is.null(fg$hi)) {
-        hm <- fg$hi(par)
-        if (methods::is(hm, "numeric")) {
+        hm <- validate_inverse_hessian(fg$hi(par), n)
+        if (!is.matrix(hm)) {
           # Allow for just a vector to be passed, representing a diagonal
           # approximation to the Hessian inverse. But we'll store it as the
           # full matrix.
@@ -140,13 +163,18 @@ sr1_direction <- function(
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
       gm <- opt$cache$gr_curr
       gm_old <- opt$cache$gr_old
-      if (!is.null(gm_old)) {
+      has_secant_pair <- !is.null(gm_old)
+      if (has_secant_pair) {
         sm <- opt$cache$update_old
         hm <- sub_stage$hm
 
         ym <- gm - gm_old
 
-        if (iter == 2 && scale_inverse) {
+        if (
+          iter == 2 &&
+            scale_inverse &&
+            has_bfgs_curvature(ym, sm)
+        ) {
           # Nocedal suggests this heuristic for scaling the first
           # approximation in Chapter 6 Section "Implementation" for BFGS
           # Also used in the definition of L-BFGS
@@ -170,13 +198,13 @@ sr1_direction <- function(
       pm <- as.vector(-sub_stage$hm %*% gm)
 
       descent <- dot(gm, pm)
-      if (descent >= 0) {
-        if (try_bfgs) {
+      if (!is.finite(descent) || descent >= 0) {
+        if (try_bfgs && has_secant_pair) {
           # message("SR1 iter ", iter, " not a descent direction, trying BFGS")
           hm_bfgs <- bfgs_update(hm, sm, ym, sub_stage$eps)
           pm <- as.vector(-hm_bfgs %*% gm)
           descent <- dot(gm, pm)
-          if (descent >= 0) {
+          if (!is.finite(descent) || descent >= 0) {
             # This should never happen: BFGS H should always be pd.
             pm <- -gm
           } else {
@@ -231,8 +259,8 @@ lbfgs_guess <- function(
 ) {
   # User-defined hessian inverse approximations
   if (!is.null(fg) && !is.null(fg$hi)) {
-    hm <- fg$hi(par)
-    if (methods::is(hm, "matrix")) {
+    hm <- validate_inverse_hessian(fg$hi(par), length(qm))
+    if (is.matrix(hm)) {
       # Full matrix: not necessarily a great idea for memory usage
       pm <- hm %*% qm
     } else {
@@ -273,9 +301,19 @@ lbfgs_solve <- function(
   yms <- lbfgs_state$yms
   rhos <- lbfgs_state$rhos
 
+  if (length(rhos) == 0) {
+    return(lbfgs_guess(
+      qm,
+      scale_inverse = scale_inverse,
+      eps = eps,
+      fg = fg,
+      par = par
+    ))
+  }
+
   alphas <- rep(0, length(rhos))
   # loop backwards latest values first
-  for (i in length(rhos):1) {
+  for (i in rev(seq_along(rhos))) {
     alphas[i] <- rhos[[i]] * dot(sms[[i]], qm)
     qm <- qm - alphas[[i]] * yms[[i]]
   }
@@ -292,7 +330,7 @@ lbfgs_solve <- function(
   )
 
   # loop forwards
-  for (i in 1:length(rhos)) {
+  for (i in seq_along(rhos)) {
     beta <- rhos[[i]] * dot(yms[[i]], pm)
     pm <- pm + sms[[i]] * (alphas[[i]] - beta)
   }
