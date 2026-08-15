@@ -15,6 +15,362 @@ validation_fg <- function(calls = NULL) {
   )
 }
 
+validation_result_witness <- function(
+  fn = function(x) sum(x^2),
+  gr = function(x) 2 * x,
+  fg = NULL
+) {
+  calls <- new.env(parent = emptyenv())
+  calls$fn <- 0L
+  calls$gr <- 0L
+  calls$fg <- 0L
+
+  callbacks <- list(
+    fn = function(x) {
+      calls$fn <- calls$fn + 1L
+      fn(x)
+    },
+    gr = function(x) {
+      calls$gr <- calls$gr + 1L
+      gr(x)
+    }
+  )
+  if (!is.null(fg)) {
+    callbacks$fg <- function(x) {
+      calls$fg <- calls$fg + 1L
+      fg(x)
+    }
+  }
+
+  list(
+    fg = callbacks,
+    counts = function() {
+      c(fn = calls$fn, gr = calls$gr, fg = calls$fg)
+    }
+  )
+}
+
+validation_wolfe_args <- function(fg) {
+  list(
+    par = c(1, -1),
+    fg = fg,
+    method = "SD",
+    line_search = "more-thuente",
+    step0 = 0.1,
+    max_iter = 1,
+    check_conv_every = NULL,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+}
+
+expect_callback_validation_error <- function(code, pattern, info = NULL) {
+  result <- tryCatch(code(), error = identity)
+  expect_true(inherits(result, "error"), info = info)
+  if (inherits(result, "error")) {
+    expect_match(conditionMessage(result), pattern, info = info)
+  }
+  invisible(result)
+}
+
+test_that("objective callback results are numeric dimensionless scalars", {
+  malformed <- list(
+    vector = c(1, 2),
+    dimensional = matrix(1, nrow = 1)
+  )
+
+  for (case_name in names(malformed)) {
+    witness <- validation_result_witness(
+      fn = function(x) malformed[[case_name]]
+    )
+
+    expect_callback_validation_error(
+      function() {
+        mize(
+          c(1, -1),
+          witness$fg,
+          method = "SD",
+          line_search = "constant",
+          step0 = 0.1,
+          max_iter = 0,
+          check_conv_every = NULL
+        )
+      },
+      "fg\\$fn\\(par\\).*numeric scalar.*no dimensions",
+      info = case_name
+    )
+    expect_identical(
+      witness$counts(),
+      c(fn = 1L, gr = 0L, fg = 0L),
+      info = case_name
+    )
+  }
+})
+
+test_that("gradient callback results match the parameter vector shape", {
+  par <- c(1, -1)
+
+  short <- validation_result_witness(gr = function(x) 1)
+  expect_callback_validation_error(
+    function() {
+      mize(
+        par,
+        short$fg,
+        method = "SD",
+        line_search = "constant",
+        step0 = 0.1,
+        max_iter = 1,
+        check_conv_every = NULL,
+        abs_tol = NULL,
+        rel_tol = NULL,
+        grad_tol = NULL,
+        ginf_tol = NULL,
+        step_tol = NULL
+      )
+    },
+    "fg\\$gr\\(par\\).*numeric vector.*length.*par"
+  )
+  expect_identical(short$counts(), c(fn = 0L, gr = 1L, fg = 0L))
+
+  long <- validation_result_witness(gr = function(x) c(1, 2, 3))
+  opt <- make_mize(
+    method = "SD",
+    line_search = "constant",
+    step0 = 0.1,
+    par = par,
+    fg = long$fg
+  )
+  expect_callback_validation_error(
+    function() mize_step(opt, par, long$fg),
+    "fg\\$gr\\(par\\).*numeric vector.*length.*par"
+  )
+  expect_identical(long$counts(), c(fn = 0L, gr = 1L, fg = 0L))
+
+  dimensional <- validation_result_witness(
+    gr = function(x) matrix(c(1, 2), nrow = 1)
+  )
+  opt <- make_mize(
+    method = "SD",
+    line_search = "constant",
+    step0 = 0.1,
+    par = par,
+    fg = dimensional$fg,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL
+  )
+  expect_callback_validation_error(
+    function() {
+      mize_step_summary(opt, par, dimensional$fg, calc_gr = TRUE)
+    },
+    "fg\\$gr\\(par\\).*numeric vector.*no dimensions"
+  )
+  expect_identical(dimensional$counts(), c(fn = 0L, gr = 1L, fg = 0L))
+})
+
+test_that("combined callback results contain valid exact components", {
+  malformed <- list(
+    non_list = function(x) 1,
+    missing_fn = function(x) list(gr = 2 * x),
+    missing_gr = function(x) list(fn = sum(x^2)),
+    malformed_fn = function(x) list(fn = c(1, 2), gr = 2 * x),
+    malformed_gr = function(x) list(fn = sum(x^2), gr = 1)
+  )
+  patterns <- c(
+    non_list = "fg\\$fg\\(par\\).*return a list",
+    missing_fn = "fg\\$fg\\(par\\).*exact.*fn",
+    missing_gr = "fg\\$fg\\(par\\).*exact.*gr",
+    malformed_fn = "fg\\$fg\\(par\\)\\$fn.*numeric scalar",
+    malformed_gr = "fg\\$fg\\(par\\)\\$gr.*numeric vector.*length.*par"
+  )
+
+  for (case_name in names(malformed)) {
+    witness <- validation_result_witness(fg = malformed[[case_name]])
+
+    expect_callback_validation_error(
+      function() do.call(mize, validation_wolfe_args(witness$fg)),
+      patterns[[case_name]],
+      info = case_name
+    )
+    expect_identical(
+      witness$counts(),
+      c(fn = 1L, gr = 1L, fg = 1L),
+      info = case_name
+    )
+  }
+})
+
+test_that("TN validates each finite-difference gradient result once", {
+  calls <- 0L
+  witness <- validation_result_witness(gr = function(x) {
+    calls <<- calls + 1L
+    if (calls == 1L) 2 * x else 1
+  })
+
+  expect_callback_validation_error(
+    function() {
+      mize(
+        c(1, -1),
+        witness$fg,
+        method = "TN",
+        line_search = "constant",
+        step0 = 0.1,
+        max_iter = 1,
+        check_conv_every = NULL,
+        abs_tol = NULL,
+        rel_tol = NULL,
+        grad_tol = NULL,
+        ginf_tol = NULL,
+        step_tol = NULL
+      )
+    },
+    "fg\\$gr\\(par\\).*numeric vector.*length.*par"
+  )
+  expect_identical(witness$counts(), c(fn = 0L, gr = 2L, fg = 0L))
+})
+
+test_that("uncounted summaries validate their direct callback results", {
+  # count_res_fg is an internal test mode that bypasses the calc helpers. This
+  # protects the direct summary-consumption boundary used by that mode.
+  par <- c(1, -1)
+
+  objective <- validation_result_witness(
+    fn = function(x) matrix(sum(x^2), nrow = 1)
+  )
+  opt <- make_mize(
+    method = "SD",
+    line_search = "constant",
+    step0 = 0.1,
+    par = par,
+    fg = objective$fg
+  )
+  opt$count_res_fg <- FALSE
+  expect_callback_validation_error(
+    function() mize_step_summary(opt, par, objective$fg, calc_fn = TRUE),
+    "fg\\$fn\\(par\\).*numeric scalar.*no dimensions"
+  )
+  expect_identical(objective$counts(), c(fn = 1L, gr = 0L, fg = 0L))
+
+  gradient <- validation_result_witness(
+    gr = function(x) matrix(2 * x, nrow = 1)
+  )
+  opt <- make_mize(
+    method = "SD",
+    line_search = "constant",
+    step0 = 0.1,
+    par = par,
+    fg = gradient$fg
+  )
+  opt$count_res_fg <- FALSE
+  expect_callback_validation_error(
+    function() mize_step_summary(opt, par, gradient$fg, calc_gr = TRUE),
+    "fg\\$gr\\(par\\).*numeric vector.*no dimensions"
+  )
+  expect_identical(gradient$counts(), c(fn = 0L, gr = 1L, fg = 0L))
+})
+
+test_that("valid separate callback results retain integer and double types", {
+  callbacks <- list(
+    integer = list(
+      fn = function(x) as.integer(sum(x^2)),
+      gr = function(x) as.integer(2 * x)
+    ),
+    double = list(
+      fn = function(x) sum(x^2),
+      gr = function(x) 2 * x
+    )
+  )
+
+  for (case_name in names(callbacks)) {
+    callback <- callbacks[[case_name]]
+    witness <- validation_result_witness(fn = callback$fn, gr = callback$gr)
+    result <- mize(
+      c(1, -1),
+      witness$fg,
+      method = "SD",
+      line_search = "constant",
+      step0 = 0.1,
+      max_iter = 1,
+      check_conv_every = NULL,
+      abs_tol = NULL,
+      rel_tol = NULL,
+      grad_tol = NULL,
+      ginf_tol = NULL,
+      step_tol = NULL
+    )
+
+    expect_equal(result$par, c(0.8, -0.8), info = case_name)
+    expect_identical(
+      witness$counts(),
+      c(fn = 1L, gr = 1L, fg = 0L),
+      info = case_name
+    )
+  }
+})
+
+test_that("valid combined callbacks allow extra components", {
+  witness <- validation_result_witness(fg = function(x) {
+    list(fn = sum(x^2), gr = 2 * x, shared = "allowed")
+  })
+
+  result <- do.call(mize, validation_wolfe_args(witness$fg))
+
+  expect_equal(result$par, c(0, 0))
+  expect_equal(result$f, 0)
+  expect_identical(witness$counts(), c(fn = 1L, gr = 1L, fg = 2L))
+})
+
+test_that("shaped nonfinite results retain optimizer handling", {
+  objective <- validation_result_witness(fn = function(x) Inf)
+  fn_result <- mize(
+    c(1, -1),
+    objective$fg,
+    method = "SD",
+    line_search = "constant",
+    step0 = 0.1,
+    max_iter = 0,
+    check_conv_every = NULL
+  )
+  expect_equal(fn_result$terminate$what, "fn_inf")
+  expect_equal(fn_result$status, "failed")
+  expect_identical(objective$counts(), c(fn = 1L, gr = 0L, fg = 0L))
+
+  gradient <- validation_result_witness(gr = function(x) c(NaN, Inf))
+  gr_result <- mize(
+    c(1, -1),
+    gradient$fg,
+    method = "SD",
+    line_search = "constant",
+    step0 = 0.1,
+    max_iter = 1,
+    check_conv_every = NULL
+  )
+  expect_equal(gr_result$terminate$what, "gr_inf")
+  expect_equal(gr_result$status, "failed")
+  expect_identical(gradient$counts(), c(fn = 1L, gr = 1L, fg = 0L))
+})
+
+test_that("shaped nonfinite Wolfe trials remain available for recovery", {
+  trial <- 0L
+  witness <- validation_result_witness(fg = function(x) {
+    trial <<- trial + 1L
+    if (trial == 1L) {
+      return(list(fn = Inf, gr = rep(Inf, length(x))))
+    }
+    list(fn = sum(x^2), gr = 2 * x)
+  })
+
+  result <- do.call(mize, validation_wolfe_args(witness$fg))
+
+  expect_equal(result$par, c(0, 0))
+  expect_equal(result$f, 0)
+  expect_identical(witness$counts(), c(fn = 1L, gr = 1L, fg = 3L))
+})
+
 test_that("initial parameters are validated before callbacks", {
   bad_pars <- list(
     character = "bad",

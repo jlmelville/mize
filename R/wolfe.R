@@ -485,9 +485,13 @@ make_phi_alpha <- function(
     y_alpha <- par + (alpha * pm)
 
     if (!is.null(fg$fg) && calc_gradient) {
-      fg_res <- fg$fg(y_alpha)
-      f <- fg_res$fn
-      g <- fg_res$gr
+      fg_res <- mize_validate_combined_result(
+        fg$fg(y_alpha),
+        length(y_alpha),
+        "fg$fg(par)"
+      )
+      f <- fg_res[["fn", exact = TRUE]]
+      g <- fg_res[["gr", exact = TRUE]]
 
       step <- list(
         alpha = alpha,
@@ -496,13 +500,17 @@ make_phi_alpha <- function(
         d = dot(g, pm)
       )
     } else {
-      f <- fg$fn(y_alpha)
+      f <- mize_validate_objective_result(fg$fn(y_alpha), "fg$fn(par)")
       step <- list(
         alpha = alpha,
         f = f
       )
       if (calc_gradient) {
-        step$df <- fg$gr(y_alpha)
+        step$df <- mize_validate_gradient_result(
+          fg$gr(y_alpha),
+          length(y_alpha),
+          "fg$gr(par)"
+        )
         step$d <- dot(step$df, pm)
       }
     }

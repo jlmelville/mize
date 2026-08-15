@@ -115,7 +115,7 @@ mize_step_summary <- function(
           f <- opt$cache$fn_curr
         }
       } else {
-        f <- fg$fn(par)
+        f <- mize_validate_objective_result(fg$fn(par), "fg$fn(par)")
       }
     } else {
       f <- opt$cache$fn_curr
@@ -129,7 +129,11 @@ mize_step_summary <- function(
       if (count_fg) {
         terminate <- callback_budget_termination(opt, "gr")
         if (is.null(terminate)) {
-          g <- fg$gr(par)
+          g <- mize_validate_gradient_result(
+            fg$gr(par),
+            length(par),
+            "fg$gr(par)"
+          )
           opt$counts$gr <- opt$counts$gr + 1
           if (grad_is_first_stage(opt)) {
             opt <- set_gr_curr(opt, g, iter + 1)
@@ -138,7 +142,11 @@ mize_step_summary <- function(
           opt <- set_mize_termination(opt, terminate)
         }
       } else {
-        g <- fg$gr(par)
+        g <- mize_validate_gradient_result(
+          fg$gr(par),
+          length(par),
+          "fg$gr(par)"
+        )
       }
     } else {
       g <- opt$cache$gr_curr

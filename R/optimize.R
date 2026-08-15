@@ -557,6 +557,59 @@ make_counts <- function() {
 
 # Function / Gradient ----------------------------------------------------------------
 
+mize_validate_objective_result <- function(value, label) {
+  if (!is.numeric(value) || !is.null(dim(value)) || length(value) != 1) {
+    stop(
+      label,
+      " must return a numeric scalar with no dimensions",
+      call. = FALSE
+    )
+  }
+  value
+}
+
+mize_validate_gradient_result <- function(value, n, label) {
+  if (!is.numeric(value) || !is.null(dim(value)) || length(value) != n) {
+    stop(
+      label,
+      paste0(
+        " must return a numeric vector with no dimensions and length equal ",
+        "to length(par)"
+      ),
+      call. = FALSE
+    )
+  }
+  value
+}
+
+mize_validate_combined_result <- function(value, n, label) {
+  if (!is.list(value)) {
+    stop(label, " must return a list", call. = FALSE)
+  }
+  for (component in c("fn", "gr")) {
+    if (!(component %in% names(value))) {
+      stop(
+        label,
+        " must return a list containing an exact `",
+        component,
+        "` component",
+        call. = FALSE
+      )
+    }
+  }
+
+  mize_validate_objective_result(
+    value[["fn", exact = TRUE]],
+    paste0(label, "$fn")
+  )
+  mize_validate_gradient_result(
+    value[["gr", exact = TRUE]],
+    n,
+    paste0(label, "$gr")
+  )
+  value
+}
+
 # Uncached function evaluation for arbitrary values of par
 calc_fn <- function(opt, par, fn) {
   terminate <- callback_budget_termination(opt, "fn")
@@ -564,7 +617,7 @@ calc_fn <- function(opt, par, fn) {
     opt <- set_mize_termination(opt, terminate)
     return(opt)
   }
-  opt$fn <- fn(par)
+  opt$fn <- mize_validate_objective_result(fn(par), "fg$fn(par)")
   opt$counts$fn <- opt$counts$fn + 1
   opt
 }
@@ -578,7 +631,8 @@ calc_fn_new <- function(opt, par, fn, iter) {
       opt <- set_mize_termination(opt, terminate)
       return(opt)
     }
-    opt <- set_fn_new(opt, fn(par), iter)
+    value <- mize_validate_objective_result(fn(par), "fg$fn(par)")
+    opt <- set_fn_new(opt, value, iter)
     opt$counts$fn <- opt$counts$fn + 1
   }
   opt
@@ -600,7 +654,8 @@ calc_fn_curr <- function(opt, par, fn, iter) {
       opt <- set_mize_termination(opt, terminate)
       return(opt)
     }
-    opt <- set_fn_curr(opt, fn(par), iter)
+    value <- mize_validate_objective_result(fn(par), "fg$fn(par)")
+    opt <- set_fn_curr(opt, value, iter)
     opt$counts$fn <- opt$counts$fn + 1
   }
   opt
@@ -622,7 +677,12 @@ calc_gr_curr <- function(opt, par, gr, iter) {
       opt <- set_mize_termination(opt, terminate)
       return(opt)
     }
-    opt <- set_gr_curr(opt, gr(par), iter)
+    value <- mize_validate_gradient_result(
+      gr(par),
+      length(par),
+      "fg$gr(par)"
+    )
+    opt <- set_gr_curr(opt, value, iter)
     opt$counts$gr <- opt$counts$gr + 1
   }
   opt
@@ -642,7 +702,11 @@ calc_gr <- function(opt, par, gr) {
     opt <- set_mize_termination(opt, terminate)
     return(opt)
   }
-  opt$gr <- gr(par)
+  opt$gr <- mize_validate_gradient_result(
+    gr(par),
+    length(par),
+    "fg$gr(par)"
+  )
   opt$counts$gr <- opt$counts$gr + 1
   opt
 }

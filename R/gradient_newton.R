@@ -431,7 +431,11 @@ bd_approx <- function(
     ))
   }
 
-  g_fwd <- fg$gr(par + step)
+  g_fwd <- mize_validate_gradient_result(
+    fg$gr(par + step),
+    length(par),
+    "fg$gr(par)"
+  )
   bd <- (g_fwd - gm) / h
   if (any(!is.finite(bd))) {
     bd <- rep(0, length(dm))
