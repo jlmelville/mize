@@ -15,3 +15,5 @@
 ^pkgdown$
 ^pkgdown-site$
 ^scripts$
+^\.positai$
+^\.claude$
