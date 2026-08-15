@@ -425,17 +425,28 @@ line_search <- function(
           total_max_fg = max_fg,
           pm = pm
         )
-        sub_stage$is_gr_curr <- ls_result$is_gr_curr
-        sub_stage$value <- ls_result$step$alpha
         opt$counts$fn <- opt$counts$fn + ls_result$nfn
         opt$counts$gr <- opt$counts$gr + ls_result$ngr
 
-        if (is_last_stage(opt, stage)) {
-          opt <- set_fn_new(opt, ls_result$step$f, iter)
-          if (is.null(ls_result$step$df)) {
-            sub_stage$df <- rep(sub_stage$eps, length(par))
-          } else {
-            sub_stage$df <- ls_result$step$df
+        realized_par <- par + (ls_result$step$alpha * pm)
+        if (all(is.finite(realized_par))) {
+          sub_stage$is_gr_curr <- ls_result$is_gr_curr
+          sub_stage$value <- ls_result$step$alpha
+
+          if (is_last_stage(opt, stage)) {
+            opt <- set_fn_new(opt, ls_result$step$f, iter)
+            if (is.null(ls_result$step$df)) {
+              sub_stage$df <- rep(sub_stage$eps, length(par))
+            } else {
+              sub_stage$df <- ls_result$step$df
+            }
+          }
+        } else {
+          sub_stage$value <- 0
+          if (is_last_stage(opt, stage)) {
+            opt <- set_fn_new(opt, step0$f, iter)
+            sub_stage$df <- step0$df
+            sub_stage$is_gr_curr <- TRUE
           }
         }
       }

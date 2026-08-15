@@ -72,6 +72,28 @@ make_schmidt_armijo_witness <- function(
   )
 }
 
+make_wolfe_overflow_witness <- function() {
+  calls <- new.env(parent = emptyenv())
+  calls$fn_par <- numeric()
+  calls$gr_par <- numeric()
+
+  list(
+    fg = list(
+      fn = function(x) {
+        calls$fn_par <- c(calls$fn_par, x)
+        if (all(is.finite(x))) 1 else 0
+      },
+      gr = function(x) {
+        calls$gr_par <- c(calls$gr_par, x)
+        if (all(is.finite(x))) -1 else 0
+      }
+    ),
+    counts = function() c(fn = length(calls$fn_par), gr = length(calls$gr_par)),
+    fn_par = function() calls$fn_par,
+    gr_par = function() calls$gr_par
+  )
+}
+
 Ops.ascent_gradient <- function(e1, e2) {
   if (.Generic == "-" && missing(e2)) {
     return(unclass(e1))
@@ -589,6 +611,45 @@ test_that("Schmidt Armijo rejects an Armijo trial at overflowed parameters", {
   expect_true(is.finite(result$par))
   expect_equal(result$par, 1e308)
   expect_equal(result$f, objective(result$par))
+})
+
+test_that("Wolfe searches reject condition-satisfying overflowed parameters", {
+  searches <- c(
+    `more-thuente` = "more-thuente",
+    rasmussen = "rasmussen",
+    schmidt = "schmidt",
+    `hager-zhang` = "hager-zhang"
+  )
+
+  for (name in names(searches)) {
+    witness <- make_wolfe_overflow_witness()
+    opt <- make_mize(
+      method = "SD",
+      line_search = searches[[name]],
+      step0 = 1e308,
+      c1 = 1e-308,
+      c2 = 0.5,
+      ls_max_fn = 1,
+      ls_max_gr = 1,
+      ls_max_fg = 2,
+      abs_tol = NULL,
+      rel_tol = NULL,
+      grad_tol = NULL,
+      ginf_tol = NULL,
+      step_tol = NULL
+    )
+    opt <- mize_init(opt, 1e308, witness$fg)
+
+    result <- mize_step(opt, 1e308, witness$fg)
+
+    expect_equal(result$par, 1e308, info = name)
+    expect_equal(result$f, 1, info = name)
+    expect_equal(result$g, -1, info = name)
+    expect_identical(witness$counts(), c(fn = 2L, gr = 2L), info = name)
+    expect_budget_counts(result, witness)
+    expect_equal(witness$fn_par(), c(1e308, Inf), info = name)
+    expect_equal(witness$gr_par(), c(1e308, Inf), info = name)
+  }
 })
 
 test_that("Schmidt Armijo rejects a failure at the exact global function cap", {
