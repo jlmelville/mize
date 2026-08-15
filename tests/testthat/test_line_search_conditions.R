@@ -62,6 +62,25 @@ test_that("Armijo backtracking accepts steps with sufficient decrease", {
   }
 })
 
+test_that("Schmidt Armijo accepts internal phi results without parameters", {
+  step0 <- list(alpha = 0, f = 1, df = -1, d = -1)
+  phi <- function(alpha, calc_gradient = TRUE) {
+    list(alpha = alpha, f = 0, df = -1, d = -1)
+  }
+
+  res <- schmidt_armijo_backtrack(c1 = 0.1, max_fn = 1)(
+    phi = phi,
+    step0 = step0,
+    alpha = 0.5,
+    pm = 1
+  )
+
+  expect_equal(res$step$alpha, 0.5)
+  expect_equal(res$step$f, 0)
+  expect_equal(res$nfn, 1)
+  expect_equal(res$ngr, 1)
+})
+
 test_that("More-Thuente successful steps satisfy strong Wolfe conditions", {
   cases <- list(
     list(

@@ -97,6 +97,27 @@ schmidt_armijo_backtrack <- function(
       LS_interp <- 2
     }
 
+    candidate_is_finite <- function(candidate) {
+      isTRUE(is.finite(candidate$alpha)) &&
+        step_is_finite(candidate) &&
+        (is.null(candidate$par) || all(is.finite(candidate$par)))
+    }
+
+    best_decrease <- NULL
+    last_candidate <- NULL
+    tracked_phi <- function(...) {
+      candidate <- phi(...)
+      last_candidate <<- candidate
+      if (
+        candidate_is_finite(candidate) &&
+          isTRUE(candidate$f < step0$f) &&
+          (is.null(best_decrease) || candidate$f < best_decrease$f)
+      ) {
+        best_decrease <<- candidate
+      }
+      candidate
+    }
+
     res <- ArmijoBacktrack(
       step = alpha,
       f = step0$f,
@@ -107,12 +128,28 @@ schmidt_armijo_backtrack <- function(
       LS_multi = 0,
       maxLS = maxfev,
       step_down = step_down,
-      funObj = phi,
+      funObj = tracked_phi,
       varargin = NULL,
       pnorm_inf = max(abs(pm)),
       progTol = 1e-9,
       debug = FALSE
     )
+
+    # ArmijoBacktrack omits par from its returned step, so check the matching
+    # evaluated candidate retained by the adapter.
+    returned_trial_is_safe <- !is.null(last_candidate) &&
+      isTRUE(last_candidate$alpha == res$step$alpha) &&
+      candidate_is_finite(last_candidate) &&
+      isTRUE(last_candidate$f < step0$f) &&
+      isTRUE(armijo_ok_step(step0, last_candidate, c1))
+    if (!isTRUE(res$step$alpha == 0) && !returned_trial_is_safe) {
+      if (is.null(best_decrease)) {
+        res$step <- step0
+      } else {
+        res$step <- best_decrease
+      }
+      res$is_gr_curr <- !is.null(res$step$df)
+    }
 
     res
   }

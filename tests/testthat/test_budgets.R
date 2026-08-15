@@ -47,6 +47,31 @@ make_bold_driver_witness <- function(
   )
 }
 
+make_schmidt_armijo_witness <- function(
+  fn = function(x) x^4,
+  gr = function(x) 4 * x^3
+) {
+  calls <- new.env(parent = emptyenv())
+  calls$fn_par <- numeric()
+  calls$gr_par <- numeric()
+
+  list(
+    fg = list(
+      fn = function(x) {
+        calls$fn_par <- c(calls$fn_par, x)
+        fn(x)
+      },
+      gr = function(x) {
+        calls$gr_par <- c(calls$gr_par, x)
+        gr(x)
+      }
+    ),
+    counts = function() c(fn = length(calls$fn_par), gr = length(calls$gr_par)),
+    fn_par = function() calls$fn_par,
+    gr_par = function() calls$gr_par
+  )
+}
+
 Ops.ascent_gradient <- function(e1, e2) {
   if (.Generic == "-" && missing(e2)) {
     return(unclass(e1))
@@ -497,6 +522,271 @@ test_that("Bold Driver non-descent shortcut returns an exact zero step", {
   expect_identical(as.numeric(result$par), 1)
   expect_equal(objective(result$par), objective(1))
   expect_equal(result$f, objective(result$par))
+})
+
+test_that("Schmidt Armijo rejects one-trial quartic failures", {
+  quartic <- function(x) x^4
+  cases <- list(
+    interpolation = list(step_down = NULL, gr_par = c(1, -3)),
+    fixed = list(step_down = 0.5, gr_par = 1)
+  )
+
+  for (name in names(cases)) {
+    case <- cases[[name]]
+    witness <- make_schmidt_armijo_witness()
+
+    result <- mize(
+      1,
+      witness$fg,
+      method = "SD",
+      line_search = "backtracking",
+      step0 = 1,
+      step_down = case$step_down,
+      ls_max_fn = 1,
+      max_iter = 1,
+      check_conv_every = NULL,
+      abs_tol = NULL,
+      rel_tol = NULL,
+      grad_tol = NULL,
+      ginf_tol = NULL,
+      step_tol = NULL
+    )
+
+    expect_equal(witness$fn_par(), c(1, -3), info = name)
+    expect_equal(witness$gr_par(), case$gr_par, info = name)
+    expect_budget_counts(result, witness)
+    expect_equal(result$par, 1, info = name)
+    expect_equal(quartic(result$par), quartic(1), info = name)
+    expect_equal(result$f, quartic(result$par), info = name)
+  }
+})
+
+test_that("Schmidt Armijo rejects an Armijo trial at overflowed parameters", {
+  objective <- function(x) if (is.finite(x)) 1 else 0
+  gradient <- function(x) if (is.finite(x)) -1 else 0
+  witness <- make_schmidt_armijo_witness(objective, gradient)
+
+  result <- mize(
+    1e308,
+    witness$fg,
+    method = "SD",
+    line_search = "backtracking",
+    step0 = 1e308,
+    c1 = 1e-320,
+    ls_max_fn = 1,
+    max_iter = 1,
+    check_conv_every = NULL,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+
+  expect_equal(witness$fn_par(), c(1e308, Inf))
+  expect_equal(witness$gr_par(), c(1e308, Inf))
+  expect_budget_counts(result, witness)
+  expect_true(is.finite(result$par))
+  expect_equal(result$par, 1e308)
+  expect_equal(result$f, objective(result$par))
+})
+
+test_that("Schmidt Armijo rejects a failure at the exact global function cap", {
+  quartic <- function(x) x^4
+  witness <- make_schmidt_armijo_witness()
+
+  result <- mize(
+    1,
+    witness$fg,
+    method = "SD",
+    line_search = "backtracking",
+    step0 = 1,
+    ls_max_fn = 1,
+    max_fn = 2,
+    max_iter = 1,
+    check_conv_every = NULL,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+
+  expect_equal(witness$fn_par(), c(1, -3))
+  expect_equal(witness$gr_par(), c(1, -3))
+  expect_budget_counts(result, witness)
+  expect_equal(result$terminate$what, "max_fn")
+  expect_equal(result$par, 1)
+  expect_equal(quartic(result$par), quartic(1))
+  expect_equal(result$f, quartic(result$par))
+})
+
+test_that("Schmidt Armijo rejects equal and nonfinite terminal trials", {
+  quartic <- function(x) x^4
+  cases <- list(
+    equal = list(
+      fn = quartic,
+      ls_max_fn = 2,
+      fn_par = c(1, -3, -1)
+    ),
+    nonfinite = list(
+      fn = function(x) if (x == -3) Inf else quartic(x),
+      ls_max_fn = 1,
+      fn_par = c(1, -3)
+    )
+  )
+
+  for (name in names(cases)) {
+    case <- cases[[name]]
+    witness <- make_schmidt_armijo_witness(fn = case$fn)
+
+    result <- suppressMessages(mize(
+      1,
+      witness$fg,
+      method = "SD",
+      line_search = "backtracking",
+      step0 = 1,
+      step_down = 0.5,
+      ls_max_fn = case$ls_max_fn,
+      max_iter = 1,
+      check_conv_every = NULL,
+      abs_tol = NULL,
+      rel_tol = NULL,
+      grad_tol = NULL,
+      ginf_tol = NULL,
+      step_tol = NULL
+    ))
+
+    expect_equal(witness$fn_par(), case$fn_par, info = name)
+    expect_equal(witness$gr_par(), 1, info = name)
+    expect_budget_counts(result, witness)
+    expect_equal(result$par, 1, info = name)
+    expect_equal(quartic(result$par), quartic(1), info = name)
+    expect_equal(result$f, quartic(result$par), info = name)
+  }
+})
+
+test_that("Schmidt Armijo returns an earlier decreasing fallback", {
+  objective <- function(x) {
+    0.628125 * x^3 + 1.621875 * x^2 - 1.128125 * x - 0.121875
+  }
+  gradient <- function(x) {
+    3 * 0.628125 * x^2 + 2 * 1.621875 * x - 1.128125
+  }
+  witness <- make_schmidt_armijo_witness(objective, gradient)
+
+  result <- mize(
+    1,
+    witness$fg,
+    method = "SD",
+    line_search = "backtracking",
+    step0 = 1,
+    step_down = 0.5,
+    c1 = 0.1,
+    ls_max_fn = 2,
+    max_iter = 1,
+    check_conv_every = NULL,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+
+  expect_equal(witness$fn_par(), c(1, -3, -1))
+  expect_equal(witness$gr_par(), 1)
+  expect_budget_counts(result, witness)
+  expect_equal(result$par, -3)
+  expect_lt(objective(result$par), objective(1))
+  expect_equal(result$f, objective(result$par))
+})
+
+test_that("Schmidt Armijo accepts an Armijo step on the final callback", {
+  quartic <- function(x) x^4
+  witness <- make_schmidt_armijo_witness()
+
+  result <- mize(
+    1,
+    witness$fg,
+    method = "SD",
+    line_search = "backtracking",
+    step0 = 1,
+    step_down = 0.5,
+    c1 = 0.1,
+    ls_max_fn = 3,
+    max_fn = 4,
+    max_iter = 1,
+    check_conv_every = NULL,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+
+  expect_equal(witness$fn_par(), c(1, -3, -1, 0))
+  expect_equal(witness$gr_par(), 1)
+  expect_budget_counts(result, witness)
+  expect_equal(result$terminate$what, "max_fn")
+  expect_equal(result$par, 0)
+  expect_lt(quartic(result$par), quartic(1))
+  expect_equal(result$f, quartic(result$par))
+})
+
+test_that("Schmidt Armijo caches only its returned parameter value", {
+  quartic <- function(x) x^4
+  rejected_witness <- make_schmidt_armijo_witness()
+  rejected_opt <- make_mize(
+    method = "SD",
+    line_search = "backtracking",
+    step0 = 1,
+    ls_max_fn = 1,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+  rejected_opt <- mize_init(rejected_opt, 1, rejected_witness$fg)
+
+  rejected <- mize_step(rejected_opt, 1, rejected_witness$fg)
+
+  expect_equal(rejected$par, 1)
+  expect_equal(rejected$opt$cache$fn_new, quartic(rejected$par))
+  expect_false(identical(rejected$opt$cache$fn_new, quartic(-3)))
+  expect_equal(rejected$opt$cache$gr_curr, 4)
+  expect_equal(rejected$opt$cache$gr_curr_iter, 2)
+  expect_budget_counts(rejected, rejected_witness)
+
+  objective <- function(x) {
+    0.628125 * x^3 + 1.621875 * x^2 - 1.128125 * x - 0.121875
+  }
+  gradient <- function(x) {
+    3 * 0.628125 * x^2 + 2 * 1.621875 * x - 1.128125
+  }
+  fallback_witness <- make_schmidt_armijo_witness(objective, gradient)
+  fallback_opt <- make_mize(
+    method = "SD",
+    line_search = "backtracking",
+    step0 = 1,
+    step_down = 0.5,
+    c1 = 0.1,
+    ls_max_fn = 2,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+  fallback_opt <- mize_init(fallback_opt, 1, fallback_witness$fg)
+
+  fallback <- mize_step(fallback_opt, 1, fallback_witness$fg)
+
+  expect_equal(fallback$par, -3)
+  expect_equal(fallback$opt$cache$fn_new, objective(fallback$par))
+  expect_equal(fallback$opt$cache$fn_curr, objective(fallback$par))
+  expect_false(identical(fallback$opt$cache$gr_curr_iter, 2))
+  expect_budget_counts(fallback, fallback_witness)
 })
 
 test_that("budget rollback preserves a stationary gradient across searches", {
