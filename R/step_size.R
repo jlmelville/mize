@@ -60,52 +60,61 @@ bold_driver <- function(
       # Optionally use the gradient if it's available to give up early
       # if we're not going downhill
       if (
-        stage$type == "gradient_descent" &&
-          has_gr_curr(opt, iter) &&
-          dot(opt$cache$gr_curr, pm) > 0
+        isTRUE(all(pm == 0)) ||
+          stage$type == "gradient_descent" &&
+            has_gr_curr(opt, iter) &&
+            dot(opt$cache$gr_curr, pm) > 0
       ) {
-        sub_stage$value <- sub_stage$min_value
-      } else {
-        if (is_first_stage(opt, stage) && has_fn_curr(opt, iter)) {
-          f0 <- opt$cache$fn_curr
-        } else {
-          opt <- calc_fn(opt, par, fg$fn)
-          if (!is.null(opt$terminate)) {
-            sub_stage$value <- 0
-            return(list(opt = opt, sub_stage = sub_stage))
-          }
-          f0 <- opt$fn
-        }
+        sub_stage$value <- 0
+        return(list(opt = opt, sub_stage = sub_stage))
+      }
 
-        max_fn <- max_fn_per_ls(opt, max_fn)
-        alpha <- sub_stage$value
+      remaining_fn <- max_fn_per_ls(opt, max_fn)
+      if (is_first_stage(opt, stage) && has_fn_curr(opt, iter)) {
+        f0 <- opt$cache$fn_curr
+      } else {
+        if (remaining_fn <= 0) {
+          sub_stage$value <- 0
+          return(list(opt = opt, sub_stage = sub_stage))
+        }
+        opt <- calc_fn(opt, par, fg$fn)
+        if (!is.null(opt$terminate)) {
+          sub_stage$value <- 0
+          return(list(opt = opt, sub_stage = sub_stage))
+        }
+        f0 <- opt$fn
+        remaining_fn <- remaining_fn - 1
+      }
+
+      alpha <- sub_stage$value
+      accepted <- FALSE
+      last_fn <- NULL
+      while (remaining_fn > 0) {
         para <- par + pm * alpha
         opt <- calc_fn(opt, para, fg$fn)
         if (!is.null(opt$terminate)) {
           sub_stage$value <- 0
           return(list(opt = opt, sub_stage = sub_stage))
         }
-        num_steps <- 0
-        while (
-          (!is.finite(opt$fn) || opt$fn > f0) &&
-            alpha > sub_stage$min_value &&
-            num_steps < max_fn
-        ) {
-          alpha <- sclamp(
-            sub_stage$dec_fn(alpha),
-            min = sub_stage$min_value,
-            max = sub_stage$max_value
-          )
-          para <- par + pm * alpha
-          opt <- calc_fn(opt, para, fg$fn)
-          if (!is.null(opt$terminate)) {
-            sub_stage$value <- 0
-            return(list(opt = opt, sub_stage = sub_stage))
-          }
-          num_steps <- num_steps + 1
+        remaining_fn <- remaining_fn - 1
+        last_fn <- opt$fn
+
+        if (is.finite(last_fn) && isTRUE(last_fn < f0)) {
+          accepted <- TRUE
+          break
         }
-        sub_stage$value <- alpha
-        if (!is.finite(opt$fn)) {
+        if (alpha <= sub_stage$min_value) {
+          break
+        }
+        alpha <- sclamp(
+          sub_stage$dec_fn(alpha),
+          min = sub_stage$min_value,
+          max = sub_stage$max_value
+        )
+      }
+
+      if (!accepted) {
+        if (!is.null(last_fn) && !is.finite(last_fn)) {
           message(
             stage$type,
             " ",
@@ -113,13 +122,14 @@ bold_driver <- function(
             " non finite cost found at iter ",
             iter
           )
-          sub_stage$value <- sub_stage$min_value
-          return(list(opt = opt, sub_stage = sub_stage))
         }
+        sub_stage$value <- 0
+        return(list(opt = opt, sub_stage = sub_stage))
+      }
 
-        if (is_last_stage(opt, stage)) {
-          opt <- set_fn_new(opt, opt$fn, iter)
-        }
+      sub_stage$value <- alpha
+      if (is_last_stage(opt, stage)) {
+        opt <- set_fn_new(opt, last_fn, iter)
       }
       list(opt = opt, sub_stage = sub_stage)
     },

@@ -21,6 +21,42 @@ make_budget_witness <- function(
   )
 }
 
+make_bold_driver_witness <- function(
+  fn = function(x) x^4,
+  gr = function(x) 4 * x^3
+) {
+  calls <- new.env(parent = emptyenv())
+  calls$fn <- 0
+  calls$gr <- 0
+  calls$fn_par <- numeric()
+
+  list(
+    fg = list(
+      fn = function(x) {
+        calls$fn <- calls$fn + 1
+        calls$fn_par <- c(calls$fn_par, x)
+        fn(x)
+      },
+      gr = function(x) {
+        calls$gr <- calls$gr + 1
+        gr(x)
+      }
+    ),
+    counts = function() c(fn = calls$fn, gr = calls$gr),
+    fn_par = function() calls$fn_par
+  )
+}
+
+Ops.ascent_gradient <- function(e1, e2) {
+  if (.Generic == "-" && missing(e2)) {
+    return(unclass(e1))
+  }
+  if (.Generic == "*") {
+    return(unclass(e1) * e2)
+  }
+  NextMethod()
+}
+
 expect_budget_counts <- function(result, witness) {
   expect_equal(c(fn = result$nf, gr = result$ng), witness$counts())
 }
@@ -270,6 +306,197 @@ test_that("budget exhaustion before a Bold Driver trial leaves par unchanged", {
   expect_equal(result$terminate$what, "max_fg")
   expect_equal(result$par, 1)
   expect_false("f" %in% names(result))
+})
+
+test_that("Bold Driver rejects trials outside zero and one callback budgets", {
+  quartic <- function(x) x^4
+  expected_calls <- list(`0` = 1, `1` = c(1, 1))
+
+  for (limit in 0:1) {
+    witness <- make_bold_driver_witness()
+
+    result <- mize(
+      1,
+      witness$fg,
+      method = "SD",
+      line_search = "bold",
+      max_iter = 1,
+      ls_max_fn = limit,
+      check_conv_every = NULL,
+      abs_tol = NULL,
+      rel_tol = NULL,
+      grad_tol = NULL,
+      ginf_tol = NULL,
+      step_tol = NULL
+    )
+
+    expect_equal(witness$fn_par(), expected_calls[[as.character(limit)]])
+    expect_budget_counts(result, witness)
+    expect_equal(result$par, 1)
+    expect_equal(quartic(result$par), quartic(1))
+    expect_equal(result$f, quartic(result$par))
+  }
+})
+
+test_that("Bold Driver charges an uncached starting cost to its local budget", {
+  quartic <- function(x) x^4
+  witness <- make_bold_driver_witness()
+
+  result <- mize(
+    1,
+    witness$fg,
+    method = "SD",
+    line_search = "bold",
+    max_iter = 1,
+    ls_max_fn = 3,
+    check_conv_every = NULL,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+
+  expect_equal(witness$fn_par(), c(1, -3, -1, 1))
+  expect_budget_counts(result, witness)
+  expect_equal(result$par, 1)
+  expect_equal(quartic(result$par), quartic(1))
+  expect_equal(result$f, quartic(result$par))
+})
+
+test_that("Bold Driver failure does not cache a rejected candidate", {
+  quartic <- function(x) x^4
+  witness <- make_bold_driver_witness()
+  opt <- make_mize(
+    method = "SD",
+    line_search = "bold",
+    ls_max_fn = 3,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+  opt <- mize_init(opt, 1, witness$fg)
+
+  result <- mize_step(opt, 1, witness$fg)
+
+  expect_equal(witness$fn_par(), c(1, -3, -1))
+  expect_budget_counts(result, witness)
+  expect_equal(result$par, 1)
+  expect_equal(quartic(result$par), quartic(1))
+  expect_false(identical(result$opt$cache$fn_new_iter, 1))
+  expect_false("f" %in% names(result))
+})
+
+test_that("Bold Driver accepts a strict decrease on the final callback", {
+  quartic <- function(x) x^4
+  witness <- make_bold_driver_witness()
+
+  result <- mize(
+    1,
+    witness$fg,
+    method = "SD",
+    line_search = "bold",
+    max_iter = 1,
+    ls_max_fn = 4,
+    check_conv_every = NULL,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+
+  expect_equal(witness$fn_par(), c(1, -3, -1, 0))
+  expect_budget_counts(result, witness)
+  expect_equal(result$par, 0)
+  expect_lt(quartic(result$par), quartic(1))
+  expect_equal(result$f, quartic(result$par))
+})
+
+test_that("Bold Driver does not charge a cached starting cost", {
+  quartic <- function(x) x^4
+  witness <- make_bold_driver_witness()
+
+  result <- mize(
+    1,
+    witness$fg,
+    method = "SD",
+    line_search = "bold",
+    max_iter = 1,
+    ls_max_fn = 1,
+    check_conv_every = 1,
+    store_progress = TRUE,
+    abs_tol = 0,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+
+  expect_equal(witness$fn_par(), c(1, -3, 1))
+  expect_budget_counts(result, witness)
+  expect_equal(result$par, 1)
+  expect_equal(quartic(result$par), quartic(1))
+  expect_equal(result$f, quartic(result$par))
+})
+
+test_that("Bold Driver rejects nonfinite candidates", {
+  objective <- function(x) {
+    if (x == -3) Inf else x^4
+  }
+  witness <- make_bold_driver_witness(fn = objective)
+
+  result <- suppressMessages(mize(
+    1,
+    witness$fg,
+    method = "SD",
+    line_search = "bold",
+    max_iter = 1,
+    ls_max_fn = 2,
+    check_conv_every = NULL,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  ))
+
+  expect_equal(witness$fn_par(), c(1, -3, 1))
+  expect_budget_counts(result, witness)
+  expect_equal(result$par, 1)
+  expect_equal(objective(result$par), objective(1))
+  expect_equal(result$f, objective(result$par))
+})
+
+test_that("Bold Driver non-descent shortcut returns an exact zero step", {
+  objective <- function(x) x^2
+  witness <- make_bold_driver_witness(
+    fn = objective,
+    gr = function(x) structure(2 * x, class = "ascent_gradient")
+  )
+
+  result <- mize(
+    1,
+    witness$fg,
+    method = "SD",
+    line_search = "bold",
+    max_iter = 1,
+    ls_max_fn = 0,
+    check_conv_every = NULL,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+
+  expect_equal(witness$fn_par(), 1)
+  expect_budget_counts(result, witness)
+  expect_identical(as.numeric(result$par), 1)
+  expect_equal(objective(result$par), objective(1))
+  expect_equal(result$f, objective(result$par))
 })
 
 test_that("budget rollback preserves a stationary gradient across searches", {

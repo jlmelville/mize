@@ -586,11 +586,9 @@ test_that("linear weighted eager classical momentum with bold driver", {
   expect_equal(res$par, par, tolerance = 1e-3)
 })
 
-test_that("bold classical momentum with bold driver", {
-  # Not a very good idea - momentum component easily shrinks to zero
-  # so you waste a lot of time trying to find a non-existent acceptable step
-  # size - but tests that you can use the same step size method in different
-  # stages and they don't interfere with each other.
+test_that("bold driver returns safe zero momentum steps", {
+  # The initial momentum direction is zero and later candidates do not strictly
+  # decrease the cost, so the momentum stage must remain inactive.
   opt <- make_opt(
     make_stages(
       gradient_stage(
@@ -616,13 +614,13 @@ test_that("bold classical momentum with bold driver", {
     grad_tol = 1e-5
   )
 
-  nfs <- c(0, 6, 19, 45)
+  nfs <- c(0, 4, 10, 17)
   ngs <- c(0, 1, 2, 3)
   fs <- c(24.2, 6.32, 4.12, 4.10)
   g2ns <- c(232.87, 64.72, 2.81, 2.41)
-  steps <- c(0, 0.25, 0.064, 0.0047)
-  mus <- c(1, 1.1, 4.73e-3, 1.64e-8)
-  par <- c(-1.027, 1.059)
+  steps <- c(0, 0.25, 0.06875, 0.004727)
+  mus <- c(1, 1.49e-8, 1.64e-8, 1.80e-8)
+  par <- c(-1.024, 1.060)
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
@@ -631,9 +629,10 @@ test_that("bold classical momentum with bold driver", {
   expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
   expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
   expect_equal(res$par, par, tolerance = 1e-3)
+  expect_equal(res$f, rosenbrock_fg$fn(res$par), tolerance = 1e-12)
 })
 
-test_that("bold classical momentum with bold driver without cache gives same results, but requires extra work", {
+test_that("safe zero Bold Driver steps agree without cache", {
   # Checks that the caching of function calls works correctly
   opt <- make_opt(
     make_stages(
@@ -661,13 +660,13 @@ test_that("bold classical momentum with bold driver without cache gives same res
     grad_tol = 1e-5
   )
 
-  nfs <- c(0, 6, 20, 47) # extra function evaluations
+  nfs <- c(0, 4, 10, 18) # extra function evaluation
   ngs <- c(0, 1, 2, 3)
   fs <- c(24.2, 6.32, 4.12, 4.10)
   g2ns <- c(232.87, 64.72, 2.81, 2.41)
-  steps <- c(0, 0.25, 0.064, 0.0047)
-  mus <- c(1, 1.1, 4.73e-3, 1.64e-8)
-  par <- c(-1.027, 1.059)
+  steps <- c(0, 0.25, 0.06875, 0.004727)
+  mus <- c(1, 1.49e-8, 1.64e-8, 1.80e-8)
+  par <- c(-1.024, 1.060)
 
   expect_equal(res$progress$nf, nfs)
   expect_equal(res$progress$ng, ngs)
@@ -676,6 +675,7 @@ test_that("bold classical momentum with bold driver without cache gives same res
   expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
   expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
   expect_equal(res$par, par, tolerance = 1e-3)
+  expect_equal(res$f, rosenbrock_fg$fn(res$par), tolerance = 1e-12)
 })
 
 test_that("classical momentum with bold driver and fn adaptive restart, same results as without when everything is ok", {
