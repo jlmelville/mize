@@ -64,6 +64,144 @@ test_that("public zero budgets invoke no callbacks and return no objective", {
   }
 })
 
+test_that("TN zero gradient and combined budgets invoke no callbacks", {
+  for (budget in c("max_gr", "max_fg")) {
+    witness <- make_budget_witness()
+    args <- list(
+      par = c(1, -1),
+      fg = witness$fg,
+      method = "TN",
+      line_search = "constant",
+      step0 = 1,
+      max_iter = 1,
+      check_conv_every = NULL,
+      abs_tol = NULL,
+      rel_tol = NULL,
+      grad_tol = NULL,
+      ginf_tol = NULL,
+      step_tol = NULL
+    )
+    args[[budget]] <- 0
+
+    result <- do.call(mize, args)
+
+    expect_identical(witness$counts(), c(fn = 0, gr = 0), info = budget)
+    expect_budget_counts(result, witness)
+    expect_equal(result$terminate$what, budget, info = budget)
+    expect_equal(result$terminate$val, 0, info = budget)
+    expect_equal(result$par, c(1, -1), info = budget)
+    expect_false("f" %in% names(result), info = budget)
+  }
+})
+
+test_that("TN does not exceed a one-callback combined budget", {
+  witness <- make_budget_witness()
+
+  result <- mize(
+    c(1, -1),
+    witness$fg,
+    method = "TN",
+    line_search = "constant",
+    step0 = 1,
+    max_iter = 1,
+    max_fg = 1,
+    check_conv_every = NULL,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+
+  expect_identical(witness$counts(), c(fn = 0, gr = 1))
+  expect_budget_counts(result, witness)
+  expect_equal(result$terminate, list(what = "max_fg", val = 1))
+  expect_equal(result$par, c(1, -1))
+  expect_false("f" %in% names(result))
+})
+
+test_that("TN blocks a subsequent finite difference at exact boundaries", {
+  rosenbrock_gr <- function(x) {
+    c(
+      -400 * x[1] * (x[2] - x[1]^2) - 2 * (1 - x[1]),
+      200 * (x[2] - x[1]^2)
+    )
+  }
+
+  for (budget in c("max_gr", "max_fg")) {
+    witness <- make_budget_witness(gr = rosenbrock_gr)
+    args <- list(
+      par = c(-1.2, 1),
+      fg = witness$fg,
+      method = "TN",
+      line_search = "constant",
+      step0 = 1,
+      max_iter = 1,
+      check_conv_every = NULL,
+      abs_tol = NULL,
+      rel_tol = NULL,
+      grad_tol = NULL,
+      ginf_tol = NULL,
+      step_tol = NULL
+    )
+    args[[budget]] <- 2
+
+    result <- do.call(mize, args)
+
+    expect_identical(witness$counts(), c(fn = 0, gr = 2), info = budget)
+    expect_budget_counts(result, witness)
+    expect_equal(
+      result$terminate,
+      list(what = budget, val = 2),
+      info = budget
+    )
+    # The allowed finite difference completes a usable TN direction, so the
+    # constant step is applied before the ordinary lifecycle records the cap.
+    expect_equal(
+      result$par,
+      c(-1.056697, 1.058491),
+      tolerance = 1e-6,
+      info = budget
+    )
+    expect_false("f" %in% names(result), info = budget)
+  }
+})
+
+test_that("TN previous initialization cannot bypass the combined cap", {
+  witness <- make_budget_witness()
+  par <- c(1, -1)
+  opt <- make_mize(
+    method = "TN",
+    tn_init = "previous",
+    line_search = "constant",
+    step0 = 0.1,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+  opt <- mize_init(opt, par, witness$fg)
+
+  first <- mize_step(opt, par, witness$fg)
+  expect_false(all(first$opt$stages$gradient_descent$direction$value == 0))
+
+  calls_before <- witness$counts()
+  first$opt$convergence$max_fg <- sum(calls_before) + 1
+  second <- mize_step(first$opt, first$par, witness$fg)
+
+  expect_identical(
+    witness$counts(),
+    calls_before + c(fn = 0, gr = 1)
+  )
+  expect_equal(c(fn = second$nf, gr = second$ng), witness$counts())
+  expect_equal(
+    second$opt$terminate,
+    list(what = "max_fg", val = sum(calls_before) + 1)
+  )
+  expect_equal(second$par, first$par)
+})
+
 test_that("public budgets stop exactly after one callback", {
   cases <- list(
     list(budget = "max_fn", max_iter = 0, expected = c(fn = 1, gr = 0)),

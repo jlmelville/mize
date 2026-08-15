@@ -145,20 +145,48 @@ test_that("bd_approx handles zero and badly scaled directions", {
   par <- c(1, -2)
   gm <- quadratic_fg$gr(par)
 
-  expect_equal(
-    bd_approx(quadratic_fg, par, dm = c(0, 0), gm = gm),
-    c(0, 0)
-  )
+  zero_bd <- bd_approx(quadratic_fg, par, dm = c(0, 0), gm = gm)
+  expect_equal(zero_bd$value, c(0, 0))
+  expect_false(zero_bd$gr_evaluated)
 
   tiny_dm <- c(1e-300, -1e-300)
   tiny_bd <- bd_approx(quadratic_fg, par, dm = tiny_dm, gm = gm)
-  expect_true(all(is.finite(tiny_bd)))
-  expect_equal(tiny_bd / tiny_dm, c(2, 6), tolerance = 1e-6)
+  expect_true(tiny_bd$gr_evaluated)
+  expect_true(all(is.finite(tiny_bd$value)))
+  expect_equal(tiny_bd$value / tiny_dm, c(2, 6), tolerance = 1e-6)
 
   huge_dm <- c(4e307, -2e307)
   huge_bd <- bd_approx(quadratic_fg, par, dm = huge_dm, gm = gm)
-  expect_true(all(is.finite(huge_bd)))
-  expect_equal(huge_bd / huge_dm, c(2, 6), tolerance = 1e-6)
+  expect_true(huge_bd$gr_evaluated)
+  expect_true(all(is.finite(huge_bd$value)))
+  expect_equal(huge_bd$value / huge_dm, c(2, 6), tolerance = 1e-6)
+})
+
+test_that("callback-free bd_approx does not increase the TN gradient count", {
+  calls <- new.env(parent = emptyenv())
+  calls$gr <- 0
+  fg <- list(
+    gr = function(x) {
+      calls$gr <- calls$gr + 1
+      2 * x
+    }
+  )
+  opt <- list(
+    counts = list(fn = 0, gr = 0),
+    convergence = list(max_gr = Inf, max_fg = Inf)
+  )
+
+  result <- tn_inner_cg(
+    opt,
+    fg,
+    par = c(1, -1),
+    gm = c(2, -2),
+    zm = c(Inf, Inf),
+    max_iter = 0
+  )
+
+  expect_equal(calls$gr, 0)
+  expect_equal(result$opt$counts$gr, 0)
 })
 
 test_that("TN stationary starts terminate without non-finite inner state", {

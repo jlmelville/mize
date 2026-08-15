@@ -294,15 +294,20 @@ tn_inner_cg <- function(
   if (length(zm) == 1 && zm == 0) {
     rm <- gm
   } else {
-    if (opt$counts$gr >= opt$convergence$max_gr) {
+    terminate <- callback_budget_termination(opt, "gr")
+    if (!is.null(terminate)) {
+      opt <- set_mize_termination(opt, terminate)
       zm <- -gm
       return(list(
         opt = opt,
         zm = zm
       ))
     }
-    Bd <- bd_approx(fg, par, zm, gm)
-    opt$counts$gr <- opt$counts$gr + 1
+    bd_res <- bd_approx(fg, par, zm, gm)
+    if (bd_res$gr_evaluated) {
+      opt$counts$gr <- opt$counts$gr + 1
+    }
+    Bd <- bd_res$value
 
     rm <- Bd + gm
   }
@@ -323,7 +328,9 @@ tn_inner_cg <- function(
 
   j <- 0
   while (j < max_iter) {
-    if (opt$counts$gr >= opt$convergence$max_gr) {
+    terminate <- callback_budget_termination(opt, "gr")
+    if (!is.null(terminate)) {
+      opt <- set_mize_termination(opt, terminate)
       if (j == 0) {
         zm <- -gm
       }
@@ -333,8 +340,11 @@ tn_inner_cg <- function(
       ))
     }
 
-    Bd <- bd_approx(fg, par, dm, gm)
-    opt$counts$gr <- opt$counts$gr + 1
+    bd_res <- bd_approx(fg, par, dm, gm)
+    if (bd_res$gr_evaluated) {
+      opt$counts$gr <- opt$counts$gr + 1
+    }
+    Bd <- bd_res$value
 
     dBd <- dot(dm, Bd)
     if (!is.finite(dBd) || dBd <= 0) {
@@ -404,6 +414,7 @@ tn_inner_cg <- function(
 # Found in:
 # http://timvieira.github.io/blog/post/2014/02/10/gradient-vector-product/
 # Something similar is used in minfunc
+# Returns both the approximation and whether the gradient callback was invoked.
 bd_approx <- function(
   fg,
   par,
@@ -415,21 +426,30 @@ bd_approx <- function(
     h <- bd_approx_step(par, dm)
   }
   if (!is.finite(h) || h <= 0) {
-    return(rep(0, length(dm)))
+    return(list(
+      value = rep(0, length(dm)),
+      gr_evaluated = FALSE
+    ))
   }
 
   step <- h * dm
   if (any(!is.finite(step))) {
-    return(rep(0, length(dm)))
+    return(list(
+      value = rep(0, length(dm)),
+      gr_evaluated = FALSE
+    ))
   }
 
-  g_fwd <- fg$gr(par + h * dm)
+  g_fwd <- fg$gr(par + step)
   bd <- (g_fwd - gm) / h
   if (any(!is.finite(bd))) {
-    return(rep(0, length(dm)))
+    bd <- rep(0, length(dm))
   }
 
-  bd
+  list(
+    value = bd,
+    gr_evaluated = TRUE
+  )
 }
 
 bd_approx_step <- function(par, dm) {

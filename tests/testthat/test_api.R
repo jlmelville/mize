@@ -685,7 +685,9 @@ test_that("Truncated Newton with max_gr", {
   # If grad_tol or ginf_tol was calculated we would get max_gr + 1
   expect_equal(res$ng, 6)
   expect_false("f" %in% names(res))
-  expect_equal(res$par, c(-1.023, 1.062), tolerance = 1e-3)
+  # The final inner finite difference is blocked, so Phase 3A rollback keeps
+  # the last fully evaluated TN update.
+  expect_equal(res$par, c(-1.031, 1.069), tolerance = 1e-3)
 })
 
 
