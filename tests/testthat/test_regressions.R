@@ -31,56 +31,56 @@ test_that("Newton direction uses inverse Hessian functions", {
 
 test_that("make_mize validates public configuration values", {
   cases <- list(
-    list(args = list(memory = 0), pattern = "memory must be > 0"),
+    list(args = list(memory = 0), pattern = "memory"),
     list(
-      args = list(nest_q = -0.1),
-      pattern = "nest_q must be between 0 and 1"
+      args = list(method = "NAG", nest_q = -0.1),
+      pattern = "nest_q"
     ),
     list(
-      args = list(nest_burn_in = -1),
-      pattern = "nest_burn_in must be non-negative"
+      args = list(method = "NAG", nest_burn_in = -1),
+      pattern = "nest_burn_in"
     ),
-    list(args = list(step_up = 0), pattern = "step_up must be positive"),
+    list(args = list(method = "DBD", step_up = 0), pattern = "step_up"),
     list(
-      args = list(step_down = -0.1),
-      pattern = "step_down must be between 0 and 1"
+      args = list(method = "DBD", step_down = -0.1),
+      pattern = "step_down"
     ),
     list(
-      args = list(dbd_weight = -0.1),
-      pattern = "dbd_weight must be between 0 and 1"
+      args = list(method = "DBD", dbd_weight = -0.1),
+      pattern = "dbd_weight"
     ),
-    list(args = list(c1 = -0.1), pattern = "c1 must be between 0 and 1"),
+    list(args = list(c1 = -0.1), pattern = "c1"),
     list(
       args = list(c1 = 0.5, c2 = 0.4),
-      pattern = "c2 must be between c1 and 1"
+      pattern = "c2"
     ),
     list(
       args = list(ls_max_fn = -1),
-      pattern = "ls_max_fn must be non-negative"
+      pattern = "ls_max_fn"
     ),
     list(
       args = list(ls_max_gr = -1),
-      pattern = "ls_max_gr must be non-negative"
+      pattern = "ls_max_gr"
     ),
     list(
       args = list(ls_max_fg = -1),
-      pattern = "ls_max_fg must be non-negative"
+      pattern = "ls_max_fg"
     ),
     list(
       args = list(ls_max_alpha_mult = 0),
-      pattern = "ls_max_alpha_mult must be positive"
+      pattern = "ls_max_alpha_mult"
     ),
     list(
       args = list(ls_max_alpha = 0),
-      pattern = "ls_max_alpha must be positive"
+      pattern = "ls_max_alpha"
     ),
     list(
-      args = list(restart_wait = 0),
-      pattern = "restart_wait must be a positive integer"
+      args = list(method = "NAG", restart = "fn", restart_wait = 0),
+      pattern = "restart_wait"
     ),
     list(
       args = list(step_next_init = 0),
-      pattern = "numeric argument for step_next_init must be positive"
+      pattern = "step_next_init"
     )
   )
 

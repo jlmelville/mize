@@ -799,24 +799,6 @@ mize <- function(
     restart = restart,
     restart_wait = restart_wait
   )
-  if (max_iter < 0) {
-    stop("max_iter must be non-negative")
-  }
-  if (max_fn < 0) {
-    stop("max_fn must be non-negative")
-  }
-  if (max_gr < 0) {
-    stop("max_gr must be non-negative")
-  }
-  if (max_fg < 0) {
-    stop("max_fg must be non-negative")
-  }
-  if (store_progress && is.null(check_conv_every)) {
-    stop("check_conv_every must be non-NULL if store_progress is TRUE")
-  }
-  if (verbose && is.null(check_conv_every)) {
-    stop("check_conv_every must be non-NULL if verbose is TRUE")
-  }
 
   res <- opt_loop(
     opt,

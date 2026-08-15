@@ -302,6 +302,8 @@ mize_init <- function(
   ginf_tol = NULL,
   step_tol = NULL
 ) {
+  mize_validate_initial_par(par)
+
   supplied <- list(
     max_iter = !missing(max_iter),
     max_fn = !missing(max_fn),
@@ -345,6 +347,7 @@ mize_init <- function(
     }
   }
   opt$convergence$fn_new <- NULL
+  mize_validate_convergence_controls(opt$convergence)
 
   opt <- opt_clear_cache(opt)
   opt <- life_cycle_hook("opt", "init", opt, par, fg, opt$iter)

@@ -212,15 +212,6 @@ tn_direction <- function(
         # Standard initialization. Saves on a finite difference gradient
         # calculation because we know the residual is g
         zm <- 0
-      } else if (init == "l-bfgs" && preconditioner == "l-bfgs") {
-        # Use the L-BFGS guess as we've done a lot of the work already
-        # A potentially bad idea of my own invention
-        if (!is.null(opt$cache$gr_old)) {
-          lbfgs <- sub_stage$preconditioner
-          zm <- -lbfgs_solve(gm, lbfgs, scale_inverse = TRUE, eps = lbfgs$eps)
-        } else {
-          zm <- 0
-        }
       } else {
         # "previous", i.e. use the result from the last iteration
         # Martens (2010)

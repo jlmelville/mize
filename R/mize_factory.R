@@ -1,3 +1,122 @@
+mize_is_numeric_scalar <- function(value) {
+  is.numeric(value) &&
+    length(value) == 1 &&
+    is.null(dim(value)) &&
+    !is.na(value)
+}
+
+mize_validate_count <- function(
+  value,
+  argument,
+  minimum = 0,
+  allow_inf = FALSE
+) {
+  valid_inf <- allow_inf && mize_is_numeric_scalar(value) && value == Inf
+  valid_integer <- mize_is_numeric_scalar(value) &&
+    is.finite(value) &&
+    value >= minimum &&
+    value == floor(value)
+
+  if (!valid_inf && !valid_integer) {
+    if (allow_inf) {
+      stop(
+        argument,
+        " must be a non-negative integer or Inf",
+        call. = FALSE
+      )
+    }
+    qualifier <- if (minimum == 0) "a finite non-negative" else "a positive"
+    stop(argument, " must be ", qualifier, " integer", call. = FALSE)
+  }
+
+  invisible(value)
+}
+
+mize_validate_tolerance <- function(value, argument) {
+  if (
+    !is.null(value) &&
+      (!mize_is_numeric_scalar(value) || !is.finite(value) || value < 0)
+  ) {
+    stop(
+      argument,
+      " must be NULL or a finite non-negative numeric scalar",
+      call. = FALSE
+    )
+  }
+
+  invisible(value)
+}
+
+mize_validate_convergence_controls <- function(convergence) {
+  mize_validate_count(convergence$max_iter, "max_iter", allow_inf = TRUE)
+  for (argument in c("max_fn", "max_gr", "max_fg")) {
+    mize_validate_count(convergence[[argument]], argument, allow_inf = TRUE)
+  }
+  for (argument in c(
+    "abs_tol",
+    "rel_tol",
+    "grad_tol",
+    "ginf_tol",
+    "step_tol"
+  )) {
+    mize_validate_tolerance(convergence[[argument]], argument)
+  }
+
+  invisible(convergence)
+}
+
+mize_validate_range <- function(
+  value,
+  argument,
+  left,
+  right,
+  left_open = FALSE,
+  right_open = FALSE
+) {
+  valid <- mize_is_numeric_scalar(value) && is.finite(value)
+  if (valid) {
+    valid_left <- if (left_open) value > left else value >= left
+    valid_right <- if (right_open) value < right else value <= right
+    valid <- valid_left && valid_right
+  }
+  if (!valid) {
+    stop(
+      argument,
+      " must be a finite numeric scalar in the required range",
+      call. = FALSE
+    )
+  }
+
+  invisible(value)
+}
+
+mize_validate_positive_numeric <- function(value, argument, allow_inf = FALSE) {
+  valid <- mize_is_numeric_scalar(value) &&
+    value > 0 &&
+    (is.finite(value) || (allow_inf && value == Inf))
+  if (!valid) {
+    qualifier <- if (allow_inf) {
+      "a positive numeric scalar"
+    } else {
+      "a positive finite numeric scalar"
+    }
+    stop(argument, " must be ", qualifier, call. = FALSE)
+  }
+
+  invisible(value)
+}
+
+mize_validate_initial_par <- function(par) {
+  if (!is.numeric(par) || !is.null(dim(par)) || length(par) == 0) {
+    stop("par must be a non-empty numeric vector", call. = FALSE)
+  }
+  if (any(!is.finite(par))) {
+    stop("par must contain only finite values", call. = FALSE)
+  }
+
+  invisible(par)
+}
+
 #' Create an Optimizer
 #'
 #' Factory function for creating a (possibly uninitialized) optimizer.
@@ -232,53 +351,6 @@ make_mize <- function(
   ginf_tol = NULL,
   step_tol = NULL
 ) {
-  if (memory < 1) {
-    stop("memory must be > 0")
-  }
-  if (!is_in_range(nest_q, 0, 1)) {
-    stop("nest_q must be between 0 and 1")
-  }
-  if (nest_burn_in < 0) {
-    stop("nest_burn_in must be non-negative")
-  }
-  if (step_up <= 0) {
-    stop("step_up must be positive")
-  }
-  step_up_fun <- match.arg(step_up_fun)
-  if (!is.null(step_down) && !is_in_range(step_down, 0, 1)) {
-    stop("step_down must be between 0 and 1")
-  }
-  if (!is_in_range(dbd_weight, 0, 1)) {
-    stop("dbd_weight must be between 0 and 1")
-  }
-  if (!is_in_range(c1, 0, 1, lopen = FALSE, ropen = FALSE)) {
-    stop("c1 must be between 0 and 1")
-  }
-  if (!is.null(c2) && !is_in_range(c2, c1, 1, lopen = FALSE, ropen = FALSE)) {
-    stop("c2 must be between c1 and 1")
-  }
-  if (ls_max_fn < 0) {
-    stop("ls_max_fn must be non-negative")
-  }
-  if (ls_max_gr < 0) {
-    stop("ls_max_gr must be non-negative")
-  }
-  if (ls_max_fg < 0) {
-    stop("ls_max_fg must be non-negative")
-  }
-  if (ls_max_alpha_mult <= 0) {
-    stop("ls_max_alpha_mult must be positive")
-  }
-  if (ls_max_alpha <= 0) {
-    stop("ls_max_alpha must be positive")
-  }
-  if (restart_wait < 1) {
-    stop("restart_wait must be a positive integer")
-  }
-  if (is.numeric(step_next_init) && step_next_init <= 0) {
-    stop("numeric argument for step_next_init must be positive")
-  }
-
   # Gradient Descent Direction configuration
   dir_type <- NULL
   method <- match.arg(
@@ -297,7 +369,47 @@ make_mize <- function(
       "tn"
     )
   )
-  preconditioner <- tolower(preconditioner)
+
+  convergence <- list(
+    max_iter = max_iter,
+    max_fn = max_fn,
+    max_gr = max_gr,
+    max_fg = max_fg,
+    abs_tol = abs_tol,
+    rel_tol = rel_tol,
+    grad_tol = grad_tol,
+    ginf_tol = ginf_tol,
+    step_tol = step_tol
+  )
+  mize_validate_convergence_controls(convergence)
+
+  if (method %in% c("cg", "tn")) {
+    if (
+      !is.character(preconditioner) ||
+        length(preconditioner) != 1 ||
+        is.na(preconditioner)
+    ) {
+      stop(
+        "preconditioner must be '' or 'l-bfgs' for method ",
+        toupper(method),
+        call. = FALSE
+      )
+    }
+    preconditioner <- tolower(preconditioner)
+    if (!(preconditioner %in% c("", "l-bfgs"))) {
+      stop(
+        "preconditioner must be '' or 'l-bfgs' for method ",
+        toupper(method),
+        call. = FALSE
+      )
+    }
+  }
+  if (
+    method == "l-bfgs" ||
+      (method %in% c("cg", "tn") && preconditioner == "l-bfgs")
+  ) {
+    mize_validate_count(memory, "memory", minimum = 1)
+  }
 
   switch(
     method,
@@ -381,8 +493,24 @@ make_mize <- function(
       dir_type <- sd_direction(normalize = norm_direction)
     },
     tn = {
-      if (is.character(tn_init)) {
-        tn_init <- tolower(tn_init)
+      if (
+        mize_is_numeric_scalar(tn_init) &&
+          is.finite(tn_init) &&
+          tn_init == 0
+      ) {
+        tn_init <- 0
+      } else if (
+        is.character(tn_init) &&
+          length(tn_init) == 1 &&
+          !is.na(tn_init) &&
+          tolower(tn_init) %in% c("previous", "prev")
+      ) {
+        tn_init <- "previous"
+      } else {
+        stop(
+          "tn_init must be numeric 0, 'previous', or 'prev' for method TN",
+          call. = FALSE
+        )
       }
       tn_exit <- match.arg(
         tolower(tn_exit),
@@ -409,8 +537,14 @@ make_mize <- function(
 
   # Line Search configuration
   step_type <- NULL
-  line_search <- tolower(line_search)
   if (method == "dbd") {
+    mize_validate_positive_numeric(step_up, "step_up")
+    step_up_fun <- match.arg(step_up_fun)
+    if (!is.null(step_down)) {
+      mize_validate_range(step_down, "step_down", 0, 1)
+    }
+    mize_validate_range(dbd_weight, "dbd_weight", 0, 1)
+
     if (is.character(step0) || is.numeric(step0)) {
       eps_init <- step0
     } else {
@@ -435,22 +569,6 @@ make_mize <- function(
       use_momentum = !is.null(mom_schedule)
     )
   } else {
-    if (method %in% c("newton", "phess", "bfgs", "l-bfgs", "tn")) {
-      if (is.null(c2)) {
-        c2 <- 0.9
-      }
-      if (is.null(try_newton_step)) {
-        try_newton_step <- TRUE
-      }
-    } else {
-      if (is.null(c2)) {
-        c2 <- 0.1
-      }
-      if (is.null(try_newton_step)) {
-        try_newton_step <- FALSE
-      }
-    }
-
     line_search <- match.arg(
       tolower(line_search),
       c(
@@ -478,6 +596,76 @@ make_mize <- function(
     }
     if (line_search == "armijo") {
       line_search <- "backtracking"
+    }
+
+    if (method %in% c("newton", "phess", "bfgs", "l-bfgs", "tn")) {
+      if (is.null(c2)) {
+        c2 <- 0.9
+      }
+      if (is.null(try_newton_step)) {
+        try_newton_step <- TRUE
+      }
+    } else {
+      if (is.null(c2)) {
+        c2 <- 0.1
+      }
+      if (is.null(try_newton_step)) {
+        try_newton_step <- FALSE
+      }
+    }
+
+    wolfe_searches <- c("mt", "rasmussen", "schmidt", "hz")
+    gradient_searches <- c(wolfe_searches, "backtracking")
+
+    if (line_search %in% gradient_searches) {
+      mize_validate_range(c1, "c1", 0, 1, left_open = TRUE, right_open = TRUE)
+      if (line_search %in% wolfe_searches && !is.null(c2)) {
+        mize_validate_range(
+          c2,
+          "c2",
+          c1,
+          1,
+          left_open = TRUE,
+          right_open = TRUE
+        )
+      }
+      mize_validate_count(ls_max_fn, "ls_max_fn", allow_inf = TRUE)
+      mize_validate_count(ls_max_gr, "ls_max_gr", allow_inf = TRUE)
+      mize_validate_count(ls_max_fg, "ls_max_fg", allow_inf = TRUE)
+      mize_validate_positive_numeric(
+        ls_max_alpha_mult,
+        "ls_max_alpha_mult",
+        allow_inf = TRUE
+      )
+      if (is.numeric(step_next_init)) {
+        mize_validate_positive_numeric(step_next_init, "step_next_init")
+      }
+    } else if (line_search == "bold driver") {
+      mize_validate_positive_numeric(step_up, "step_up")
+      if (!is.null(step_down)) {
+        mize_validate_range(step_down, "step_down", 0, 1)
+      }
+      mize_validate_count(ls_max_fn, "ls_max_fn", allow_inf = TRUE)
+    } else {
+      if (
+        !mize_is_numeric_scalar(step0) ||
+          !is.finite(step0)
+      ) {
+        stop(
+          "step0 must be a finite numeric scalar when line_search = 'constant'",
+          call. = FALSE
+        )
+      }
+    }
+    if (line_search == "mt") {
+      mize_validate_positive_numeric(
+        ls_max_alpha,
+        "ls_max_alpha",
+        allow_inf = TRUE
+      )
+    }
+    if (line_search == "backtracking" && !is.null(step_down)) {
+      mize_validate_range(step_down, "step_down", 0, 1)
     }
 
     if (line_search == "bold driver") {
@@ -522,7 +710,7 @@ make_mize <- function(
       if (is.null(step0)) {
         step0 <- "hz"
       }
-    } else {
+    } else if (line_search %in% gradient_searches) {
       if (is.null(step0)) {
         step0 <- "rasmussen"
       }
@@ -531,7 +719,7 @@ make_mize <- function(
       }
     }
 
-    if (!is.numeric(step_next_init)) {
+    if (line_search %in% gradient_searches && !is.numeric(step_next_init)) {
       step_next_init <- tolower(step_next_init)
     }
     step_type <- switch(
@@ -662,6 +850,15 @@ make_mize <- function(
         tolower(mom_schedule),
         c("ramp", "switch", "nsconvex")
       )
+      if (mom_schedule == "switch") {
+        mize_validate_count(mom_switch_iter, "mom_switch_iter")
+      }
+      if (mom_schedule == "nsconvex") {
+        mize_validate_count(nest_burn_in, "nest_burn_in")
+        if (!nest_convex_approx) {
+          mize_validate_range(nest_q, "nest_q", 0, 1)
+        }
+      }
 
       mom_step <- switch(
         mom_schedule,
@@ -683,7 +880,7 @@ make_mize <- function(
         ),
         nsconvex = nesterov_step(
           burn_in = nest_burn_in,
-          q = nest_q,
+          q = if (nest_convex_approx) 0 else nest_q,
           use_approx = nest_convex_approx,
           use_init_mu = use_init_mom
         )
@@ -706,21 +903,12 @@ make_mize <- function(
   if (!is.null(restart)) {
     restart <- match.arg(tolower(restart), c("none", "fn", "gr", "speed"))
     if (restart != "none") {
+      mize_validate_count(restart_wait, "restart_wait", minimum = 1)
       opt <- adaptive_restart(opt, restart, wait = restart_wait)
     }
   }
 
-  opt$convergence <- list(
-    max_iter = max_iter,
-    max_fn = max_fn,
-    max_gr = max_gr,
-    max_fg = max_fg,
-    abs_tol = abs_tol,
-    rel_tol = rel_tol,
-    grad_tol = grad_tol,
-    ginf_tol = ginf_tol,
-    step_tol = step_tol
-  )
+  opt$convergence <- convergence
 
   # Initialize for specific dataset if par and fg are provided
   if (!is.null(par) && !is.null(fg)) {

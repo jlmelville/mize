@@ -1,5 +1,33 @@
 # Optimizer ---------------------------------------------------------------
 
+mize_validate_loop_cadence <- function(
+  check_conv_every,
+  log_every,
+  verbose,
+  store_progress
+) {
+  if (!is.null(check_conv_every)) {
+    mize_validate_count(check_conv_every, "check_conv_every", minimum = 1)
+  }
+  if (store_progress && is.null(check_conv_every)) {
+    stop(
+      "check_conv_every must be non-NULL if store_progress is TRUE",
+      call. = FALSE
+    )
+  }
+  if (verbose && is.null(check_conv_every)) {
+    stop(
+      "check_conv_every must be non-NULL if verbose is TRUE",
+      call. = FALSE
+    )
+  }
+  if ((verbose || store_progress) && !is.null(check_conv_every)) {
+    mize_validate_count(log_every, "log_every", minimum = 1)
+  }
+
+  invisible(NULL)
+}
+
 # Repeatedly minimizes par using opt until one of the termination conditions
 # is met
 opt_loop <- function(
@@ -22,8 +50,19 @@ opt_loop <- function(
   log_every = check_conv_every,
   ret_opt = FALSE
 ) {
+  mize_validate_count(max_iter, "max_iter")
+  mize_validate_loop_cadence(
+    check_conv_every,
+    log_every,
+    verbose,
+    store_progress
+  )
+
   # log_every must be an integer multiple of check_conv_every
-  if (!is.null(check_conv_every) && log_every %% check_conv_every != 0) {
+  if (
+    (verbose || store_progress) &&
+      log_every %% check_conv_every != 0
+  ) {
     log_every <- check_conv_every
   }
 
