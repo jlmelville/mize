@@ -116,6 +116,28 @@ make_rasmussen_witness <- function(fn, gr) {
   )
 }
 
+make_schmidt_wolfe_witness <- function(fn, gr) {
+  calls <- new.env(parent = emptyenv())
+  calls$fn_par <- numeric()
+  calls$gr_par <- numeric()
+
+  list(
+    fg = list(
+      fn = function(x) {
+        calls$fn_par <- c(calls$fn_par, x)
+        fn(x)
+      },
+      gr = function(x) {
+        calls$gr_par <- c(calls$gr_par, x)
+        gr(x)
+      }
+    ),
+    counts = function() c(fn = length(calls$fn_par), gr = length(calls$gr_par)),
+    fn_par = function() calls$fn_par,
+    gr_par = function() calls$gr_par
+  )
+}
+
 run_rasmussen_witness <- function(
   witness,
   par,
@@ -131,6 +153,41 @@ run_rasmussen_witness <- function(
     c1 = c1,
     c2 = c2,
     ls_max_fn = ls_max_fn,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+  opt <- mize_init(opt, par, witness$fg)
+  mize_step(opt, par, witness$fg)
+}
+
+run_schmidt_wolfe_witness <- function(
+  witness,
+  par = 0,
+  step0 = 1,
+  c1 = 0.1,
+  c2 = 0.5,
+  ls_max_fn = 2,
+  ls_max_gr = 2,
+  ls_max_fg = 4,
+  max_fn = Inf,
+  max_gr = Inf,
+  max_fg = Inf
+) {
+  opt <- make_mize(
+    method = "SD",
+    line_search = "schmidt",
+    step0 = step0,
+    c1 = c1,
+    c2 = c2,
+    ls_max_fn = ls_max_fn,
+    ls_max_gr = ls_max_gr,
+    ls_max_fg = ls_max_fg,
+    max_fn = max_fn,
+    max_gr = max_gr,
+    max_fg = max_fg,
     abs_tol = NULL,
     rel_tol = NULL,
     grad_tol = NULL,
@@ -792,6 +849,118 @@ test_that("Rasmussen rejects equal and nonfinite exhausted trials", {
     expect_equal(witness$fn_par(), c(0, case$trial), info = name)
     expect_equal(witness$gr_par(), c(0, case$trial), info = name)
     expect_budget_counts(result, witness)
+  }
+})
+
+test_that("Schmidt Wolfe stops before an exhausted Armijo fallback", {
+  cases <- list(
+    nonfinite_objective = list(
+      fn = function(x) if (x == 0) 1 else Inf,
+      gr = function(x) -1
+    ),
+    nonfinite_derivative = list(
+      fn = function(x) 1 - x,
+      gr = function(x) if (x == 0) -1 else Inf
+    )
+  )
+
+  for (name in names(cases)) {
+    case <- cases[[name]]
+    witness <- make_schmidt_wolfe_witness(case$fn, case$gr)
+    result <- run_schmidt_wolfe_witness(
+      witness,
+      max_fn = 3,
+      max_gr = 3,
+      max_fg = 6
+    )
+
+    expect_equal(witness$fn_par(), c(0, 1, 0.5), info = name)
+    expect_equal(witness$gr_par(), c(0, 1, 0.5), info = name)
+    expect_identical(witness$counts(), c(fn = 3L, gr = 3L), info = name)
+    expect_budget_counts(result, witness)
+    expect_equal(result$par, 0, info = name)
+    expect_equal(result$f, 1, info = name)
+    expect_equal(result$g, -1, info = name)
+  }
+})
+
+test_that("Schmidt Wolfe honors each local and global evaluation limit", {
+  cases <- list(
+    ls_max_fn = list(ls_max_fn = 2),
+    ls_max_gr = list(ls_max_gr = 2),
+    ls_max_fg = list(ls_max_fg = 4),
+    max_fn = list(max_fn = 3),
+    max_gr = list(max_gr = 3),
+    max_fg = list(max_fg = 6)
+  )
+
+  for (name in names(cases)) {
+    witness <- make_schmidt_wolfe_witness(
+      fn = function(x) if (x == 0) 1 else Inf,
+      gr = function(x) -1
+    )
+    args <- modifyList(
+      list(
+        witness = witness,
+        ls_max_fn = Inf,
+        ls_max_gr = Inf,
+        ls_max_fg = Inf
+      ),
+      cases[[name]]
+    )
+    result <- do.call(run_schmidt_wolfe_witness, args)
+
+    expect_equal(witness$fn_par(), c(0, 1, 0.5), info = name)
+    expect_equal(witness$gr_par(), c(0, 1, 0.5), info = name)
+    expect_identical(witness$counts(), c(fn = 3L, gr = 3L), info = name)
+    expect_budget_counts(result, witness)
+    expect_equal(result$par, 0, info = name)
+    expect_equal(result$f, 1, info = name)
+    expect_equal(result$g, -1, info = name)
+  }
+})
+
+test_that("Schmidt Wolfe preserves safe final evaluations", {
+  cases <- list(
+    wolfe = list(
+      fn = function(x) (x - 1)^2,
+      gr = function(x) 2 * (x - 1),
+      ls_max_fn = 2,
+      par = 1,
+      f = 0,
+      g = 0,
+      trace = c(0, 2, 1)
+    ),
+    strict_decrease = list(
+      fn = function(x) 1 - x,
+      gr = function(x) -1,
+      ls_max_fn = 1,
+      par = 1,
+      f = 0,
+      g = -1,
+      trace = c(0, 1)
+    )
+  )
+
+  for (name in names(cases)) {
+    case <- cases[[name]]
+    witness <- make_schmidt_wolfe_witness(case$fn, case$gr)
+    result <- run_schmidt_wolfe_witness(
+      witness,
+      ls_max_fn = case$ls_max_fn,
+      ls_max_gr = case$ls_max_fn,
+      ls_max_fg = 2 * case$ls_max_fn,
+      max_fn = case$ls_max_fn + 1,
+      max_gr = case$ls_max_fn + 1,
+      max_fg = 2 * (case$ls_max_fn + 1)
+    )
+
+    expect_equal(witness$fn_par(), case$trace, info = name)
+    expect_equal(witness$gr_par(), case$trace, info = name)
+    expect_budget_counts(result, witness)
+    expect_equal(result$par, case$par, info = name)
+    expect_equal(result$f, case$f, info = name)
+    expect_equal(result$g, case$g, info = name)
   }
 })
 

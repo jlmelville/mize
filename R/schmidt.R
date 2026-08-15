@@ -186,6 +186,45 @@ schmidt_armijo_backtrack <- function(
 #   funEvals: number function evaluations performed by line search
 #   H: Hessian at initial guess (only computed if requested
 # @returns [step,f_new,g_new,funEvals,H]
+schmidt_wolfe_safe_step <- function(
+  candidates,
+  step0,
+  c1,
+  c2,
+  armijo_check_fn,
+  curvature_check_fn
+) {
+  candidate_is_usable <- function(candidate) {
+    !is.null(candidate) &&
+      isTRUE(is.finite(candidate$alpha)) &&
+      isTRUE(step_is_finite(candidate))
+  }
+
+  usable <- Filter(candidate_is_usable, candidates)
+  if (length(usable) == 0) {
+    return(step0)
+  }
+
+  condition_ok <- vapply(
+    usable,
+    function(candidate) {
+      isTRUE(armijo_check_fn(step0, candidate, c1)) &&
+        isTRUE(curvature_check_fn(step0, candidate, c2))
+    },
+    logical(1)
+  )
+  if (any(condition_ok)) {
+    satisfying <- usable[condition_ok]
+    return(satisfying[[which.min(vapply(satisfying, `[[`, numeric(1), "f"))]])
+  }
+
+  decreases <- Filter(function(candidate) isTRUE(candidate$f < step0$f), usable)
+  if (length(decreases) == 0) {
+    return(step0)
+  }
+  decreases[[which.min(vapply(decreases, `[[`, numeric(1), "f"))]]
+}
+
 WolfeLineSearch <-
   function(
     alpha,
@@ -229,18 +268,33 @@ WolfeLineSearch <-
       if (debug) {
         message("Switching to Armijo line-search")
       }
-      alpha <- mean(bracket_props(bracket_step, "alpha"))
+      remaining <- maxLS - funEvals
+      if (remaining <= 0) {
+        return(list(
+          step = schmidt_wolfe_safe_step(
+            bracket_step,
+            step0,
+            c1,
+            c2,
+            armijo_check_fn,
+            curvature_check_fn
+          ),
+          nfn = funEvals,
+          ngr = funEvals,
+          is_gr_curr = TRUE
+        ))
+      }
 
       # Do Armijo
       armijo_res <- ArmijoBacktrack(
-        alpha,
+        mean(bracket_props(bracket_step, "alpha")),
         step0$f,
         step0$df,
         step0$d,
         c1 = c1,
         LS_interp = LS_interp,
         LS_multi = LS_multi,
-        maxLS = maxLS - funEvals,
+        maxLS = remaining,
         funObj = funObj,
         varargin = NULL,
         pnorm_inf = pnorm_inf,
