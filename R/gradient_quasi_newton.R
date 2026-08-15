@@ -1,24 +1,105 @@
-# Inverse Hessian validation ----------------------------------------------
+# Curvature validation ----------------------------------------------------
 
-validate_inverse_hessian <- function(hm, n) {
+is_valid_curvature_matrix <- function(
+  curvature,
+  n,
+  allow_repeated_blocks,
+  symmetry_tol = sqrt(.Machine$double.eps)
+) {
+  if (!is.matrix(curvature) || !is.numeric(curvature)) {
+    return(FALSE)
+  }
+
+  curvature_dim <- nrow(curvature)
+  valid_dimension <- curvature_dim > 0 &&
+    ncol(curvature) == curvature_dim &&
+    if (allow_repeated_blocks) {
+      n %% curvature_dim == 0
+    } else {
+      curvature_dim == n
+    }
+
+  valid_dimension &&
+    all(is.finite(curvature)) &&
+    isTRUE(isSymmetric(
+      curvature,
+      tol = symmetry_tol,
+      check.attributes = FALSE
+    ))
+}
+
+validate_inverse_hessian <- function(
+  hm,
+  n,
+  symmetry_tol = sqrt(.Machine$double.eps)
+) {
   valid_vector <- is.numeric(hm) && is.null(dim(hm)) && length(hm) == n
-  valid_matrix <- is.matrix(hm) &&
-    is.numeric(hm) &&
-    identical(dim(hm), c(n, n))
+  valid_matrix <- is_valid_curvature_matrix(
+    hm,
+    n,
+    allow_repeated_blocks = FALSE,
+    symmetry_tol = symmetry_tol
+  )
 
-  if ((!valid_vector && !valid_matrix) || any(!is.finite(hm))) {
+  if (
+    (!valid_vector && !valid_matrix) ||
+      (valid_vector && any(!is.finite(hm)))
+  ) {
     stop(
-      "fg$hi must return a finite numeric vector of length ",
+      "fg$hi(par) must return a finite numeric vector of length ",
       n,
-      " or a ",
+      " or a finite symmetric numeric ",
       n,
       " x ",
       n,
-      " numeric matrix"
+      " matrix",
+      call. = FALSE
     )
   }
 
   hm
+}
+
+validate_hessian <- function(
+  bm,
+  n,
+  allow_vector,
+  symmetry_tol = sqrt(.Machine$double.eps)
+) {
+  valid_vector <- allow_vector &&
+    is.numeric(bm) &&
+    is.null(dim(bm)) &&
+    length(bm) == n &&
+    all(is.finite(bm))
+  valid_matrix <- is_valid_curvature_matrix(
+    bm,
+    n,
+    allow_repeated_blocks = TRUE,
+    symmetry_tol = symmetry_tol
+  )
+
+  if (!valid_vector && !valid_matrix) {
+    vector_requirement <- if (allow_vector) {
+      paste0("a finite numeric vector of length ", n, " or ")
+    } else {
+      ""
+    }
+    phess_requirement <- if (allow_vector) {
+      ""
+    } else {
+      "; vectors are not supported by PHESS"
+    }
+    stop(
+      "fg$hs(par) must return ",
+      vector_requirement,
+      "a finite symmetric square numeric matrix whose dimension divides ",
+      n,
+      phess_requirement,
+      call. = FALSE
+    )
+  }
+
+  bm
 }
 
 # BFGS --------------------------------------------------------------------
@@ -73,7 +154,7 @@ bfgs_direction <- function(eps = .Machine$double.eps, scale_inverse = FALSE) {
       pm <- as.vector(-sub_stage$hm %*% gm)
 
       descent <- dot(gm, pm)
-      if (descent >= 0) {
+      if (any(!is.finite(pm)) || !is.finite(descent) || descent >= 0) {
         pm <- -gm
       }
 
@@ -410,7 +491,7 @@ lbfgs_direction <- function(
       }
 
       descent <- dot(gm, pm)
-      if (descent >= 0) {
+      if (any(!is.finite(pm)) || !is.finite(descent) || descent >= 0) {
         pm <- -gm
       }
 

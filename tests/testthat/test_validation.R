@@ -67,6 +67,52 @@ validation_wolfe_args <- function(fg) {
   )
 }
 
+curvature_validation_witness <- function(
+  callback,
+  value,
+  fn = function(x) sum(x^2) / 2,
+  gr = function(x) x
+) {
+  calls <- new.env(parent = emptyenv())
+  calls$hs <- 0L
+  calls$hi <- 0L
+
+  fg <- list(fn = fn, gr = gr)
+  fg[[callback]] <- function(x) {
+    calls[[callback]] <- calls[[callback]] + 1L
+    value
+  }
+
+  list(
+    fg = fg,
+    counts = function() {
+      c(hs = calls$hs, hi = calls$hi)
+    }
+  )
+}
+
+curvature_validation_args <- function(
+  fg,
+  method,
+  par = c(1, -1, 2, -2),
+  step0 = 1
+) {
+  list(
+    par = par,
+    fg = fg,
+    method = method,
+    line_search = "constant",
+    step0 = step0,
+    max_iter = 1,
+    check_conv_every = NULL,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+}
+
 expect_callback_validation_error <- function(code, pattern, info = NULL) {
   result <- tryCatch(code(), error = identity)
   expect_true(inherits(result, "error"), info = info)
@@ -369,6 +415,482 @@ test_that("shaped nonfinite Wolfe trials remain available for recovery", {
   expect_equal(result$par, c(0, 0))
   expect_equal(result$f, 0)
   expect_identical(witness$counts(), c(fn = 1L, gr = 1L, fg = 3L))
+})
+
+test_that("NEWTON accepts existing Hessian vector and matrix forms", {
+  par <- c(1, -1, 2, -2)
+  weights <- c(1, 2, 1, 2)
+  fn <- function(x) sum(weights * x^2) / 2
+  gr <- function(x) weights * x
+  hessians <- list(
+    integer_vector = as.integer(weights),
+    double_vector = as.double(weights),
+    integer_matrix = diag(as.integer(weights)),
+    double_matrix = diag(as.double(weights)),
+    integer_repeated_block = diag(c(1L, 2L)),
+    double_repeated_block = diag(c(1, 2))
+  )
+
+  for (case_name in names(hessians)) {
+    witness <- curvature_validation_witness(
+      "hs",
+      hessians[[case_name]],
+      fn,
+      gr
+    )
+    result <- do.call(
+      mize,
+      curvature_validation_args(witness$fg, "NEWTON", par)
+    )
+
+    expect_equal(result$par, rep(0, length(par)), info = case_name)
+    expect_identical(witness$counts(), c(hs = 1L, hi = 0L), info = case_name)
+  }
+})
+
+test_that("NEWTON rejects malformed Hessian results at first consumption", {
+  malformed <- list(
+    wrong_type = "invalid",
+    short_vector = c(1, 2),
+    long_vector = rep(1, 8),
+    nonsquare_matrix = matrix(1, nrow = 2, ncol = 3),
+    nondividing_matrix = diag(3),
+    nonfinite_vector = c(1, 1, Inf, 1),
+    nonfinite_matrix = diag(c(1, 1, NA_real_, 1)),
+    asymmetric_matrix = matrix(
+      c(2, 0, 0, 0, 0.25, 2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 2),
+      nrow = 4
+    )
+  )
+  patterns <- c(
+    wrong_type = "fg\\$hs\\(par\\).*finite numeric vector.*length 4",
+    short_vector = "fg\\$hs\\(par\\).*vector.*length 4",
+    long_vector = "fg\\$hs\\(par\\).*vector.*length 4",
+    nonsquare_matrix = "fg\\$hs\\(par\\).*symmetric square numeric matrix",
+    nondividing_matrix = "fg\\$hs\\(par\\).*dimension.*divides 4",
+    nonfinite_vector = "fg\\$hs\\(par\\).*finite",
+    nonfinite_matrix = "fg\\$hs\\(par\\).*finite",
+    asymmetric_matrix = "fg\\$hs\\(par\\).*symmetric"
+  )
+
+  for (case_name in names(malformed)) {
+    witness <- curvature_validation_witness("hs", malformed[[case_name]])
+
+    expect_callback_validation_error(
+      function() {
+        do.call(mize, curvature_validation_args(witness$fg, "NEWTON"))
+      },
+      patterns[[case_name]],
+      info = case_name
+    )
+    expect_identical(
+      witness$counts(),
+      c(hs = 1L, hi = 0L),
+      info = case_name
+    )
+  }
+})
+
+test_that("NEWTON Hessian symmetry allows floating-point noise", {
+  noise <- 10 * .Machine$double.eps
+  hessian <- matrix(c(2, 0.5, 0.5 + noise, 1), nrow = 2)
+  witness <- curvature_validation_witness(
+    "hs",
+    hessian,
+    fn = function(x) sum(x^2) / 2,
+    gr = function(x) x
+  )
+
+  result <- do.call(
+    mize,
+    curvature_validation_args(
+      witness$fg,
+      "NEWTON",
+      par = c(1, -1),
+      step0 = 0.25
+    )
+  )
+
+  expect_true(all(is.finite(result$par)))
+  expect_identical(witness$counts(), c(hs = 1L, hi = 0L))
+})
+
+test_that("NEWTON retains fallback for symmetric non-positive Hessians", {
+  hessians <- list(
+    zero = matrix(0, nrow = 2, ncol = 2),
+    indefinite = diag(c(1, -1))
+  )
+
+  for (case_name in names(hessians)) {
+    witness <- curvature_validation_witness("hs", hessians[[case_name]])
+    result <- do.call(
+      mize,
+      curvature_validation_args(
+        witness$fg,
+        "NEWTON",
+        par = c(1, -2),
+        step0 = 0.25
+      )
+    )
+
+    expect_equal(result$par, c(0.75, -1.5), info = case_name)
+    expect_identical(witness$counts(), c(hs = 1L, hi = 0L), info = case_name)
+  }
+})
+
+test_that("finite Hessians with nonfinite directions fall back safely", {
+  cases <- list(
+    newton_zero_vector = list(method = "NEWTON", value = c(0, 0)),
+    newton_tiny_vector = list(
+      method = "NEWTON",
+      value = c(1e-320, 1e-320)
+    ),
+    newton_tiny_matrix = list(
+      method = "NEWTON",
+      value = diag(c(1e-320, 1e-320))
+    ),
+    phess_tiny_matrix = list(
+      method = "PHESS",
+      value = diag(c(1e-320, 1e-320))
+    )
+  )
+
+  for (case_name in names(cases)) {
+    case <- cases[[case_name]]
+    witness <- curvature_validation_witness("hs", case$value)
+    result <- tryCatch(
+      do.call(
+        mize,
+        curvature_validation_args(
+          witness$fg,
+          case$method,
+          par = c(1, -2),
+          step0 = 0.25
+        )
+      ),
+      error = identity
+    )
+
+    expect_false(inherits(result, "error"), info = case_name)
+    if (!inherits(result, "error")) {
+      expect_true(all(is.finite(result$par)), info = case_name)
+      expect_equal(
+        as.numeric(result$par),
+        c(0.75, -1.5),
+        info = case_name
+      )
+    }
+    expect_identical(
+      witness$counts(),
+      c(hs = 1L, hi = 0L),
+      info = case_name
+    )
+  }
+})
+
+test_that("NEWTON prefers Hessian callbacks over inverse Hessians", {
+  hs_calls <- 0L
+  hi_calls <- 0L
+  fg <- validation_fg()
+  fg$gr <- function(x) x
+  fg$hs <- function(x) {
+    hs_calls <<- hs_calls + 1L
+    diag(length(x))
+  }
+  fg$hi <- function(x) {
+    hi_calls <<- hi_calls + 1L
+    stop("inverse Hessian callback must not be called")
+  }
+
+  result <- do.call(
+    mize,
+    curvature_validation_args(fg, "NEWTON", par = c(1, -1))
+  )
+
+  expect_equal(result$par, c(0, 0))
+  expect_identical(c(hs = hs_calls, hi = hi_calls), c(hs = 1L, hi = 0L))
+})
+
+test_that("inverse Hessian consumers accept vector and matrix forms", {
+  inverse_hessians <- list(
+    integer_vector = rep(1L, 4),
+    double_vector = rep(1, 4),
+    integer_matrix = diag(rep(1L, 4)),
+    double_matrix = diag(rep(1, 4)),
+    dimnamed_matrix = structure(
+      diag(rep(1, 4)),
+      dimnames = list(letters[1:4], letters[5:8])
+    )
+  )
+
+  for (method in c("NEWTON", "BFGS", "SR1", "L-BFGS")) {
+    for (case_name in names(inverse_hessians)) {
+      witness <- curvature_validation_witness(
+        "hi",
+        inverse_hessians[[case_name]]
+      )
+      result <- do.call(
+        mize,
+        curvature_validation_args(witness$fg, method)
+      )
+
+      expect_equal(
+        as.numeric(result$par),
+        rep(0, 4),
+        info = paste(method, case_name)
+      )
+      expect_identical(
+        witness$counts(),
+        c(hs = 0L, hi = 1L),
+        info = paste(method, case_name)
+      )
+    }
+  }
+})
+
+test_that("NEWTON rejects malformed inverse Hessians at first consumption", {
+  malformed <- list(
+    wrong_type = "invalid",
+    short_vector = c(1, 2),
+    long_vector = rep(1, 8),
+    wrong_matrix = diag(2),
+    nonsquare_matrix = matrix(1, nrow = 2, ncol = 3),
+    nonfinite_vector = c(1, 1, Inf, 1),
+    nonfinite_matrix = diag(c(1, 1, NaN, 1)),
+    asymmetric_matrix = matrix(
+      c(1, 0, 0, 0, 0.25, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1),
+      nrow = 4
+    )
+  )
+  patterns <- c(
+    wrong_type = "fg\\$hi\\(par\\).*finite numeric vector.*length 4",
+    short_vector = "fg\\$hi\\(par\\).*vector.*length 4",
+    long_vector = "fg\\$hi\\(par\\).*vector.*length 4",
+    wrong_matrix = "fg\\$hi\\(par\\).*4 x 4",
+    nonsquare_matrix = "fg\\$hi\\(par\\).*4 x 4",
+    nonfinite_vector = "fg\\$hi\\(par\\).*finite",
+    nonfinite_matrix = "fg\\$hi\\(par\\).*finite",
+    asymmetric_matrix = "fg\\$hi\\(par\\).*symmetric"
+  )
+
+  for (case_name in names(malformed)) {
+    witness <- curvature_validation_witness("hi", malformed[[case_name]])
+
+    expect_callback_validation_error(
+      function() {
+        do.call(mize, curvature_validation_args(witness$fg, "NEWTON"))
+      },
+      patterns[[case_name]],
+      info = case_name
+    )
+    expect_identical(
+      witness$counts(),
+      c(hs = 0L, hi = 1L),
+      info = case_name
+    )
+  }
+})
+
+test_that("every quasi-Newton consumer rejects asymmetric inverse Hessians", {
+  asymmetric <- matrix(
+    c(1, 0, 0, 0, 0.25, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1),
+    nrow = 4
+  )
+
+  for (method in c("BFGS", "SR1", "L-BFGS")) {
+    witness <- curvature_validation_witness("hi", asymmetric)
+
+    expect_callback_validation_error(
+      function() {
+        do.call(mize, curvature_validation_args(witness$fg, method))
+      },
+      "fg\\$hi\\(par\\).*symmetric.*4 x 4",
+      info = method
+    )
+    expect_identical(
+      witness$counts(),
+      c(hs = 0L, hi = 1L),
+      info = method
+    )
+  }
+})
+
+test_that("inverse Hessian symmetry allows floating-point noise", {
+  noise <- 10 * .Machine$double.eps
+  inverse_hessian <- matrix(c(1, 0.25, 0.25 + noise, 1), nrow = 2)
+  witness <- curvature_validation_witness("hi", inverse_hessian)
+
+  result <- do.call(
+    mize,
+    curvature_validation_args(
+      witness$fg,
+      "NEWTON",
+      par = c(1, -1),
+      step0 = 0.25
+    )
+  )
+
+  expect_true(all(is.finite(result$par)))
+  expect_identical(witness$counts(), c(hs = 0L, hi = 1L))
+})
+
+test_that("inverse Hessian validation does not require positive definiteness", {
+  inverse_hessians <- list(
+    zero_matrix = matrix(0, nrow = 2, ncol = 2),
+    negative_vector = c(-1, -1)
+  )
+
+  for (method in c("NEWTON", "BFGS", "SR1", "L-BFGS")) {
+    for (case_name in names(inverse_hessians)) {
+      witness <- curvature_validation_witness(
+        "hi",
+        inverse_hessians[[case_name]]
+      )
+      result <- do.call(
+        mize,
+        curvature_validation_args(
+          witness$fg,
+          method,
+          par = c(1, -2),
+          step0 = 0.25
+        )
+      )
+
+      expect_equal(
+        as.numeric(result$par),
+        c(0.75, -1.5),
+        info = paste(method, case_name)
+      )
+      expect_identical(
+        witness$counts(),
+        c(hs = 0L, hi = 1L),
+        info = paste(method, case_name)
+      )
+    }
+  }
+})
+
+test_that("finite inverse Hessians with overflowing directions fall back", {
+  for (method in c("NEWTON", "BFGS", "L-BFGS", "SR1")) {
+    witness <- curvature_validation_witness("hi", c(1e308, 1e308))
+    result <- tryCatch(
+      do.call(
+        mize,
+        curvature_validation_args(
+          witness$fg,
+          method,
+          par = c(1, -2),
+          step0 = 0.25
+        )
+      ),
+      error = identity
+    )
+
+    expect_false(inherits(result, "error"), info = method)
+    if (!inherits(result, "error")) {
+      expect_true(all(is.finite(result$par)), info = method)
+      expect_equal(
+        as.numeric(result$par),
+        c(0.75, -1.5),
+        info = method
+      )
+    }
+    expect_identical(
+      witness$counts(),
+      c(hs = 0L, hi = 1L),
+      info = method
+    )
+  }
+})
+
+test_that("PHESS accepts full and repeated-block Hessians", {
+  par <- c(1, -1, 2, -2)
+  weights <- c(1, 2, 1, 2)
+  fn <- function(x) sum(weights * x^2) / 2
+  gr <- function(x) weights * x
+  hessians <- list(
+    integer_full = diag(as.integer(weights)),
+    double_full = diag(as.double(weights)),
+    integer_repeated_block = diag(c(1L, 2L)),
+    double_repeated_block = diag(c(1, 2))
+  )
+
+  for (case_name in names(hessians)) {
+    witness <- curvature_validation_witness(
+      "hs",
+      hessians[[case_name]],
+      fn,
+      gr
+    )
+    result <- do.call(
+      mize,
+      curvature_validation_args(witness$fg, "PHESS", par)
+    )
+
+    expect_equal(result$par, rep(0, length(par)), info = case_name)
+    expect_identical(witness$counts(), c(hs = 1L, hi = 0L), info = case_name)
+  }
+})
+
+test_that("PHESS rejects malformed Hessians at first consumption", {
+  malformed <- list(
+    vector = rep(1, 4),
+    nonsquare_matrix = matrix(1, nrow = 2, ncol = 3),
+    nondividing_matrix = diag(3),
+    nonfinite_matrix = diag(c(1, 1, Inf, 1)),
+    asymmetric_matrix = matrix(
+      c(2, 0, 0, 0, 0.25, 2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 2),
+      nrow = 4
+    )
+  )
+  patterns <- c(
+    vector = "fg\\$hs\\(par\\).*matrix.*vectors are not supported by PHESS",
+    nonsquare_matrix = "fg\\$hs\\(par\\).*symmetric square numeric matrix",
+    nondividing_matrix = "fg\\$hs\\(par\\).*dimension.*divides 4",
+    nonfinite_matrix = "fg\\$hs\\(par\\).*finite",
+    asymmetric_matrix = "fg\\$hs\\(par\\).*symmetric"
+  )
+
+  for (case_name in names(malformed)) {
+    witness <- curvature_validation_witness("hs", malformed[[case_name]])
+
+    expect_callback_validation_error(
+      function() {
+        do.call(mize, curvature_validation_args(witness$fg, "PHESS"))
+      },
+      patterns[[case_name]],
+      info = case_name
+    )
+    expect_identical(
+      witness$counts(),
+      c(hs = 1L, hi = 0L),
+      info = case_name
+    )
+  }
+})
+
+test_that("periodic PHESS validates each refreshed Hessian once", {
+  # hessian_every is private and make_mize() uses the initial-only default.
+  # This direct probe protects the otherwise unreachable refresh boundary.
+  asymmetric <- matrix(c(1, 0, 0.25, 1), nrow = 2)
+  witness <- curvature_validation_witness("hs", asymmetric)
+  direction <- partial_hessian_direction(hessian_every = 1)
+  opt <- list(cache = list(gr_curr = c(1, -1), gr_curr_iter = 1))
+
+  expect_callback_validation_error(
+    function() {
+      direction$calculate(
+        opt,
+        stage = list(),
+        sub_stage = direction,
+        par = c(1, -1),
+        fg = witness$fg,
+        iter = 1
+      )
+    },
+    "fg\\$hs\\(par\\).*symmetric"
+  )
+  expect_identical(witness$counts(), c(hs = 1L, hi = 0L))
 })
 
 test_that("initial parameters are validated before callbacks", {

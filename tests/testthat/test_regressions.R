@@ -306,7 +306,8 @@ test_that("SR1 rejects invalid initial inverse Hessians informatively", {
     function(x) 1,
     function(x) matrix(1, nrow = 2, ncol = 3),
     function(x) c(1, Inf),
-    function(x) matrix(c(1, 0, 0, NA_real_), nrow = 2)
+    function(x) matrix(c(1, 0, 0, NA_real_), nrow = 2),
+    function(x) matrix(c(1, 0, 0.25, 1), nrow = 2)
   )
 
   for (hi in invalid_inverse_hessians) {
@@ -328,7 +329,7 @@ test_that("SR1 rejects invalid initial inverse Hessians informatively", {
         ginf_tol = NULL,
         step_tol = NULL
       ),
-      "fg\\$hi must return a finite numeric"
+      "fg\\$hi\\(par\\) must return a finite"
     )
   }
 })

@@ -13,7 +13,7 @@ newton_direction <- function(try_safe_chol = FALSE) {
       if (!is.null(fg$hs)) {
         # B, an approximation to the (or the exact) Hessian
         # We now need to solve Bp = -g for p
-        bm <- fg$hs(par)
+        bm <- validate_hessian(fg$hs(par), length(par), allow_vector = TRUE)
 
         if (methods::is(bm, "matrix")) {
           if (try_safe_chol) {
@@ -44,7 +44,7 @@ newton_direction <- function(try_safe_chol = FALSE) {
         }
       } else if (!is.null(fg$hi)) {
         # H, an approximation to (or exact) inverse of the Hessian
-        hm <- fg$hi(par)
+        hm <- validate_inverse_hessian(fg$hi(par), length(par))
         if (methods::is(hm, "matrix")) {
           pm <- -hm %*% gm
         } else {
@@ -56,7 +56,7 @@ newton_direction <- function(try_safe_chol = FALSE) {
       }
 
       descent <- dot(gm, pm)
-      if (descent >= 0) {
+      if (any(!is.finite(pm)) || !is.finite(descent) || descent >= 0) {
         pm <- -gm
       }
       sub_stage$value <- pm
@@ -72,14 +72,14 @@ partial_hessian_direction <- function(hessian_every = 0) {
   make_direction(list(
     init = function(opt, stage, sub_stage, par, fg, iter) {
       if (hessian_every == 0) {
-        hm <- fg$hs(par)
+        hm <- validate_hessian(fg$hs(par), length(par), allow_vector = FALSE)
         sub_stage$rm <- chol(hm)
       }
       list(sub_stage = sub_stage)
     },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
       if (hessian_every > 0 && iter %% hessian_every == 0) {
-        hm <- fg$hs(par)
+        hm <- validate_hessian(fg$hs(par), length(par), allow_vector = FALSE)
         sub_stage$rm <- chol(hm)
       }
 
@@ -88,7 +88,7 @@ partial_hessian_direction <- function(hessian_every = 0) {
       pm <- hessian_solve(rm, gm)
 
       descent <- dot(gm, pm)
-      if (descent >= 0) {
+      if (any(!is.finite(pm)) || !is.finite(descent) || descent >= 0) {
         pm <- -gm
       }
       sub_stage$value <- pm
