@@ -16,23 +16,67 @@ check_step_conv <- function(opt, iter, step = NULL, step_tol = NULL) {
 # calls has been exceeded
 check_counts <- function(opt, max_fn, max_gr, max_fg) {
   terminate <- NULL
-  if (opt$counts$fn >= max_fn) {
+  if (!is.null(max_fn) && opt$counts$fn >= max_fn) {
     terminate <- list(
       what = "max_fn",
       val = opt$counts$fn
     )
-  } else if (opt$counts$gr >= max_gr) {
+  } else if (!is.null(max_gr) && opt$counts$gr >= max_gr) {
     terminate <- list(
       what = "max_gr",
       val = opt$counts$gr
     )
-  } else if (opt$counts$fn + opt$counts$gr >= max_fg) {
+  } else if (!is.null(max_fg) && opt$counts$fn + opt$counts$gr >= max_fg) {
     terminate <- list(
       what = "max_fg",
       val = opt$counts$fn + opt$counts$gr
     )
   }
   terminate
+}
+
+# Stop optimizer work once any global evaluation budget is exhausted.
+terminate_on_budget <- function(opt) {
+  convergence <- opt$convergence
+  terminate <- check_counts(
+    opt,
+    convergence$max_fn,
+    convergence$max_gr,
+    convergence$max_fg
+  )
+  if (!is.null(terminate)) {
+    opt <- set_mize_termination(opt, terminate)
+  }
+  opt
+}
+
+# Return the budget termination that would prevent a callback, if any.
+callback_budget_termination <- function(opt, callback) {
+  if (
+    !is.null(opt$terminate) &&
+      opt$terminate$what %in% c("max_fn", "max_gr", "max_fg")
+  ) {
+    return(opt$terminate)
+  }
+
+  convergence <- opt$convergence
+  count <- opt$counts[[callback]]
+  limit <- convergence[[paste0("max_", callback)]]
+
+  if (!is.null(limit) && count >= limit) {
+    if (!is.null(opt$terminate)) {
+      return(opt$terminate)
+    }
+    return(list(what = paste0("max_", callback), val = count))
+  }
+
+  total <- opt$counts$fn + opt$counts$gr
+  if (!is.null(convergence$max_fg) && total >= convergence$max_fg) {
+    if (!is.null(opt$terminate)) {
+      return(opt$terminate)
+    }
+    return(list(what = "max_fg", val = total))
+  }
 }
 
 # Return a termination list if the gradient 2 norm tolerance (grad_tol) or

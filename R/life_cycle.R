@@ -4,6 +4,10 @@
 
 # Calls all hooks registered with the phase firing this event
 life_cycle_hook <- function(phase, advice_type, opt, par, fg, iter, ...) {
+  if (!is.null(opt$terminate)) {
+    return(opt)
+  }
+
   handler <- life_cycle_handler(phase, advice_type, opt)
   if (is.null(handler)) {
     opt <- default_handler(phase, advice_type, opt, par, fg, iter, ...)
@@ -43,6 +47,9 @@ default_handler <- function(phase, advice_type, opt, par, fg, iter, ...) {
   }
 
   for (name in names(hooks)) {
+    if (!is.null(opt$terminate)) {
+      break
+    }
     hook <- hooks[[name]]
     opt <- hook(opt, par, fg, iter, ...)
   }

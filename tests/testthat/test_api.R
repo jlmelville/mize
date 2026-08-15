@@ -548,11 +548,7 @@ test_that("Budget status reports best and last results separately", {
   expect_false(isTRUE(all.equal(res$last_par, res$best_par)))
 })
 
-test_that("max_fn errs on the side of caution", {
-  # In this test we ask for 15 function evaluations, but only get 14
-  # this is because we need one function evaluation spare to calculate
-  # f for the return value and mize has determined it isn't available
-  # for "free" by being calculated during the iteration
+test_that("max_fn is a hard callback cap", {
   res <- mize(
     rb0,
     rosenbrock_fg,
@@ -562,12 +558,12 @@ test_that("max_fn errs on the side of caution", {
     ls_max_alpha_mult = 10
   )
   expect_equal(res$terminate$what, "max_fn")
-  expect_equal(res$terminate$val, 14)
-  expect_equal(res$nf, 14)
+  expect_equal(res$terminate$val, 15)
+  expect_equal(res$nf, 15)
   expect_equal(res$f, 4.08, tolerance = 1e-3)
 })
 
-test_that("max_fg also errs on the side of caution", {
+test_that("max_fg is a hard combined callback cap", {
   res <- mize(
     rb0,
     rosenbrock_fg,
@@ -577,15 +573,13 @@ test_that("max_fg also errs on the side of caution", {
     ls_max_alpha_mult = 10
   )
   expect_equal(res$terminate$what, "max_fg")
-  expect_equal(res$terminate$val, 29)
+  expect_equal(res$terminate$val, 30)
   expect_equal(res$nf, 15)
-  expect_equal(res$ng, 14)
+  expect_equal(res$ng, 15)
   expect_equal(res$f, 4.08, tolerance = 1e-3)
 })
 
 test_that("max_fn with DBD", {
-  # Don't leave one function evaluation spare with DBD because it
-  # doesn't use them during its iteration
   res <- mize(rb0, rosenbrock_fg, method = "DBD", max_fn = 30)
   expect_equal(res$terminate$what, "max_fn")
   expect_equal(res$terminate$val, 30)
@@ -686,12 +680,11 @@ test_that("Truncated Newton with max_gr", {
     max_gr = 6
   )
 
-  # Should give the same f/par results as without max_gr, as we would quit with -ve
-  # curvature anyway
-  expect_equal(res$nf, 1)
+  # Final reporting does not spend another callback after the gradient budget.
+  expect_equal(res$nf, 0)
   # If grad_tol or ginf_tol was calculated we would get max_gr + 1
   expect_equal(res$ng, 6)
-  expect_equal(res$f, 4.118, tolerance = 1e-3)
+  expect_false("f" %in% names(res))
   expect_equal(res$par, c(-1.023, 1.062), tolerance = 1e-3)
 })
 

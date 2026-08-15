@@ -81,6 +81,16 @@ mize_step <- function(opt, par, fg) {
     )
   }
 
+  opt <- terminate_on_budget(opt)
+  if (!is.null(opt$terminate)) {
+    return(list(
+      opt = opt,
+      par = par,
+      nf = opt$counts$fn,
+      ng = opt$counts$gr
+    ))
+  }
+
   opt$iter <- opt$iter + 1
   iter <- opt$iter
   opt <- life_cycle_hook("step", "before", opt, par, fg, iter)
@@ -156,6 +166,15 @@ mize_step <- function(opt, par, fg) {
     par <- par0
   }
 
+  budget_rollback <- !is.null(opt$terminate) &&
+    opt$terminate$what %in% c("max_fn", "max_gr", "max_fg")
+
+  starting_gradient_valid <- grad_is_first_stage(opt) &&
+    has_gr_curr(opt, iter)
+  if (starting_gradient_valid) {
+    starting_gradient <- opt$cache$gr_curr
+  }
+
   if (is.null(opt$terminate)) {
     opt <- life_cycle_hook(
       "step",
@@ -167,6 +186,18 @@ mize_step <- function(opt, par, fg) {
       par0,
       step_result
     )
+  }
+
+  if (
+    (is.null(opt$terminate) || budget_rollback) &&
+      identical(par, par0) &&
+      starting_gradient_valid &&
+      !has_gr_curr(opt, iter + 1)
+  ) {
+    # An exactly zero accepted step or an evaluation-budget rollback returns
+    # the starting parameters, so their classical gradient remains valid at
+    # the next iteration marker. Other terminal rollbacks are excluded.
+    opt <- set_gr_curr(opt, starting_gradient, iter + 1)
   }
 
   res <- list(opt = opt, par = par, nf = opt$counts$fn, ng = opt$counts$gr)
@@ -318,5 +349,5 @@ mize_init <- function(
   opt <- opt_clear_cache(opt)
   opt <- life_cycle_hook("opt", "init", opt, par, fg, opt$iter)
   opt$is_initialized <- TRUE
-  opt
+  terminate_on_budget(opt)
 }

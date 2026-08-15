@@ -321,6 +321,10 @@ line_search <- function(
         f0 <- opt$cache$fn_curr
       } else {
         opt <- calc_fn(opt, par, fg$fn)
+        if (!is.null(opt$terminate)) {
+          sub_stage$value <- 0
+          return(list(opt = opt, sub_stage = sub_stage))
+        }
         f0 <- opt$fn
       }
 

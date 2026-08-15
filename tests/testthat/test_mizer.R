@@ -1199,7 +1199,7 @@ test_that("nesterov accelerated gradient with wolfe line search", {
     grad_tol = 1e-5
   )
 
-  nfs <- c(0, 9, 17, 22)
+  nfs <- c(0, 11, 21, 28)
   ngs <- c(0, 9, 17, 22)
   fs <- c(24.2, 4.128, 3.913, 3.558)
   g2ns <- c(232.87, 1.777, 23.908, 7.200)
@@ -1258,7 +1258,7 @@ test_that("nesterov momentum with wolfe line search is like NAG", {
     grad_tol = 1e-5
   )
 
-  nfs <- c(0, 9, 17, 22)
+  nfs <- c(0, 11, 21, 28)
   ngs <- c(0, 9, 17, 22)
   fs <- c(24.2, 4.128, 3.886, 3.582)
   g2ns <- c(232.87, 1.777, 18.114, 1.858)

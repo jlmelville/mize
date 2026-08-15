@@ -105,6 +105,10 @@ is_finite_numeric <- function(x) {
 # Logging Hooks -----------------------------------------------------------
 
 require_log_vals <- function(opt, stage, par, fg, iter) {
+  opt <- calc_fn(opt, par, fg$fn)
+  if (!is.null(opt$terminate)) {
+    return(list(opt = opt))
+  }
   message(
     iter,
     " ",
@@ -118,7 +122,7 @@ require_log_vals <- function(opt, stage, par, fg, iter) {
     " ap = ",
     vec_formatC(stage$result),
     " f = ",
-    formatC(fg$fn(par))
+    formatC(opt$fn)
   )
   list(opt = opt)
 }
@@ -129,8 +133,11 @@ require_keep_stage_fs <- function(opt, stage, par, fg, iter) {
   if (is.null(opt$all_fs)) {
     opt$all_fs <- c()
   }
-  f <- fg$fn(par)
-  opt$all_fs <- c(opt$all_fs, f)
+  opt <- calc_fn(opt, par, fg$fn)
+  if (!is.null(opt$terminate)) {
+    return(list(opt = opt))
+  }
+  opt$all_fs <- c(opt$all_fs, opt$fn)
   list(opt = opt)
 }
 attr(require_keep_stage_fs, "name") <- "require_keep_stage_fs"

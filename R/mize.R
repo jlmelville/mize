@@ -296,11 +296,12 @@
 #'
 #' * `max_iter`: Maximum number of iterations to calculate. Reaching
 #'   this limit is indicated by `terminate$what` being `"max_iter"`.
-#' * `max_fn`: Maximum number of function evaluations allowed.
+#' * `max_fn`: Hard maximum number of function evaluations allowed.
 #'   Indicated by `terminate$what` being `"max_fn"`.
-#' * `max_gr`: Maximum number of gradient evaluations allowed.
+#' * `max_gr`: Hard maximum number of gradient evaluations allowed.
 #'   Indicated by `terminate$what` being `"max_gr"`.
-#' * `max_fg`: Maximum number of gradient evaluations allowed.
+#' * `max_fg`: Hard maximum combined number of function and gradient
+#'   evaluations allowed.
 #'   Indicated by `terminate$what` being `"max_fg"`.
 #' * `abs_tol`: Absolute tolerance of the function value. If the
 #'   absolute value of the function falls below this threshold,
@@ -325,6 +326,13 @@
 #'   iteration and restarting using the previous iteration's value of
 #'   `par` an iteration, `step_tol` will not be triggered.
 #'
+#' Once `max_fn`, `max_gr`, or `max_fg` is the termination reason, no later
+#' function or gradient callback is made, even if another callback-specific
+#' limit still has capacity. If the final permitted callback instead establishes
+#' convergence or a non-finite failure, that observed result takes precedence.
+#' Normal final reporting may then evaluate the objective only if doing so
+#' violates neither `max_fn` nor `max_fg`.
+#'
 #' Convergence is checked between specific iterations. How often is determined
 #' by the `check_conv_every` parameter, which specifies the number of
 #' iterations between each check. By default, this is set for every iteration.
@@ -332,8 +340,10 @@
 #' Be aware that if `abs_tol` or `rel_tol` are non-`NULL`, this
 #' requires the function to have been evaluated at the current position at the
 #' end of each iteration. If the function at that position has not been
-#' calculated, it will be calculated and will contribute to the total reported
-#' in the `counts` list in the return value. The calculated function value
+#' calculated, it will be calculated only if no evaluation-budget termination
+#' is already active and neither `max_fn` nor `max_fg` prevents the callback.
+#' It will contribute to the total reported in the `counts` list in the return
+#' value. The calculated function value
 #' is cached for use by the optimizer in the next iteration, so if the optimizer
 #' would have needed to calculate the function anyway (e.g. use of the strong
 #' Wolfe line search methods), there is no significant cost accrued by
@@ -342,7 +352,8 @@
 #' lot of extra function evaluations. On the other hand, not checking
 #' convergence could result in a lot of extra unnecessary iterations.
 #' Similarly, if `grad_tol` or `ginf_tol` is non-`NULL`, then
-#' the gradient will be calculated if needed.
+#' the gradient will be calculated if needed, no evaluation-budget termination
+#' is already active, and neither `max_gr` nor `max_fg` prevents the callback.
 #'
 #' If extra function or gradient evaluations is an issue, set
 #' `check_conv_every` to a higher value, but be aware that this can cause
@@ -369,10 +380,11 @@
 #' The value of `par` in the return value should be the parameters which
 #' correspond to the lowest value of the function that has been calculated
 #' during the optimization. As discussed above however, determining which set
-#' of parameters requires a function evaluation at the end of each iteration,
+#' of parameters may require a function evaluation at the end of each iteration,
 #' which only happens if either the optimization method calculates it as part
 #' of its own operation or if a convergence check is being carried out during
-#' this iteration. Therefore, if your method does not carry out function
+#' this iteration, subject to the budget behavior described above.
+#' Therefore, if your method does not carry out function
 #' evaluations and `check_conv_every` is set to be so large that no
 #' convergence calculation is carried out before `max_iter` is reached,
 #' then the returned value of `par` is the last value encountered.
@@ -487,8 +499,8 @@
 #' section for details.
 #' @param max_gr Maximum number of gradient evaluations. See the 'Convergence'
 #' section for details.
-#' @param max_fg Maximum number of function or gradient evaluations. See the
-#' 'Convergence' section for details.
+#' @param max_fg Maximum combined number of function and gradient evaluations.
+#' See the 'Convergence' section for details.
 #' @param abs_tol Absolute tolerance for comparing two function evaluations.
 #' See the 'Convergence' section for details.
 #' @param rel_tol Relative tolerance for comparing two function evaluations.
@@ -520,29 +532,32 @@
 #'  section for details.
 #' * `nf`: Total number of function evaluations carried out. This
 #'  includes any extra evaluations required for convergence calculations. Also,
-#'  a function evaluation may be required to calculate the value of `f`
-#'  returned in this list (see below). Additionally, if the `verbose`
+#'  a function evaluation may be attempted to calculate the value of `f`
+#'  returned in this list (see below), subject to the budget behavior in the
+#'  'Convergence' section. Additionally, if the `verbose`
 #'  parameter is `TRUE`, then function and gradient information for the
-#'  initial value of `par` will be logged to the console. These values
-#'  are cached for subsequent use by the optimizer.
+#'  initial value of `par` will be logged to the console when available. Those
+#'  values are cached for subsequent use by the optimizer.
 #' * `ng`: Total number of gradient evaluations carried out. This
 #'  includes any extra evaluations required for convergence calculations using
 #'  `grad_tol`. As with `nf`, additional gradient calculations beyond
 #'  what you're expecting may have been needed for logging, convergence and
 #'  calculating the value of `g2n` or `ginfn` (see below).
-#' * `f`: Value of the function, evaluated at the returned
-#'  value of `par`.
+#' * `f`: Value of the function at the returned value of `par`. This component
+#'  is absent when the value is unavailable under the hard-budget behavior
+#'  described in the 'Convergence' section.
 #' * `best_par`: The best parameters returned by `mize()`. This is
 #'  currently the same value as `par`, and is provided so callers can use an
 #'  explicit best-vs-last naming convention.
 #' * `best_f`: Value of the function at `best_par`. This is currently
-#'  the same value as `f`.
+#'  the same value as `f`, and is absent under the same budget condition.
 #' * `last_par`: Parameters from the last optimizer state before any final
 #'  best-result restoration. This is the same as `par` unless `mize()` returns
 #'  an earlier best point.
-#' * `last_f`: Value of the function at `last_par` when it is known without
-#'  requiring an extra function evaluation. If `last_par` differs from `par`
-#'  and the function value was not already available, this is `NA_real_`.
+#' * `last_f`: Value of the function at `last_par` when available. This
+#'  component is absent if its value is unavailable under the hard-budget
+#'  behavior described in the 'Convergence' section. If `last_par` differs from
+#'  `par` and the function value was not already available, this is `NA_real_`.
 #' * `g2n`: Optional: the length (Euclidean or l2-norm) of the
 #'  gradient vector, evaluated at the returned value of `par`. Calculated
 #'  only if `grad_tol` is non-null.

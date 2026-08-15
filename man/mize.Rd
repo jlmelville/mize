@@ -214,8 +214,8 @@ section for details.}
 \item{max_gr}{Maximum number of gradient evaluations. See the 'Convergence'
 section for details.}
 
-\item{max_fg}{Maximum number of function or gradient evaluations. See the
-'Convergence' section for details.}
+\item{max_fg}{Maximum combined number of function and gradient evaluations.
+See the 'Convergence' section for details.}
 
 \item{abs_tol}{Absolute tolerance for comparing two function evaluations.
 See the 'Convergence' section for details.}
@@ -258,29 +258,32 @@ including function evaluation where necessary. See the 'Convergence'
 section for details.
 \item \code{nf}: Total number of function evaluations carried out. This
 includes any extra evaluations required for convergence calculations. Also,
-a function evaluation may be required to calculate the value of \code{f}
-returned in this list (see below). Additionally, if the \code{verbose}
+a function evaluation may be attempted to calculate the value of \code{f}
+returned in this list (see below), subject to the budget behavior in the
+'Convergence' section. Additionally, if the \code{verbose}
 parameter is \code{TRUE}, then function and gradient information for the
-initial value of \code{par} will be logged to the console. These values
-are cached for subsequent use by the optimizer.
+initial value of \code{par} will be logged to the console when available. Those
+values are cached for subsequent use by the optimizer.
 \item \code{ng}: Total number of gradient evaluations carried out. This
 includes any extra evaluations required for convergence calculations using
 \code{grad_tol}. As with \code{nf}, additional gradient calculations beyond
 what you're expecting may have been needed for logging, convergence and
 calculating the value of \code{g2n} or \code{ginfn} (see below).
-\item \code{f}: Value of the function, evaluated at the returned
-value of \code{par}.
+\item \code{f}: Value of the function at the returned value of \code{par}. This component
+is absent when the value is unavailable under the hard-budget behavior
+described in the 'Convergence' section.
 \item \code{best_par}: The best parameters returned by \code{mize()}. This is
 currently the same value as \code{par}, and is provided so callers can use an
 explicit best-vs-last naming convention.
 \item \code{best_f}: Value of the function at \code{best_par}. This is currently
-the same value as \code{f}.
+the same value as \code{f}, and is absent under the same budget condition.
 \item \code{last_par}: Parameters from the last optimizer state before any final
 best-result restoration. This is the same as \code{par} unless \code{mize()} returns
 an earlier best point.
-\item \code{last_f}: Value of the function at \code{last_par} when it is known without
-requiring an extra function evaluation. If \code{last_par} differs from \code{par}
-and the function value was not already available, this is \code{NA_real_}.
+\item \code{last_f}: Value of the function at \code{last_par} when available. This
+component is absent if its value is unavailable under the hard-budget
+behavior described in the 'Convergence' section. If \code{last_par} differs from
+\code{par} and the function value was not already available, this is \code{NA_real_}.
 \item \code{g2n}: Optional: the length (Euclidean or l2-norm) of the
 gradient vector, evaluated at the returned value of \code{par}. Calculated
 only if \code{grad_tol} is non-null.
@@ -619,11 +622,12 @@ The following parameters control various stopping criteria:
 \itemize{
 \item \code{max_iter}: Maximum number of iterations to calculate. Reaching
 this limit is indicated by \code{terminate$what} being \code{"max_iter"}.
-\item \code{max_fn}: Maximum number of function evaluations allowed.
+\item \code{max_fn}: Hard maximum number of function evaluations allowed.
 Indicated by \code{terminate$what} being \code{"max_fn"}.
-\item \code{max_gr}: Maximum number of gradient evaluations allowed.
+\item \code{max_gr}: Hard maximum number of gradient evaluations allowed.
 Indicated by \code{terminate$what} being \code{"max_gr"}.
-\item \code{max_fg}: Maximum number of gradient evaluations allowed.
+\item \code{max_fg}: Hard maximum combined number of function and gradient
+evaluations allowed.
 Indicated by \code{terminate$what} being \code{"max_fg"}.
 \item \code{abs_tol}: Absolute tolerance of the function value. If the
 absolute value of the function falls below this threshold,
@@ -649,6 +653,13 @@ iteration and restarting using the previous iteration's value of
 \code{par} an iteration, \code{step_tol} will not be triggered.
 }
 
+Once \code{max_fn}, \code{max_gr}, or \code{max_fg} is the termination reason, no later
+function or gradient callback is made, even if another callback-specific
+limit still has capacity. If the final permitted callback instead establishes
+convergence or a non-finite failure, that observed result takes precedence.
+Normal final reporting may then evaluate the objective only if doing so
+violates neither \code{max_fn} nor \code{max_fg}.
+
 Convergence is checked between specific iterations. How often is determined
 by the \code{check_conv_every} parameter, which specifies the number of
 iterations between each check. By default, this is set for every iteration.
@@ -656,8 +667,10 @@ iterations between each check. By default, this is set for every iteration.
 Be aware that if \code{abs_tol} or \code{rel_tol} are non-\code{NULL}, this
 requires the function to have been evaluated at the current position at the
 end of each iteration. If the function at that position has not been
-calculated, it will be calculated and will contribute to the total reported
-in the \code{counts} list in the return value. The calculated function value
+calculated, it will be calculated only if no evaluation-budget termination
+is already active and neither \code{max_fn} nor \code{max_fg} prevents the callback.
+It will contribute to the total reported in the \code{counts} list in the return
+value. The calculated function value
 is cached for use by the optimizer in the next iteration, so if the optimizer
 would have needed to calculate the function anyway (e.g. use of the strong
 Wolfe line search methods), there is no significant cost accrued by
@@ -666,7 +679,8 @@ that don't use the function value at that location, this could represent a
 lot of extra function evaluations. On the other hand, not checking
 convergence could result in a lot of extra unnecessary iterations.
 Similarly, if \code{grad_tol} or \code{ginf_tol} is non-\code{NULL}, then
-the gradient will be calculated if needed.
+the gradient will be calculated if needed, no evaluation-budget termination
+is already active, and neither \code{max_gr} nor \code{max_fg} prevents the callback.
 
 If extra function or gradient evaluations is an issue, set
 \code{check_conv_every} to a higher value, but be aware that this can cause
@@ -693,10 +707,11 @@ convergence check would not be carried out for this iteration.
 The value of \code{par} in the return value should be the parameters which
 correspond to the lowest value of the function that has been calculated
 during the optimization. As discussed above however, determining which set
-of parameters requires a function evaluation at the end of each iteration,
+of parameters may require a function evaluation at the end of each iteration,
 which only happens if either the optimization method calculates it as part
 of its own operation or if a convergence check is being carried out during
-this iteration. Therefore, if your method does not carry out function
+this iteration, subject to the budget behavior described above.
+Therefore, if your method does not carry out function
 evaluations and \code{check_conv_every} is set to be so large that no
 convergence calculation is carried out before \code{max_iter} is reached,
 then the returned value of \code{par} is the last value encountered.

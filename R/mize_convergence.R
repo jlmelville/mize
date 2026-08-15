@@ -109,10 +109,13 @@ mize_step_summary <- function(
   f <- NULL
   if (calc_fn || has_fn_curr(opt, iter + 1)) {
     if (!has_fn_curr(opt, iter + 1)) {
-      f <- fg$fn(par)
       if (count_fg) {
-        opt <- set_fn_curr(opt, f, iter + 1)
-        opt$counts$fn <- opt$counts$fn + 1
+        opt <- calc_fn_curr(opt, par, fg$fn, iter + 1)
+        if (has_fn_curr(opt, iter + 1)) {
+          f <- opt$cache$fn_curr
+        }
+      } else {
+        f <- fg$fn(par)
       }
     } else {
       f <- opt$cache$fn_curr
@@ -123,20 +126,27 @@ mize_step_summary <- function(
   ginfn <- NULL
   if (calc_gr || has_gr_curr(opt, iter + 1)) {
     if (!has_gr_curr(opt, iter + 1)) {
-      g <- fg$gr(par)
       if (count_fg) {
-        opt$counts$gr <- opt$counts$gr + 1
-        if (grad_is_first_stage(opt)) {
-          opt <- set_gr_curr(opt, g, iter + 1)
+        terminate <- callback_budget_termination(opt, "gr")
+        if (is.null(terminate)) {
+          g <- fg$gr(par)
+          opt$counts$gr <- opt$counts$gr + 1
+          if (grad_is_first_stage(opt)) {
+            opt <- set_gr_curr(opt, g, iter + 1)
+          }
+        } else {
+          opt <- set_mize_termination(opt, terminate)
         }
+      } else {
+        g <- fg$gr(par)
       }
     } else {
       g <- opt$cache$gr_curr
     }
-    if (2 %in% gr_norms) {
+    if (exists("g", inherits = FALSE) && 2 %in% gr_norms) {
       g2n <- norm2(g)
     }
-    if (Inf %in% gr_norms) {
+    if (exists("g", inherits = FALSE) && Inf %in% gr_norms) {
       ginfn <- norm_inf(g)
     }
   }
@@ -231,26 +241,6 @@ check_mize_convergence <- function(mize_step_info) {
 
   convergence <- opt$convergence
 
-  terminate <- check_counts(
-    opt,
-    convergence$max_fn,
-    convergence$max_gr,
-    convergence$max_fg
-  )
-  if (!is.null(terminate)) {
-    return(set_mize_termination(opt, terminate))
-  }
-
-  terminate <- check_step_conv(
-    opt,
-    opt$iter,
-    mize_step_info$step,
-    convergence$step_tol
-  )
-  if (!is.null(terminate)) {
-    return(set_mize_termination(opt, terminate))
-  }
-
   terminate <- check_gr_conv(
     opt,
     opt$iter + 1,
@@ -280,6 +270,26 @@ check_mize_convergence <- function(mize_step_info) {
     }
   }
 
+  terminate <- check_counts(
+    opt,
+    convergence$max_fn,
+    convergence$max_gr,
+    convergence$max_fg
+  )
+  if (!is.null(terminate)) {
+    return(set_mize_termination(opt, terminate))
+  }
+
+  terminate <- check_step_conv(
+    opt,
+    opt$iter,
+    mize_step_info$step,
+    convergence$step_tol
+  )
+  if (!is.null(terminate)) {
+    return(set_mize_termination(opt, terminate))
+  }
+
   if (
     !is.null(convergence$max_iter) &&
       opt$iter >= convergence$max_iter
@@ -291,4 +301,31 @@ check_mize_convergence <- function(mize_step_info) {
   }
 
   opt
+}
+
+# Check values already observed by a summary before reporting budget
+# exhaustion. Function-difference and step tolerances need iteration context
+# and remain the responsibility of check_mize_convergence().
+check_mize_summary_observations <- function(mize_step_info) {
+  opt <- mize_step_info$opt
+  convergence <- opt$convergence
+
+  terminate <- check_gr_conv(
+    opt,
+    opt$iter + 1,
+    convergence$grad_tol,
+    convergence$ginf_tol
+  )
+  if (!is.null(terminate)) {
+    return(set_mize_termination(opt, terminate))
+  }
+
+  if (has_fn_curr(opt, opt$iter + 1) && !is.finite(opt$cache$fn_curr)) {
+    return(set_mize_termination(
+      opt,
+      list(what = "fn_inf", val = opt$cache$fn_curr)
+    ))
+  }
+
+  terminate_on_budget(opt)
 }

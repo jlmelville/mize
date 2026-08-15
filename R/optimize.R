@@ -46,15 +46,18 @@ opt_loop <- function(
 
   progress <- data.frame()
   step_info <- NULL
+  last_reported_iter <- NULL
 
   if (verbose || store_progress) {
     step_info <- mize_step_summary(opt, par, fg)
     opt <- step_info$opt
+    opt <- check_mize_summary_observations(step_info)
     if (store_progress) {
       progress <- update_progress(step_info, progress)
     }
     if (verbose) {
       opt_report(step_info, print_time = TRUE, print_par = FALSE)
+      last_reported_iter <- opt$iter
     }
   }
 
@@ -74,7 +77,7 @@ opt_loop <- function(
 
   iter <- 0
   par0 <- par
-  if (max_iter > 0) {
+  if (max_iter > 0 && is.null(opt$terminate)) {
     for (iter in 1:max_iter) {
       if (invalidate_cache) {
         opt <- opt_clear_cache(opt)
@@ -82,31 +85,18 @@ opt_loop <- function(
 
       par0 <- par
 
-      # We're going to use this below to guess whether our optimization
-      # requires function evaluations (this is only useful if max_fn or max_fg
-      # is specified, but not really time consuming)
-      if (iter == 1) {
-        fn_count_before <- opt$counts$fn
-      }
       step_res <- mize_step(opt, par, fg)
       opt <- step_res$opt
       par <- step_res$par
-
-      if (!is.null(opt$terminate)) {
-        break
+      if (is.null(opt$terminate)) {
+        opt <- terminate_on_budget(opt)
       }
 
-      # After the first iteration, if we don't have the function available for
-      # the current value of par, we probably won't have it at future iterations
-      # So if we are limiting the number of function evaluations, we need to keep
-      # one spare to evaluate fn after the loop finishes for when we return par
-      if (iter == 1) {
-        if (!has_fn_curr(opt, iter + 1)) {
-          if (fn_count_before != opt$counts$fn) {
-            opt$convergence$max_fn <- opt$convergence$max_fn - 1
-          }
-          opt$convergence$max_fg <- opt$convergence$max_fg - 1
-        }
+      if (
+        !is.null(opt$terminate) &&
+          !(opt$terminate$what %in% c("max_fn", "max_gr", "max_fg"))
+      ) {
+        break
       }
 
       # Check termination conditions
@@ -119,6 +109,7 @@ opt_loop <- function(
         }
         if (verbose && iter %% log_every == 0) {
           opt_report(step_info, print_time = TRUE, print_par = FALSE)
+          last_reported_iter <- iter
         }
       }
 
@@ -215,7 +206,7 @@ opt_loop <- function(
   }
 
   if (is.null(step_info) || step_info$iter != iter || is.null(step_info$f)) {
-    # Always calculate function value before return
+    # Calculate the return value only when its budget remains.
     step_info <- mize_step_summary(opt, par, fg, par0, calc_fn = TRUE)
     opt <- step_info$opt
   }
@@ -224,15 +215,22 @@ opt_loop <- function(
   } else if (is.null(last_f)) {
     last_f <- NA_real_
   }
-  if (verbose && iter %% log_every != 0) {
+  if (verbose && !identical(last_reported_iter, iter)) {
     opt_report(step_info, print_time = TRUE, print_par = FALSE)
   }
-  if (store_progress && iter %% log_every != 0) {
+  if (store_progress && !(as.character(iter) %in% rownames(progress))) {
     progress <- update_progress(step_info, progress)
   }
 
   if (store_progress) {
     step_info$progress <- progress
+  }
+
+  step_info$opt <- opt
+  if (is.null(opt$terminate) && !is.null(check_conv_every)) {
+    opt <- check_mize_convergence(step_info)
+  } else if (is.null(opt$terminate)) {
+    opt <- check_mize_summary_observations(step_info)
   }
 
   if (is.null(opt$terminate)) {
@@ -319,17 +317,29 @@ opt_report <- function(
 
 # Transfers data from the result object to the progress data frame
 update_progress <- function(step_info, progress) {
-  res_names <- c("f", "g2n", "ginfn", "nf", "ng", "step", "alpha", "mu")
-  res_names <- Filter(
+  possible_names <- c("f", "g2n", "ginfn", "nf", "ng", "step", "alpha", "mu")
+  new_names <- Filter(
     function(x) {
       !is.null(step_info[[x]])
     },
-    res_names
+    possible_names
   )
+  res_names <- union(colnames(progress), new_names)
 
-  progress <- rbind(progress, step_info[res_names])
+  progress_row <- lapply(res_names, function(name) {
+    value <- step_info[[name]]
+    if (is.null(value)) NA_real_ else value
+  })
+  names(progress_row) <- res_names
+  if (nrow(progress) == 0) {
+    progress <- as.data.frame(progress_row)
+  } else {
+    for (name in setdiff(res_names, colnames(progress))) {
+      progress[[name]] <- rep(NA_real_, nrow(progress))
+    }
+    progress <- rbind(progress, progress_row)
+  }
 
-  # Probably not a major performance issue to regenerate column names each time
   colnames(progress) <- res_names
   rownames(progress)[nrow(progress)] <- step_info$iter
   progress
@@ -510,6 +520,11 @@ make_counts <- function() {
 
 # Uncached function evaluation for arbitrary values of par
 calc_fn <- function(opt, par, fn) {
+  terminate <- callback_budget_termination(opt, "fn")
+  if (!is.null(terminate)) {
+    opt <- set_mize_termination(opt, terminate)
+    return(opt)
+  }
   opt$fn <- fn(par)
   opt$counts$fn <- opt$counts$fn + 1
   opt
@@ -519,6 +534,11 @@ calc_fn <- function(opt, par, fn) {
 # (possibly re-usable)
 calc_fn_new <- function(opt, par, fn, iter) {
   if (is.null(opt$cache$fn_new_iter) || opt$cache$fn_new_iter != iter) {
+    terminate <- callback_budget_termination(opt, "fn")
+    if (!is.null(terminate)) {
+      opt <- set_mize_termination(opt, terminate)
+      return(opt)
+    }
     opt <- set_fn_new(opt, fn(par), iter)
     opt$counts$fn <- opt$counts$fn + 1
   }
@@ -536,6 +556,11 @@ set_fn_new <- function(opt, val, iter) {
 # (possibly re-usable)
 calc_fn_curr <- function(opt, par, fn, iter) {
   if (is.null(opt$cache$fn_curr_iter) || opt$cache$fn_curr_iter != iter) {
+    terminate <- callback_budget_termination(opt, "fn")
+    if (!is.null(terminate)) {
+      opt <- set_mize_termination(opt, terminate)
+      return(opt)
+    }
     opt <- set_fn_curr(opt, fn(par), iter)
     opt$counts$fn <- opt$counts$fn + 1
   }
@@ -553,6 +578,11 @@ set_fn_curr <- function(opt, val, iter) {
 # (possibly re-usable)
 calc_gr_curr <- function(opt, par, gr, iter) {
   if (is.null(opt$cache$gr_curr_iter) || opt$cache$gr_curr_iter != iter) {
+    terminate <- callback_budget_termination(opt, "gr")
+    if (!is.null(terminate)) {
+      opt <- set_mize_termination(opt, terminate)
+      return(opt)
+    }
     opt <- set_gr_curr(opt, gr(par), iter)
     opt$counts$gr <- opt$counts$gr + 1
   }
@@ -568,6 +598,11 @@ set_gr_curr <- function(opt, val, iter) {
 
 # Uncached gradient evaluation for arbitrary values of par
 calc_gr <- function(opt, par, gr) {
+  terminate <- callback_budget_termination(opt, "gr")
+  if (!is.null(terminate)) {
+    opt <- set_mize_termination(opt, terminate)
+    return(opt)
+  }
   opt$gr <- gr(par)
   opt$counts$gr <- opt$counts$gr + 1
   opt

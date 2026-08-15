@@ -70,6 +70,10 @@ bold_driver <- function(
           f0 <- opt$cache$fn_curr
         } else {
           opt <- calc_fn(opt, par, fg$fn)
+          if (!is.null(opt$terminate)) {
+            sub_stage$value <- 0
+            return(list(opt = opt, sub_stage = sub_stage))
+          }
           f0 <- opt$fn
         }
 
@@ -77,6 +81,10 @@ bold_driver <- function(
         alpha <- sub_stage$value
         para <- par + pm * alpha
         opt <- calc_fn(opt, para, fg$fn)
+        if (!is.null(opt$terminate)) {
+          sub_stage$value <- 0
+          return(list(opt = opt, sub_stage = sub_stage))
+        }
         num_steps <- 0
         while (
           (!is.finite(opt$fn) || opt$fn > f0) &&
@@ -90,6 +98,10 @@ bold_driver <- function(
           )
           para <- par + pm * alpha
           opt <- calc_fn(opt, para, fg$fn)
+          if (!is.null(opt$terminate)) {
+            sub_stage$value <- 0
+            return(list(opt = opt, sub_stage = sub_stage))
+          }
           num_steps <- num_steps + 1
         }
         sub_stage$value <- alpha
@@ -183,6 +195,10 @@ backtracking <- function(
           f0 <- opt$cache$fn_curr
         } else {
           opt <- calc_fn(opt, par, fg$fn)
+          if (!is.null(opt$terminate)) {
+            sub_stage$value <- 0
+            return(list(opt = opt, sub_stage = sub_stage))
+          }
           f0 <- opt$fn
         }
 
@@ -192,6 +208,10 @@ backtracking <- function(
         alpha <- sub_stage$value
         para <- par + pm * alpha
         opt <- calc_fn(opt, para, fg$fn)
+        if (!is.null(opt$terminate)) {
+          sub_stage$value <- 0
+          return(list(opt = opt, sub_stage = sub_stage))
+        }
         num_steps <- 0
 
         while (
@@ -207,6 +227,10 @@ backtracking <- function(
 
           para <- par + pm * alpha
           opt <- calc_fn(opt, para, fg$fn)
+          if (!is.null(opt$terminate)) {
+            sub_stage$value <- 0
+            return(list(opt = opt, sub_stage = sub_stage))
+          }
           num_steps <- num_steps + 1
         }
         sub_stage$value <- alpha
