@@ -232,6 +232,68 @@ test_that("Newton method can survive non-positive definite Hessian", {
   expect_equal(res$par, par, tolerance = 1e-3)
 })
 
+test_that("safe Cholesky repairs non-positive eigenvalues", {
+  rotation <- matrix(
+    c(
+      cos(pi / 6),
+      sin(pi / 6),
+      -sin(pi / 6),
+      cos(pi / 6)
+    ),
+    nrow = 2
+  )
+  eps <- 1e-6
+  spectra <- list(
+    zero = c(2, 0),
+    near_zero = c(2, -1e-12),
+    indefinite = c(2, -3)
+  )
+  hessians <- list(
+    zero = diag(spectra$zero),
+    near_zero = rotation %*% diag(spectra$near_zero) %*% t(rotation),
+    indefinite = rotation %*% diag(spectra$indefinite) %*% t(rotation)
+  )
+
+  for (case_name in names(hessians)) {
+    repaired_values <- pmax(spectra[[case_name]], eps)
+    expected <- if (case_name == "zero") {
+      diag(repaired_values)
+    } else {
+      rotation %*% diag(repaired_values) %*% t(rotation)
+    }
+    factor <- safe_chol(hessians[[case_name]], eps = eps)
+
+    expect_false(is.null(factor), info = case_name)
+    if (!is.null(factor)) {
+      expect_equal(
+        crossprod(factor),
+        expected,
+        tolerance = 1e-12,
+        info = case_name
+      )
+    }
+  }
+})
+
+test_that("safe Cholesky honors a non-default eigenvalue floor", {
+  eps <- 0.25
+  expected <- diag(c(4, eps))
+  factor <- safe_chol(diag(c(4, -2)), eps = eps)
+
+  expect_false(is.null(factor))
+  expect_equal(crossprod(factor), expected, tolerance = 1e-12)
+  expect_equal(crossprod(factor)[2, 2] / eps, 1, tolerance = 1e-12)
+})
+
+test_that("safe Cholesky preserves the ordinary positive-definite path", {
+  hessian <- matrix(c(4, 1, 1, 3), nrow = 2)
+  expected <- chol(hessian)
+  factor <- safe_chol(hessian, eps = 10)
+
+  expect_identical(factor, expected)
+  expect_equal(crossprod(factor), hessian, tolerance = 1e-12)
+})
+
 test_that("Newton safe Cholesky path repairs indefinite Hessians", {
   gradient <- c(1, 1)
   indefinite_fg <- list(

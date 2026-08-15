@@ -122,8 +122,8 @@ hessian_solve <- function(um, gm) {
 
 
 # Attempts to ensure a safe Cholesky decomposition of a Hessian by detecting
-# a failure, rebuilding the Hessian by setting negative eigenvalues to a small
-# positive value and then trying again. Not a fast procedure!
+# a failure, rebuilding the Hessian by flooring eigenvalues below eps, and then
+# trying again. Not a fast procedure!
 #
 # Suggested by
 # https://www.r-bloggers.com/fixing-non-positive-definite-correlation-matrices-using-r-2/
@@ -148,9 +148,10 @@ safe_chol <- function(hm, eps = 1e-10) {
   )
   if (methods::is(chol_result, "try-error")) {
     # Also O(N^3)
-    eig <- eigen(hm)
-    eig$values[eig$values < 0] <- 1e-10
-    hm <- eig$vectors %*% (eig$values * diag(nrow(hm))) %*% t(eig$vectors)
+    eig <- eigen(hm, symmetric = TRUE)
+    eig$values[eig$values < eps] <- eps
+    hm <- eig$vectors %*% (eig$values * t(eig$vectors))
+    hm <- (hm + t(hm)) / 2
     chol_result <- try(
       {
         rm <- chol(hm)
