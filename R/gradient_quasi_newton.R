@@ -177,13 +177,12 @@ bfgs_update <- function(hm, sm, ym, eps, eps_curv = 1e-8) {
   }
 
   rho <- 1 / (dot(ym, sm) + eps)
-  im <- diag(1, nrow(hm))
+  hym <- as.vector(hm %*% ym)
+  yhy <- dot(ym, hym)
 
-  rss <- rho * outer(sm, sm)
-  irsy <- im - rho * outer(sm, ym)
-  irys <- im - rho * outer(ym, sm)
-
-  (irsy %*% (hm %*% irys)) + rss
+  hm -
+    rho * (outer(hym, sm) + outer(sm, hym)) +
+    (rho + rho^2 * yhy) * outer(sm, sm)
 }
 
 # Check if the curvature condition is satisfied for BFGS updates.

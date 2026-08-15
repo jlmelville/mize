@@ -1,3 +1,49 @@
+literal_inverse_bfgs_update <- function(hm, sm, ym, eps) {
+  rho <- 1 / (dot(ym, sm) + eps)
+  im <- diag(1, nrow(hm))
+
+  (im - rho * outer(sm, ym)) %*%
+    hm %*%
+    (im - rho * outer(ym, sm)) +
+    rho * outer(sm, sm)
+}
+
+bfgs_update_cases <- function() {
+  list(
+    identity = list(
+      hm = diag(2),
+      sm = c(1, 0.5),
+      ym = c(2, 1),
+      eps = 0
+    ),
+    non_diagonal = list(
+      hm = matrix(c(2, 0.4, 0.4, 1.5), nrow = 2),
+      sm = c(0.5, -1),
+      ym = c(1, -2),
+      eps = 1e-6
+    ),
+    three_dimensional = list(
+      hm = matrix(
+        c(
+          3,
+          0.2,
+          -0.4,
+          0.2,
+          2,
+          0.6,
+          -0.4,
+          0.6,
+          1
+        ),
+        nrow = 3
+      ),
+      sm = c(0.75, -0.5, 1.25),
+      ym = c(1.5, -0.25, 0.8),
+      eps = .Machine$double.eps
+    )
+  )
+}
+
 test_that("Newton direction uses inverse Hessian functions", {
   quadratic_fg <- list(
     fn = function(x) x[1]^2 + 3 * x[2]^2,
@@ -92,14 +138,62 @@ test_that("make_mize validates public configuration values", {
 test_that("BFGS update skips bad curvature pairs", {
   hm <- matrix(c(2, 0.25, 0.25, 1), nrow = 2)
 
-  expect_equal(
+  expect_identical(
     bfgs_update(hm, sm = c(1, 0), ym = c(-1, 0), eps = 0),
     hm
   )
-  expect_equal(
+  expect_identical(
     bfgs_update(hm, sm = c(1, 0), ym = c(1e-12, 1), eps = 0),
     hm
   )
+})
+
+test_that("BFGS update agrees with the literal inverse formula", {
+  # Different operation order can move the final few bits. For these small,
+  # well-scaled cases, 1e-13 is tight while allowing ordinary BLAS rounding.
+  equivalence_tolerance <- 1e-13
+
+  for (case_name in names(bfgs_update_cases())) {
+    case <- bfgs_update_cases()[[case_name]]
+
+    expected <- literal_inverse_bfgs_update(
+      case$hm,
+      case$sm,
+      case$ym,
+      case$eps
+    )
+    actual <- bfgs_update(case$hm, case$sm, case$ym, case$eps)
+
+    expect_equal(
+      actual,
+      expected,
+      tolerance = equivalence_tolerance,
+      info = case_name
+    )
+  }
+})
+
+test_that("accepted BFGS updates remain numerically symmetric", {
+  for (case_name in names(bfgs_update_cases())) {
+    case <- bfgs_update_cases()[[case_name]]
+    updated <- bfgs_update(case$hm, case$sm, case$ym, case$eps)
+
+    expect_equal(updated, t(updated), tolerance = 1e-14, info = case_name)
+  }
+})
+
+test_that("a positive-definite BFGS update gives a descent direction", {
+  hm <- matrix(c(2, 0.4, 0.4, 1.5), nrow = 2)
+  updated <- bfgs_update(
+    hm,
+    sm = c(0.5, -1),
+    ym = c(1, -2),
+    eps = 1e-6
+  )
+  gm <- c(2, -1)
+  direction <- as.vector(-updated %*% gm)
+
+  expect_lt(dot(gm, direction), 0)
 })
 
 test_that("L-BFGS memory trimming keeps only the newest updates", {
