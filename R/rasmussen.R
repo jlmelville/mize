@@ -144,6 +144,12 @@ ras_ls <- function(
   nfn <- ex_result$nfn
   max_fn <- max_fn - nfn
   if (max_fn <= 0) {
+    step_is_safe <- step_is_finite(step) &&
+      (isTRUE(wolfe_ok_step_fn(step0, step, c1, c2)) ||
+        isTRUE(step$f < step0$f))
+    if (!step_is_safe) {
+      ex_result$step <- step0
+    }
     return(ex_result)
   }
 

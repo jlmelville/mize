@@ -94,6 +94,53 @@ make_wolfe_overflow_witness <- function() {
   )
 }
 
+make_rasmussen_witness <- function(fn, gr) {
+  calls <- new.env(parent = emptyenv())
+  calls$fn_par <- numeric()
+  calls$gr_par <- numeric()
+
+  list(
+    fg = list(
+      fn = function(x) {
+        calls$fn_par <- c(calls$fn_par, x)
+        fn(x)
+      },
+      gr = function(x) {
+        calls$gr_par <- c(calls$gr_par, x)
+        gr(x)
+      }
+    ),
+    counts = function() c(fn = length(calls$fn_par), gr = length(calls$gr_par)),
+    fn_par = function() calls$fn_par,
+    gr_par = function() calls$gr_par
+  )
+}
+
+run_rasmussen_witness <- function(
+  witness,
+  par,
+  step0 = 1,
+  c1 = 0.1,
+  c2 = 0.5,
+  ls_max_fn = 1
+) {
+  opt <- make_mize(
+    method = "SD",
+    line_search = "rasmussen",
+    step0 = step0,
+    c1 = c1,
+    c2 = c2,
+    ls_max_fn = ls_max_fn,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+  opt <- mize_init(opt, par, witness$fg)
+  mize_step(opt, par, witness$fg)
+}
+
 Ops.ascent_gradient <- function(e1, e2) {
   if (.Generic == "-" && missing(e2)) {
     return(unclass(e1))
@@ -649,6 +696,102 @@ test_that("Wolfe searches reject condition-satisfying overflowed parameters", {
     expect_budget_counts(result, witness)
     expect_equal(witness$fn_par(), c(1e308, Inf), info = name)
     expect_equal(witness$gr_par(), c(1e308, Inf), info = name)
+  }
+})
+
+test_that("Rasmussen rejects an unsafe final extrapolation trial", {
+  witness <- make_rasmussen_witness(
+    fn = function(x) x^4,
+    gr = function(x) 4 * x^3
+  )
+  result <- run_rasmussen_witness(witness, par = 1)
+
+  expect_equal(result$par, 1)
+  expect_equal(result$f, 1)
+  expect_equal(result$g, 4)
+  expect_equal(witness$fn_par(), c(1, -3))
+  expect_equal(witness$gr_par(), c(1, -3))
+  expect_identical(witness$counts(), c(fn = 2L, gr = 2L))
+  expect_budget_counts(result, witness)
+})
+
+test_that("Rasmussen preserves safe trials at exact exhaustion", {
+  cases <- list(
+    strict_decrease = list(
+      witness = make_rasmussen_witness(
+        fn = function(x) 1 - x,
+        gr = function(x) -1
+      ),
+      step0 = 1,
+      ls_max_fn = 1,
+      par = 1,
+      f = 0,
+      g = -1,
+      trace = c(0, 1)
+    ),
+    wolfe = list(
+      witness = make_rasmussen_witness(
+        fn = function(x) (x - 1)^2,
+        gr = function(x) 2 * (x - 1)
+      ),
+      step0 = 0.5,
+      ls_max_fn = 1,
+      par = 1,
+      f = 0,
+      g = 0,
+      trace = c(0, 1)
+    )
+  )
+
+  for (name in names(cases)) {
+    case <- cases[[name]]
+    result <- run_rasmussen_witness(
+      case$witness,
+      par = 0,
+      step0 = case$step0,
+      ls_max_fn = case$ls_max_fn
+    )
+
+    expect_equal(result$par, case$par, info = name)
+    expect_equal(result$f, case$f, info = name)
+    expect_equal(result$g, case$g, info = name)
+    expect_equal(case$witness$fn_par(), case$trace, info = name)
+    expect_equal(case$witness$gr_par(), case$trace, info = name)
+    expect_budget_counts(result, case$witness)
+  }
+})
+
+test_that("Rasmussen rejects equal and nonfinite exhausted trials", {
+  cases <- list(
+    equal = list(
+      witness = make_rasmussen_witness(
+        fn = function(x) (x - 1)^2,
+        gr = function(x) 2 * (x - 1)
+      ),
+      g = -2,
+      trial = 2
+    ),
+    nonfinite_derivative = list(
+      witness = make_rasmussen_witness(
+        fn = function(x) 1 - x,
+        gr = function(x) if (x == 0) -1 else Inf
+      ),
+      g = -1,
+      trial = 1
+    )
+  )
+
+  for (name in names(cases)) {
+    case <- cases[[name]]
+    witness <- case$witness
+    result <- run_rasmussen_witness(witness, par = 0)
+
+    expect_equal(result$par, 0, info = name)
+    expect_equal(result$f, 1, info = name)
+    expect_equal(result$g, case$g, info = name)
+    expect_equal(witness$fn_par(), c(0, case$trial), info = name)
+    expect_equal(witness$gr_par(), c(0, case$trial), info = name)
+    expect_budget_counts(result, witness)
   }
 })
 
