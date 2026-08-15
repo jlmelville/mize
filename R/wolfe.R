@@ -311,7 +311,7 @@ line_search <- function(
       pm <- stage$direction$value
       if (norm2(pm) < .Machine$double.eps) {
         sub_stage$value <- 0
-        if (is_last_stage(opt, stage)) {
+        if (is_last_stage(opt, stage) && has_fn_curr(opt, iter)) {
           opt <- set_fn_new(opt, opt$cache$fn_curr, iter)
         }
         return(list(opt = opt, sub_stage = sub_stage))
@@ -327,8 +327,8 @@ line_search <- function(
       step0 <- list(
         alpha = 0,
         f = f0,
-        df = opt$cache$gr_curr,
-        d = dot(opt$cache$gr_curr, pm)
+        df = get_gr_curr(opt, iter),
+        d = dot(get_gr_curr(opt, iter), pm)
       )
 
       alpha_prev <- sub_stage$value

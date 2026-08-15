@@ -23,7 +23,11 @@ attr(require_gradient, "name") <- "gradient"
 
 # Caches the gradient at the current step.
 require_gradient_old <- function(opt, par, fg, iter, par0, update) {
-  opt$cache$gr_old <- opt$cache$gr_curr
+  if (has_gr_curr(opt, iter)) {
+    opt$cache$gr_old <- opt$cache$gr_curr
+  } else {
+    opt$cache$gr_old <- NULL
+  }
   opt
 }
 attr(require_gradient_old, "event") <- "after step"

@@ -62,11 +62,11 @@ opt_loop <- function(
   best_fn <- Inf
   best_grn <- Inf
   best_par <- NULL
-  if (!is.null(opt$cache$fn_curr)) {
+  if (has_fn_curr(opt, opt$iter + 1)) {
     best_crit <- "fn"
     best_fn <- opt$cache$fn_curr
     best_par <- par
-  } else if (!is.null(opt$cache$gr_curr)) {
+  } else if (has_gr_curr(opt, opt$iter + 1)) {
     best_crit <- "gr"
     best_grn <- norm_inf(opt$cache$gr_curr)
     best_par <- par
@@ -162,11 +162,43 @@ opt_loop <- function(
 
   restored_best <- FALSE
 
+  current_is_best <- FALSE
+  if (identical(best_crit, "fn")) {
+    if (has_fn_curr(opt, opt$iter + 1)) {
+      current_fn <- opt$cache$fn_curr
+    } else {
+      step_info <- mize_step_summary(opt, par, fg, par0, calc_fn = TRUE)
+      opt <- step_info$opt
+      current_fn <- step_info$f
+      last_f <- current_fn
+    }
+    if (isTRUE(current_fn < best_fn)) {
+      best_fn <- current_fn
+      best_par <- par
+    }
+    current_is_best <- isTRUE(best_fn == current_fn)
+  } else if (identical(best_crit, "gr")) {
+    if (has_gr_curr(opt, opt$iter + 1)) {
+      current_grn <- norm_inf(opt$cache$gr_curr)
+    } else {
+      step_info <- mize_step_summary(opt, par, fg, par0, calc_gr = TRUE)
+      opt <- step_info$opt
+      current_grn <- step_info$ginfn
+      if (!is.null(step_info$f)) {
+        last_f <- step_info$f
+      }
+    }
+    if (isTRUE(current_grn < best_grn)) {
+      best_grn <- current_grn
+      best_par <- par
+    }
+    current_is_best <- isTRUE(best_grn == current_grn)
+  }
+
   # If we were keeping track of the best result and that's not currently par:
   if (
     !is.null(best_par) &&
-      ((best_crit == "fn" && best_fn != opt$cache$fn_curr) ||
-        (best_crit == "gr" && best_grn != norm_inf(opt$cache$gr_curr)))
+      !current_is_best
   ) {
     restored_best <- TRUE
     par <- best_par
@@ -176,6 +208,7 @@ opt_loop <- function(
     }
     # recalculate result for this iteration
     step_info <- mize_step_summary(opt, par, fg, par0)
+    opt <- step_info$opt
     if (verbose) {
       message("Returning best result found")
     }
@@ -589,4 +622,19 @@ has_gr_curr <- function(opt, iter) {
   (!is.null(gr_curr) &&
     !is.null(gr_curr_iter) &&
     gr_curr_iter == iter)
+}
+
+# Return cached current values only when they belong to the expected iteration.
+get_fn_curr <- function(opt, iter) {
+  if (!has_fn_curr(opt, iter)) {
+    stop("No current function value cached for iteration ", iter, call. = FALSE)
+  }
+  opt$cache$fn_curr
+}
+
+get_gr_curr <- function(opt, iter) {
+  if (!has_gr_curr(opt, iter)) {
+    stop("No current gradient cached for iteration ", iter, call. = FALSE)
+  }
+  opt$cache$gr_curr
 }

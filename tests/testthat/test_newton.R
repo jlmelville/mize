@@ -239,7 +239,7 @@ test_that("Newton safe Cholesky path repairs indefinite Hessians", {
       matrix(c(1, 0, 0, -1), nrow = 2)
     }
   )
-  opt <- list(cache = list(gr_curr = gradient))
+  opt <- list(cache = list(gr_curr = gradient, gr_curr_iter = 1))
 
   safe_direction <- newton_direction(try_safe_chol = TRUE)
   safe_res <- safe_direction$calculate(

@@ -40,8 +40,8 @@ check_counts <- function(opt, max_fn, max_gr, max_fg) {
 # any element of the gradient vector is not finite. Requires the gradient
 # have already been calculated - this routine does NOT calculate it if it's
 # not present
-check_gr_conv <- function(opt, grad_tol, ginf_tol) {
-  if (is.null(opt$cache$gr_curr)) {
+check_gr_conv <- function(opt, iter, grad_tol, ginf_tol) {
+  if (!has_gr_curr(opt, iter)) {
     return()
   }
 

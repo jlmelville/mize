@@ -186,7 +186,7 @@ backtracking <- function(
           f0 <- opt$fn
         }
 
-        d0 <- dot(opt$cache$gr_curr, pm)
+        d0 <- dot(get_gr_curr(opt, iter), pm)
 
         max_fn <- max_fn_per_ls(opt, max_fn)
         alpha <- sub_stage$value

@@ -21,7 +21,7 @@ sd_direction <- function(normalize = FALSE) {
       list(opt = opt)
     },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
-      sub_stage$value <- -opt$cache$gr_curr
+      sub_stage$value <- -get_gr_curr(opt, iter)
 
       if (sub_stage$normalize) {
         sub_stage$value <- normalize(sub_stage$value)

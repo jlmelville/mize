@@ -38,7 +38,7 @@ cg_direction <- function(
       list(opt = opt, sub_stage = sub_stage)
     },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
-      gm <- opt$cache$gr_curr
+      gm <- get_gr_curr(opt, iter)
       gm_old <- opt$cache$gr_old
       pm_old <- sub_stage$pm_old
 

@@ -71,6 +71,9 @@ if \code{fg} and \code{par} are available when calling
 \code{\link[=make_mize]{make_mize()}}, they can be passed to that function and the returned
 optimizer will already be initialized. \code{\link[=mize_step]{mize_step()}} requires an
 initialized optimizer and does not carry out initialization itself.
+Reinitialization resets the iteration counter and transient algorithm state,
+but preserves accumulated function and gradient evaluation counts and
+explicitly registered custom hooks.
 
 Optional convergence parameters may also be passed here, for use with
 \code{\link[=check_mize_convergence]{check_mize_convergence()}}. They are optional if you do your own

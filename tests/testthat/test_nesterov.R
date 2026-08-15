@@ -125,3 +125,40 @@ test_that("NAG with constant step size force gradient descent first iteration", 
     tolerance = 1e-3
   )
 })
+
+test_that("Nesterov-first summaries count every gradient callback", {
+  calls <- 0
+  fg <- list(
+    fn = function(x) sum(x^2),
+    gr = function(x) {
+      calls <<- calls + 1
+      2 * x
+    }
+  )
+  opt <- make_opt(make_stages(
+    momentum_stage(
+      direction = momentum_direction(),
+      step_size = constant_step_size(0.5)
+    ),
+    gradient_stage(
+      direction = sd_direction(),
+      step_size = constant_step_size(0.1)
+    )
+  ))
+  opt <- mize_init(
+    opt,
+    c(1),
+    fg,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL
+  )
+
+  first <- mize_step_summary(opt, c(1), fg, calc_gr = TRUE)
+  second <- mize_step_summary(first$opt, c(1), fg, calc_gr = TRUE)
+
+  expect_equal(calls, 2)
+  expect_equal(first$ng, 1)
+  expect_equal(second$ng, 2)
+  expect_false(has_gr_curr(second$opt, 1))
+})

@@ -303,6 +303,76 @@ test_that("adaptive restart replaces update_old hook behavior", {
   expect_equal(accepted$cache$update_old, -0.2)
 })
 
+test_that("reinitialization resets algorithm state and preserves custom hooks", {
+  fg <- state_hook_quadratic()
+  opt <- make_mize(
+    method = "BFGS",
+    line_search = "constant",
+    step0 = 0.1,
+    par = c(1),
+    fg = fg,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL
+  )
+
+  custom_hook <- make_trace_opt_hook("custom_before_step", "before step")
+  opt <- register_hook(opt, custom_hook)
+
+  first <- mize_step(opt, c(1), fg)
+  second <- mize_step(first$opt, first$par, fg)
+  expect_false(isTRUE(all.equal(
+    second$opt$stages$gradient_descent$direction$hm,
+    matrix(1)
+  )))
+
+  counts <- second$opt$counts
+  opt <- mize_init(second$opt, c(1), fg)
+
+  expect_equal(opt$counts, counts)
+  expect_equal(opt$stages$gradient_descent$direction$hm, matrix(1))
+  expect_equal(
+    names(opt$hooks$step$before)[
+      names(opt$hooks$step$before) == "custom_before_step"
+    ],
+    "custom_before_step"
+  )
+
+  third <- mize_step(opt, c(1), fg)
+  expect_equal(
+    third$opt$trace,
+    rep("custom_before_step", 3)
+  )
+})
+
+test_that("reinitialization clears adaptive restart timing", {
+  fg <- state_hook_quadratic()
+  opt <- make_mize(
+    method = "MOM",
+    line_search = "constant",
+    step0 = 0.1,
+    mom_schedule = 0.5,
+    restart = "speed",
+    restart_wait = 1,
+    par = c(1),
+    fg = fg,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL
+  )
+
+  first <- mize_step(opt, c(1), fg)
+  second <- mize_step(first$opt, first$par, fg)
+  third <- mize_step(second$opt, second$par, fg)
+  expect_equal(third$opt$restart_at, 3)
+
+  opt <- mize_init(third$opt, c(1), fg)
+
+  expect_null(opt$restart_at)
+  expect_equal(opt$cache$update_old, 0)
+  expect_equal(opt$stages$momentum$step_size$t, 1)
+})
+
 test_that("eager updates expose per-stage parameters and summed validation update", {
   fg <- state_hook_quadratic()
 

@@ -73,7 +73,7 @@ delta_bar_delta <- function(
       list(sub_stage = sub_stage)
     },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
-      delta <- opt$cache$gr_curr
+      delta <- get_gr_curr(opt, iter)
 
       if (!is.numeric(sub_stage$epsilon)) {
         d0 <- dot(delta, stage$direction$value)

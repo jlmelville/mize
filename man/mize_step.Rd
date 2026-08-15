@@ -22,10 +22,10 @@ argument. Should be passed as the \code{opt} argument in the next iteration.
 \item \code{par}: Updated version of the parameters passed to the
 \code{par} argument. Should be passed as the \code{par} argument in the next
 iteration.
-\item \code{nf}: Running total number of function evaluations carried out
-since iteration 1.
-\item \code{ng}: Running total number of gradient evaluations carried out
-since iteration 1.
+\item \code{nf}: Total number of function evaluations over the optimizer's lifetime.
+This count persists across \code{\link[=mize_init]{mize_init()}} calls.
+\item \code{ng}: Total number of gradient evaluations over the optimizer's lifetime.
+This count persists across \code{\link[=mize_init]{mize_init()}} calls.
 \item \code{f}: Optional. The new value of the function, evaluated at the
 returned value of \code{par}. Only present if calculated as part of the
 optimization step (e.g. during a line search calculation).

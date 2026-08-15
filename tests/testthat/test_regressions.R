@@ -544,6 +544,84 @@ test_that("best gradient restore does not cache an infinite function value", {
   expect_equal(res$par, 1.028033, tolerance = 1e-6)
 })
 
+test_that("mize restores the initial point after a worsening constant step", {
+  quadratic_fg <- list(
+    fn = function(x) sum(x^2),
+    gr = function(x) 2 * x
+  )
+
+  res <- mize(
+    c(1),
+    quadratic_fg,
+    method = "SD",
+    line_search = "constant",
+    step0 = 2,
+    max_iter = 1,
+    check_conv_every = 2,
+    store_progress = TRUE,
+    abs_tol = 0,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    step_tol = NULL
+  )
+
+  expect_equal(res$par, 1)
+  expect_equal(res$f, 1)
+  expect_equal(res$best_par, 1)
+  expect_equal(res$best_f, 1)
+  expect_equal(res$last_par, -3)
+  expect_equal(res$last_f, 9)
+})
+
+test_that("stale current caches do not corrupt best-result tracking", {
+  quadratic_fg <- list(
+    fn = function(x) sum(x^2),
+    gr = function(x) 2 * x
+  )
+
+  stale_opts <- list(
+    function(opt) {
+      opt$cache$fn_curr <- -100
+      opt$cache$fn_curr_iter <- "invalid"
+      opt
+    },
+    function(opt) {
+      opt$cache$gr_curr <- 0
+      opt$cache$gr_curr_iter <- "invalid"
+      opt
+    }
+  )
+
+  for (make_stale in stale_opts) {
+    opt <- make_mize(
+      method = "SD",
+      line_search = "constant",
+      step0 = 0.1,
+      abs_tol = NULL,
+      rel_tol = NULL,
+      grad_tol = NULL,
+      step_tol = NULL
+    )
+    opt <- mize_init(opt, c(1), quadratic_fg)
+    opt <- make_stale(opt)
+
+    res <- opt_loop(
+      opt,
+      c(1),
+      quadratic_fg,
+      max_iter = 1,
+      check_conv_every = NULL,
+      abs_tol = NULL,
+      rel_tol = NULL,
+      grad_tol = NULL,
+      step_tol = NULL
+    )
+
+    expect_equal(res$par, 0.8)
+    expect_equal(res$f, 0.64)
+  }
+})
+
 test_that("mize_step_summary can force gradient norm calculation", {
   quadratic_fg <- list(
     fn = function(x) {

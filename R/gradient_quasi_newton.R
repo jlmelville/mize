@@ -52,7 +52,7 @@ bfgs_direction <- function(eps = .Machine$double.eps, scale_inverse = FALSE) {
       list(opt = opt, sub_stage = sub_stage)
     },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
-      gm <- opt$cache$gr_curr
+      gm <- get_gr_curr(opt, iter)
       gm_old <- opt$cache$gr_old
       if (!is.null(gm_old)) {
         sm <- opt$cache$update_old
@@ -161,7 +161,7 @@ sr1_direction <- function(
       list(opt = opt, sub_stage = sub_stage)
     },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
-      gm <- opt$cache$gr_curr
+      gm <- get_gr_curr(opt, iter)
       gm_old <- opt$cache$gr_old
       has_secant_pair <- !is.null(gm_old)
       if (has_secant_pair) {
@@ -390,7 +390,7 @@ lbfgs_direction <- function(
     eps = eps,
     init = lbfgs_init,
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
-      gm <- opt$cache$gr_curr
+      gm <- get_gr_curr(opt, iter)
       gm_old <- opt$cache$gr_old
 
       if (is.null(gm_old)) {

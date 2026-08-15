@@ -33,10 +33,10 @@
 #' * `par`: Updated version of the parameters passed to the
 #'  `par` argument. Should be passed as the `par` argument in the next
 #'  iteration.
-#' * `nf`: Running total number of function evaluations carried out
-#'  since iteration 1.
-#' * `ng`: Running total number of gradient evaluations carried out
-#'  since iteration 1.
+#' * `nf`: Total number of function evaluations over the optimizer's lifetime.
+#'  This count persists across [mize_init()] calls.
+#' * `ng`: Total number of gradient evaluations over the optimizer's lifetime.
+#'  This count persists across [mize_init()] calls.
 #' * `f`: Optional. The new value of the function, evaluated at the
 #'  returned value of `par`. Only present if calculated as part of the
 #'  optimization step (e.g. during a line search calculation).
@@ -74,6 +74,13 @@
 #' }
 #' @export
 mize_step <- function(opt, par, fg) {
+  if (!isTRUE(opt$is_initialized)) {
+    stop(
+      "mize_step() requires an initialized optimizer; call mize_init() first",
+      call. = FALSE
+    )
+  }
+
   opt$iter <- opt$iter + 1
   iter <- opt$iter
   opt <- life_cycle_hook("step", "before", opt, par, fg, iter)
@@ -182,6 +189,9 @@ mize_step <- function(opt, par, fg) {
 #' [make_mize()], they can be passed to that function and the returned
 #' optimizer will already be initialized. [mize_step()] requires an
 #' initialized optimizer and does not carry out initialization itself.
+#' Reinitialization resets the iteration counter and transient algorithm state,
+#' but preserves accumulated function and gradient evaluation counts and
+#' explicitly registered custom hooks.
 #'
 #' Optional convergence parameters may also be passed here, for use with
 #' [check_mize_convergence()]. They are optional if you do your own
@@ -261,40 +271,52 @@ mize_init <- function(
   ginf_tol = NULL,
   step_tol = NULL
 ) {
+  supplied <- list(
+    max_iter = !missing(max_iter),
+    max_fn = !missing(max_fn),
+    max_gr = !missing(max_gr),
+    max_fg = !missing(max_fg),
+    abs_tol = !missing(abs_tol),
+    rel_tol = !missing(rel_tol) || !missing(abs_tol),
+    grad_tol = !missing(grad_tol),
+    ginf_tol = !missing(ginf_tol),
+    step_tol = !missing(step_tol)
+  )
+  values <- list(
+    max_iter = max_iter,
+    max_fn = max_fn,
+    max_gr = max_gr,
+    max_fg = max_fg,
+    abs_tol = abs_tol,
+    rel_tol = rel_tol,
+    grad_tol = grad_tol,
+    ginf_tol = ginf_tol,
+    step_tol = step_tol
+  )
+
   opt <- register_hooks(opt)
   opt$iter <- 0
-  opt <- life_cycle_hook("opt", "init", opt, par, fg, opt$iter)
+  opt$is_initialized <- FALSE
+  opt$terminate <- NULL
+  opt$is_terminated <- FALSE
+  opt$converged <- NULL
+  opt$status <- NULL
+  opt$message <- NULL
+  opt$ok <- NULL
+  opt$restart_at <- NULL
+
   if (is.null(opt$convergence)) {
     opt$convergence <- list()
   }
-  if (is.null(opt$convergence$max_iter)) {
-    opt$convergence$max_iter <- max_iter
+  for (name in names(values)) {
+    if (supplied[[name]] || !(name %in% names(opt$convergence))) {
+      opt$convergence[name] <- values[name]
+    }
   }
-  if (is.null(opt$convergence$max_fn)) {
-    opt$convergence$max_fn <- max_fn
-  }
-  if (is.null(opt$convergence$max_gr)) {
-    opt$convergence$max_gr <- max_gr
-  }
-  if (is.null(opt$convergence$max_fg)) {
-    opt$convergence$max_fg <- max_fg
-  }
-  if (is.null(opt$convergence$abs_tol)) {
-    opt$convergence$abs_tol <- abs_tol
-  }
-  if (is.null(opt$convergence$rel_tol)) {
-    opt$convergence$rel_tol <- rel_tol
-  }
-  if (is.null(opt$convergence$grad_tol)) {
-    opt$convergence$grad_tol <- grad_tol
-  }
-  if (is.null(opt$convergence$ginf_tol)) {
-    opt$convergence$ginf_tol <- ginf_tol
-  }
-  if (is.null(opt$convergence$step_tol)) {
-    opt$convergence$step_tol <- step_tol
-  }
+  opt$convergence$fn_new <- NULL
+
   opt <- opt_clear_cache(opt)
+  opt <- life_cycle_hook("opt", "init", opt, par, fg, opt$iter)
   opt$is_initialized <- TRUE
   opt
 }

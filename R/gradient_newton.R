@@ -8,7 +8,7 @@ newton_direction <- function(try_safe_chol = FALSE) {
       list(opt = opt)
     },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
-      gm <- opt$cache$gr_curr
+      gm <- get_gr_curr(opt, iter)
 
       if (!is.null(fg$hs)) {
         # B, an approximation to the (or the exact) Hessian
@@ -83,7 +83,7 @@ partial_hessian_direction <- function(hessian_every = 0) {
         sub_stage$rm <- chol(hm)
       }
 
-      gm <- opt$cache$gr_curr
+      gm <- get_gr_curr(opt, iter)
       rm <- sub_stage$rm
       pm <- hessian_solve(rm, gm)
 
@@ -187,7 +187,7 @@ tn_direction <- function(
       list(sub_stage = sub_stage)
     },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
-      gm <- opt$cache$gr_curr
+      gm <- get_gr_curr(opt, iter)
 
       precondition_fn <- NULL
       # In the context of non-linear CG, Hager and Zhang (2006) mention

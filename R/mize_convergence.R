@@ -124,9 +124,11 @@ mize_step_summary <- function(
   if (calc_gr || has_gr_curr(opt, iter + 1)) {
     if (!has_gr_curr(opt, iter + 1)) {
       g <- fg$gr(par)
-      if (grad_is_first_stage(opt) && count_fg) {
-        opt <- set_gr_curr(opt, g, iter + 1)
+      if (count_fg) {
         opt$counts$gr <- opt$counts$gr + 1
+        if (grad_is_first_stage(opt)) {
+          opt <- set_gr_curr(opt, g, iter + 1)
+        }
       }
     } else {
       g <- opt$cache$gr_curr
@@ -249,12 +251,17 @@ check_mize_convergence <- function(mize_step_info) {
     return(set_mize_termination(opt, terminate))
   }
 
-  terminate <- check_gr_conv(opt, convergence$grad_tol, convergence$ginf_tol)
+  terminate <- check_gr_conv(
+    opt,
+    opt$iter + 1,
+    convergence$grad_tol,
+    convergence$ginf_tol
+  )
   if (!is.null(terminate)) {
     return(set_mize_termination(opt, terminate))
   }
 
-  if (!is.null(opt$cache$fn_curr)) {
+  if (has_fn_curr(opt, opt$iter + 1)) {
     fn_new <- opt$cache$fn_curr
     fn_old <- convergence$fn_new
     convergence$fn_new <- fn_new
@@ -273,7 +280,10 @@ check_mize_convergence <- function(mize_step_info) {
     }
   }
 
-  if (opt$iter == convergence$max_iter) {
+  if (
+    !is.null(convergence$max_iter) &&
+      opt$iter >= convergence$max_iter
+  ) {
     opt <- set_mize_termination(
       opt,
       list(what = "max_iter", val = convergence$max_iter)
