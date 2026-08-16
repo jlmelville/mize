@@ -9,8 +9,6 @@ linters: linters_with_tags(
 exclusions: list(
     "vignettes",
     "man",
-    "NAMESPACE",
-    "R/RcppExports.R",
-    "src/RcppExports.cpp"
+    "NAMESPACE"
   )
 encoding: "UTF-8"
