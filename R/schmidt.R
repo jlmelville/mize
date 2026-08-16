@@ -7,64 +7,52 @@
 # Uses the default line search settings: cubic interpolation/extrapolation
 # Falling back to Armijo backtracking (also using cubic interpolation) if
 # a non-legal value is found
-schmidt <- function(
-  c1 = c2 / 2,
-  c2 = 0.1,
-  max_fn = Inf,
-  eps = 1e-6,
-  strong_curvature = TRUE,
-  approx_armijo = FALSE
+schmidt_core <- function(
+  evaluator,
+  initial_point,
+  initial_alpha,
+  condition_policy,
+  direction,
+  options
 ) {
-  if (c2 < c1) {
-    stop("schmidt line search: c2 < c1")
-  }
-  function(
-    phi,
-    step0,
-    alpha,
-    total_max_fn = Inf,
-    total_max_gr = Inf,
-    total_max_fg = Inf,
-    pm
+  evaluator_state <- environment(evaluator)
+  result <- WolfeLineSearch(
+    alpha = initial_alpha,
+    f = initial_point$value,
+    g = initial_point$gradient,
+    gtd = initial_point$slope,
+    c1 = condition_policy$armijo_constant,
+    c2 = condition_policy$curvature_constant,
+    LS_interp = 2,
+    LS_multi = 0,
+    maxLS = max(
+      0,
+      evaluator_state$max_evaluations - evaluator_state$evaluation_count
+    ),
+    funObj = evaluator,
+    varargin = NULL,
+    pnorm_inf = max(abs(direction)),
+    progTol = 1e-9,
+    armijo_check_fn = condition_policy$armijo,
+    curvature_check_fn = condition_policy$curvature,
+    debug = isTRUE(options$verbose)
+  )
+  termination_reason <- if (result$accepted) {
+    "wolfe"
+  } else if (
+    evaluator_state$evaluation_count >= evaluator_state$max_evaluations
   ) {
-    maxfev <- min(max_fn, total_max_fn, total_max_gr, floor(total_max_fg / 2))
-    if (maxfev <= 0) {
-      return(list(step = step0, nfn = 0, ngr = 0))
-    }
-
-    if (approx_armijo) {
-      armijo_check_fn <- make_approx_armijo_ok_step(eps)
-    } else {
-      armijo_check_fn <- armijo_ok_step
-    }
-
-    if (strong_curvature) {
-      curvature_check_fn <- strong_curvature_ok_step
-    } else {
-      curvature_check_fn <- curvature_ok_step
-    }
-
-    res <- WolfeLineSearch(
-      alpha = alpha,
-      f = step0$f,
-      g = step0$df,
-      gtd = step0$d,
-      c1 = c1,
-      c2 = c2,
-      LS_interp = 2,
-      LS_multi = 0,
-      maxLS = maxfev,
-      funObj = phi,
-      varargin = NULL,
-      pnorm_inf = max(abs(pm)),
-      progTol = 1e-9,
-      armijo_check_fn = armijo_check_fn,
-      curvature_check_fn = curvature_check_fn,
-      debug = FALSE
-    )
-    res$ngr <- res$nfn
-    res
+    "budget_exhausted"
+  } else if (evaluator_state$recovered_nonfinite) {
+    "nonfinite_recovery"
+  } else {
+    "progress_failure"
   }
+  list(
+    candidate = result$step,
+    termination_reason = termination_reason,
+    gradient_is_current = result$is_gr_curr
+  )
 }
 
 # step_down if non-NULL, multiply the step size by this value when backtracking
@@ -270,18 +258,21 @@ WolfeLineSearch <-
       }
       remaining <- maxLS - funEvals
       if (remaining <= 0) {
+        safe_step <- schmidt_wolfe_safe_step(
+          bracket_step,
+          step0,
+          c1,
+          c2,
+          armijo_check_fn,
+          curvature_check_fn
+        )
         return(list(
-          step = schmidt_wolfe_safe_step(
-            bracket_step,
-            step0,
-            c1,
-            c2,
-            armijo_check_fn,
-            curvature_check_fn
-          ),
+          step = safe_step,
           nfn = funEvals,
           ngr = funEvals,
-          is_gr_curr = TRUE
+          is_gr_curr = TRUE,
+          accepted = isTRUE(armijo_check_fn(step0, safe_step, c1)) &&
+            isTRUE(curvature_check_fn(step0, safe_step, c2))
         ))
       }
 
@@ -304,6 +295,7 @@ WolfeLineSearch <-
 
       armijo_res$nfn <- armijo_res$nfn + funEvals
       armijo_res$ngr <- armijo_res$ngr + funEvals
+      armijo_res$accepted <- FALSE
       return(armijo_res)
     }
 
@@ -330,9 +322,15 @@ WolfeLineSearch <-
 
       funEvals <- funEvals + zoom_res$funEvals
       bracket_step <- zoom_res$bracket
+      done <- zoom_res$done
     }
 
-    list(step = best_bracket_step(bracket_step), nfn = funEvals, ngr = funEvals)
+    list(
+      step = best_bracket_step(bracket_step),
+      nfn = funEvals,
+      ngr = funEvals,
+      accepted = done
+    )
   }
 
 # Change from original: maxLS refers to maximum allowed funEvals, not LS iters
@@ -643,7 +641,7 @@ schmidt_zoom <- function(
       message("Line Search Exceeded Maximum Function Evaluations")
     }
   }
-  list(bracket = bracket_step, funEvals = funEvals)
+  list(bracket = bracket_step, funEvals = funEvals, done = done)
 }
 
 # Backtracking linesearch to satisfy Armijo condition

@@ -34,14 +34,17 @@ more_thuente_ls <- function(
   max_ls_fn <- min(max_fn, max_gr, floor(max_fg / 2))
 
   line_search(
-    more_thuente(
-      c1 = c1,
-      c2 = c2,
-      alpha_max = max_alpha,
-      max_fn = max_ls_fn,
+    new_wolfe_line_search(
+      core = more_thuente_core,
+      armijo_constant = c1,
+      curvature_constant = c2,
+      max_evaluations = max_ls_fn,
       strong_curvature = strong_curvature,
-      approx_armijo = approx_armijo,
-      safeguard_cubic = safeguard_cubic
+      approximate_armijo = approx_armijo,
+      options = list(
+        alpha_max = max_alpha,
+        safeguard_cubic = safeguard_cubic
+      )
     ),
     name = "more-thuente",
     max_alpha_mult = max_alpha_mult,
@@ -86,14 +89,18 @@ rasmussen_ls <- function(
   max_ls_fn <- min(max_fn, max_gr, floor(max_fg / 2))
 
   line_search(
-    rasmussen(
-      c1 = c1,
-      c2 = c2,
-      int = int,
-      ext = ext,
-      max_fn = max_ls_fn,
+    new_wolfe_line_search(
+      core = rasmussen_core,
+      armijo_constant = c1,
+      curvature_constant = c2,
+      max_evaluations = max_ls_fn,
       strong_curvature = strong_curvature,
-      approx_armijo = approx_armijo
+      approximate_armijo = approx_armijo,
+      options = list(
+        interior_fraction = int,
+        expansion_factor = ext,
+        relative_interval_tolerance = 1e-6
+      )
     ),
     name = "rasmussen",
     max_alpha_mult = max_alpha_mult,
@@ -137,12 +144,13 @@ schmidt_ls <- function(
   max_ls_fn <- min(max_fn, max_gr, floor(max_fg / 2))
 
   line_search(
-    schmidt(
-      c1 = c1,
-      c2 = c2,
-      max_fn = max_ls_fn,
+    new_wolfe_line_search(
+      core = schmidt_core,
+      armijo_constant = c1,
+      curvature_constant = c2,
+      max_evaluations = max_ls_fn,
       strong_curvature = strong_curvature,
-      approx_armijo = approx_armijo
+      approximate_armijo = approx_armijo
     ),
     name = "schmidt",
     max_alpha_mult = max_alpha_mult,
@@ -541,12 +549,23 @@ make_phi_alpha <- function(
 # * `nfn`: Number of function evaluations.
 # * `ok`: If a valid step was found.
 find_finite <- function(phi, alpha, min_alpha = 0, max_fn = 20) {
-  nfn <- 0
+  evaluator <- attr(phi, "line_evaluator")
+  if (!is.null(evaluator)) {
+    evaluator_state <- environment(evaluator)
+    max_fn <- min(
+      max_fn,
+      max(
+        0,
+        evaluator_state$max_evaluations - evaluator_state$evaluation_count
+      )
+    )
+  }
+  nfn <- 0L
   ok <- FALSE
   step <- NULL
   while (nfn < max_fn && alpha >= min_alpha) {
     step <- phi(alpha)
-    nfn <- nfn + 1
+    nfn <- nfn + 1L
     if (step_is_finite(step)) {
       ok <- TRUE
       break

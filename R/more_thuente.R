@@ -2,18 +2,7 @@
 #
 # Combination of the cvsrch and cstep matlab files.
 #
-# Line Search Factory Function
-#
-# Returns a line search function using a variant of the More-Thuente
-#  line search originally implemented in
-#  [MINPACK](http://www.netlib.org/minpack/).
-#
-# @param c1 Constant used in sufficient decrease condition. Should take a value
-#   between 0 and 1.
-# @param c2 Constant used in curvature condition. Should take a value between
-#   `c1` and 1.
-# @param max_fn Maximum number of function evaluations allowed.
-# @return Line search function.
+# Adapter from the shared Wolfe substrate to the More-Thuente transition.
 # @references
 # More, J. J., & Thuente, D. J. (1994).
 # Line search algorithms with guaranteed sufficient decrease.
@@ -22,57 +11,43 @@
 # @seealso This code is based on a translation of the original MINPACK code
 #  for Matlab by
 #  [Dianne O'Leary](http://www.cs.umd.edu/users/oleary/software/).
-more_thuente <- function(
-  c1 = 1e-4,
-  c2 = 0.1,
-  max_fn = Inf,
-  eps = 1e-6,
-  alpha_max = Inf,
-  approx_armijo = FALSE,
-  strong_curvature = TRUE,
-  safeguard_cubic = FALSE,
-  verbose = FALSE
+more_thuente_core <- function(
+  evaluator,
+  initial_point,
+  initial_alpha,
+  condition_policy,
+  direction,
+  options
 ) {
-  if (approx_armijo) {
-    armijo_check_fn <- make_approx_armijo_ok_step(eps)
-  } else {
-    armijo_check_fn <- armijo_ok_step
-  }
-
-  wolfe_ok_step_fn <- make_wolfe_ok_step_fn(
-    strong_curvature = strong_curvature,
-    approx_armijo = approx_armijo,
-    eps = eps
+  evaluator_state <- environment(evaluator)
+  result <- cvsrch(
+    evaluator,
+    evaluator_state$initial_step,
+    alpha = initial_alpha,
+    c1 = condition_policy$armijo_constant,
+    c2 = condition_policy$curvature_constant,
+    maxfev = max(
+      0,
+      evaluator_state$max_evaluations - evaluator_state$evaluation_count
+    ),
+    alpha_max = options$alpha_max,
+    armijo_check_fn = condition_policy$armijo,
+    wolfe_ok_step_fn = condition_policy$wolfe,
+    safeguard_cubic = options$safeguard_cubic,
+    verbose = isTRUE(options$verbose)
   )
 
-  function(
-    phi,
-    step0,
-    alpha,
-    total_max_fn = Inf,
-    total_max_gr = Inf,
-    total_max_fg = Inf,
-    pm = NULL
-  ) {
-    maxfev <- min(max_fn, total_max_fn, total_max_gr, floor(total_max_fg / 2))
-    if (maxfev <= 0) {
-      return(list(step = step0, nfn = 0, ngr = 0))
-    }
-    res <- cvsrch(
-      phi,
-      step0,
-      alpha = alpha,
-      c1 = c1,
-      c2 = c2,
-      maxfev = maxfev,
-      alpha_max = alpha_max,
-      armijo_check_fn = armijo_check_fn,
-      wolfe_ok_step_fn = wolfe_ok_step_fn,
-      safeguard_cubic = safeguard_cubic,
-      verbose = verbose
-    )
-    list(step = res$step, nfn = res$nfn, ngr = res$nfn)
-  }
+  termination_reason <- switch(
+    as.character(result$info),
+    `1` = "wolfe",
+    `3` = "budget_exhausted",
+    `7` = "nonfinite_recovery",
+    "progress_failure"
+  )
+  list(
+    candidate = result$step,
+    termination_reason = termination_reason
+  )
 }
 
 # More'-Thuente Line Search

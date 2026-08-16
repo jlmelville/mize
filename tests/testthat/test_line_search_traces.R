@@ -30,7 +30,14 @@ record_default_line_search_trace <- function(factory, initial_alpha = 12.5) {
 test_that("default Wolfe search profiles retain their trial traces", {
   cases <- list(
     `more-thuente` = list(
-      factory = more_thuente,
+      factory = function() {
+        new_wolfe_line_search(
+          more_thuente_core,
+          armijo_constant = 1e-4,
+          curvature_constant = 0.1,
+          options = list(alpha_max = Inf, safeguard_cubic = FALSE)
+        )
+      },
       trials = matrix(
         c(12.5, 132.25, 23, 1, 0, 0),
         ncol = 3,
@@ -40,7 +47,18 @@ test_that("default Wolfe search profiles retain their trial traces", {
       callbacks = c(fn = 2, gr = 2)
     ),
     rasmussen = list(
-      factory = rasmussen,
+      factory = function() {
+        new_wolfe_line_search(
+          rasmussen_core,
+          armijo_constant = 0.05,
+          curvature_constant = 0.1,
+          options = list(
+            interior_fraction = 0.1,
+            expansion_factor = 3,
+            relative_interval_tolerance = 1e-6
+          )
+        )
+      },
       trials = matrix(
         c(12.5, 132.25, 23, 1.25, 0.0625, 0.5, 1, 0, 0),
         ncol = 3,
@@ -50,7 +68,13 @@ test_that("default Wolfe search profiles retain their trial traces", {
       callbacks = c(fn = 3, gr = 3)
     ),
     schmidt = list(
-      factory = schmidt,
+      factory = function() {
+        new_wolfe_line_search(
+          schmidt_core,
+          armijo_constant = 0.05,
+          curvature_constant = 0.1
+        )
+      },
       trials = matrix(
         c(12.5, 132.25, 23, 1, 0, 0),
         ncol = 3,

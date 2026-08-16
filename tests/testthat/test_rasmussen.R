@@ -87,7 +87,6 @@ test_that("Rasmussen core condition inputs are explicit", {
 })
 
 test_that("Rasmussen interval tolerance has one effective private owner", {
-  expect_false("xtol" %in% names(formals(rasmussen)))
   expect_false("xtol" %in% names(formals(ras_ls)))
   expect_false("xtol" %in% names(formals(interpolate_step_size)))
   expect_true("relative_interval_tolerance" %in% names(formals(ras_ls)))

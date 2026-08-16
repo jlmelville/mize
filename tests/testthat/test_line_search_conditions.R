@@ -390,9 +390,30 @@ test_that("line searches return the initial step when evaluation budgets are exh
   weak_ok_step <- make_wolfe_ok_step_fn(strong_curvature = FALSE)
 
   wolfe_searches <- list(
-    `more-thuente` = more_thuente(c1 = c1, c2 = c2, max_fn = 0),
-    rasmussen = rasmussen(c1 = c1, c2 = c2, max_fn = 0),
-    schmidt = schmidt(c1 = c1, c2 = c2, max_fn = 0),
+    `more-thuente` = new_wolfe_line_search(
+      more_thuente_core,
+      armijo_constant = c1,
+      curvature_constant = c2,
+      max_evaluations = 0,
+      options = list(alpha_max = Inf, safeguard_cubic = FALSE)
+    ),
+    rasmussen = new_wolfe_line_search(
+      rasmussen_core,
+      armijo_constant = c1,
+      curvature_constant = c2,
+      max_evaluations = 0,
+      options = list(
+        interior_fraction = 0.1,
+        expansion_factor = 3,
+        relative_interval_tolerance = 1e-6
+      )
+    ),
+    schmidt = new_wolfe_line_search(
+      schmidt_core,
+      armijo_constant = c1,
+      curvature_constant = c2,
+      max_evaluations = 0
+    ),
     `hager-zhang` = hager_zhang(c1 = c1, c2 = c2, max_fn = 0)
   )
 

@@ -1,7 +1,5 @@
 # Rasmussen Line Search
 #
-# Line Search Factory Function
-#
 # Line search algorithm originally written by Carl Edward Rasmussen in his
 # conjugate gradient routine. It consists of two main parts:
 #
@@ -16,73 +14,46 @@
 # The extrapolation and interpolation steps are bounded at each stage to ensure
 # they don't represent too large or small a change to the step size.
 #
-# @param c1 Constant used in sufficient decrease condition. Should take a value
-#   between 0 and 1.
-# @param c2 Constant used in curvature condition. Should take a value between
-#   c1 and 1.
-# @param ext Extrapolation constant. Prevents step size extrapolation being
-#   too large.
-# @param int Interpolation constant. Prevents step size being too small.
-# @param max_fn Maximum number of function evaluations allowed per line search.
-# @return Line search function.
 # @seealso based on code written by Carl Edward Rasmussen for the Matlab
 #  [GPML](https://www.gaussianprocess.org/gpml/code/matlab/doc/) package.
-rasmussen <- function(
-  c1 = c2 / 2,
-  c2 = 0.1,
-  int = 0.1,
-  ext = 3.0,
-  max_fn = Inf,
-  eps = 1e-6,
-  approx_armijo = FALSE,
-  strong_curvature = TRUE,
-  verbose = FALSE
+rasmussen_core <- function(
+  evaluator,
+  initial_point,
+  initial_alpha,
+  condition_policy,
+  direction,
+  options
 ) {
-  if (c2 < c1) {
-    stop("rasmussen line search: c2 < c1")
-  }
-
-  if (approx_armijo) {
-    armijo_check_fn <- make_approx_armijo_ok_step(eps)
-  } else {
-    armijo_check_fn <- armijo_ok_step
-  }
-
-  wolfe_ok_step_fn <- make_wolfe_ok_step_fn(
-    strong_curvature = strong_curvature,
-    approx_armijo = approx_armijo,
-    eps = eps
+  evaluator_state <- environment(evaluator)
+  result <- ras_ls(
+    evaluator,
+    initial_alpha,
+    evaluator_state$initial_step,
+    c1 = condition_policy$armijo_constant,
+    c2 = condition_policy$curvature_constant,
+    ext = options$expansion_factor,
+    int = options$interior_fraction,
+    max_fn = max(
+      0,
+      evaluator_state$max_evaluations - evaluator_state$evaluation_count
+    ),
+    relative_interval_tolerance = options$relative_interval_tolerance,
+    armijo_check_fn = condition_policy$armijo,
+    wolfe_ok_step_fn = condition_policy$wolfe,
+    verbose = isTRUE(options$verbose)
   )
-
-  function(
-    phi,
-    step0,
-    alpha,
-    total_max_fn = Inf,
-    total_max_gr = Inf,
-    total_max_fg = Inf,
-    pm = NULL
+  termination_reason <- if (result$accepted) {
+    "wolfe"
+  } else if (
+    evaluator_state$evaluation_count >= evaluator_state$max_evaluations
   ) {
-    maxfev <- min(max_fn, total_max_fn, total_max_gr, floor(total_max_fg / 2))
-    if (maxfev <= 0) {
-      return(list(step = step0, nfn = 0, ngr = 0))
-    }
-
-    res <- ras_ls(
-      phi,
-      alpha,
-      step0,
-      c1 = c1,
-      c2 = c2,
-      ext = ext,
-      int = int,
-      max_fn = maxfev,
-      armijo_check_fn = armijo_check_fn,
-      wolfe_ok_step_fn = wolfe_ok_step_fn,
-      verbose = verbose
-    )
-    list(step = res$step, nfn = res$nfn, ngr = res$nfn)
+    "budget_exhausted"
+  } else if (evaluator_state$recovered_nonfinite) {
+    "nonfinite_recovery"
+  } else {
+    "progress_failure"
   }
+  list(candidate = result$step, termination_reason = termination_reason)
 }
 
 # Rasmussen Line Search
@@ -145,12 +116,13 @@ ras_ls <- function(
   nfn <- ex_result$nfn
   max_fn <- max_fn - nfn
   if (max_fn <= 0) {
+    wolfe_accepted <- wolfe_ok_step_fn(step0, step, c1, c2)
     step_is_safe <- step_is_finite(step) &&
-      (isTRUE(wolfe_ok_step_fn(step0, step, c1, c2)) ||
-        isTRUE(step$f < step0$f))
+      (wolfe_accepted || step$f < step0$f)
     if (!step_is_safe) {
       ex_result$step <- step0
     }
+    ex_result$accepted <- wolfe_accepted
     return(ex_result)
   }
 
@@ -158,7 +130,16 @@ ras_ls <- function(
     if (verbose) {
       message("Bracket phase failed, returning best step")
     }
-    return(list(step = best_bracket_step(list(step0, step))), nfn = nfn)
+    return(list(
+      step = best_bracket_step(list(step0, step)),
+      nfn = nfn,
+      accepted = FALSE
+    ))
+  }
+
+  accepted <- wolfe_ok_step_fn(step0, step, c1, c2)
+  if (accepted) {
+    return(list(step = step, nfn = nfn, accepted = TRUE))
   }
 
   if (verbose) {
@@ -177,6 +158,7 @@ ras_ls <- function(
     relative_interval_tolerance = relative_interval_tolerance,
     armijo_check_fn = armijo_check_fn,
     wolfe_ok_step_fn = wolfe_ok_step_fn,
+    initially_accepted = FALSE,
     verbose = verbose
   )
   if (verbose) {
@@ -309,16 +291,21 @@ interpolate_step_size <- function(
   relative_interval_tolerance = 1e-6,
   armijo_check_fn = armijo_ok_step,
   wolfe_ok_step_fn = strong_wolfe_ok_step,
+  initially_accepted = NULL,
   verbose = FALSE
 ) {
   step2 <- step0
   step3 <- step
   nfn <- 0
+  accepted <- initially_accepted
+  if (is.null(accepted)) {
+    accepted <- wolfe_ok_step_fn(step0, step3, c1, c2)
+  }
   if (verbose) {
     message("Interpolating")
   }
 
-  while (!wolfe_ok_step_fn(step0, step3, c1, c2) && nfn < max_fn) {
+  while (!accepted && nfn < max_fn) {
     if (step3$d > 0 || !armijo_check_fn(step0, step3, c1)) {
       step4 <- step3
     } else {
@@ -370,6 +357,7 @@ interpolate_step_size <- function(
       break
     }
     step3 <- result$step
+    accepted <- wolfe_ok_step_fn(step0, step3, c1, c2)
 
     if (
       bracket_width(list(step2, step4)) <
@@ -386,5 +374,5 @@ interpolate_step_size <- function(
       break
     }
   }
-  list(step = step3, nfn = nfn)
+  list(step = step3, nfn = nfn, accepted = accepted)
 }
