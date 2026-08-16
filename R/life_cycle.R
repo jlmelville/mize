@@ -111,8 +111,6 @@ register_hooks <- function(opt) {
 # The first part is the "advice type": before, after.
 # The second part is the "join point": the life cycle function that is going
 #  to fire.
-# Event can consist of the just the join point, e.g. "init" and the advice
-#   type is then implicitly assumed to be "during".
 register_hook <- function(opt, hook, stage_type = NULL, sub_stage_type = NULL) {
   name <- attr(hook, "name")
   if (is.null(name)) {

@@ -2,24 +2,16 @@
 
 # Conjugate gradient
 #
-# ortho_check - If TRUE, check successive direction are sufficiently orthogonal.
-#   If the orthogonality check is failed, then the next step is steepest descent.
-# nu - the orthogonality threshold. Used only if ortho_check is TRUE. Compared
-#   with g_old . g_new / g_new . g_new
 # cg_update - Function to generate the next direction using a method of e.g.
 #   Fletcher-Reeves or Polak-Ribiere. Pass one of the cg_update functions
 #   below, e.g. pr_plus_update
 cg_direction <- function(
-  ortho_check = FALSE,
-  nu = 0.1,
   cg_update = pr_plus_update,
   preconditioner = "",
   memory = 5,
   eps = .Machine$double.eps
 ) {
   cg <- make_direction(list(
-    ortho_check = ortho_check,
-    nu = nu,
     cg_update = cg_update,
     eps = eps,
     init = function(opt, stage, sub_stage, par, fg, iter) {
@@ -46,11 +38,7 @@ cg_direction <- function(
       pm <- -gm
       # wm = Pg or just g if we're not preconditioning
       wm <- gm
-      if (
-        !is.null(gm_old) &&
-          (!sub_stage$ortho_check ||
-            !sub_stage$cg_restart(gm, gm_old, sub_stage$nu))
-      ) {
+      if (!is.null(gm_old)) {
         precondition_fn <- NULL
         if (preconditioner == "l-bfgs" && !is.null(opt$cache$gr_old)) {
           lbfgs <- sub_stage$preconditioner
@@ -380,17 +368,4 @@ prfr_update <- function(
     stop("Problem in PR-FR Update")
   }
   beta
-}
-
-# Restart criteria due to Powell
-# Checks that successive gradient vectors are sufficiently orthogonal
-# g_new . g_old / g_new . g_new  must be greater than or equal to nu.
-cg_restart <- function(g_new, g_old, nu = 0.1) {
-  # could only happen on first iteration
-  if (is.null(g_old)) {
-    return(TRUE)
-  }
-  ortho_test <- abs(dot(g_new, g_old)) / dot(g_new)
-  should_restart <- ortho_test >= nu
-  should_restart
 }
