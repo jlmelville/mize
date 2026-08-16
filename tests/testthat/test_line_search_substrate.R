@@ -222,13 +222,13 @@ test_that("shared Wolfe core shape retains the public private-boundary result", 
     initial_alpha,
     condition_policy,
     direction,
-    options
+    method_policy
   ) {
     observed <<- list(
       initial_point = initial_point,
       initial_alpha = initial_alpha,
       direction = direction,
-      options = options
+      method_policy = method_policy
     )
     list(
       candidate = evaluate_line_point(evaluator, initial_alpha),
@@ -240,7 +240,7 @@ test_that("shared Wolfe core shape retains the public private-boundary result", 
     armijo_constant = 0.1,
     curvature_constant = 0.5,
     max_evaluations = 2,
-    options = list(method = "test")
+    method_policy = list(method = "test")
   )
   phi <- function(alpha, calc_gradient = TRUE) {
     list(alpha = alpha, f = 0, df = 0, d = 0, par = alpha)
@@ -262,5 +262,20 @@ test_that("shared Wolfe core shape retains the public private-boundary result", 
   expect_equal(result$ngr, 1)
   expect_equal(observed$initial_alpha, 1)
   expect_equal(observed$direction, 3)
-  expect_identical(observed$options, list(method = "test"))
+  expect_identical(observed$method_policy, list(method = "test"))
+})
+
+test_that("supported Wolfe cores share one private signature", {
+  expected <- c(
+    "evaluator",
+    "initial_point",
+    "initial_alpha",
+    "condition_policy",
+    "direction",
+    "method_policy"
+  )
+
+  expect_identical(names(formals(more_thuente_core)), expected)
+  expect_identical(names(formals(rasmussen_core)), expected)
+  expect_identical(names(formals(schmidt_core)), expected)
 })

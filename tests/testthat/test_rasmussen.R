@@ -19,7 +19,7 @@ rls <- function(
     approximation_tolerance = eps,
     approximate_armijo = approx_armijo,
     strong_curvature = strong_curvature,
-    options = new_rasmussen_bracket_zoom_policy(
+    method_policy = new_rasmussen_bracket_zoom_policy(
       relative_interval_tolerance = relative_interval_tolerance
     )
   )
@@ -51,7 +51,6 @@ test_that("Rasmussen proposal policy exposes its mathematical safeguards", {
   )
   proposal <- policy$propose_zoom(state, initial_point)
 
-  expect_identical(policy$profile, "rasmussen")
   expect_equal(policy$expansion_factor, 3)
   expect_equal(policy$interior_fraction, 0.1)
   expect_equal(policy$relative_interval_tolerance, 1e-6)

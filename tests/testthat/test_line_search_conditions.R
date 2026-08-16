@@ -124,7 +124,7 @@ test_that("More-Thuente successful steps satisfy strong Wolfe conditions", {
       armijo_constant = case$c1,
       curvature_constant = case$c2,
       max_evaluations = 10000,
-      options = new_more_thuente_policy()
+      method_policy = new_more_thuente_policy()
     )
     res <- search(
       phi = setup$phi,
@@ -132,9 +132,10 @@ test_that("More-Thuente successful steps satisfy strong Wolfe conditions", {
       alpha = case$alpha,
       pm = setup$pv
     )
+    conditions <- new_line_condition_policy(case$c1, case$c2)
 
     expect_true(
-      strong_wolfe_ok_step(setup$step0, res$step, case$c1, case$c2),
+      conditions$wolfe(setup$step0, res$step),
       info = case$name
     )
   }
@@ -155,7 +156,7 @@ test_that("Rasmussen and Schmidt successful steps satisfy strong Wolfe condition
           armijo_constant = case$c1,
           curvature_constant = case$c2,
           max_evaluations = 10000,
-          options = new_rasmussen_bracket_zoom_policy()
+          method_policy = new_rasmussen_bracket_zoom_policy()
         )(
           phi = setup$phi,
           step0 = setup$step0,
@@ -177,7 +178,7 @@ test_that("Rasmussen and Schmidt successful steps satisfy strong Wolfe condition
           armijo_constant = case$c1,
           curvature_constant = case$c2,
           max_evaluations = 10000,
-          options = new_schmidt_bracket_zoom_policy()
+          method_policy = new_schmidt_bracket_zoom_policy()
         )(
           phi = setup$phi,
           step0 = setup$step0,
@@ -191,9 +192,10 @@ test_that("Rasmussen and Schmidt successful steps satisfy strong Wolfe condition
   for (case in cases) {
     setup <- condition_setup(case$fg, case$x)
     res <- case$run(setup, case)
+    conditions <- new_line_condition_policy(case$c1, case$c2)
 
     expect_true(
-      strong_wolfe_ok_step(setup$step0, res$step, case$c1, case$c2),
+      conditions$wolfe(setup$step0, res$step),
       info = case$name
     )
   }
@@ -204,8 +206,12 @@ test_that("weak Wolfe configuration does not require strong curvature", {
   c2 <- 0.1
   alpha <- 12.5
   setup <- condition_setup(condition_quadratic_fg(), x = 0, pv = 1)
-  weak_ok_step <- make_wolfe_ok_step_fn(strong_curvature = FALSE)
-  strong_ok_step <- make_wolfe_ok_step_fn(strong_curvature = TRUE)
+  weak_conditions <- new_line_condition_policy(
+    c1,
+    c2,
+    strong_curvature = FALSE
+  )
+  strong_conditions <- new_line_condition_policy(c1, c2)
 
   results <- list(
     `more-thuente` = new_wolfe_line_search(
@@ -214,7 +220,7 @@ test_that("weak Wolfe configuration does not require strong curvature", {
       curvature_constant = c2,
       max_evaluations = 100,
       strong_curvature = FALSE,
-      options = new_more_thuente_policy()
+      method_policy = new_more_thuente_policy()
     )(
       phi = setup$phi,
       step0 = setup$step0,
@@ -227,7 +233,7 @@ test_that("weak Wolfe configuration does not require strong curvature", {
       curvature_constant = c2,
       max_evaluations = 100,
       strong_curvature = FALSE,
-      options = new_rasmussen_bracket_zoom_policy()
+      method_policy = new_rasmussen_bracket_zoom_policy()
     )(
       phi = setup$phi,
       step0 = setup$step0,
@@ -240,7 +246,7 @@ test_that("weak Wolfe configuration does not require strong curvature", {
       curvature_constant = c2,
       max_evaluations = 100,
       strong_curvature = FALSE,
-      options = new_schmidt_bracket_zoom_policy()
+      method_policy = new_schmidt_bracket_zoom_policy()
     )(
       phi = setup$phi,
       step0 = setup$step0,
@@ -253,8 +259,8 @@ test_that("weak Wolfe configuration does not require strong curvature", {
     step <- results[[name]]$step
 
     expect_equal(step$alpha, alpha, info = name)
-    expect_true(weak_ok_step(setup$step0, step, c1, c2), info = name)
-    expect_false(strong_ok_step(setup$step0, step, c1, c2), info = name)
+    expect_true(weak_conditions$wolfe(setup$step0, step), info = name)
+    expect_false(strong_conditions$wolfe(setup$step0, step), info = name)
   }
 })
 
@@ -397,7 +403,11 @@ test_that("line searches return the initial step when evaluation budgets are exh
   c2 <- 0.1
   alpha <- 12.5
   setup <- condition_setup(condition_quadratic_fg(), x = 0, pv = 1)
-  weak_ok_step <- make_wolfe_ok_step_fn(strong_curvature = FALSE)
+  weak_conditions <- new_line_condition_policy(
+    c1,
+    c2,
+    strong_curvature = FALSE
+  )
 
   wolfe_searches <- list(
     `more-thuente` = new_wolfe_line_search(
@@ -405,7 +415,7 @@ test_that("line searches return the initial step when evaluation budgets are exh
       armijo_constant = c1,
       curvature_constant = c2,
       max_evaluations = 0,
-      options = new_more_thuente_policy(
+      method_policy = new_more_thuente_policy(
         alpha_max = Inf,
         safeguard_cubic = FALSE
       )
@@ -415,7 +425,7 @@ test_that("line searches return the initial step when evaluation budgets are exh
       armijo_constant = c1,
       curvature_constant = c2,
       max_evaluations = 0,
-      options = new_rasmussen_bracket_zoom_policy(
+      method_policy = new_rasmussen_bracket_zoom_policy(
         interior_fraction = 0.1,
         expansion_factor = 3,
         relative_interval_tolerance = 1e-6
@@ -426,7 +436,7 @@ test_that("line searches return the initial step when evaluation budgets are exh
       armijo_constant = c1,
       curvature_constant = c2,
       max_evaluations = 0,
-      options = new_schmidt_bracket_zoom_policy()
+      method_policy = new_schmidt_bracket_zoom_policy()
     ),
     `hager-zhang` = hager_zhang(c1 = c1, c2 = c2, max_fn = 0)
   )
@@ -442,7 +452,7 @@ test_that("line searches return the initial step when evaluation budgets are exh
     expect_equal(res$nfn, 0, info = name)
     expect_equal(res$ngr, 0, info = name)
     expect_equal(res$step$alpha, 0, info = name)
-    expect_false(weak_ok_step(setup$step0, res$step, c1, c2), info = name)
+    expect_false(weak_conditions$wolfe(setup$step0, res$step), info = name)
   }
 
   armijo_res <- schmidt_armijo_backtrack(c1 = c1, max_fn = 0)(

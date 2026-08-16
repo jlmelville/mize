@@ -2,12 +2,10 @@ test_that("bracket-and-zoom policies expose descriptive supported controls", {
   rasmussen <- new_rasmussen_bracket_zoom_policy()
   schmidt <- new_schmidt_bracket_zoom_policy()
 
-  expect_identical(rasmussen$profile, "rasmussen")
   expect_equal(rasmussen$expansion_factor, 3)
   expect_equal(rasmussen$interior_fraction, 0.1)
   expect_equal(rasmussen$relative_interval_tolerance, 1e-6)
 
-  expect_identical(schmidt$profile, "schmidt")
   expect_equal(schmidt$expansion_factor, 10)
   expect_equal(schmidt$minimum_expansion_fraction, 0.01)
   expect_equal(schmidt$interior_fraction, 0.1)

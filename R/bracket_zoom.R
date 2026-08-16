@@ -23,7 +23,7 @@ run_bracket_zoom <- function(
   initial_alpha,
   condition_policy,
   direction,
-  proposal_policy
+  policy
 ) {
   evaluator_state <- environment(evaluator)
   initial_step <- evaluator_state$initial_step
@@ -36,7 +36,7 @@ run_bracket_zoom <- function(
     recovery <- recover_finite_legacy_step(
       evaluator,
       trial_alpha,
-      minimum_alpha = proposal_policy$expansion_recovery_lower_bound(
+      minimum_alpha = policy$expansion_recovery_lower_bound(
         previous_point,
         expansion_iteration
       )
@@ -54,7 +54,7 @@ run_bracket_zoom <- function(
       evaluator_state$max_evaluations
     if (
       budget_exhausted &&
-        !proposal_policy$classify_final_expansion_trial
+        !policy$classify_final_expansion_trial
     ) {
       return(list(
         candidate = trial_point,
@@ -62,7 +62,7 @@ run_bracket_zoom <- function(
       ))
     }
 
-    expansion <- proposal_policy$classify_expansion(
+    expansion <- policy$classify_expansion(
       initial_step,
       previous_point,
       trial_point,
@@ -86,7 +86,7 @@ run_bracket_zoom <- function(
       break
     }
 
-    trial_alpha <- proposal_policy$propose_expansion(
+    trial_alpha <- policy$propose_expansion(
       initial_step,
       previous_point,
       trial_point
@@ -102,7 +102,7 @@ run_bracket_zoom <- function(
     ))
   }
 
-  zoom_state <- proposal_policy$initialize_zoom(
+  zoom_state <- policy$initialize_zoom(
     initial_step,
     bracket,
     trial_point
@@ -110,19 +110,19 @@ run_bracket_zoom <- function(
   direction_scale <- max(abs(direction))
 
   while (evaluator_state$evaluation_count < evaluator_state$max_evaluations) {
-    zoom_state <- proposal_policy$prepare_zoom(
+    zoom_state <- policy$prepare_zoom(
       zoom_state,
       trial_point,
       initial_step,
       condition_policy
     )
-    proposal <- proposal_policy$propose_zoom(zoom_state, initial_step)
+    proposal <- policy$propose_zoom(zoom_state, initial_step)
     zoom_state <- proposal$state
 
     recovery <- recover_finite_legacy_step(
       evaluator,
       proposal$alpha,
-      minimum_alpha = proposal_policy$zoom_recovery_lower_bound(zoom_state)
+      minimum_alpha = policy$zoom_recovery_lower_bound(zoom_state)
     )
     trial_point <- recovery$step
     if (!recovery$ok) {
@@ -137,8 +137,8 @@ run_bracket_zoom <- function(
     }
 
     if (
-      proposal_policy$check_progress_before_update &&
-        proposal_policy$progress_stalled(
+      policy$check_progress_before_update &&
+        policy$progress_stalled(
           zoom_state,
           trial_point,
           direction_scale
@@ -150,15 +150,15 @@ run_bracket_zoom <- function(
       ))
     }
 
-    zoom_state <- proposal_policy$update_zoom(
+    zoom_state <- policy$update_zoom(
       zoom_state,
       trial_point,
       initial_step,
       condition_policy
     )
     if (
-      !proposal_policy$check_progress_before_update &&
-        proposal_policy$progress_stalled(
+      !policy$check_progress_before_update &&
+        policy$progress_stalled(
           zoom_state,
           trial_point,
           direction_scale
@@ -198,7 +198,6 @@ new_rasmussen_bracket_zoom_policy <- function(
     0
   )
   list(
-    profile = "rasmussen",
     interior_fraction = interior_fraction,
     expansion_factor = expansion_factor,
     relative_interval_tolerance = relative_interval_tolerance,
@@ -327,7 +326,6 @@ new_schmidt_bracket_zoom_policy <- function(
     0
   )
   list(
-    profile = "schmidt",
     expansion_factor = expansion_factor,
     minimum_expansion_fraction = minimum_expansion_fraction,
     interior_fraction = interior_fraction,
@@ -391,8 +389,8 @@ new_schmidt_bracket_zoom_policy <- function(
       list(
         first_point = bracket[[1L]],
         second_point = bracket[[2L]],
-        lower_position = NULL,
-        upper_position = NULL,
+        lowest_value_position = NULL,
+        other_position = NULL,
         insufficient_progress = FALSE
       )
     },
@@ -402,11 +400,11 @@ new_schmidt_bracket_zoom_policy <- function(
       initial_point,
       condition_policy
     ) {
-      state$lower_position <- which.min(c(
+      state$lowest_value_position <- which.min(c(
         state$first_point$f,
         state$second_point$f
       ))
-      state$upper_position <- 3L - state$lower_position
+      state$other_position <- 3L - state$lowest_value_position
       state
     },
     propose_zoom = function(state, initial_point) {
@@ -464,24 +462,24 @@ new_schmidt_bracket_zoom_policy <- function(
       condition_policy
     ) {
       point_names <- c("first_point", "second_point")
-      lower_name <- point_names[[state$lower_position]]
-      upper_name <- point_names[[state$upper_position]]
-      lower_point <- state[[lower_name]]
-      upper_point <- state[[upper_name]]
+      lowest_value_name <- point_names[[state$lowest_value_position]]
+      other_name <- point_names[[state$other_position]]
+      lowest_value_point <- state[[lowest_value_name]]
+      other_point <- state[[other_name]]
       if (
         !condition_policy$armijo(initial_point, trial_point) ||
-          trial_point$f >= lower_point$f
+          trial_point$f >= lowest_value_point$f
       ) {
-        state[[upper_name]] <- trial_point
+        state[[other_name]] <- trial_point
       } else {
         if (
           trial_point$d *
-            (upper_point$alpha - lower_point$alpha) >=
+            (other_point$alpha - lowest_value_point$alpha) >=
             0
         ) {
-          state[[upper_name]] <- lower_point
+          state[[other_name]] <- lowest_value_point
         }
-        state[[lower_name]] <- trial_point
+        state[[lowest_value_name]] <- trial_point
       }
       state
     },

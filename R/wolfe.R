@@ -41,7 +41,7 @@ more_thuente_ls <- function(
       max_evaluations = max_ls_fn,
       strong_curvature = strong_curvature,
       approximate_armijo = approx_armijo,
-      options = new_more_thuente_policy(
+      method_policy = new_more_thuente_policy(
         alpha_max = max_alpha,
         safeguard_cubic = safeguard_cubic
       )
@@ -96,10 +96,9 @@ rasmussen_ls <- function(
       max_evaluations = max_ls_fn,
       strong_curvature = strong_curvature,
       approximate_armijo = approx_armijo,
-      options = new_rasmussen_bracket_zoom_policy(
+      method_policy = new_rasmussen_bracket_zoom_policy(
         interior_fraction = int,
-        expansion_factor = ext,
-        relative_interval_tolerance = 1e-6
+        expansion_factor = ext
       )
     ),
     name = "rasmussen",
@@ -151,7 +150,7 @@ schmidt_ls <- function(
       max_evaluations = max_ls_fn,
       strong_curvature = strong_curvature,
       approximate_armijo = approx_armijo,
-      options = new_schmidt_bracket_zoom_policy()
+      method_policy = new_schmidt_bracket_zoom_policy()
     ),
     name = "schmidt",
     max_alpha_mult = max_alpha_mult,
@@ -837,91 +836,9 @@ strong_curvature_ok_step <- function(step0, step, c2) {
   strong_curvature_ok(step0$d, step$d, c2)
 }
 
-# Are the Strong Wolfe Conditions Met?
-#
-# Step size check.
-#
-# Returns true if the Strong Wolfe conditions are met, consisting of the
-# sufficient decrease conditions and the strong curvature condition.
-#
-# @param f0 Function value at starting point.
-# @param d0 Directional derivative value at starting point.
-# @param alpha Step length.
-# @param fa Function value at alpha.
-# @param da Directional derivative at alpha.
-# @param c1 Constant used in sufficient decrease condition. Should take a value
-#   between 0 and 1.
-# @param c2 Constant used in curvature condition. Should take a value between
-#   c1 and 1.
-# @return TRUE if the Strong Wolfe condition is met by the step size.
-strong_wolfe_ok <- function(f0, d0, alpha, fa, da, c1, c2) {
-  armijo_ok(f0, d0, alpha, fa, c1) &&
-    strong_curvature_ok(d0, da, c2)
-}
-
-# Are the Strong Wolfe Conditions Met for the Given Step?
-#
-# Line search test.
-#
-# Returns true if the candidate step size meets the Strong Wolfe conditions,
-# consisting of the sufficient decrease conditions and the strong curvature
-# condition.
-#
-# @param step0 Line search values at starting point of line search.
-# @param step Line search value at candiate step size.
-# @param c1 Constant used in sufficient decrease condition. Should take a value
-#   between 0 and 1.
-# @param c2 Constant used in curvature condition. Should take a value between
-#   c1 and 1.
-# @return TRUE if the Strong Wolfe condition is met by the step size.
-strong_wolfe_ok_step <- function(step0, step, c1, c2) {
-  armijo_ok_step(step0, step, c1) && strong_curvature_ok_step(step0, step, c2)
-}
-
 # Are the Wolfe Conditions Met for the Given Step?
 wolfe_ok_step <- function(step0, step, c1, c2) {
   armijo_ok_step(step0, step, c1) && curvature_ok_step(step0, step, c2)
-}
-
-# Create a Wolfe Conditions check function allowing for either approximate or
-# exact Armijo condition and weak or strong curvature condition
-make_wolfe_ok_step_fn <- function(
-  approx_armijo = FALSE,
-  strong_curvature = TRUE,
-  eps = 1e-6
-) {
-  approx_armijo_ok_fn <- make_approx_armijo_ok_step(eps)
-
-  function(step0, step, c1, c2) {
-    if (approx_armijo) {
-      ok <- approx_armijo_ok_fn(step0, step, c1)
-    } else {
-      ok <- armijo_ok_step(step0, step, c1)
-    }
-
-    if (ok) {
-      if (strong_curvature) {
-        ok <- strong_curvature_ok_step(step0, step, c2)
-      } else {
-        ok <- curvature_ok_step(step0, step, c2)
-      }
-    }
-    ok
-  }
-}
-
-# Create Approximation Armijo check function:
-# Checks approximate Armijo conditions only if exact Armijo check fails and
-# if function value is sufficiently close to step0 value according to eps
-make_approx_armijo_ok_step <- function(eps) {
-  function(step0, step, c1) {
-    eps_k <- eps * abs(step0$f)
-
-    if (armijo_ok_step(step0, step, c1)) {
-      return(TRUE)
-    }
-    (step$f <= step0$f + eps_k) && approx_armijo_ok_step(step0, step, c1)
-  }
 }
 
 # Is the approximate Armijo condition met?
@@ -949,10 +866,6 @@ approx_armijo_ok_step <- function(step0, step, c1) {
 
 # Bracket -----------------------------------------------------------------
 
-bracket_is_finite <- function(bracket) {
-  all(is.finite(c(bracket_props(bracket, c("f", "d")))))
-}
-
 # extracts all the properties (e.g. 'f', 'df', 'd' or 'alpha') from all members
 # of the bracket. Works if there are one or two bracket members. Can get
 # multiple properties at once, by providing an array of the properties,
@@ -969,12 +882,6 @@ bracket_width <- function(bracket) {
 bracket_min_alpha <- function(bracket) {
   min(bracket_props(bracket, "alpha"))
 }
-
-best_bracket_step <- function(bracket) {
-  LOpos <- which.min(bracket_props(bracket, "f"))
-  bracket[[LOpos]]
-}
-
 
 is_in_bracket <- function(bracket, alpha) {
   is_in_range(alpha, bracket[[1]]$alpha, bracket[[2]]$alpha)

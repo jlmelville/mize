@@ -22,7 +22,7 @@ mtls <- function(
     approximation_tolerance = eps,
     approximate_armijo = approx_armijo,
     strong_curvature = strong_curvature,
-    options = new_more_thuente_policy(
+    method_policy = new_more_thuente_policy(
       safeguard_cubic = safeguard_cubic
     )
   )

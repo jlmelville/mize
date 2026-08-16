@@ -519,7 +519,7 @@ new_wolfe_line_search <- function(
   approximation_tolerance = 1e-6,
   approximate_armijo = FALSE,
   strong_curvature = TRUE,
-  options = list()
+  method_policy = list()
 ) {
   evaluator <- new_line_evaluator(
     function(alpha, calc_gradient = TRUE) NULL,
@@ -576,7 +576,7 @@ new_wolfe_line_search <- function(
         initial_alpha = alpha,
         condition_policy = condition_policy,
         direction = pm,
-        options = options
+        method_policy = method_policy
       )
     }
 

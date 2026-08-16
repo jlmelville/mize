@@ -35,7 +35,7 @@ test_that("default Wolfe search profiles retain their trial traces", {
           more_thuente_core,
           armijo_constant = 1e-4,
           curvature_constant = 0.1,
-          options = new_more_thuente_policy(
+          method_policy = new_more_thuente_policy(
             alpha_max = Inf,
             safeguard_cubic = FALSE
           )
@@ -55,7 +55,7 @@ test_that("default Wolfe search profiles retain their trial traces", {
           rasmussen_core,
           armijo_constant = 0.05,
           curvature_constant = 0.1,
-          options = new_rasmussen_bracket_zoom_policy(
+          method_policy = new_rasmussen_bracket_zoom_policy(
             interior_fraction = 0.1,
             expansion_factor = 3,
             relative_interval_tolerance = 1e-6
@@ -76,7 +76,7 @@ test_that("default Wolfe search profiles retain their trial traces", {
           schmidt_core,
           armijo_constant = 0.05,
           curvature_constant = 0.1,
-          options = new_schmidt_bracket_zoom_policy()
+          method_policy = new_schmidt_bracket_zoom_policy()
         )
       },
       trials = matrix(

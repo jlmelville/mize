@@ -22,7 +22,7 @@ rasmussen_core <- function(
   initial_alpha,
   condition_policy,
   direction,
-  options
+  method_policy
 ) {
   run_bracket_zoom(
     evaluator = evaluator,
@@ -30,6 +30,6 @@ rasmussen_core <- function(
     initial_alpha = initial_alpha,
     condition_policy = condition_policy,
     direction = direction,
-    proposal_policy = options
+    policy = method_policy
   )
 }

@@ -15,7 +15,7 @@ more_thuente_core <- function(
   initial_alpha,
   condition_policy,
   direction,
-  options
+  method_policy
 ) {
   evaluator_state <- environment(evaluator)
   result <- run_more_thuente_search(
@@ -23,7 +23,7 @@ more_thuente_core <- function(
     initial_point = evaluator_state$initial_step,
     initial_alpha = initial_alpha,
     condition_policy = condition_policy,
-    policy = options
+    policy = method_policy
   )
 
   list(
