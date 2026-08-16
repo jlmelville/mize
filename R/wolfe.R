@@ -96,7 +96,7 @@ rasmussen_ls <- function(
       max_evaluations = max_ls_fn,
       strong_curvature = strong_curvature,
       approximate_armijo = approx_armijo,
-      options = list(
+      options = new_rasmussen_bracket_zoom_policy(
         interior_fraction = int,
         expansion_factor = ext,
         relative_interval_tolerance = 1e-6
@@ -150,7 +150,8 @@ schmidt_ls <- function(
       curvature_constant = c2,
       max_evaluations = max_ls_fn,
       strong_curvature = strong_curvature,
-      approximate_armijo = approx_armijo
+      approximate_armijo = approx_armijo,
+      options = new_schmidt_bracket_zoom_policy()
     ),
     name = "schmidt",
     max_alpha_mult = max_alpha_mult,

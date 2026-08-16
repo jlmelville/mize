@@ -8,115 +8,55 @@ rls <- function(
   relative_interval_tolerance = 1e-6,
   eps = 1e-6,
   approx_armijo = FALSE,
-  strong_curvature = TRUE,
-  verbose = FALSE
+  strong_curvature = TRUE
 ) {
-  if (approx_armijo) {
-    armijo_check_fn <- make_approx_armijo_ok_step(eps)
-  } else {
-    armijo_check_fn <- armijo_ok_step
-  }
-
-  wolfe_ok_step_fn <- make_wolfe_ok_step_fn(
-    strong_curvature = strong_curvature,
-    approx_armijo = approx_armijo,
-    eps = eps
-  )
-
   step0 <- make_step0(fg, x, pv)
-  res <- ras_ls(
+  search <- new_wolfe_line_search(
+    core = rasmussen_core,
+    armijo_constant = c1,
+    curvature_constant = c2,
+    max_evaluations = 10000,
+    approximation_tolerance = eps,
+    approximate_armijo = approx_armijo,
+    strong_curvature = strong_curvature,
+    options = new_rasmussen_bracket_zoom_policy(
+      relative_interval_tolerance = relative_interval_tolerance
+    )
+  )
+  res <- search(
     phi = make_phi_alpha(x, fg, pv, calc_gradient_default = TRUE),
-    alpha,
     step0 = step0,
-    max_fn = 10000,
-    relative_interval_tolerance = relative_interval_tolerance,
-    c1 = c1,
-    c2 = c2,
-    armijo_check_fn = armijo_check_fn,
-    wolfe_ok_step_fn = wolfe_ok_step_fn,
-    verbose = verbose
+    alpha = alpha,
+    pm = pv
   )
   res$step$par <- x + res$step$alpha * pv
   res$step0 <- step0
   res
 }
 
-test_that("Rasmussen line search defaults to non-verbose operation", {
-  phi <- function(alpha) {
-    list(alpha = alpha, f = (alpha - 1)^2, d = 2 * (alpha - 1))
-  }
-  step0 <- phi(0)
-
-  explicit_result <- ras_ls(
-    phi,
-    alpha = 0.5,
-    step0 = step0,
-    c1 = 0.01,
-    c2 = 0.1,
-    max_fn = 20,
-    verbose = FALSE
+test_that("Rasmussen proposal policy exposes its mathematical safeguards", {
+  policy <- new_rasmussen_bracket_zoom_policy()
+  initial_point <- list(alpha = 0, f = 1, df = -2, d = -2)
+  trial_point <- list(alpha = 2, f = 1, df = 2, d = 2)
+  state <- policy$initialize_zoom(
+    initial_point,
+    list(initial_point, trial_point),
+    trial_point
   )
-  default_result <- ras_ls(
-    phi,
-    alpha = 0.5,
-    step0 = step0,
-    c1 = 0.01,
-    c2 = 0.1,
-    max_fn = 20
+  state <- policy$prepare_zoom(
+    state,
+    trial_point,
+    initial_point,
+    new_line_condition_policy(0.05, 0.1)
   )
+  proposal <- policy$propose_zoom(state, initial_point)
 
-  expect_equal(default_result, explicit_result)
-  expect_equal(default_result$nfn, 2)
-  expect_equal(default_result$step, list(alpha = 1, f = 0, d = 0))
-})
-
-test_that("Rasmussen core condition inputs are explicit", {
-  phi <- function(alpha) {
-    list(alpha = alpha, f = (alpha - 1)^2, d = 2 * (alpha - 1))
-  }
-  step0 <- phi(0)
-
-  expect_error(
-    ras_ls(phi, alpha = 0.5, step0 = step0, c2 = 0.1),
-    'argument "c1" is missing'
-  )
-  expect_error(
-    ras_ls(phi, alpha = 0.5, step0 = step0, c1 = 0.01),
-    'argument "c2" is missing'
-  )
-})
-
-test_that("Rasmussen interval tolerance has one effective private owner", {
-  expect_false("xtol" %in% names(formals(ras_ls)))
-  expect_false("xtol" %in% names(formals(interpolate_step_size)))
-  expect_true("relative_interval_tolerance" %in% names(formals(ras_ls)))
-  expect_true(
-    "relative_interval_tolerance" %in% names(formals(interpolate_step_size))
-  )
-
-  phi <- function(alpha) {
-    list(alpha = alpha, f = (alpha - 1)^2, d = 2 * (alpha - 1))
-  }
-  step0 <- phi(0)
-  default_result <- ras_ls(
-    phi,
-    alpha = 0.5,
-    step0 = step0,
-    c1 = 0.01,
-    c2 = 0.1,
-    max_fn = 20
-  )
-  explicit_result <- ras_ls(
-    phi,
-    alpha = 0.5,
-    step0 = step0,
-    c1 = 0.01,
-    c2 = 0.1,
-    max_fn = 20,
-    relative_interval_tolerance = 1e-6
-  )
-
-  expect_equal(default_result, explicit_result)
+  expect_identical(policy$profile, "rasmussen")
+  expect_equal(policy$expansion_factor, 3)
+  expect_equal(policy$interior_fraction, 0.1)
+  expect_equal(policy$relative_interval_tolerance, 1e-6)
+  expect_gte(proposal$alpha, 0.2)
+  expect_lte(proposal$alpha, 1.8)
 })
 
 ## Test data from the More'-Thuente paper.

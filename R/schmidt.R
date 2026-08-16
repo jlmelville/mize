@@ -15,43 +15,13 @@ schmidt_core <- function(
   direction,
   options
 ) {
-  evaluator_state <- environment(evaluator)
-  result <- WolfeLineSearch(
-    alpha = initial_alpha,
-    f = initial_point$value,
-    g = initial_point$gradient,
-    gtd = initial_point$slope,
-    c1 = condition_policy$armijo_constant,
-    c2 = condition_policy$curvature_constant,
-    LS_interp = 2,
-    LS_multi = 0,
-    maxLS = max(
-      0,
-      evaluator_state$max_evaluations - evaluator_state$evaluation_count
-    ),
-    funObj = evaluator,
-    varargin = NULL,
-    pnorm_inf = max(abs(direction)),
-    progTol = 1e-9,
-    armijo_check_fn = condition_policy$armijo,
-    curvature_check_fn = condition_policy$curvature,
-    debug = isTRUE(options$verbose)
-  )
-  termination_reason <- if (result$accepted) {
-    "wolfe"
-  } else if (
-    evaluator_state$evaluation_count >= evaluator_state$max_evaluations
-  ) {
-    "budget_exhausted"
-  } else if (evaluator_state$recovered_nonfinite) {
-    "nonfinite_recovery"
-  } else {
-    "progress_failure"
-  }
-  list(
-    candidate = result$step,
-    termination_reason = termination_reason,
-    gradient_is_current = result$is_gr_curr
+  run_bracket_zoom(
+    evaluator = evaluator,
+    initial_point = initial_point,
+    initial_alpha = initial_alpha,
+    condition_policy = condition_policy,
+    direction = direction,
+    proposal_policy = options
   )
 }
 
