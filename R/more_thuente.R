@@ -6,9 +6,9 @@
 # Line search algorithms with guaranteed sufficient decrease.
 # *ACM Transactions on Mathematical Software (TOMS)*, *20*(3),
 # 286-307.
-# @seealso This code is based on a translation of the original MINPACK code
-#  for Matlab by
-#  [Dianne O'Leary](http://www.cs.umd.edu/users/oleary/software/).
+# @seealso This implementation was informed by
+#  [Dianne O'Leary's Matlab implementation](https://www.cs.umd.edu/users/oleary/software/)
+#  of the More-Thuente method.
 more_thuente_core <- function(
   evaluator,
   initial_point,

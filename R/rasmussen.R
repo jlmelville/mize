@@ -14,7 +14,8 @@
 # The extrapolation and interpolation steps are bounded at each stage to ensure
 # they don't represent too large or small a change to the step size.
 #
-# @seealso based on code written by Carl Edward Rasmussen for the Matlab
+# @seealso This implementation was informed by Carl Edward Rasmussen's
+#  `minimize.m` routine in the Matlab
 #  [GPML](https://www.gaussianprocess.org/gpml/code/matlab/doc/) package.
 rasmussen_core <- function(
   evaluator,

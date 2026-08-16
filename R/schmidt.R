@@ -1,6 +1,5 @@
-# Translation of Mark Schmidt's minFunc line search code for satisfying the
-# Strong Wolfe conditions (and also the Armijo conditions)
-# http://www.cs.ubc.ca/~schmidtm/Software/minFunc.html, 2005.
+# Schmidt line searches implementing methods used by Mark Schmidt's minFunc.
+# https://www.cs.ubc.ca/~schmidtm/Software/minFunc.html, 2005.
 
 # Adapters ----------------------------------
 
