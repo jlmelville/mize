@@ -375,14 +375,11 @@ new_schmidt_bracket_zoom_policy <- function(
         minimum_expansion_fraction *
           (trial_point$alpha - previous_point$alpha)
       maximum_alpha <- trial_point$alpha * expansion_factor
-      polyinterp(
-        point_matrix(
-          c(previous_point$alpha, trial_point$alpha),
-          c(previous_point$f, trial_point$f),
-          c(previous_point$d, trial_point$d)
-        ),
-        minimum_alpha,
-        maximum_alpha
+      propose_schmidt_cubic_alpha(
+        previous_point,
+        trial_point,
+        lower_alpha = minimum_alpha,
+        upper_alpha = maximum_alpha
       )
     },
     initialize_zoom = function(initial_point, bracket, trial_point) {
@@ -415,11 +412,12 @@ new_schmidt_bracket_zoom_policy <- function(
       alpha_min <- min(bracket_alphas)
       alpha_max <- max(bracket_alphas)
       alpha_range <- alpha_max - alpha_min
-      proposed_alpha <- polyinterp(point_matrix(
-        bracket_alphas,
-        c(state$first_point$f, state$second_point$f),
-        c(state$first_point$d, state$second_point$d)
-      ))
+      proposed_alpha <- propose_schmidt_cubic_alpha(
+        state$first_point,
+        state$second_point,
+        lower_alpha = alpha_min,
+        upper_alpha = alpha_max
+      )
       if (!is.finite(proposed_alpha)) {
         proposed_alpha <- mean(bracket_alphas)
       }

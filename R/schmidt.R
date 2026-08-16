@@ -1,9 +1,8 @@
 # Schmidt line searches implementing methods used by Mark Schmidt's minFunc.
 # https://www.cs.ubc.ca/~schmidtm/Software/minFunc.html, 2005.
 
-# Adapters ----------------------------------
+# Wolfe search -------------------------------------------------------------
 
-# Supported Schmidt Wolfe profile over the shared bracket-and-zoom engine.
 schmidt_core <- function(
   evaluator,
   initial_point,
@@ -22,14 +21,50 @@ schmidt_core <- function(
   )
 }
 
-# step_down if non-NULL, multiply the step size by this value when backtracking
-# Otherwise, use a cubic interpolation based on previous function and derivative
-# values
-schmidt_armijo_backtrack <- function(
-  c1 = 0.05,
+# Armijo search ------------------------------------------------------------
+
+new_schmidt_armijo_search <- function(
+  armijo_constant = 0.05,
   step_down = NULL,
-  max_fn = Inf
+  max_fn = Inf,
+  progress_tolerance = 1e-9
 ) {
+  validate_line_scalar(armijo_constant, "armijo_constant")
+  validate_line_scalar(max_fn, "max_fn")
+  validate_line_scalar(progress_tolerance, "progress_tolerance")
+  if (
+    is.na(armijo_constant) ||
+      !is.finite(armijo_constant) ||
+      armijo_constant < 0 ||
+      armijo_constant > 1
+  ) {
+    stop("armijo_constant must be between zero and one")
+  }
+  if (is.na(max_fn) || max_fn < 0) {
+    stop("max_fn must be nonnegative")
+  }
+  if (
+    is.na(progress_tolerance) ||
+      !is.finite(progress_tolerance) ||
+      progress_tolerance < 0
+  ) {
+    stop("progress_tolerance must be nonnegative and finite")
+  }
+  if (!is.null(step_down)) {
+    validate_line_scalar(step_down, "step_down")
+    if (
+      is.na(step_down) ||
+        !is.finite(step_down) ||
+        step_down < 0 ||
+        step_down > 1
+    ) {
+      stop("step_down must be between zero and one")
+    }
+  }
+
+  fixed_reduction_factor <- step_down
+  evaluates_gradient <- is.null(fixed_reduction_factor)
+
   function(
     phi,
     step0,
@@ -39,487 +74,227 @@ schmidt_armijo_backtrack <- function(
     total_max_fg = Inf,
     pm
   ) {
-    maxfev <- min(max_fn, total_max_fn, total_max_gr, floor(total_max_fg / 2))
-    if (maxfev <= 0) {
-      return(list(step = step0, nfn = 0, ngr = 0))
-    }
-
-    if (!is.null(step_down)) {
-      # fixed-size step reduction by a factor of step_down
-      LS_interp <- 0
+    max_evaluations <- if (evaluates_gradient) {
+      min(max_fn, total_max_fn, total_max_gr, floor(total_max_fg / 2))
     } else {
-      # cubic interpolation
-      LS_interp <- 2
+      min(max_fn, total_max_fn, total_max_fg)
     }
-
-    candidate_is_finite <- function(candidate) {
-      isTRUE(is.finite(candidate$alpha)) &&
-        step_is_finite(candidate) &&
-        (is.null(candidate$par) || all(is.finite(candidate$par)))
-    }
-
-    best_decrease <- NULL
-    last_candidate <- NULL
-    tracked_phi <- function(...) {
-      candidate <- phi(...)
-      last_candidate <<- candidate
-      if (
-        candidate_is_finite(candidate) &&
-          isTRUE(candidate$f < step0$f) &&
-          (is.null(best_decrease) || candidate$f < best_decrease$f)
-      ) {
-        best_decrease <<- candidate
-      }
-      candidate
-    }
-
-    res <- ArmijoBacktrack(
-      step = alpha,
-      f = step0$f,
-      g = step0$df,
-      gtd = step0$d,
-      c1 = c1,
-      LS_interp = LS_interp,
-      LS_multi = 0,
-      maxLS = maxfev,
-      step_down = step_down,
-      funObj = tracked_phi,
-      varargin = NULL,
-      pnorm_inf = max(abs(pm)),
-      progTol = 1e-9,
-      debug = FALSE
-    )
-
-    # ArmijoBacktrack omits par from its returned step, so check the matching
-    # evaluated candidate retained by the adapter.
-    returned_trial_is_safe <- !is.null(last_candidate) &&
-      isTRUE(last_candidate$alpha == res$step$alpha) &&
-      candidate_is_finite(last_candidate) &&
-      isTRUE(last_candidate$f < step0$f) &&
-      isTRUE(armijo_ok_step(step0, last_candidate, c1))
-    if (!isTRUE(res$step$alpha == 0) && !returned_trial_is_safe) {
-      if (is.null(best_decrease)) {
-        res$step <- step0
-      } else {
-        res$step <- best_decrease
-      }
-      res$is_gr_curr <- !is.null(res$step$df)
-    }
-
-    res
-  }
-}
-
-# Backtracking linesearch to satisfy Armijo condition
-#
-# Inputs:
-#   x: starting location
-#   t: initial step size
-#   d: descent direction
-#   f: function value at starting location
-#   gtd: directional derivative at starting location
-#   c1: sufficient decrease parameter
-#   debug: display debugging information
-#   LS_interp: type of interpolation
-#   progTol: minimum allowable step length
-#   doPlot: do a graphical display of interpolation
-#   funObj: objective function
-#   varargin: parameters of objective function
-#
-# For the Armijo line-search, several interpolation strategies are available
-# ('LS_interp'):
-#   - 0 : Step size halving
-#   - 1 : Polynomial interpolation using new function values
-#   - 2 : Polynomial interpolation using new function and gradient values (default)
-#
-# When (LS_interp = 1), the default setting of (LS_multi = 0) uses quadratic
-# interpolation, while if (LS_multi = 1) it uses cubic interpolation if more
-# than one point are available.
-#
-# When (LS_interp = 2), the default setting of (LS_multi = 0) uses cubic interpolation,
-# while if (LS_multi = 1) it uses quartic or quintic interpolation if more than
-# one point are available
-#
-# Outputs:
-#   t: step length
-#   f_new: function value at x+t*d
-#   g_new: gradient value at x+t*d
-#   funEvals: number function evaluations performed by line search
-#
-# recent change: LS changed to LS_interp and LS_multi
-ArmijoBacktrack <-
-  function(
-    step,
-    f,
-    g,
-    gtd,
-    c1 = 1e-4,
-    LS_interp = 2,
-    LS_multi = 0,
-    maxLS = Inf,
-    step_down = 0.5,
-    funObj,
-    varargin = NULL,
-    pnorm_inf,
-    progTol = 1e-9,
-    debug = TRUE
-  ) {
-    # Evaluate the Objective and Gradient at the Initial Step
-    f_prev <- NA
-    t_prev <- NA
-    g_prev <- NA
-    gtd_prev <- NA
-
-    # Don't calculate gradient if we aren't using gradient values in the
-    # interpolation
-    calc_gradient <- LS_interp != 0
-    fun_obj_res <- funObj(step, calc_gradient = calc_gradient)
-    f_new <- fun_obj_res$f
-    g_new <- fun_obj_res$df
-    gtd_new <- fun_obj_res$d
-    funEvals <- 1
-    grEvals <- ifelse(calc_gradient, 1, 0)
-
-    while (
-      funEvals < maxLS && (f_new > f + c1 * step * gtd || !is.finite(f_new))
-    ) {
-      temp <- step
-      if (LS_interp == 0 || !is.finite(f_new)) {
-        # Ignore value of new point
-        if (debug) {
-          message("Fixed BT")
-        }
-        step <- step_down * step
-      } else if (LS_interp == 1 || any(!is.finite(g_new))) {
-        # Use function value at new point, but not its derivative
-        if (funEvals < 2 || LS_multi == 0 || !is.finite(f_prev)) {
-          # Backtracking w/ quadratic interpolation based on two points
-          if (debug) {
-            message("Quad BT")
-          }
-          step <- polyinterp(
-            point_matrix(c(0, step), c(f, f_new), c(gtd, NA)),
-            0,
-            step
-          )
-        } else {
-          # Backtracking w/ cubic interpolation based on three points
-          if (debug) {
-            message("Cubic BT")
-          }
-          step <-
-            polyinterp(
-              point_matrix(
-                c(0, step, t_prev),
-                c(f, f_new, f_prev),
-                c(gtd, NA, NA)
-              ),
-              0,
-              step
-            )
-        }
-      } else {
-        # Use function value and derivative at new point
-        if (funEvals < 2 || LS_multi == 0 || !is.finite(f_prev)) {
-          # Backtracking w/ cubic interpolation w/ derivative
-          if (debug) {
-            message("Grad-Cubic BT")
-          }
-          step <- polyinterp(
-            point_matrix(c(0, step), c(f, f_new), c(gtd, gtd_new)),
-            0,
-            step
-          )
-        } else if (any(!is.finite(g_prev))) {
-          # Backtracking w/ quartic interpolation 3 points and derivative
-          # of two
-          if (debug) {
-            message("Grad-Quartic BT")
-          }
-
-          step <- polyinterp(
-            point_matrix(
-              c(0, step, t_prev),
-              c(f, f_new, f_prev),
-              c(gtd, gtd_new, NA)
-            ),
-            0,
-            step
-          )
-        } else {
-          # Backtracking w/ quintic interpolation of 3 points and derivative
-          # of three
-          if (debug) {
-            message("Grad-Quintic BT")
-          }
-
-          step <- polyinterp(
-            point_matrix(
-              c(0, step, t_prev),
-              c(f, f_new, f_prev),
-              c(gtd, gtd_new, gtd_prev)
-            ),
-            0,
-            step
-          )
-        }
-      }
-
-      if (!is_finite_numeric(step)) {
-        step <- temp * 0.6
-      }
-      # Adjust if change in step is too small/large
-      if (step < temp * 1e-3) {
-        if (debug) {
-          message("Interpolated Value Too Small, Adjusting")
-        }
-        step <- temp * 1e-3
-      } else if (step > temp * 0.6) {
-        if (debug) {
-          message("Interpolated Value Too Large, Adjusting")
-        }
-        step <- temp * 0.6
-      }
-
-      # Store old point if doing three-point interpolation
-      if (LS_multi) {
-        f_prev <- f_new
-        t_prev <- temp
-
-        if (LS_interp == 2) {
-          g_prev <- g_new
-          gtd_prev <- gtd_new
-        }
-      }
-
-      fun_obj_res <- funObj(step, calc_gradient = calc_gradient)
-      f_new <- fun_obj_res$f
-      g_new <- fun_obj_res$df
-      gtd_new <- fun_obj_res$d
-      funEvals <- funEvals + 1
-      grEvals <- ifelse(calc_gradient, grEvals + 1, grEvals)
-
-      # Check whether step size has become too small
-      if (pnorm_inf * step <= progTol) {
-        if (debug) {
-          message("Backtracking Line Search Failed")
-        }
-        step <- 0
-        f_new <- f
-        g_new <- g
-        gtd_new <- gtd
-        break
-      }
-    }
-
-    list(
-      step = list(alpha = step, f = f_new, df = g_new, d = gtd_new),
-      nfn = funEvals,
-      ngr = grEvals,
-      is_gr_curr = calc_gradient
-    )
-  }
-
-# function [minPos] <- polyinterp(points,doPlot,xminBound,xmaxBound)
-#
-#   Minimum of interpolating polynomial based on function and derivative
-#   values
-#
-#   It can also be used for extrapolation if {xmin,xmax} are outside
-#   the domain of the points.
-#
-#   Input:
-#       points(pointNum,[x f g])
-#       xmin: min value that brackets minimum (default: min of points)
-#       xmax: max value that brackets maximum (default: max of points)
-#
-#   set f or g to sqrt(-1) if they are not known
-#   the order of the polynomial is the number of known f and g values minus 1
-# points position, function and gradient values to interpolate.
-# An n x 3 matrix where n is the number of points and each row contains
-# x, f, g in columns 1-3 respectively.
-# @return minPos
-polyinterp <- function(
-  points,
-  xminBound = range(points[, 1])[1],
-  xmaxBound = range(points[, 1])[2],
-  debug = FALSE
-) {
-  # the number of known f and g values minus 1
-  order <- sum(!is.na(points[, 2:3])) - 1
-
-  # Code for most common case:
-  #   - cubic interpolation of 2 points
-  #       w/ function and derivative values for both
-  if (nrow(points) == 2 && order == 3) {
-    if (debug) {
-      message("polyinterp common case")
-    }
-    # Solution in this case (where x2 is the farthest point):
-    #    d1 <- g1 + g2 - 3*(f1-f2)/(x1-x2);
-    #    d2 <- sqrt(d1^2 - g1*g2);
-    #    minPos <- x2 - (x2 - x1)*((g2 + d2 - d1)/(g2 - g1 + 2*d2));
-    #    t_new <- min(max(minPos,x1),x2);
-    minPos <- which.min(points[, 1])
-    notMinPos <- -minPos + 3
-
-    x1 <- points[minPos, 1]
-    x2 <- points[notMinPos, 1]
-    f1 <- points[minPos, 2]
-    f2 <- points[notMinPos, 2]
-    g1 <- points[minPos, 3]
-    g2 <- points[notMinPos, 3]
-
-    if (x1 - x2 == 0) {
-      return(x1)
-    }
-
-    d1 <- g1 + g2 - 3 * (f1 - f2) / (x1 - x2)
-    d2sq <- d1^2 - g1 * g2
-
-    if (is_finite_numeric(d2sq) && d2sq >= 0) {
-      d2 <- sqrt(d2sq)
-
-      x <- x2 - (x2 - x1) * ((g2 + d2 - d1) / (g2 - g1 + 2 * d2))
-      if (debug) {
-        message("d2 is real ", formatC(d2), " x = ", formatC(x))
-      }
-
-      minPos <- min(max(x, xminBound), xmaxBound)
-    } else {
-      if (debug) {
-        message("d2 is not real, bisecting")
-      }
-
-      minPos <- (xmaxBound + xminBound) / 2
-    }
-
-    return(minPos)
-  }
-
-  params <- polyfit(points)
-  # If polynomial couldn't be found (due to singular matrix), bisect
-  if (is.null(params)) {
-    return((xminBound + xmaxBound) / 2)
-  }
-
-  # Compute Critical Points
-  dParams <- rep(0, order)
-  for (i in 1:order) {
-    dParams[i] <- params[i + 1] * i
-  }
-
-  cp <- unique(c(xminBound, points[, 1], xmaxBound))
-
-  # Remove mad, bad and dangerous to know critical points:
-  # Must be finite, non-complex and not an extrapolation
-  if (all(is.finite(dParams))) {
-    cp <- c(
-      cp,
-      Re(Filter(
-        function(x) {
-          abs(Im(x)) < 1e-8 &&
-            Re(x) >= xminBound &&
-            Re(x) <= xmaxBound
-        },
-        polyroot(dParams)
+    if (max_evaluations <= 0) {
+      return(list(
+        step = step0,
+        nfn = 0L,
+        ngr = 0L,
+        is_gr_curr = !is.null(step0$df)
       ))
+    }
+
+    run_schmidt_armijo_search(
+      phi = phi,
+      initial_step = step0,
+      initial_alpha = alpha,
+      armijo_constant = armijo_constant,
+      fixed_reduction_factor = fixed_reduction_factor,
+      max_evaluations = max_evaluations,
+      direction_scale = norm_inf(pm),
+      progress_tolerance = progress_tolerance
     )
   }
-
-  # Test Critical Points
-  fcp <- polyval(cp, params)
-  fminpos <- which.min(fcp)
-  if (is.finite(fcp[fminpos])) {
-    minpos <- cp[fminpos]
-  } else {
-    # Default to bisection if no critical points valid
-    minpos <- (xminBound + xmaxBound) / 2
-  }
-  minpos
 }
 
-# Fits a polynomial to the known function and gradient values. The order of
-# the polynomial is the number of known function and gradient values, minus one.
-# points - an n x 3 matrix where n is the number of points and each row contains
-#          x, f, g in columns 1-3 respectively.
-# returns an array containing the coefficients of the polynomial in increasing
-# order, e.g. c(1, 2, 3) is the polynomial 1 + 2x + 3x^2
-# Returns NULL if the solution is singular
-polyfit <- function(points) {
-  nPoints <- nrow(points)
-  # the number of known f and g values minus 1
-  order <- sum(!is.na(points[, 2:3])) - 1
+run_schmidt_armijo_search <- function(
+  phi,
+  initial_step,
+  initial_alpha,
+  armijo_constant,
+  fixed_reduction_factor,
+  max_evaluations,
+  direction_scale,
+  progress_tolerance
+) {
+  evaluates_gradient <- is.null(fixed_reduction_factor)
+  function_evaluations <- 0L
+  gradient_evaluations <- 0L
+  best_decrease <- NULL
+  trial_alpha <- initial_alpha
+  is_initial_trial <- TRUE
 
-  # Constraints Based on available Function Values
-  A <- NULL
-  b <- NULL
-  for (i in 1:nPoints) {
-    if (!is.na(points[i, 2])) {
-      constraint <- rep(0, order + 1)
-      for (j in rev(0:order)) {
-        constraint[order - j + 1] <- points[i, 1]^j
-      }
-      if (is.null(A)) {
-        A <- constraint
-      } else {
-        A <- rbind(A, constraint)
-      }
-      if (is.null(b)) {
-        b <- points[i, 2]
-      } else {
-        b <- c(b, points[i, 2])
-      }
+  repeat {
+    trial_step <- phi(trial_alpha, calc_gradient = evaluates_gradient)
+    function_evaluations <- function_evaluations + 1L
+    if (evaluates_gradient) {
+      gradient_evaluations <- gradient_evaluations + 1L
     }
-  }
 
-  # Constraints based on available Derivatives
-  for (i in 1:nPoints) {
-    if (!is.na(points[i, 3])) {
-      constraint <- rep(0, order + 1)
-      for (j in 1:order) {
-        constraint[j] <- (order - j + 1) * points[i, 1]^(order - j)
-      }
-      if (is.null(A)) {
-        A <- constraint
-      } else {
-        A <- rbind(A, constraint)
-      }
-      if (is.null(b)) {
-        b <- points[i, 3]
-      } else {
-        b <- c(b, points[i, 3])
-      }
+    trial_is_usable <- schmidt_armijo_trial_is_usable(trial_step)
+    has_strict_decrease <- trial_is_usable &&
+      isTRUE(trial_step$f < initial_step$f)
+    if (
+      has_strict_decrease &&
+        (is.null(best_decrease) || trial_step$f < best_decrease$f)
+    ) {
+      best_decrease <- trial_step
     }
+
+    if (
+      has_strict_decrease &&
+        isTRUE(armijo_ok_step(initial_step, trial_step, armijo_constant))
+    ) {
+      return(finalize_schmidt_armijo_result(
+        step = trial_step,
+        function_evaluations = function_evaluations,
+        gradient_evaluations = gradient_evaluations
+      ))
+    }
+
+    if (
+      !is_initial_trial &&
+        direction_scale * trial_alpha <= progress_tolerance
+    ) {
+      break
+    }
+    if (function_evaluations >= max_evaluations) {
+      break
+    }
+
+    proposed_alpha <- propose_schmidt_armijo_alpha(
+      initial_step = initial_step,
+      trial_step = trial_step,
+      fixed_reduction_factor = fixed_reduction_factor
+    )
+    trial_alpha <- safeguard_schmidt_armijo_alpha(
+      proposed_alpha,
+      previous_alpha = trial_alpha
+    )
+    is_initial_trial <- FALSE
   }
-  # Find interpolating polynomial
-  params <- try(solve(A, b), silent = TRUE)
-  if (methods::is(params, "numeric")) {
-    params <- rev(params)
+
+  selected_step <- if (is.null(best_decrease)) initial_step else best_decrease
+  finalize_schmidt_armijo_result(
+    step = selected_step,
+    function_evaluations = function_evaluations,
+    gradient_evaluations = gradient_evaluations
+  )
+}
+
+finalize_schmidt_armijo_result <- function(
+  step,
+  function_evaluations,
+  gradient_evaluations
+) {
+  list(
+    step = step,
+    nfn = function_evaluations,
+    ngr = gradient_evaluations,
+    is_gr_curr = !is.null(step$df)
+  )
+}
+
+schmidt_armijo_trial_is_usable <- function(step) {
+  isTRUE(is.finite(step$alpha)) &&
+    isTRUE(is.finite(step$f)) &&
+    (is.null(step$df) || all(is.finite(step$df))) &&
+    (is.null(step$d) || isTRUE(is.finite(step$d))) &&
+    (is.null(step$par) || all(is.finite(step$par)))
+}
+
+propose_schmidt_armijo_alpha <- function(
+  initial_step,
+  trial_step,
+  fixed_reduction_factor
+) {
+  if (!isTRUE(is.finite(trial_step$f))) {
+    reduction_factor <- if (is.null(fixed_reduction_factor)) {
+      0.5
+    } else {
+      fixed_reduction_factor
+    }
+    return(reduction_factor * trial_step$alpha)
+  }
+  if (!is.null(fixed_reduction_factor)) {
+    return(fixed_reduction_factor * trial_step$alpha)
+  }
+  if (
+    is.null(trial_step$df) ||
+      any(!is.finite(trial_step$df)) ||
+      !isTRUE(is.finite(trial_step$d))
+  ) {
+    return(propose_schmidt_quadratic_alpha(
+      initial_step,
+      trial_step,
+      lower_alpha = 0,
+      upper_alpha = trial_step$alpha
+    ))
+  }
+
+  propose_schmidt_cubic_alpha(
+    initial_step,
+    trial_step,
+    lower_alpha = 0,
+    upper_alpha = trial_step$alpha
+  )
+}
+
+# A finite value without a usable trial gradient can still define a quadratic
+# proposal with the initial slope.
+propose_schmidt_quadratic_alpha <- function(
+  initial_point,
+  trial_point,
+  lower_alpha,
+  upper_alpha
+) {
+  proposed_alpha <- quadratic_interpolate_step(initial_point, trial_point)
+  min(max(proposed_alpha, lower_alpha), upper_alpha)
+}
+
+safeguard_schmidt_armijo_alpha <- function(
+  proposed_alpha,
+  previous_alpha,
+  minimum_fraction = 1e-3,
+  maximum_fraction = 0.6
+) {
+  if (!isTRUE(is.finite(proposed_alpha))) {
+    return(previous_alpha * maximum_fraction)
+  }
+  min(
+    max(proposed_alpha, previous_alpha * minimum_fraction),
+    previous_alpha * maximum_fraction
+  )
+}
+
+# Schmidt cubic proposal ---------------------------------------------------
+
+propose_schmidt_cubic_alpha <- function(
+  first_point,
+  second_point,
+  lower_alpha = min(first_point$alpha, second_point$alpha),
+  upper_alpha = max(first_point$alpha, second_point$alpha)
+) {
+  if (first_point$alpha <= second_point$alpha) {
+    lower_point <- first_point
+    upper_point <- second_point
   } else {
-    params <- NULL
+    lower_point <- second_point
+    upper_point <- first_point
   }
-}
+  if (lower_point$alpha == upper_point$alpha) {
+    return(lower_point$alpha)
+  }
 
-# Evaluate 1D polynomial with coefs over the set of points x
-# coefs - the coefficients for the terms of the polynomial ordered by
-#   increasing degree, i.e. c(1, 2, 3, 4) represents the polynomial
-#   4x^3 + 3x^2 + 2x + 1. This is the reverse of the ordering used by the Matlab
-#   function, but is consistent with R functions like poly and polyroot
-#   Also, the order of the arguments is reversed from the Matlab function
-# Returns array of values of the evaluated polynomial
-polyval <- function(x, coefs) {
-  deg <- length(coefs) - 1
-  # Sweep multiplies each column of the poly matrix by the coefficient
-  rowSums(sweep(
-    stats::poly(x, degree = deg, raw = TRUE),
-    2,
-    coefs[2:length(coefs)],
-    `*`
-  )) +
-    coefs[1]
-}
+  cubic_shape <- lower_point$d +
+    upper_point$d -
+    3 *
+      (lower_point$f - upper_point$f) /
+      (lower_point$alpha - upper_point$alpha)
+  discriminant <- cubic_shape^2 - lower_point$d * upper_point$d
+  if (!isTRUE(is.finite(discriminant)) || discriminant < 0) {
+    return((lower_alpha + upper_alpha) / 2)
+  }
 
-point_matrix <- function(xs, fs, gs) {
-  matrix(c(xs, fs, gs), ncol = 3)
+  cubic_root <- sqrt(discriminant)
+  proposed_alpha <- upper_point$alpha -
+    (upper_point$alpha - lower_point$alpha) *
+      ((upper_point$d + cubic_root - cubic_shape) /
+        (upper_point$d - lower_point$d + 2 * cubic_root))
+
+  min(max(proposed_alpha, lower_alpha), upper_alpha)
 }

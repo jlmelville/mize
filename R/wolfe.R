@@ -184,12 +184,16 @@ schmidt_armijo_ls <- function(
     stop("c1 must be between 0 and 1")
   }
 
-  max_ls_fn <- min(max_fn, max_gr, floor(max_fg / 2))
+  max_ls_evaluations <- if (is.null(step_down)) {
+    min(max_fn, max_gr, floor(max_fg / 2))
+  } else {
+    min(max_fn, max_fg)
+  }
 
   line_search(
-    schmidt_armijo_backtrack(
-      c1 = c1,
-      max_fn = max_ls_fn,
+    new_schmidt_armijo_search(
+      armijo_constant = c1,
+      max_fn = max_ls_evaluations,
       step_down = step_down
     ),
     name = "schmidt_armijo",

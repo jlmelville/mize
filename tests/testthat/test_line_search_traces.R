@@ -99,3 +99,84 @@ test_that("default Wolfe search profiles retain their trial traces", {
     expect_equal(result$callback_counts, case$callbacks, info = case_name)
   }
 })
+
+record_schmidt_armijo_trace <- function(step_down) {
+  trace <- list()
+  phi <- function(alpha, calc_gradient = TRUE) {
+    point <- list(alpha = alpha, f = (alpha - 1)^2, par = alpha)
+    if (calc_gradient) {
+      point$df <- 2 * (alpha - 1)
+      point$d <- point$df
+    }
+    trace[[length(trace) + 1L]] <<- c(
+      alpha = point$alpha,
+      f = point$f,
+      d = if (is.null(point$d)) NA_real_ else point$d
+    )
+    point
+  }
+  initial_step <- list(alpha = 0, f = 1, df = -2, d = -2, par = 0)
+
+  result <- new_schmidt_armijo_search(
+    armijo_constant = 0.05,
+    step_down = step_down
+  )(
+    phi = phi,
+    step0 = initial_step,
+    alpha = 12.5,
+    pm = 1
+  )
+
+  list(
+    trials = do.call(rbind, trace),
+    selected = unlist(result$step[c("alpha", "f", "d")]),
+    callback_counts = c(fn = result$nfn, gr = result$ngr),
+    gradient_is_current = result$is_gr_curr
+  )
+}
+
+test_that("supported Schmidt Armijo policies retain their trial traces", {
+  cubic <- record_schmidt_armijo_trace(step_down = NULL)
+  expect_equal(
+    cubic$trials,
+    matrix(
+      c(12.5, 132.25, 23, 1, 0, 0),
+      ncol = 3,
+      byrow = TRUE,
+      dimnames = list(NULL, c("alpha", "f", "d"))
+    )
+  )
+  expect_equal(cubic$selected, c(alpha = 1, f = 0, d = 0))
+  expect_equal(cubic$callback_counts, c(fn = 2, gr = 2))
+  expect_true(cubic$gradient_is_current)
+
+  fixed <- record_schmidt_armijo_trace(step_down = 0.5)
+  expect_equal(
+    fixed$trials,
+    matrix(
+      c(
+        12.5,
+        132.25,
+        NA,
+        6.25,
+        27.5625,
+        NA,
+        3.125,
+        4.515625,
+        NA,
+        1.5625,
+        0.31640625,
+        NA
+      ),
+      ncol = 3,
+      byrow = TRUE,
+      dimnames = list(NULL, c("alpha", "f", "d"))
+    )
+  )
+  expect_equal(
+    fixed$selected,
+    c(alpha = 1.5625, f = 0.31640625)
+  )
+  expect_equal(fixed$callback_counts, c(fn = 4, gr = 0))
+  expect_false(fixed$gradient_is_current)
+})

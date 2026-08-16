@@ -689,6 +689,52 @@ test_that("Bold Driver non-descent shortcut returns an exact zero step", {
   expect_equal(result$f, objective(result$par))
 })
 
+test_that("fixed Schmidt Armijo budgets only objective evaluations", {
+  cases <- list(
+    local_gradient = list(ls_max_gr = 0),
+    local_combined = list(ls_max_fg = 1),
+    global_combined = list(max_fg = 3)
+  )
+
+  for (case_name in names(cases)) {
+    counts <- c(fn = 0L, gr = 0L)
+    fg <- list(
+      fn = function(x) {
+        counts[["fn"]] <<- counts[["fn"]] + 1L
+        x^2
+      },
+      gr = function(x) {
+        counts[["gr"]] <<- counts[["gr"]] + 1L
+        2 * x
+      }
+    )
+    arguments <- c(
+      list(
+        par = 1,
+        fg = fg,
+        method = "SD",
+        line_search = "backtracking",
+        step0 = 0.25,
+        step_down = 0.5,
+        max_iter = 1,
+        check_conv_every = NULL,
+        abs_tol = NULL,
+        rel_tol = NULL,
+        grad_tol = NULL,
+        ginf_tol = NULL,
+        step_tol = NULL
+      ),
+      cases[[case_name]]
+    )
+
+    result <- do.call(mize, arguments)
+
+    expect_identical(counts, c(fn = 2L, gr = 1L), info = case_name)
+    expect_equal(result$par, 0.5, info = case_name)
+    expect_equal(result$f, 0.25, info = case_name)
+  }
+})
+
 test_that("Schmidt Armijo rejects one-trial quartic failures", {
   quartic <- function(x) x^4
   cases <- list(

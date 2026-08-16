@@ -18,6 +18,20 @@ condition_setup <- function(fg, x, pv = -fg$gr(x) / abs(fg$gr(x))) {
   )
 }
 
+test_that("Schmidt Armijo controls reject invalid types and ranges", {
+  expect_error(
+    new_schmidt_armijo_search(armijo_constant = NA_real_),
+    "armijo_constant"
+  )
+  expect_error(new_schmidt_armijo_search(step_down = "half"), "step_down")
+  expect_error(new_schmidt_armijo_search(step_down = 2), "step_down")
+  expect_error(new_schmidt_armijo_search(max_fn = -1), "max_fn")
+  expect_error(
+    new_schmidt_armijo_search(progress_tolerance = Inf),
+    "progress_tolerance"
+  )
+})
+
 test_that("Armijo backtracking accepts steps with sufficient decrease", {
   cases <- list(
     list(
@@ -39,19 +53,14 @@ test_that("Armijo backtracking accepts steps with sufficient decrease", {
 
   for (case in cases) {
     setup <- condition_setup(case$fg, case$x)
-    res <- ArmijoBacktrack(
-      step = case$alpha,
-      f = setup$step0$f,
-      g = setup$step0$df,
-      gtd = setup$step0$d,
-      c1 = case$c1,
-      LS_interp = 2,
-      LS_multi = 0,
-      maxLS = 10000,
-      funObj = setup$phi,
-      pnorm_inf = max(abs(setup$pv)),
-      progTol = 1e-9,
-      debug = FALSE
+    res <- new_schmidt_armijo_search(
+      armijo_constant = case$c1,
+      max_fn = 10000
+    )(
+      phi = setup$phi,
+      step0 = setup$step0,
+      alpha = case$alpha,
+      pm = setup$pv
     )
 
     expect_true(res$step$alpha > 0, info = case$name)
@@ -68,7 +77,7 @@ test_that("Schmidt Armijo accepts internal phi results without parameters", {
     list(alpha = alpha, f = 0, df = -1, d = -1)
   }
 
-  res <- schmidt_armijo_backtrack(c1 = 0.1, max_fn = 1)(
+  res <- new_schmidt_armijo_search(armijo_constant = 0.1, max_fn = 1)(
     phi = phi,
     step0 = step0,
     alpha = 0.5,
@@ -79,6 +88,54 @@ test_that("Schmidt Armijo accepts internal phi results without parameters", {
   expect_equal(res$step$f, 0)
   expect_equal(res$nfn, 1)
   expect_equal(res$ngr, 1)
+})
+
+test_that("Schmidt cubic Armijo backs off a nonfinite objective", {
+  evaluated <- numeric()
+  step0 <- list(alpha = 0, f = 1, df = -1, d = -1, par = 0)
+  phi <- function(alpha, calc_gradient = TRUE) {
+    evaluated <<- c(evaluated, alpha)
+    if (alpha >= 1) {
+      return(list(alpha = alpha, f = Inf, df = Inf, d = Inf, par = alpha))
+    }
+    list(alpha = alpha, f = 0, df = 0, d = 0, par = alpha)
+  }
+
+  result <- new_schmidt_armijo_search(armijo_constant = 0.1, max_fn = 2)(
+    phi = phi,
+    step0 = step0,
+    alpha = 1,
+    pm = 1
+  )
+
+  expect_equal(evaluated, c(1, 0.5))
+  expect_equal(result$step$alpha, 0.5)
+  expect_equal(result$nfn, 2)
+  expect_equal(result$ngr, 2)
+})
+
+test_that("Schmidt cubic Armijo uses values when a trial gradient is nonfinite", {
+  evaluated <- numeric()
+  step0 <- list(alpha = 0, f = 1, df = -1, d = -1, par = 0)
+  phi <- function(alpha, calc_gradient = TRUE) {
+    evaluated <<- c(evaluated, alpha)
+    if (alpha == 1) {
+      return(list(alpha = alpha, f = 2, df = Inf, d = Inf, par = alpha))
+    }
+    list(alpha = alpha, f = 0, df = 0, d = 0, par = alpha)
+  }
+
+  result <- new_schmidt_armijo_search(armijo_constant = 0.1, max_fn = 2)(
+    phi = phi,
+    step0 = step0,
+    alpha = 1,
+    pm = 1
+  )
+
+  expect_equal(evaluated, c(1, 0.25))
+  expect_equal(result$step$alpha, 0.25)
+  expect_equal(result$nfn, 2)
+  expect_equal(result$ngr, 2)
 })
 
 test_that("More-Thuente successful steps satisfy strong Wolfe conditions", {
@@ -455,7 +512,10 @@ test_that("line searches return the initial step when evaluation budgets are exh
     expect_false(weak_conditions$wolfe(setup$step0, res$step), info = name)
   }
 
-  armijo_res <- schmidt_armijo_backtrack(c1 = c1, max_fn = 0)(
+  armijo_res <- new_schmidt_armijo_search(
+    armijo_constant = c1,
+    max_fn = 0
+  )(
     phi = setup$phi,
     step0 = setup$step0,
     alpha = alpha,
