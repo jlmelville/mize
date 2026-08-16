@@ -15,26 +15,22 @@ mtls <- function(
   strong_curvature = TRUE,
   safeguard_cubic = FALSE
 ) {
-  if (approx_armijo) {
-    armijo_check_fn <- make_approx_armijo_ok_step(eps)
-  } else {
-    armijo_check_fn <- armijo_ok_step
-  }
-
-  wolfe_ok_step_fn <- make_wolfe_ok_step_fn(
+  search <- new_wolfe_line_search(
+    more_thuente_core,
+    armijo_constant = c1,
+    curvature_constant = c2,
+    approximation_tolerance = eps,
+    approximate_armijo = approx_armijo,
     strong_curvature = strong_curvature,
-    approx_armijo = approx_armijo,
-    eps = eps
+    options = new_more_thuente_policy(
+      safeguard_cubic = safeguard_cubic
+    )
   )
-  res <- cvsrch(
+  res <- search(
     phi = make_phi_alpha(x, fg, pv, calc_gradient_default = TRUE),
     alpha,
     step0 = make_step0(fg, x, pv),
-    c1 = c1,
-    c2 = c2,
-    armijo_check_fn = armijo_check_fn,
-    wolfe_ok_step_fn = wolfe_ok_step_fn,
-    safeguard_cubic = safeguard_cubic
+    pm = pv
   )
   res$step$par <- x + res$step$alpha * pv
   res
@@ -181,23 +177,24 @@ test_that("Function modification", {
   )
 })
 
-test_that("cstep rejects invalid interval states without mutation", {
-  make_cstep_point <- function(alpha, f, d) {
+test_that("More-Thuente interval updates reject invalid state without mutation", {
+  make_interval_point <- function(alpha, f, d) {
     list(alpha = alpha, f = f, d = d, df = d)
   }
+  policy <- new_more_thuente_policy(alpha_max = 4)
 
   invalid_cases <- list(
     trial_outside_bracket = list(
-      stepx = make_cstep_point(1, 0, -1),
-      stepy = make_cstep_point(3, 1, 1),
-      step = make_cstep_point(4, 2, 0.5),
-      brackt = TRUE
+      best_endpoint = make_interval_point(1, 0, -1),
+      other_endpoint = make_interval_point(3, 1, 1),
+      trial_point = make_interval_point(4, 2, 0.5),
+      is_bracketed = TRUE
     ),
     zero_best_slope = list(
-      stepx = make_cstep_point(0, 0, 0),
-      stepy = make_cstep_point(0, 0, 0),
-      step = make_cstep_point(1, -1, -1),
-      brackt = FALSE
+      best_endpoint = make_interval_point(0, 0, 0),
+      other_endpoint = make_interval_point(0, 0, 0),
+      trial_point = make_interval_point(1, -1, -1),
+      is_bracketed = FALSE
     )
   )
 
@@ -205,168 +202,314 @@ test_that("cstep rejects invalid interval states without mutation", {
   # cannot exercise without first constructing an invalid state.
   for (case_name in names(invalid_cases)) {
     case <- invalid_cases[[case_name]]
+    state <- new_more_thuente_search_state(
+      case$best_endpoint,
+      case$trial_point$alpha,
+      policy
+    )
+    state$best_endpoint <- case$best_endpoint
+    state$other_endpoint <- case$other_endpoint
+    state$trial_point <- case$trial_point
+    state$is_bracketed <- case$is_bracketed
+    state$trial_lower_bound <- 0
+    state$trial_upper_bound <- 4
     result <- tryCatch(
-      cstep(
-        case$stepx,
-        case$stepy,
-        case$step,
-        case$brackt,
-        stpmin = 0,
-        stpmax = 4
-      ),
+      update_more_thuente_interval(state, policy),
       error = identity
     )
 
     expect_false(inherits(result, "error"), info = case_name)
     if (!inherits(result, "error")) {
-      expect_identical(result$stepx, case$stepx, info = case_name)
-      expect_identical(result$stepy, case$stepy, info = case_name)
-      expect_identical(result$step, case$step, info = case_name)
-      expect_identical(result$brackt, case$brackt, info = case_name)
-      expect_identical(result$info, 0, info = case_name)
+      expect_identical(result$state, state, info = case_name)
+      expect_identical(result$classification, "invalid", info = case_name)
     }
   }
 })
 
-test_that("cstep covers all four interval-update cases", {
-  make_cstep_point <- function(alpha, f, d) {
+test_that("More-Thuente interval updates cover all four mathematical cases", {
+  make_interval_point <- function(alpha, f, d) {
     list(alpha = alpha, f = f, d = d, df = d)
   }
-  initial <- make_cstep_point(0, 0, -1)
+  policy <- new_more_thuente_policy(alpha_max = 4)
+  initial <- make_interval_point(0, 0, -1)
   cases <- list(
     higher_value = list(
-      trial = make_cstep_point(1, 1, -0.5),
-      info = 1,
-      brackt = TRUE,
-      stepx = initial,
-      stepy = make_cstep_point(1, 1, -0.5),
+      trial = make_interval_point(1, 1, -0.5),
+      classification = "higher_trial_value",
+      is_bracketed = TRUE,
+      best_endpoint = initial,
+      other_endpoint = make_interval_point(1, 1, -0.5),
       next_alpha = 0.10056217060402
     ),
     opposite_slope = list(
-      trial = make_cstep_point(1, -0.5, 0.5),
-      info = 2,
-      brackt = TRUE,
-      stepx = make_cstep_point(1, -0.5, 0.5),
-      stepy = initial,
+      trial = make_interval_point(1, -0.5, 0.5),
+      classification = "lower_value_opposite_slope",
+      is_bracketed = TRUE,
+      best_endpoint = make_interval_point(1, -0.5, 0.5),
+      other_endpoint = initial,
       next_alpha = 2 / 3
     ),
     reduced_slope_magnitude = list(
-      trial = make_cstep_point(1, -0.5, -0.25),
-      info = 3,
-      brackt = FALSE,
-      stepx = make_cstep_point(1, -0.5, -0.25),
-      stepy = initial,
+      trial = make_interval_point(1, -0.5, -0.25),
+      classification = "lower_value_reduced_slope_magnitude",
+      is_bracketed = FALSE,
+      best_endpoint = make_interval_point(1, -0.5, -0.25),
+      other_endpoint = initial,
       next_alpha = 4
     ),
     unreduced_slope_magnitude = list(
-      trial = make_cstep_point(1, -0.5, -2),
-      info = 4,
-      brackt = FALSE,
-      stepx = make_cstep_point(1, -0.5, -2),
-      stepy = initial,
+      trial = make_interval_point(1, -0.5, -2),
+      classification = "lower_value_unreduced_slope_magnitude",
+      is_bracketed = FALSE,
+      best_endpoint = make_interval_point(1, -0.5, -2),
+      other_endpoint = initial,
       next_alpha = 4
     )
   )
 
   for (case_name in names(cases)) {
     case <- cases[[case_name]]
-    result <- cstep(
+    state <- new_more_thuente_search_state(
       initial,
-      initial,
-      case$trial,
-      brackt = FALSE,
-      stpmin = 0,
-      stpmax = 4
+      case$trial$alpha,
+      policy
     )
+    state$trial_point <- case$trial
+    state$trial_lower_bound <- 0
+    state$trial_upper_bound <- 4
+    result <- update_more_thuente_interval(state, policy)
 
-    expect_identical(result$info, case$info, info = case_name)
-    expect_identical(result$brackt, case$brackt, info = case_name)
-    expect_equal(result$stepx, case$stepx, info = case_name)
-    expect_equal(result$stepy, case$stepy, info = case_name)
-    expect_equal(result$step$alpha, case$next_alpha, info = case_name)
+    expect_identical(
+      result$classification,
+      case$classification,
+      info = case_name
+    )
+    expect_identical(
+      result$state$is_bracketed,
+      case$is_bracketed,
+      info = case_name
+    )
     expect_equal(
-      result$step[c("f", "d", "df")],
+      result$state$best_endpoint,
+      case$best_endpoint,
+      info = case_name
+    )
+    expect_equal(
+      result$state$other_endpoint,
+      case$other_endpoint,
+      info = case_name
+    )
+    expect_equal(
+      result$state$trial_point$alpha,
+      case$next_alpha,
+      info = case_name
+    )
+    expect_equal(
+      result$state$trial_point[c("f", "d", "df")],
       case$trial[c("f", "d", "df")],
       info = case_name
     )
   }
 })
 
-test_that("More-Thuente convergence guard reports non-success statuses", {
+test_that("More-Thuente termination guard reports named reasons", {
   step0 <- list(alpha = 0, f = 1, d = -1, df = -1)
   cases <- list(
     alpha_min = list(
-      expected = 4,
+      expected = "alpha_min",
       step = list(alpha = 0, f = 2, d = -1, df = -1),
-      brackt = FALSE,
-      infoc = 1,
-      stmin = 0,
-      stmax = 4,
+      is_bracketed = FALSE,
+      interval_update_case = "initial",
+      trial_lower_bound = 0,
+      trial_upper_bound = 4,
       alpha_min = 0,
       alpha_max = 10,
-      nfev = 1,
-      maxfev = 10,
-      xtol = 1e-8
+      evaluation_count = 1,
+      max_evaluations = 10,
+      relative_interval_tolerance = 1e-8
     ),
     alpha_max = list(
-      expected = 5,
+      expected = "alpha_max",
       step = list(alpha = 10, f = 0.5, d = -2, df = -2),
-      brackt = FALSE,
-      infoc = 1,
-      stmin = 0,
-      stmax = 10,
+      is_bracketed = FALSE,
+      interval_update_case = "initial",
+      trial_lower_bound = 0,
+      trial_upper_bound = 10,
       alpha_min = 0,
       alpha_max = 10,
-      nfev = 1,
-      maxfev = 10,
-      xtol = 1e-8
+      evaluation_count = 1,
+      max_evaluations = 10,
+      relative_interval_tolerance = 1e-8
     ),
     rounding = list(
-      expected = 6,
+      expected = "rounding_stagnation",
       step = list(alpha = 2, f = 2, d = -1, df = -1),
-      brackt = FALSE,
-      infoc = 0,
-      stmin = 0,
-      stmax = 4,
+      is_bracketed = FALSE,
+      interval_update_case = "invalid",
+      trial_lower_bound = 0,
+      trial_upper_bound = 4,
       alpha_min = 0,
       alpha_max = 10,
-      nfev = 1,
-      maxfev = 10,
-      xtol = 1e-8
+      evaluation_count = 1,
+      max_evaluations = 10,
+      relative_interval_tolerance = 1e-8
     ),
     narrow_bracket = list(
-      expected = 2,
+      expected = "relative_interval_tolerance",
       step = list(alpha = 1 + 5e-13, f = 2, d = -1, df = -1),
-      brackt = TRUE,
-      infoc = 1,
-      stmin = 1,
-      stmax = 1 + 1e-12,
+      is_bracketed = TRUE,
+      interval_update_case = "initial",
+      trial_lower_bound = 1,
+      trial_upper_bound = 1 + 1e-12,
       alpha_min = 0,
       alpha_max = 10,
-      nfev = 1,
-      maxfev = 10,
-      xtol = 1e-6
+      evaluation_count = 1,
+      max_evaluations = 10,
+      relative_interval_tolerance = 1e-6
     )
   )
 
   for (case_name in names(cases)) {
     case <- cases[[case_name]]
-    info <- check_convergence(
-      step0 = step0,
-      step = case$step,
-      brackt = case$brackt,
-      infoc = case$infoc,
-      stmin = case$stmin,
-      stmax = case$stmax,
+    policy <- new_more_thuente_policy(
+      relative_interval_tolerance = case$relative_interval_tolerance,
       alpha_min = case$alpha_min,
-      alpha_max = case$alpha_max,
-      c1 = 1e-4,
-      c2 = 0.9,
-      nfev = case$nfev,
-      maxfev = case$maxfev,
-      xtol = case$xtol
+      alpha_max = case$alpha_max
+    )
+    state <- new_more_thuente_search_state(step0, case$step$alpha, policy)
+    state$trial_point <- case$step
+    state$is_bracketed <- case$is_bracketed
+    state$interval_update_case <- case$interval_update_case
+    state$trial_lower_bound <- case$trial_lower_bound
+    state$trial_upper_bound <- case$trial_upper_bound
+    reason <- classify_more_thuente_termination(
+      state = state,
+      initial_point = step0,
+      condition_policy = new_line_condition_policy(1e-4, 0.9),
+      policy = policy,
+      evaluation_count = case$evaluation_count,
+      max_evaluations = case$max_evaluations
     )
 
-    expect_equal(info, case$expected, info = case_name)
+    expect_identical(reason, case$expected, info = case_name)
+  }
+})
+
+test_that("More-Thuente policy owns named algorithm defaults", {
+  policy <- new_more_thuente_policy()
+
+  expect_equal(policy$relative_interval_tolerance, .Machine$double.eps)
+  expect_equal(policy$contraction_factor, 0.66)
+  expect_equal(policy$expansion_factor, 4)
+  expect_equal(policy$alpha_min, 0)
+  expect_equal(policy$alpha_max, Inf)
+  expect_false(policy$safeguard_cubic)
+  expect_equal(policy$cubic_interior_fraction, 0.001)
+
+  state <- new_more_thuente_search_state(
+    list(alpha = 0, f = 1, d = -1, df = -1),
+    initial_alpha = 1,
+    policy = policy
+  )
+  expect_named(
+    state,
+    c(
+      "best_endpoint",
+      "other_endpoint",
+      "trial_point",
+      "is_bracketed",
+      "modified_function_stage",
+      "current_interval_width",
+      "previous_interval_width",
+      "trial_lower_bound",
+      "trial_upper_bound",
+      "interval_update_case",
+      "termination_reason"
+    )
+  )
+})
+
+test_that("More-Thuente termination reasons retain their precedence", {
+  initial <- list(alpha = 0, f = 1, d = -1, df = -1)
+  policy <- new_more_thuente_policy(
+    relative_interval_tolerance = 1,
+    alpha_max = 10
+  )
+  conditions <- new_line_condition_policy(1e-4, 0.9)
+  state <- new_more_thuente_search_state(initial, 1, policy)
+  state$is_bracketed <- TRUE
+  state$trial_lower_bound <- 0.5
+  state$trial_upper_bound <- 1
+  state$interval_update_case <- "invalid"
+
+  state$trial_point <- list(alpha = 1, f = 0, d = 0, df = 0)
+  expect_identical(
+    classify_more_thuente_termination(
+      state,
+      initial,
+      conditions,
+      policy,
+      evaluation_count = 1,
+      max_evaluations = 1
+    ),
+    "wolfe"
+  )
+
+  state$trial_point <- list(alpha = 1, f = 2, d = -1, df = -1)
+  expect_identical(
+    classify_more_thuente_termination(
+      state,
+      initial,
+      conditions,
+      policy,
+      evaluation_count = 1,
+      max_evaluations = 1
+    ),
+    "relative_interval_tolerance"
+  )
+
+  state$is_bracketed <- FALSE
+  state$trial_point <- list(alpha = 0, f = 2, d = -1, df = -1)
+  expect_identical(
+    classify_more_thuente_termination(
+      state,
+      initial,
+      conditions,
+      policy,
+      evaluation_count = 1,
+      max_evaluations = 1
+    ),
+    "budget_exhausted"
+  )
+})
+
+test_that("More-Thuente termination reasons select the same endpoint roles", {
+  policy <- new_more_thuente_policy()
+  best <- list(alpha = 0.5, f = 0.25, d = -0.5, df = -0.5)
+  trial <- list(alpha = 1, f = 0, d = 0, df = 0)
+  state <- new_more_thuente_search_state(best, trial$alpha, policy)
+  state$best_endpoint <- best
+  state$trial_point <- trial
+
+  for (reason in c(
+    "budget_exhausted",
+    "relative_interval_tolerance",
+    "rounding_stagnation"
+  )) {
+    state$termination_reason <- reason
+    expect_identical(
+      select_more_thuente_candidate(state),
+      best,
+      info = reason
+    )
+  }
+
+  for (reason in c("wolfe", "alpha_min", "alpha_max")) {
+    state$termination_reason <- reason
+    expect_identical(
+      select_more_thuente_candidate(state),
+      trial,
+      info = reason
+    )
   }
 })

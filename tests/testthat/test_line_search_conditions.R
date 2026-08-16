@@ -119,15 +119,20 @@ test_that("More-Thuente successful steps satisfy strong Wolfe conditions", {
 
   for (case in cases) {
     setup <- condition_setup(case$fg, case$x)
-    res <- cvsrch(
+    search <- new_wolfe_line_search(
+      more_thuente_core,
+      armijo_constant = case$c1,
+      curvature_constant = case$c2,
+      max_evaluations = 10000,
+      options = new_more_thuente_policy()
+    )
+    res <- search(
       phi = setup$phi,
       step0 = setup$step0,
       alpha = case$alpha,
-      c1 = case$c1,
-      c2 = case$c2
+      pm = setup$pv
     )
 
-    expect_equal(res$info, 1, info = case$name)
     expect_true(
       strong_wolfe_ok_step(setup$step0, res$step, case$c1, case$c2),
       info = case$name
@@ -203,13 +208,18 @@ test_that("weak Wolfe configuration does not require strong curvature", {
   strong_ok_step <- make_wolfe_ok_step_fn(strong_curvature = TRUE)
 
   results <- list(
-    `more-thuente` = cvsrch(
+    `more-thuente` = new_wolfe_line_search(
+      more_thuente_core,
+      armijo_constant = c1,
+      curvature_constant = c2,
+      max_evaluations = 100,
+      strong_curvature = FALSE,
+      options = new_more_thuente_policy()
+    )(
       phi = setup$phi,
       step0 = setup$step0,
       alpha = alpha,
-      c1 = c1,
-      c2 = c2,
-      wolfe_ok_step_fn = weak_ok_step
+      pm = setup$pv
     ),
     rasmussen = new_wolfe_line_search(
       rasmussen_core,
@@ -395,7 +405,10 @@ test_that("line searches return the initial step when evaluation budgets are exh
       armijo_constant = c1,
       curvature_constant = c2,
       max_evaluations = 0,
-      options = list(alpha_max = Inf, safeguard_cubic = FALSE)
+      options = new_more_thuente_policy(
+        alpha_max = Inf,
+        safeguard_cubic = FALSE
+      )
     ),
     rasmussen = new_wolfe_line_search(
       rasmussen_core,

@@ -41,7 +41,7 @@ more_thuente_ls <- function(
       max_evaluations = max_ls_fn,
       strong_curvature = strong_curvature,
       approximate_armijo = approx_armijo,
-      options = list(
+      options = new_more_thuente_policy(
         alpha_max = max_alpha,
         safeguard_cubic = safeguard_cubic
       )

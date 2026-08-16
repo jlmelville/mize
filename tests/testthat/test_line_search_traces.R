@@ -35,7 +35,10 @@ test_that("default Wolfe search profiles retain their trial traces", {
           more_thuente_core,
           armijo_constant = 1e-4,
           curvature_constant = 0.1,
-          options = list(alpha_max = Inf, safeguard_cubic = FALSE)
+          options = new_more_thuente_policy(
+            alpha_max = Inf,
+            safeguard_cubic = FALSE
+          )
         )
       },
       trials = matrix(
