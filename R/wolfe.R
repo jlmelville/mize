@@ -779,13 +779,10 @@ curvature_ok_step <- function(step0, step, c2) {
 #
 # Line search test.
 #
-# Ensures that the value of the directional derivative of the line search
-# direction at a candidate step size is equal to or greater than a specified
-# fraction of the slope of the line at the starting point of the search, while
-# having the same direction. This condition is used to make the step size lie
-# close to a stationary point. Unlike the normal curvature condition, a step
-# size where the sign of the gradient changed (e.g. the minimum had been
-# skipped) would not be acceptable for the strong curvature condition.
+# Ensures that the magnitude of the directional derivative at a candidate step
+# size is no greater than a specified fraction of the magnitude of the slope at
+# the starting point. This condition is used to make the step size lie close to
+# a stationary point. The directional derivative may change sign.
 #
 # In combination with the sufficient decrease condition [armijo_ok()]
 # these conditions make up the Strong Wolfe conditions.
@@ -803,13 +800,10 @@ strong_curvature_ok <- function(d0, da, c2) {
 #
 # Line search test.
 #
-# Ensures that the value of the directional derivative of the line search
-# direction at a candidate step size is equal to or greater than a specified
-# fraction of the slope of the line at the starting point of the search, while
-# having the same direction. This condition is used to make the step size lie
-# close to a stationary point. Unlike the normal curvature condition, a step
-# size where the sign of the gradient changed (e.g. the minimum had been
-# skipped) would not be acceptable for the strong curvature condition.
+# Ensures that the magnitude of the directional derivative at a candidate step
+# size is no greater than a specified fraction of the magnitude of the slope at
+# the starting point. This condition is used to make the step size lie close to
+# a stationary point. The directional derivative may change sign.
 #
 # In combination with the sufficient decrease condition [armijo_ok()]
 # these conditions make up the Strong Wolfe conditions.

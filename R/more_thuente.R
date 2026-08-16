@@ -781,13 +781,13 @@ cstep <- function(
       dx * (stp - stx) >= 0.0 ||
       stpmax < stpmin
   ) {
-    list(
+    return(list(
       stepx = stepx,
       stepy = stepy,
       step = step,
       brackt = brackt,
       info = info
-    )
+    ))
   }
   # Determine if the derivatives have opposite sign.
   sgnd <- dp * (dx / abs(dx))

@@ -33,7 +33,6 @@ rasmussen <- function(
   int = 0.1,
   ext = 3.0,
   max_fn = Inf,
-  xtol = 1e-6,
   eps = 1e-6,
   approx_armijo = FALSE,
   strong_curvature = TRUE,
@@ -101,6 +100,8 @@ rasmussen <- function(
 #   too large.
 # @param int Interpolation constant. Prevents step size being too small.
 # @param max_fn Maximum number of function evaluations allowed.
+# @param relative_interval_tolerance Stop when the bracket width is below this
+#   fraction of the current trial step.
 # @return List containing:
 #
 # * `step`: Valid step size or the last step size evaluated.
@@ -109,12 +110,12 @@ ras_ls <- function(
   phi,
   alpha,
   step0,
-  c1 = 0.1,
-  c2 = 0.1 / 2,
+  c1,
+  c2,
   ext = 3.0,
   int = 0.1,
   max_fn = Inf,
-  xtol = 1e-6,
+  relative_interval_tolerance = 1e-6,
   armijo_check_fn = armijo_ok_step,
   wolfe_ok_step_fn = strong_wolfe_ok_step,
   verbose = FALSE
@@ -173,7 +174,7 @@ ras_ls <- function(
     c2,
     int,
     max_fn,
-    xtol = xtol,
+    relative_interval_tolerance = relative_interval_tolerance,
     armijo_check_fn = armijo_check_fn,
     wolfe_ok_step_fn = wolfe_ok_step_fn,
     verbose = verbose
@@ -291,6 +292,8 @@ tweaked_extrapolation <- function(step0, step, ext, int) {
 #   c1 and 1.
 # @param int Interpolation constant. Prevents step size being too small.
 # @param max_fn Maximum number of function evaluations allowed.
+# @param relative_interval_tolerance Stop when the bracket width is below this
+#   fraction of the current trial step.
 # @return List containing:
 #
 # * `step`: Valid step size or the last step size evaluated.
@@ -303,7 +306,7 @@ interpolate_step_size <- function(
   c2,
   int,
   max_fn = 20,
-  xtol = 1e-6,
+  relative_interval_tolerance = 1e-6,
   armijo_check_fn = armijo_ok_step,
   wolfe_ok_step_fn = strong_wolfe_ok_step,
   verbose = FALSE
@@ -368,13 +371,16 @@ interpolate_step_size <- function(
     }
     step3 <- result$step
 
-    if (bracket_width(list(step2, step4)) < xtol * step3$alpha) {
+    if (
+      bracket_width(list(step2, step4)) <
+        relative_interval_tolerance * step3$alpha
+    ) {
       if (verbose) {
         message(
           "Bracket width: ",
           formatC(bracket_width(list(step2, step4))),
           " reduced below tolerance ",
-          formatC(xtol * step3$alpha)
+          formatC(relative_interval_tolerance * step3$alpha)
         )
       }
       break

@@ -5,7 +5,7 @@ rls <- function(
   alpha,
   c1,
   c2,
-  xtol = 1e-6,
+  relative_interval_tolerance = 1e-6,
   eps = 1e-6,
   approx_armijo = FALSE,
   strong_curvature = TRUE,
@@ -29,7 +29,7 @@ rls <- function(
     alpha,
     step0 = step0,
     max_fn = 10000,
-    xtol = xtol,
+    relative_interval_tolerance = relative_interval_tolerance,
     c1 = c1,
     c2 = c2,
     armijo_check_fn = armijo_check_fn,
@@ -68,6 +68,56 @@ test_that("Rasmussen line search defaults to non-verbose operation", {
   expect_equal(default_result, explicit_result)
   expect_equal(default_result$nfn, 2)
   expect_equal(default_result$step, list(alpha = 1, f = 0, d = 0))
+})
+
+test_that("Rasmussen core condition inputs are explicit", {
+  phi <- function(alpha) {
+    list(alpha = alpha, f = (alpha - 1)^2, d = 2 * (alpha - 1))
+  }
+  step0 <- phi(0)
+
+  expect_error(
+    ras_ls(phi, alpha = 0.5, step0 = step0, c2 = 0.1),
+    'argument "c1" is missing'
+  )
+  expect_error(
+    ras_ls(phi, alpha = 0.5, step0 = step0, c1 = 0.01),
+    'argument "c2" is missing'
+  )
+})
+
+test_that("Rasmussen interval tolerance has one effective private owner", {
+  expect_false("xtol" %in% names(formals(rasmussen)))
+  expect_false("xtol" %in% names(formals(ras_ls)))
+  expect_false("xtol" %in% names(formals(interpolate_step_size)))
+  expect_true("relative_interval_tolerance" %in% names(formals(ras_ls)))
+  expect_true(
+    "relative_interval_tolerance" %in% names(formals(interpolate_step_size))
+  )
+
+  phi <- function(alpha) {
+    list(alpha = alpha, f = (alpha - 1)^2, d = 2 * (alpha - 1))
+  }
+  step0 <- phi(0)
+  default_result <- ras_ls(
+    phi,
+    alpha = 0.5,
+    step0 = step0,
+    c1 = 0.01,
+    c2 = 0.1,
+    max_fn = 20
+  )
+  explicit_result <- ras_ls(
+    phi,
+    alpha = 0.5,
+    step0 = step0,
+    c1 = 0.01,
+    c2 = 0.1,
+    max_fn = 20,
+    relative_interval_tolerance = 1e-6
+  )
+
+  expect_equal(default_result, explicit_result)
 })
 
 ## Test data from the More'-Thuente paper.

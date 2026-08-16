@@ -181,6 +181,117 @@ test_that("Function modification", {
   )
 })
 
+test_that("cstep rejects invalid interval states without mutation", {
+  make_cstep_point <- function(alpha, f, d) {
+    list(alpha = alpha, f = f, d = d, df = d)
+  }
+
+  invalid_cases <- list(
+    trial_outside_bracket = list(
+      stepx = make_cstep_point(1, 0, -1),
+      stepy = make_cstep_point(3, 1, 1),
+      step = make_cstep_point(4, 2, 0.5),
+      brackt = TRUE
+    ),
+    zero_best_slope = list(
+      stepx = make_cstep_point(0, 0, 0),
+      stepy = make_cstep_point(0, 0, 0),
+      step = make_cstep_point(1, -1, -1),
+      brackt = FALSE
+    )
+  )
+
+  # This private transition owns a safety guard that normal search invariants
+  # cannot exercise without first constructing an invalid state.
+  for (case_name in names(invalid_cases)) {
+    case <- invalid_cases[[case_name]]
+    result <- tryCatch(
+      cstep(
+        case$stepx,
+        case$stepy,
+        case$step,
+        case$brackt,
+        stpmin = 0,
+        stpmax = 4
+      ),
+      error = identity
+    )
+
+    expect_false(inherits(result, "error"), info = case_name)
+    if (!inherits(result, "error")) {
+      expect_identical(result$stepx, case$stepx, info = case_name)
+      expect_identical(result$stepy, case$stepy, info = case_name)
+      expect_identical(result$step, case$step, info = case_name)
+      expect_identical(result$brackt, case$brackt, info = case_name)
+      expect_identical(result$info, 0, info = case_name)
+    }
+  }
+})
+
+test_that("cstep covers all four interval-update cases", {
+  make_cstep_point <- function(alpha, f, d) {
+    list(alpha = alpha, f = f, d = d, df = d)
+  }
+  initial <- make_cstep_point(0, 0, -1)
+  cases <- list(
+    higher_value = list(
+      trial = make_cstep_point(1, 1, -0.5),
+      info = 1,
+      brackt = TRUE,
+      stepx = initial,
+      stepy = make_cstep_point(1, 1, -0.5),
+      next_alpha = 0.10056217060402
+    ),
+    opposite_slope = list(
+      trial = make_cstep_point(1, -0.5, 0.5),
+      info = 2,
+      brackt = TRUE,
+      stepx = make_cstep_point(1, -0.5, 0.5),
+      stepy = initial,
+      next_alpha = 2 / 3
+    ),
+    reduced_slope_magnitude = list(
+      trial = make_cstep_point(1, -0.5, -0.25),
+      info = 3,
+      brackt = FALSE,
+      stepx = make_cstep_point(1, -0.5, -0.25),
+      stepy = initial,
+      next_alpha = 4
+    ),
+    unreduced_slope_magnitude = list(
+      trial = make_cstep_point(1, -0.5, -2),
+      info = 4,
+      brackt = FALSE,
+      stepx = make_cstep_point(1, -0.5, -2),
+      stepy = initial,
+      next_alpha = 4
+    )
+  )
+
+  for (case_name in names(cases)) {
+    case <- cases[[case_name]]
+    result <- cstep(
+      initial,
+      initial,
+      case$trial,
+      brackt = FALSE,
+      stpmin = 0,
+      stpmax = 4
+    )
+
+    expect_identical(result$info, case$info, info = case_name)
+    expect_identical(result$brackt, case$brackt, info = case_name)
+    expect_equal(result$stepx, case$stepx, info = case_name)
+    expect_equal(result$stepy, case$stepy, info = case_name)
+    expect_equal(result$step$alpha, case$next_alpha, info = case_name)
+    expect_equal(
+      result$step[c("f", "d", "df")],
+      case$trial[c("f", "d", "df")],
+      info = case_name
+    )
+  }
+})
+
 test_that("More-Thuente convergence guard reports non-success statuses", {
   step0 <- list(alpha = 0, f = 1, d = -1, df = -1)
   cases <- list(

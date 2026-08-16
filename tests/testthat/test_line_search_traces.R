@@ -1,0 +1,73 @@
+record_default_line_search_trace <- function(factory, initial_alpha = 12.5) {
+  trace <- list()
+  phi <- function(alpha, calc_gradient = TRUE) {
+    point <- list(
+      alpha = alpha,
+      f = (alpha - 1)^2,
+      df = 2 * (alpha - 1),
+      d = 2 * (alpha - 1),
+      par = alpha
+    )
+    trace[[length(trace) + 1L]] <<- unlist(point[c("alpha", "f", "d")])
+    point
+  }
+  step0 <- list(alpha = 0, f = 1, df = -2, d = -2, par = 0)
+
+  result <- factory()(
+    phi = phi,
+    step0 = step0,
+    alpha = initial_alpha,
+    pm = 1
+  )
+
+  list(
+    trials = do.call(rbind, trace),
+    selected = unlist(result$step[c("alpha", "f", "d")]),
+    callback_counts = c(fn = result$nfn, gr = result$ngr)
+  )
+}
+
+test_that("default Wolfe search profiles retain their trial traces", {
+  cases <- list(
+    `more-thuente` = list(
+      factory = more_thuente,
+      trials = matrix(
+        c(12.5, 132.25, 23, 1, 0, 0),
+        ncol = 3,
+        byrow = TRUE,
+        dimnames = list(NULL, c("alpha", "f", "d"))
+      ),
+      callbacks = c(fn = 2, gr = 2)
+    ),
+    rasmussen = list(
+      factory = rasmussen,
+      trials = matrix(
+        c(12.5, 132.25, 23, 1.25, 0.0625, 0.5, 1, 0, 0),
+        ncol = 3,
+        byrow = TRUE,
+        dimnames = list(NULL, c("alpha", "f", "d"))
+      ),
+      callbacks = c(fn = 3, gr = 3)
+    ),
+    schmidt = list(
+      factory = schmidt,
+      trials = matrix(
+        c(12.5, 132.25, 23, 1, 0, 0),
+        ncol = 3,
+        byrow = TRUE,
+        dimnames = list(NULL, c("alpha", "f", "d"))
+      ),
+      callbacks = c(fn = 2, gr = 2)
+    )
+  )
+  expected_selection <- c(alpha = 1, f = 0, d = 0)
+
+  for (case_name in names(cases)) {
+    case <- cases[[case_name]]
+    result <- record_default_line_search_trace(case$factory)
+
+    expect_equal(result$trials, case$trials, info = case_name)
+    expect_equal(result$selected, expected_selection, info = case_name)
+    expect_equal(result$callback_counts, case$callbacks, info = case_name)
+  }
+})

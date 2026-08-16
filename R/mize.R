@@ -181,7 +181,7 @@
 #' * `approx_armijo`: If `TRUE`, then the approximate Armijo
 #'    sufficient decrease condition (Hager and Zhang, 2005) will be used to
 #'    check termination in Wolfe line search methods. If `FALSE`, then the
-#'    exact curvature condition will be used. The default is `NULL` which
+#'    exact Armijo condition will be used. The default is `NULL` which
 #'    lets the different Wolfe line searches choose whichever is their default
 #'    behavior. This option is ignored if not using a Wolfe line search method.
 #'
