@@ -3,9 +3,9 @@
 ## Bug fixes and minor improvements
 
 * Fixed several optimizer edge cases found during cleanup.
-* New function: `check_mize_convergence()`, which will compare your an analytic
-gradient with a finite-different approximation.
-* `mize()` now returns additive status fields more status fields: `converged`,
+* New function: `check_mize_gradient()`, which compares an analytic gradient
+with a finite-difference approximation.
+* `mize()` now returns status fields: `converged`,
 `status`, and `message`, plus explicit best/last result fields (`best_par`,
 `best_f`, `last_par`, and `last_f`).
 

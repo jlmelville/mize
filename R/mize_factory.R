@@ -169,10 +169,9 @@ mize_validate_initial_par <- function(par) {
 #'   standard negative curvature test, or `"strong"` to use the modified
 #'   "strong" curvature test in TNPACK (Xie and Schlick, 1999). Applies only
 #'   if `method = "TN"`, ignored otherwise.
-#' @param nest_q Strong convexity parameter for the `"NAG"` method's
-#'   momentum term. Must take a value between 0 (strongly convex) and 1 (results
-#'   in steepest descent).Ignored unless the `method` is `"NAG"` and
-#'   `nest_convex_approx` is `FALSE`.
+#' @param nest_q NAG momentum parameter. Must take a value between 0 (largest
+#'   momentum) and 1 (zero momentum, giving steepest descent). Ignored unless
+#'   the `method` is `"NAG"` and `nest_convex_approx` is `FALSE`.
 #' @param nest_convex_approx If `TRUE`, then use an approximation due to
 #'   Sutskever for calculating the momentum parameter in the NAG method. Only
 #'   applies if `method` is `"NAG"`.
@@ -188,9 +187,9 @@ mize_validate_initial_par <- function(par) {
 #'   `"DBD"` method or the `"bold"`. Can also be used with the
 #'   `"back"` line search method, but is optional. Should be a positive
 #'   value less than 1.
-#' @param dbd_weight Weighting parameter used by the `"DBD"` method only,
-#'   and only if no momentum scheme is provided. Must be an integer between 0
-#'   and 1.
+#' @param dbd_weight Numeric weighting value used by the `"DBD"` method only,
+#'   and only if no momentum scheme is provided. Must be between 0 and 1,
+#'   inclusive.
 #' @param line_search Type of line search to use. See 'Details' of
 #'   [mize()].
 #' @param c1 Sufficient decrease parameter for Wolfe-type line searches. Should

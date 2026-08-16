@@ -81,9 +81,9 @@
 #' * `"NAG"` is the Nesterov Accelerated Gradient method. The exact
 #' form of the momentum update in this method can be controlled with the
 #' following parameters:
-#'   * `nest_q`: Strong convexity parameter. Must take a value
-#'   between 0 (strongly convex) and 1 (zero momentum). Ignored if
-#'   `nest_convex_approx` is `TRUE`.
+#'   * `nest_q`: NAG momentum parameter. Must take a value between 0
+#'   (largest momentum) and 1 (zero momentum, giving steepest descent). Ignored
+#'   if `nest_convex_approx` is `TRUE`.
 #'   * `nest_convex_approx`: If `TRUE`, then use an approximation
 #'   due to Sutskever for calculating the momentum parameter.
 #'   * `nest_burn_in`: Number of iterations to wait before using a
@@ -303,12 +303,14 @@
 #' * `max_fg`: Hard maximum combined number of function and gradient
 #'   evaluations allowed.
 #'   Indicated by `terminate$what` being `"max_fg"`.
-#' * `abs_tol`: Absolute tolerance of the function value. If the
-#'   absolute value of the function falls below this threshold,
-#'   `terminate$what` will be `"abs_tol"`. Will only be triggered if
-#'   the objective function has a minimum value of zero.
-#' * `rel_tol`: Relative tolerance of the function value, comparing
-#'   consecutive function evaluation results. Indicated by `terminate$what`
+#' * `abs_tol`: Absolute tolerance for the change in consecutive function
+#'   values. It is reached when `abs(fn_old - fn_new) < abs_tol`, and is
+#'   indicated by `terminate$what` being `"abs_tol"`.
+#' * `rel_tol`: Relative tolerance for the change in consecutive function
+#'   values. It is reached when
+#'   `abs(fn_old - fn_new) / min(abs(fn_old), abs(fn_new)) < rel_tol`.
+#'   If the denominator is zero, the relative change is zero when the function
+#'   values are equal and `Inf` otherwise. It is indicated by `terminate$what`
 #'   being `"rel_tol"`.
 #' * `grad_tol`: Absolute tolerance of the l2 (Euclidean) norm of
 #'   the gradient. Indicated by `terminate$what` being `"grad_tol"`.
@@ -342,8 +344,7 @@
 #' end of each iteration. If the function at that position has not been
 #' calculated, it will be calculated only if no evaluation-budget termination
 #' is already active and neither `max_fn` nor `max_fg` prevents the callback.
-#' It will contribute to the total reported in the `counts` list in the return
-#' value. The calculated function value
+#' It will contribute to `nf` in the return value. The calculated function value
 #' is cached for use by the optimizer in the next iteration, so if the optimizer
 #' would have needed to calculate the function anyway (e.g. use of the strong
 #' Wolfe line search methods), there is no significant cost accrued by
@@ -420,11 +421,10 @@
 #' standard negative curvature test, or `"strong"` to use the modified
 #' "strong" curvature test in TNPACK (Xie and Schlick, 1999). Applies only
 #' if `method = "TN"`, ignored otherwise.
-#' @param nest_q Strong convexity parameter for the NAG
-#' momentum term. Must take a value between 0 (strongly convex) and 1
-#' (zero momentum). Only applies using the NAG method or a momentum method with
-#' Nesterov momentum schedule. Also does nothing if `nest_convex_approx`
-#' is `TRUE`.
+#' @param nest_q NAG momentum parameter. Must take a value between 0 (largest
+#' momentum) and 1 (zero momentum, giving steepest descent). Only applies using
+#' the NAG method or a momentum method with Nesterov momentum schedule. Also
+#' does nothing if `nest_convex_approx` is `TRUE`.
 #' @param nest_convex_approx If `TRUE`, then use an approximation due to
 #' Sutskever for calculating the momentum parameter in the NAG method. Only
 #' applies using the NAG method or a momentum method with Nesterov momentum
@@ -440,8 +440,9 @@
 #' @param step_down Multiplier to reduce the step size by if using the `"DBD"`
 #' method or the `"bold"` line search method. Should be a positive value
 #' less than 1. Also optional for use with the `"back"` line search method.
-#' @param dbd_weight Weighting parameter used by the `"DBD"` method only, and
-#' only if no momentum scheme is provided. Must be an integer between 0 and 1.
+#' @param dbd_weight Numeric weighting value used by the `"DBD"` method only,
+#' and only if no momentum scheme is provided. Must be between 0 and 1,
+#' inclusive.
 #' @param line_search Type of line search to use. See 'Details'.
 #' @param c1 Sufficient decrease parameter for Wolfe-type line searches. Should
 #' be a value between 0 and 1.

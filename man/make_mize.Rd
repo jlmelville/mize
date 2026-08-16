@@ -94,10 +94,9 @@ standard negative curvature test, or \code{"strong"} to use the modified
 "strong" curvature test in TNPACK (Xie and Schlick, 1999). Applies only
 if \code{method = "TN"}, ignored otherwise.}
 
-\item{nest_q}{Strong convexity parameter for the \code{"NAG"} method's
-momentum term. Must take a value between 0 (strongly convex) and 1 (results
-in steepest descent).Ignored unless the \code{method} is \code{"NAG"} and
-\code{nest_convex_approx} is \code{FALSE}.}
+\item{nest_q}{NAG momentum parameter. Must take a value between 0 (largest
+momentum) and 1 (zero momentum, giving steepest descent). Ignored unless
+the \code{method} is \code{"NAG"} and \code{nest_convex_approx} is \code{FALSE}.}
 
 \item{nest_convex_approx}{If \code{TRUE}, then use an approximation due to
 Sutskever for calculating the momentum parameter in the NAG method. Only
@@ -119,9 +118,9 @@ with \code{step_up}) or \code{"+"} (to add).}
 \code{"back"} line search method, but is optional. Should be a positive
 value less than 1.}
 
-\item{dbd_weight}{Weighting parameter used by the \code{"DBD"} method only,
-and only if no momentum scheme is provided. Must be an integer between 0
-and 1.}
+\item{dbd_weight}{Numeric weighting value used by the \code{"DBD"} method only,
+and only if no momentum scheme is provided. Must be between 0 and 1,
+inclusive.}
 
 \item{line_search}{Type of line search to use. See 'Details' of
 \code{\link[=mize]{mize()}}.}

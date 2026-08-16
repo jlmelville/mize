@@ -102,11 +102,10 @@ standard negative curvature test, or \code{"strong"} to use the modified
 "strong" curvature test in TNPACK (Xie and Schlick, 1999). Applies only
 if \code{method = "TN"}, ignored otherwise.}
 
-\item{nest_q}{Strong convexity parameter for the NAG
-momentum term. Must take a value between 0 (strongly convex) and 1
-(zero momentum). Only applies using the NAG method or a momentum method with
-Nesterov momentum schedule. Also does nothing if \code{nest_convex_approx}
-is \code{TRUE}.}
+\item{nest_q}{NAG momentum parameter. Must take a value between 0 (largest
+momentum) and 1 (zero momentum, giving steepest descent). Only applies using
+the NAG method or a momentum method with Nesterov momentum schedule. Also
+does nothing if \code{nest_convex_approx} is \code{TRUE}.}
 
 \item{nest_convex_approx}{If \code{TRUE}, then use an approximation due to
 Sutskever for calculating the momentum parameter in the NAG method. Only
@@ -128,8 +127,9 @@ with \code{step_up}) or \code{"+"} (to add).}
 method or the \code{"bold"} line search method. Should be a positive value
 less than 1. Also optional for use with the \code{"back"} line search method.}
 
-\item{dbd_weight}{Weighting parameter used by the \code{"DBD"} method only, and
-only if no momentum scheme is provided. Must be an integer between 0 and 1.}
+\item{dbd_weight}{Numeric weighting value used by the \code{"DBD"} method only,
+and only if no momentum scheme is provided. Must be between 0 and 1,
+inclusive.}
 
 \item{line_search}{Type of line search to use. See 'Details'.}
 
@@ -394,9 +394,9 @@ compatibility guarantees as the other methods.
 form of the momentum update in this method can be controlled with the
 following parameters:
 \itemize{
-\item \code{nest_q}: Strong convexity parameter. Must take a value
-between 0 (strongly convex) and 1 (zero momentum). Ignored if
-\code{nest_convex_approx} is \code{TRUE}.
+\item \code{nest_q}: NAG momentum parameter. Must take a value between 0
+(largest momentum) and 1 (zero momentum, giving steepest descent). Ignored
+if \code{nest_convex_approx} is \code{TRUE}.
 \item \code{nest_convex_approx}: If \code{TRUE}, then use an approximation
 due to Sutskever for calculating the momentum parameter.
 \item \code{nest_burn_in}: Number of iterations to wait before using a
@@ -629,12 +629,14 @@ Indicated by \code{terminate$what} being \code{"max_gr"}.
 \item \code{max_fg}: Hard maximum combined number of function and gradient
 evaluations allowed.
 Indicated by \code{terminate$what} being \code{"max_fg"}.
-\item \code{abs_tol}: Absolute tolerance of the function value. If the
-absolute value of the function falls below this threshold,
-\code{terminate$what} will be \code{"abs_tol"}. Will only be triggered if
-the objective function has a minimum value of zero.
-\item \code{rel_tol}: Relative tolerance of the function value, comparing
-consecutive function evaluation results. Indicated by \code{terminate$what}
+\item \code{abs_tol}: Absolute tolerance for the change in consecutive function
+values. It is reached when \code{abs(fn_old - fn_new) < abs_tol}, and is
+indicated by \code{terminate$what} being \code{"abs_tol"}.
+\item \code{rel_tol}: Relative tolerance for the change in consecutive function
+values. It is reached when
+\code{abs(fn_old - fn_new) / min(abs(fn_old), abs(fn_new)) < rel_tol}.
+If the denominator is zero, the relative change is zero when the function
+values are equal and \code{Inf} otherwise. It is indicated by \code{terminate$what}
 being \code{"rel_tol"}.
 \item \code{grad_tol}: Absolute tolerance of the l2 (Euclidean) norm of
 the gradient. Indicated by \code{terminate$what} being \code{"grad_tol"}.
@@ -669,8 +671,7 @@ requires the function to have been evaluated at the current position at the
 end of each iteration. If the function at that position has not been
 calculated, it will be calculated only if no evaluation-budget termination
 is already active and neither \code{max_fn} nor \code{max_fg} prevents the callback.
-It will contribute to the total reported in the \code{counts} list in the return
-value. The calculated function value
+It will contribute to \code{nf} in the return value. The calculated function value
 is cached for use by the optimizer in the next iteration, so if the optimizer
 would have needed to calculate the function anyway (e.g. use of the strong
 Wolfe line search methods), there is no significant cost accrued by

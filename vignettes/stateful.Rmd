@@ -105,7 +105,6 @@ with `mize`:
 
 ```{r Optimization}
 par <- rb0
-iter <- 0
 for (batch in 1:3) {
   for (i in 1:10) {
     mize_res <- mize_step(opt = opt, par = par, fg = rb_fg)
@@ -116,10 +115,9 @@ for (batch in 1:3) {
 }
 ```
 
-The difference here is that you have to do the iterating in batches of 10 
-manually yourself, remembering to increment the iteration counter and pass it
-to `mize_step`. Plus, the optimizer needs to be updated with the version that
-was returned from the function.
+The difference here is that you have to do the iterating in batches of 10
+manually yourself. The optimizer needs to be updated with the version that was
+returned from the function.
 
 ### Return value of `mize_step`
 
@@ -132,21 +130,17 @@ returned result list which might help:
 which don't do this, you can of course generate it yourself via `rb_fg$fn(par)`.
 * `g` - The gradient vector, if it was calculated at `par`. If it's not present, 
 then obviously there's nothing to stop you calculating `rb_fg$gr(par)` yourself.
-* `nf` - The number of function evaluations carried out so far (i.e. since 
-initialization). `opt` is also keeping track of this, and coordinates with 
-`mize_step`, so you don't need to manually update this yourself between steps.
-* `ng` - The number of gradient evaluations carried out so far.
+* `nf` - The number of function evaluations carried out over the optimizer's
+lifetime. This count persists across `mize_init()` calls. `opt` coordinates it
+with `mize_step`, so you don't need to update it manually between steps.
+* `ng` - The optimizer-lifetime number of gradient evaluations, which also
+persists across `mize_init()` calls.
 
-You should treat the optimizer, `opt`, as a black box and not examine its 
-horrific innards, except to check whether `opt$error` is non-`NULL`. If it's
-anything other than `NULL`, then this means something really bad has happened
-during the optimization, most likely a `NaN` or `Inf` was calculated in
-the gradient. This can happen with a very poorly chosen starting point, and
-a combination of descent method and line search which doesn't guarantee descent,
-such as a very aggressive momentum scheme or more likely an adaptive learning
-rate technique like delta-bar-delta. Monitoring the function value or the 
-size of the change in `par` between iterations can help spot an imminent 
-divergence.
+You should treat the optimizer, `opt`, as a black box. After each step, check
+`opt$is_terminated` before relying on optional function or gradient values. If
+it is `TRUE`, `opt$terminate$what` gives the termination reason and
+`opt$terminate$val` gives the observed criterion value. Termination can indicate
+convergence, budget exhaustion, or a non-finite function or gradient.
 
 Taking all that into account, here's a self-contained example, that removes the 
 now un-necessary batching, does some minor error checking, and keeps track of
@@ -180,7 +174,7 @@ for (i in 1:30) {
   # Do whatever you want with the data at each iteration
   
   if (opt$is_terminated) {
-    # Something bad happened
+    # Stop before using values that may be unavailable after termination
     break
   }
   if (mize_res$f < f_best) {
@@ -194,6 +188,7 @@ par_best
 f_best
 ```
 
+
 ## Step information
 
 The return value of `mize_step` provides the function and gradient values. If
@@ -204,8 +199,11 @@ can extract it conveniently:
 # Create optimizer and do one step of optimization as usual
 opt <- make_mize(method = "BFGS", par = rb0, fg = rb_fg)
 par <- rb0
+par_old <- par
 mize_res <- mize_step(opt = opt, par = par, fg = rb_fg)
-step_info <- mize_step_summary(mize_res$opt, mize_res$par, rb_fg, par_old = par)
+step_info <- mize_step_summary(
+  mize_res$opt, mize_res$par, rb_fg, par_old = par_old
+)
 
 # info that's already available in mize_res
 step_info$f
@@ -230,10 +228,8 @@ tolerance that requires its calculation (see below).
 Convergence section for more).
 * `ginfn` The gradient infinity norm, if `ginf_tol` is non-`NULL` (also see the
 Convergence section for more).
-* `nf` The number of function evaluations so far over the course of the 
-optimization.
-* `ng` The number of gradient evaluations so far over the course of the 
-optimization.
+* `nf` The number of function evaluations over the optimizer's lifetime.
+* `ng` The number of gradient evaluations over the optimizer's lifetime.
 * `step` The step size of this iteration.
 * `alpha` The size of the line search value found during the gradient descent
 stage. This won't be the same as `step` even for optimizers that don't use an 
@@ -289,12 +285,18 @@ opt <- mize_init(opt = opt, par = rb0, fg = rb_fg, max_iter = 30)
 ```
 
 2. At the end of the loop, after calling `mize_step_summary`, pass the return
-value to the function `mize_check_convergence`. This returns an updated version
+value to the function `check_mize_convergence`. This returns an updated version
 of `opt` which will indicate if optimization should stop by setting the 
 `opt$is_terminated` boolean flag:
 
 ```{r Checking for convergence}
-step_info <- mize_step_summary(opt, par, rb_fg, par_old)
+par <- rb0
+par_old <- par
+mize_res <- mize_step(opt, par, rb_fg)
+par <- mize_res$par
+step_info <- mize_step_summary(
+  mize_res$opt, par, rb_fg, par_old = par_old
+)
 opt <- check_mize_convergence(step_info)
 ```
 
@@ -304,16 +306,10 @@ Note that you don't need to manually assign `opt` to the value that comes from
 3. Instead of manually looping with a `for` loop you can use 
 `while (!opt$is_terminated)`.
 
-Once `opt$is_terminated` is `TRUE`, you can find out what caused the
-optimization by looking at `opt$terminate$what`. We were using 
-`opt$is_terminated` before now, where if it was set to `TRUE` it meant that
-something awful had occurred, like infinity or NaN in a gradient. 
-`check_mize_convergence` also uses this flag, but now with an expanded
-meaning that just indicates optimization should cease, but not necessarily
-because a catastrophe occurred. It's still worth checking if `opt$is_terminated`
-was set by `mize_step` if anything that you do in the rest of the loop 
-assumes that the gradient or function value is finite (e.g. comparing it
-to a real number in a boolean condition).
+Once `opt$is_terminated` is `TRUE`, optimization should cease. Inspect
+`opt$terminate$what` for the reason and `opt$terminate$val` for the observed
+criterion value. Check the flag immediately after `mize_step()` before doing
+anything that assumes a finite function or gradient value.
 
 Apart from just maximum number of iterations, there are a variety of options 
 that relate to convergence. There is a separate vignette which covers these
@@ -342,6 +338,7 @@ par_best <- par
 f_best <- rb_fg$fn(par_best)
 
 while (!opt$is_terminated) {
+  par_old <- par
   mize_res <- mize_step(opt = opt, par = par, fg = rb_fg)
   par <- mize_res$par
   opt <- mize_res$opt
@@ -349,7 +346,7 @@ while (!opt$is_terminated) {
   # Do whatever you want with the data at each iteration
   
   if (opt$is_terminated) {
-    # Something bad happened
+    # Stop before using values that may be unavailable after termination
     break
   }
   if (mize_res$f < f_best) {
@@ -367,5 +364,3 @@ while (!opt$is_terminated) {
 par_best
 f_best
 ```
-
-
