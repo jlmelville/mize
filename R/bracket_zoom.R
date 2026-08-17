@@ -25,8 +25,8 @@ run_bracket_zoom <- function(
   method_policy
 ) {
   validate_line_scalar(initial_alpha, "initial_alpha")
-  if (is.na(initial_alpha) || initial_alpha <= 0) {
-    stop("initial_alpha must be positive")
+  if (is.na(initial_alpha) || !is.finite(initial_alpha) || initial_alpha <= 0) {
+    stop("initial_alpha must be positive and finite")
   }
   if (!isTRUE(is.finite(initial_step$d)) || initial_step$d >= 0) {
     return(list(
@@ -78,10 +78,20 @@ run_bracket_zoom <- function(
       break
     }
 
-    trial_alpha <- method_policy$propose_expansion(
+    proposed_alpha <- method_policy$propose_expansion(
       expansion_state,
       trial_step
     )
+    trial_alpha <- safeguard_expansion_alpha(
+      proposed_alpha,
+      trial_step$alpha
+    )
+    if (is.null(trial_alpha)) {
+      return(list(
+        candidate = trial_step,
+        termination_reason = "progress_failure"
+      ))
+    }
     expansion_state$previous_step <- trial_step
     expansion_state$iteration <- expansion_state$iteration + 1L
   }
@@ -103,6 +113,18 @@ run_bracket_zoom <- function(
   while (evaluator_state$evaluation_count < evaluator_state$max_evaluations) {
     proposal <- method_policy$propose_zoom(zoom_state, initial_step)
     zoom_state <- proposal$state
+    zoom_bounds <- method_policy$zoom_bounds(zoom_state)
+    proposal$alpha <- safeguard_zoom_alpha(
+      proposal$alpha,
+      zoom_bounds[[1L]],
+      zoom_bounds[[2L]]
+    )
+    if (is.null(proposal$alpha)) {
+      return(list(
+        candidate = trial_step,
+        termination_reason = "progress_failure"
+      ))
+    }
     recovery <- find_finite(
       evaluator,
       proposal$alpha,
@@ -137,4 +159,44 @@ run_bracket_zoom <- function(
   }
 
   list(candidate = trial_step, termination_reason = "budget_exhausted")
+}
+
+safeguard_expansion_alpha <- function(proposed_alpha, current_alpha) {
+  if (
+    is.numeric(proposed_alpha) &&
+      length(proposed_alpha) == 1L &&
+      isTRUE(proposed_alpha == Inf)
+  ) {
+    proposed_alpha <- .Machine$double.xmax
+  }
+  if (
+    !is.numeric(proposed_alpha) ||
+      length(proposed_alpha) != 1L ||
+      !isTRUE(is.finite(proposed_alpha)) ||
+      !isTRUE(proposed_alpha > current_alpha)
+  ) {
+    return(NULL)
+  }
+  proposed_alpha
+}
+
+safeguard_zoom_alpha <- function(proposed_alpha, first_alpha, second_alpha) {
+  lower_alpha <- min(first_alpha, second_alpha)
+  upper_alpha <- max(first_alpha, second_alpha)
+  is_interior <- is.numeric(proposed_alpha) &&
+    length(proposed_alpha) == 1L &&
+    isTRUE(is.finite(proposed_alpha)) &&
+    isTRUE(proposed_alpha > lower_alpha) &&
+    isTRUE(proposed_alpha < upper_alpha)
+  if (!is_interior) {
+    proposed_alpha <- lower_alpha + (upper_alpha - lower_alpha) / 2
+  }
+  if (
+    !isTRUE(is.finite(proposed_alpha)) ||
+      !isTRUE(proposed_alpha > lower_alpha) ||
+      !isTRUE(proposed_alpha < upper_alpha)
+  ) {
+    return(NULL)
+  }
+  proposed_alpha
 }

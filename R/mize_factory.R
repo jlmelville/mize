@@ -617,6 +617,9 @@ make_mize <- function(
     gradient_searches <- c(wolfe_searches, "backtracking")
 
     if (line_search %in% gradient_searches) {
+      if (line_search %in% wolfe_searches && is.numeric(step0)) {
+        mize_validate_positive_numeric(step0, "step0")
+      }
       mize_validate_range(c1, "c1", 0, 1, left_open = TRUE, right_open = TRUE)
       if (line_search %in% wolfe_searches && !is.null(c2)) {
         mize_validate_range(

@@ -377,12 +377,20 @@ line_search <- function(
       }
 
       # Prevent the next step initial guess being too large
-      if (!is.null(alpha_prev) && alpha_next / alpha_prev > max_alpha_mult) {
+      if (
+        !is.null(alpha_prev) &&
+          isTRUE(alpha_next / alpha_prev > max_alpha_mult)
+      ) {
         alpha_next <- alpha_prev * max_alpha_mult
       }
       sub_stage$value <- alpha_next
 
-      if (is.null(sub_stage$value) || sub_stage$value <= 0) {
+      initializer_is_nonfinite <- !is.null(sub_stage$value) &&
+        !isTRUE(is.finite(sub_stage$value))
+      if (
+        !initializer_is_nonfinite &&
+          (is.null(sub_stage$value) || sub_stage$value <= 0)
+      ) {
         sub_stage$value <- guess_alpha0(
           initializer0,
           par,
@@ -392,6 +400,7 @@ line_search <- function(
           try_newton_step
         )
       }
+      initializer_is_nonfinite <- !isTRUE(is.finite(sub_stage$value))
 
       sub_stage$alpha0 <- sub_stage$value
       sub_stage$d0 <- step0$d
@@ -416,7 +425,15 @@ line_search <- function(
         max_fg <- opt$convergence$max_fg - (opt$counts$fn + opt$counts$gr)
       }
 
-      if (max_fn <= 0 || max_gr <= 0 || max_fg <= 0) {
+      if (initializer_is_nonfinite) {
+        sub_stage$value <- 0
+        sub_stage$alpha0 <- 0
+        if (is_last_stage(opt, stage)) {
+          opt <- set_fn_new(opt, step0$f, iter)
+          sub_stage$df <- step0$df
+          sub_stage$is_gr_curr <- TRUE
+        }
+      } else if (max_fn <= 0 || max_gr <= 0 || max_fg <= 0) {
         sub_stage$value <- 0
         if (is_last_stage(opt, stage)) {
           opt <- set_fn_new(opt, step0$f, iter)
@@ -562,6 +579,17 @@ find_finite <- function(phi, alpha, min_alpha = 0, max_fn = 20) {
   nfn <- 0L
   ok <- FALSE
   step <- NULL
+  if (
+    !is.numeric(alpha) ||
+      length(alpha) != 1L ||
+      !isTRUE(is.finite(alpha)) ||
+      !is.numeric(min_alpha) ||
+      length(min_alpha) != 1L ||
+      !isTRUE(is.finite(min_alpha)) ||
+      !isTRUE(alpha >= min_alpha)
+  ) {
+    return(list(step = step, nfn = nfn, ok = ok))
+  }
   while (nfn < max_fn && alpha >= min_alpha) {
     step <- phi(alpha)
     nfn <- nfn + 1L
@@ -569,7 +597,15 @@ find_finite <- function(phi, alpha, min_alpha = 0, max_fn = 20) {
       ok <- TRUE
       break
     }
-    alpha <- (min_alpha + alpha) / 2
+    next_alpha <- min_alpha + (alpha - min_alpha) / 2
+    if (
+      !isTRUE(is.finite(next_alpha)) ||
+        !isTRUE(next_alpha > min_alpha) ||
+        !isTRUE(next_alpha < alpha)
+    ) {
+      break
+    }
+    alpha <- next_alpha
   }
   list(step = step, nfn = nfn, ok = ok)
 }

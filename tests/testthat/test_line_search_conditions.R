@@ -537,3 +537,39 @@ test_that("finite-value guard backs off non-finite line-search evaluations", {
   expect_lte(res$step$alpha, 1)
   expect_true(step_is_finite(res$step))
 })
+
+test_that("finite-value recovery rejects a non-finite initial alpha", {
+  phi <- function(alpha, calc_gradient = TRUE) {
+    stop("phi should not be called")
+  }
+
+  res <- find_finite(phi, alpha = Inf, min_alpha = 0, max_fn = Inf)
+
+  expect_null(res$step)
+  expect_identical(res$nfn, 0L)
+  expect_false(res$ok)
+})
+
+test_that("finite-value recovery stops without representable progress", {
+  smallest_positive <- .Machine$double.xmin * .Machine$double.eps
+  evaluated_alphas <- numeric()
+  phi <- function(alpha, calc_gradient = TRUE) {
+    evaluated_alphas <<- c(evaluated_alphas, alpha)
+    if (length(evaluated_alphas) > 1L) {
+      stop("recovery repeated an endpoint")
+    }
+    list(alpha = alpha, f = Inf, df = Inf, d = Inf, par = alpha)
+  }
+
+  res <- find_finite(
+    phi,
+    alpha = smallest_positive,
+    min_alpha = 0,
+    max_fn = Inf
+  )
+
+  expect_equal(evaluated_alphas, smallest_positive)
+  expect_equal(res$step$alpha, smallest_positive)
+  expect_identical(res$nfn, 1L)
+  expect_false(res$ok)
+})

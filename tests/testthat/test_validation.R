@@ -1508,6 +1508,46 @@ test_that("constant line search requires a finite numeric scalar step0", {
   expect_no_error(make_mize(method = "DBD", step0 = "RaSmUsSeN"))
 })
 
+test_that("Wolfe line searches require a positive finite numeric step0", {
+  searches <- c("more-thuente", "rasmussen", "schmidt", "hager-zhang")
+  invalid_steps <- list(
+    zero = 0,
+    negative = -1,
+    nonscalar = c(1, 2),
+    missing_value = NA_real_,
+    nan = NaN,
+    positive_infinite = Inf,
+    negative_infinite = -Inf
+  )
+
+  for (line_search in searches) {
+    for (case_name in names(invalid_steps)) {
+      expect_error(
+        make_mize(
+          line_search = line_search,
+          step0 = invalid_steps[[case_name]]
+        ),
+        "step0",
+        info = paste(line_search, case_name)
+      )
+    }
+    expect_no_error(make_mize(line_search = line_search, step0 = 0.25))
+    expect_no_error(make_mize(line_search = line_search, step0 = "RaSmUsSeN"))
+  }
+
+  witness <- validation_result_witness()
+  expect_error(
+    mize(
+      par = c(1, -1),
+      fg = witness$fg,
+      line_search = "rasmussen",
+      step0 = Inf
+    ),
+    "step0"
+  )
+  expect_identical(witness$counts(), c(fn = 0L, gr = 0L, fg = 0L))
+})
+
 test_that("mize_init validates effective convergence controls before callbacks", {
   cases <- list(
     list(argument = "max_fn", value = 1.5),

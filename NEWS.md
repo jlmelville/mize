@@ -3,6 +3,8 @@
 ## Bug fixes and minor improvements
 
 * Fixed several optimizer edge cases found during cleanup.
+* Wolfe line searches now require an explicitly numeric `step0` to be a
+positive finite scalar; string initializers are unchanged.
 * New function: `check_mize_gradient()`, which compares an analytic gradient
 with a finite-difference approximation.
 * `mize()` now returns status fields: `converged`,

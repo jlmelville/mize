@@ -81,6 +81,9 @@ new_rasmussen_wolfe_policy <- function(
     zoom_recovery_lower_bound = function(zoom_state) {
       zoom_state$lower_step$alpha
     },
+    zoom_bounds = function(zoom_state) {
+      c(zoom_state$lower_step$alpha, zoom_state$upper_step$alpha)
+    },
     process_zoom_trial = function(
       zoom_state,
       trial_step,

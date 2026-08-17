@@ -21,11 +21,13 @@ test_that("bracket-and-zoom validates entry conditions before callbacks", {
   for (name in names(searches)) {
     search <- searches[[name]]
     descent_step <- list(alpha = 0, f = 1, df = -1, d = -1, par = 0)
-    expect_error(
-      search(phi, descent_step, alpha = 0, pm = 1),
-      "initial_alpha",
-      info = name
-    )
+    for (alpha in c(0, -1, Inf, -Inf, NA_real_, NaN)) {
+      expect_error(
+        search(phi, descent_step, alpha = alpha, pm = 1),
+        "initial_alpha",
+        info = paste(name, alpha)
+      )
+    }
 
     non_descent_step <- list(alpha = 0, f = 1, df = 1, d = 1, par = 0)
     result <- search(phi, non_descent_step, alpha = 1, pm = 1)
@@ -33,6 +35,66 @@ test_that("bracket-and-zoom validates entry conditions before callbacks", {
     expect_identical(result$nfn, 0L, info = name)
     expect_identical(result$ngr, 0L, info = name)
   }
+})
+
+test_that("bracket-and-zoom expansion never evaluates an infinite proposal", {
+  searches <- list(
+    rasmussen = new_rasmussen_wolfe_search(0.05, 0.1),
+    schmidt = new_schmidt_wolfe_search(0.05, 0.1)
+  )
+  initial_step <- list(alpha = 0, f = 0, df = -1, d = -1, par = 0)
+
+  for (name in names(searches)) {
+    evaluated_alphas <- numeric()
+    phi <- function(alpha, calc_gradient = TRUE) {
+      if (!is.finite(alpha)) {
+        stop("non-finite alpha reached the callback")
+      }
+      evaluated_alphas <<- c(evaluated_alphas, alpha)
+      list(alpha = alpha, f = -alpha, df = -1, d = -1, par = alpha)
+    }
+
+    result <- searches[[name]](
+      phi,
+      step0 = initial_step,
+      alpha = 1e308,
+      pm = 1
+    )
+
+    expect_equal(
+      evaluated_alphas,
+      c(1e308, .Machine$double.xmax),
+      info = name
+    )
+    expect_equal(result$step$alpha, .Machine$double.xmax, info = name)
+    expect_identical(result$nfn, 2L, info = name)
+    expect_identical(result$ngr, 2L, info = name)
+  }
+})
+
+test_that("Rasmussen zoom stops when no interior alpha is representable", {
+  smallest_positive <- .Machine$double.xmin * .Machine$double.eps
+  evaluated_alphas <- numeric()
+  phi <- function(alpha, calc_gradient = TRUE) {
+    evaluated_alphas <<- c(evaluated_alphas, alpha)
+    if (length(evaluated_alphas) > 1L) {
+      stop("zoom repeated without representable progress")
+    }
+    list(alpha = alpha, f = 2, df = 1, d = 1, par = alpha)
+  }
+  initial_step <- list(alpha = 0, f = 1, df = -1, d = -1, par = 0)
+
+  result <- new_rasmussen_wolfe_search(0.05, 0.1)(
+    phi,
+    step0 = initial_step,
+    alpha = smallest_positive,
+    pm = 1
+  )
+
+  expect_equal(evaluated_alphas, smallest_positive)
+  expect_equal(result$step, initial_step)
+  expect_identical(result$nfn, 1L)
+  expect_identical(result$ngr, 1L)
 })
 
 test_that("Schmidt zoom proposals stay safeguarded inside their bracket", {

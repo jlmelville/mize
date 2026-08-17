@@ -88,6 +88,9 @@ new_schmidt_wolfe_policy <- function(
     zoom_recovery_lower_bound = function(zoom_state) {
       min(zoom_state$first_step$alpha, zoom_state$second_step$alpha)
     },
+    zoom_bounds = function(zoom_state) {
+      sort(c(zoom_state$first_step$alpha, zoom_state$second_step$alpha))
+    },
     process_zoom_trial = function(
       zoom_state,
       trial_step,

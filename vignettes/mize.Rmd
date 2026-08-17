@@ -622,7 +622,7 @@ think it will make a huge difference you can explicitly choose by passing one of
 res <- mize(rb0, rb_fg, max_iter = 10, step0 = "scipy")
 ```
 
-You may also pass a number to `step0` and it will be used as-is:
+You may also pass a positive finite number to `step0` and it will be used as-is:
 
 ```{r Line search with initial step length of 1}
 # An initial guess of 1 for the step length isn't bad for L-BFGS

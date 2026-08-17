@@ -455,8 +455,8 @@ every other method, more or less in line with the recommendations given
 by Nocedal and Wright. The smaller the value of \code{c2}, the stricter
 the line search, but it should not be set to smaller than \code{c1}.
 \item \code{step0}: Initial value for the line search on the first step.
-If a positive numeric value is passed as an argument, that value is used
-as-is. Otherwise, by passing a string as an argument, a guess is made
+If a positive finite numeric value is passed as an argument, that value is
+used as-is. Otherwise, by passing a string as an argument, a guess is made
 based on values of the gradient, function or parameters, at the starting
 point:
 \itemize{

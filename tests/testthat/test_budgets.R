@@ -884,40 +884,49 @@ test_that("Wolfe searches reject condition-satisfying overflowed parameters", {
   }
 })
 
-test_that("Bracket-and-zoom searches recover from an infinite initial step", {
-  searches <- list(
-    rasmussen = list(
-      make_witness = make_rasmussen_witness,
-      run = run_rasmussen_witness
-    ),
-    schmidt = list(
-      make_witness = make_schmidt_wolfe_witness,
-      run = run_schmidt_wolfe_witness
-    )
-  )
+test_that("Wolfe searches retain the current point after initializer overflow", {
+  searches <- c(rasmussen = "rasmussen", schmidt = "schmidt")
 
   for (name in names(searches)) {
-    search <- searches[[name]]
-    witness <- search$make_witness(
-      fn = function(x) if (is.finite(x)) x^2 else Inf,
-      gr = function(x) if (is.finite(x)) 2 * x else Inf
-    )
-    result <- search$run(
-      witness = witness,
-      par = 1,
-      step0 = Inf,
-      ls_max_fn = 2,
-      ls_max_gr = 2,
-      ls_max_fg = 4
+    witness <- make_rasmussen_witness(
+      fn = function(x) {
+        if (!all(is.finite(x))) {
+          stop("non-finite parameter reached the callback")
+        }
+        if (x == 0) .Machine$double.xmax else -.Machine$double.xmax
+      },
+      gr = function(x) {
+        if (!all(is.finite(x))) {
+          stop("non-finite parameter reached the callback")
+        }
+        if (x == 0) -2 else -0.5
+      }
     )
 
-    expect_equal(witness$fn_par(), c(1, -Inf, -Inf), info = name)
-    expect_equal(witness$gr_par(), c(1, -Inf, -Inf), info = name)
-    expect_identical(witness$counts(), c(fn = 3L, gr = 3L), info = name)
+    result <- mize(
+      0,
+      witness$fg,
+      method = "SD",
+      line_search = searches[[name]],
+      step0 = 1,
+      step_next_init = "quadratic",
+      c1 = 0.1,
+      c2 = 0.5,
+      max_iter = 2,
+      check_conv_every = NULL,
+      abs_tol = NULL,
+      rel_tol = NULL,
+      grad_tol = NULL,
+      ginf_tol = NULL,
+      step_tol = NULL
+    )
+
+    expect_equal(result$par, 2, info = name)
+    expect_equal(result$f, -.Machine$double.xmax, info = name)
+    expect_equal(witness$fn_par(), c(0, 2), info = name)
+    expect_equal(witness$gr_par(), c(0, 2), info = name)
+    expect_identical(witness$counts(), c(fn = 2L, gr = 2L), info = name)
     expect_budget_counts(result, witness)
-    expect_equal(result$par, 1, info = name)
-    expect_equal(result$f, 1, info = name)
-    expect_equal(result$g, 2, info = name)
   }
 })
 
