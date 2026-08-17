@@ -51,15 +51,12 @@ test_that("default Wolfe search profiles retain their trial traces", {
     ),
     rasmussen = list(
       factory = function() {
-        new_wolfe_line_search(
-          rasmussen_core,
+        new_rasmussen_wolfe_search(
           armijo_constant = 0.05,
           curvature_constant = 0.1,
-          method_policy = new_rasmussen_bracket_zoom_policy(
-            interior_fraction = 0.1,
-            expansion_factor = 3,
-            relative_interval_tolerance = 1e-6
-          )
+          interior_fraction = 0.1,
+          expansion_factor = 3,
+          relative_interval_tolerance = 1e-6
         )
       },
       trials = matrix(
@@ -72,11 +69,9 @@ test_that("default Wolfe search profiles retain their trial traces", {
     ),
     schmidt = list(
       factory = function() {
-        new_wolfe_line_search(
-          schmidt_core,
+        new_schmidt_wolfe_search(
           armijo_constant = 0.05,
-          curvature_constant = 0.1,
-          method_policy = new_schmidt_bracket_zoom_policy()
+          curvature_constant = 0.1
         )
       },
       trials = matrix(

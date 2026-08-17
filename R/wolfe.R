@@ -31,14 +31,14 @@ more_thuente_ls <- function(
   if (!is.null(c2) && !is_in_range(c2, c1, 1, lopen = FALSE, ropen = FALSE)) {
     stop("c2 must be between c1 and 1")
   }
-  max_ls_fn <- min(max_fn, max_gr, floor(max_fg / 2))
+  max_ls_evaluations <- min(max_fn, max_gr, floor(max_fg / 2))
 
   line_search(
     new_wolfe_line_search(
       core = more_thuente_core,
       armijo_constant = c1,
       curvature_constant = c2,
-      max_evaluations = max_ls_fn,
+      max_evaluations = max_ls_evaluations,
       strong_curvature = strong_curvature,
       approximate_armijo = approx_armijo,
       method_policy = new_more_thuente_policy(
@@ -63,8 +63,8 @@ more_thuente_ls <- function(
 rasmussen_ls <- function(
   c1 = c2 / 2,
   c2 = 0.1,
-  int = 0.1,
-  ext = 3.0,
+  interior_fraction = 0.1,
+  expansion_factor = 3,
   max_alpha_mult = Inf,
   min_step_size = .Machine$double.eps,
   initializer = "s",
@@ -86,20 +86,17 @@ rasmussen_ls <- function(
     stop("c2 must be between c1 and 1")
   }
 
-  max_ls_fn <- min(max_fn, max_gr, floor(max_fg / 2))
+  max_ls_evaluations <- min(max_fn, max_gr, floor(max_fg / 2))
 
   line_search(
-    new_wolfe_line_search(
-      core = rasmussen_core,
+    new_rasmussen_wolfe_search(
       armijo_constant = c1,
       curvature_constant = c2,
-      max_evaluations = max_ls_fn,
+      max_evaluations = max_ls_evaluations,
       strong_curvature = strong_curvature,
       approximate_armijo = approx_armijo,
-      method_policy = new_rasmussen_bracket_zoom_policy(
-        interior_fraction = int,
-        expansion_factor = ext
-      )
+      interior_fraction = interior_fraction,
+      expansion_factor = expansion_factor
     ),
     name = "rasmussen",
     max_alpha_mult = max_alpha_mult,
@@ -140,17 +137,15 @@ schmidt_ls <- function(
     stop("c2 must be between c1 and 1")
   }
 
-  max_ls_fn <- min(max_fn, max_gr, floor(max_fg / 2))
+  max_ls_evaluations <- min(max_fn, max_gr, floor(max_fg / 2))
 
   line_search(
-    new_wolfe_line_search(
-      core = schmidt_core,
+    new_schmidt_wolfe_search(
       armijo_constant = c1,
       curvature_constant = c2,
-      max_evaluations = max_ls_fn,
+      max_evaluations = max_ls_evaluations,
       strong_curvature = strong_curvature,
-      approximate_armijo = approx_armijo,
-      method_policy = new_schmidt_bracket_zoom_policy()
+      approximate_armijo = approx_armijo
     ),
     name = "schmidt",
     max_alpha_mult = max_alpha_mult,
@@ -688,7 +683,7 @@ step_next_hz <- function(phi, alpha_prev, step0, psi1 = 0.1, psi2 = 2) {
   step_psi <- phi(alpha_prev * psi1, calc_gradient = FALSE)
   nfn <- 1
   if (step_psi$f <= step0$f) {
-    alpha_q <- quadratic_interpolate_step(step0, step_psi)
+    alpha_q <- propose_quadratic_alpha(step0, step_psi)
     # A 1D quadratic Ax^2 + Bx + C is strongly convex if A > 0. Second clause in
     # if statement is A expressed in terms of the minimizer (this is easy to
     # derive by looking at Nocedal & Wright 2nd Edition, equations 3.57 and

@@ -11,16 +11,15 @@
 #  of the More-Thuente method.
 more_thuente_core <- function(
   evaluator,
-  initial_point,
+  initial_step,
   initial_alpha,
   condition_policy,
-  direction,
+  search_direction,
   method_policy
 ) {
-  evaluator_state <- environment(evaluator)
   result <- run_more_thuente_search(
     evaluator = evaluator,
-    initial_point = evaluator_state$initial_step,
+    initial_point = initial_step,
     initial_alpha = initial_alpha,
     condition_policy = condition_policy,
     policy = method_policy
@@ -403,7 +402,7 @@ update_more_thuente_interval <- function(state, policy) {
       trial$alpha,
       trial$f,
       trial$d,
-      ignoreWarnings = TRUE
+      suppress_warnings = TRUE
     )
     quadratic_proposal <- quadratic_interpolate(
       best$alpha,
@@ -438,7 +437,7 @@ update_more_thuente_interval <- function(state, policy) {
       trial$alpha,
       trial$f,
       trial$d,
-      ignoreWarnings = TRUE
+      suppress_warnings = TRUE
     )
     secant_proposal <- quadratic_interpolateg(
       trial$alpha,
@@ -526,7 +525,7 @@ update_more_thuente_interval <- function(state, policy) {
         trial$alpha,
         trial$f,
         trial$d,
-        ignoreWarnings = TRUE
+        suppress_warnings = TRUE
       )
       if (is.nan(cubic_proposal)) {
         cubic_proposal <- (other$alpha + trial$alpha) / 2

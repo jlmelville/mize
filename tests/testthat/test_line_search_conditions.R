@@ -208,12 +208,10 @@ test_that("Rasmussen and Schmidt successful steps satisfy strong Wolfe condition
       c1 = 0.001,
       c2 = 0.1,
       run = function(setup, case) {
-        new_wolfe_line_search(
-          rasmussen_core,
+        new_rasmussen_wolfe_search(
           armijo_constant = case$c1,
           curvature_constant = case$c2,
-          max_evaluations = 10000,
-          method_policy = new_rasmussen_bracket_zoom_policy()
+          max_evaluations = 10000
         )(
           phi = setup$phi,
           step0 = setup$step0,
@@ -230,12 +228,10 @@ test_that("Rasmussen and Schmidt successful steps satisfy strong Wolfe condition
       c1 = 0.001,
       c2 = 0.1,
       run = function(setup, case) {
-        new_wolfe_line_search(
-          schmidt_core,
+        new_schmidt_wolfe_search(
           armijo_constant = case$c1,
           curvature_constant = case$c2,
-          max_evaluations = 10000,
-          method_policy = new_schmidt_bracket_zoom_policy()
+          max_evaluations = 10000
         )(
           phi = setup$phi,
           step0 = setup$step0,
@@ -284,26 +280,22 @@ test_that("weak Wolfe configuration does not require strong curvature", {
       alpha = alpha,
       pm = setup$pv
     ),
-    rasmussen = new_wolfe_line_search(
-      rasmussen_core,
+    rasmussen = new_rasmussen_wolfe_search(
       armijo_constant = c1,
       curvature_constant = c2,
       max_evaluations = 100,
-      strong_curvature = FALSE,
-      method_policy = new_rasmussen_bracket_zoom_policy()
+      strong_curvature = FALSE
     )(
       phi = setup$phi,
       step0 = setup$step0,
       alpha = alpha,
       pm = setup$pv
     ),
-    schmidt = new_wolfe_line_search(
-      schmidt_core,
+    schmidt = new_schmidt_wolfe_search(
       armijo_constant = c1,
       curvature_constant = c2,
       max_evaluations = 100,
-      strong_curvature = FALSE,
-      method_policy = new_schmidt_bracket_zoom_policy()
+      strong_curvature = FALSE
     )(
       phi = setup$phi,
       step0 = setup$step0,
@@ -477,23 +469,18 @@ test_that("line searches return the initial step when evaluation budgets are exh
         safeguard_cubic = FALSE
       )
     ),
-    rasmussen = new_wolfe_line_search(
-      rasmussen_core,
+    rasmussen = new_rasmussen_wolfe_search(
       armijo_constant = c1,
       curvature_constant = c2,
       max_evaluations = 0,
-      method_policy = new_rasmussen_bracket_zoom_policy(
-        interior_fraction = 0.1,
-        expansion_factor = 3,
-        relative_interval_tolerance = 1e-6
-      )
+      interior_fraction = 0.1,
+      expansion_factor = 3,
+      relative_interval_tolerance = 1e-6
     ),
-    schmidt = new_wolfe_line_search(
-      schmidt_core,
+    schmidt = new_schmidt_wolfe_search(
       armijo_constant = c1,
       curvature_constant = c2,
-      max_evaluations = 0,
-      method_policy = new_schmidt_bracket_zoom_policy()
+      max_evaluations = 0
     ),
     `hager-zhang` = hager_zhang(c1 = c1, c2 = c2, max_fn = 0)
   )

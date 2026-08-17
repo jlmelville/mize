@@ -116,6 +116,39 @@ make_rasmussen_witness <- function(fn, gr) {
   )
 }
 
+make_rasmussen_combined_witness <- function(fn, gr) {
+  calls <- new.env(parent = emptyenv())
+  calls$fn_parameters <- numeric()
+  calls$gr_parameters <- numeric()
+  calls$combined_parameters <- numeric()
+
+  list(
+    fg = list(
+      fn = function(x) {
+        calls$fn_parameters <- c(calls$fn_parameters, x)
+        fn(x)
+      },
+      gr = function(x) {
+        calls$gr_parameters <- c(calls$gr_parameters, x)
+        gr(x)
+      },
+      fg = function(x) {
+        calls$combined_parameters <- c(calls$combined_parameters, x)
+        list(fn = fn(x), gr = gr(x))
+      }
+    ),
+    counts = function() {
+      c(
+        fn = length(calls$fn_parameters) + length(calls$combined_parameters),
+        gr = length(calls$gr_parameters) + length(calls$combined_parameters)
+      )
+    },
+    fn_par = function() c(calls$fn_parameters, calls$combined_parameters),
+    gr_par = function() c(calls$gr_parameters, calls$combined_parameters),
+    combined_par = function() calls$combined_parameters
+  )
+}
+
 make_hager_zhang_witness <- function(fn, gr) {
   make_rasmussen_witness(fn, gr)
 }
@@ -148,7 +181,12 @@ run_rasmussen_witness <- function(
   step0 = 1,
   c1 = 0.1,
   c2 = 0.5,
-  ls_max_fn = 1
+  ls_max_fn = 1,
+  ls_max_gr = ls_max_fn,
+  ls_max_fg = 2 * ls_max_fn,
+  max_fn = Inf,
+  max_gr = Inf,
+  max_fg = Inf
 ) {
   opt <- make_mize(
     method = "SD",
@@ -157,6 +195,11 @@ run_rasmussen_witness <- function(
     c1 = c1,
     c2 = c2,
     ls_max_fn = ls_max_fn,
+    ls_max_gr = ls_max_gr,
+    ls_max_fg = ls_max_fg,
+    max_fn = max_fn,
+    max_gr = max_gr,
+    max_fg = max_fg,
     abs_tol = NULL,
     rel_tol = NULL,
     grad_tol = NULL,
@@ -841,6 +884,43 @@ test_that("Wolfe searches reject condition-satisfying overflowed parameters", {
   }
 })
 
+test_that("Bracket-and-zoom searches recover from an infinite initial step", {
+  searches <- list(
+    rasmussen = list(
+      make_witness = make_rasmussen_witness,
+      run = run_rasmussen_witness
+    ),
+    schmidt = list(
+      make_witness = make_schmidt_wolfe_witness,
+      run = run_schmidt_wolfe_witness
+    )
+  )
+
+  for (name in names(searches)) {
+    search <- searches[[name]]
+    witness <- search$make_witness(
+      fn = function(x) if (is.finite(x)) x^2 else Inf,
+      gr = function(x) if (is.finite(x)) 2 * x else Inf
+    )
+    result <- search$run(
+      witness = witness,
+      par = 1,
+      step0 = Inf,
+      ls_max_fn = 2,
+      ls_max_gr = 2,
+      ls_max_fg = 4
+    )
+
+    expect_equal(witness$fn_par(), c(1, -Inf, -Inf), info = name)
+    expect_equal(witness$gr_par(), c(1, -Inf, -Inf), info = name)
+    expect_identical(witness$counts(), c(fn = 3L, gr = 3L), info = name)
+    expect_budget_counts(result, witness)
+    expect_equal(result$par, 1, info = name)
+    expect_equal(result$f, 1, info = name)
+    expect_equal(result$g, 2, info = name)
+  }
+})
+
 test_that("Rasmussen rejects an unsafe final extrapolation trial", {
   witness <- make_rasmussen_witness(
     fn = function(x) x^4,
@@ -934,6 +1014,55 @@ test_that("Rasmussen rejects equal and nonfinite exhausted trials", {
     expect_equal(witness$fn_par(), c(0, case$trial), info = name)
     expect_equal(witness$gr_par(), c(0, case$trial), info = name)
     expect_budget_counts(result, witness)
+  }
+})
+
+test_that("Rasmussen honors each local and global evaluation limit", {
+  cases <- list(
+    ls_max_fn = list(ls_max_fn = 2),
+    ls_max_gr = list(ls_max_gr = 2),
+    ls_max_fg = list(ls_max_fg = 4),
+    max_fn = list(max_fn = 3),
+    max_gr = list(max_gr = 3),
+    max_fg = list(max_fg = 6)
+  )
+
+  witness_factories <- list(
+    separate = make_rasmussen_witness,
+    combined = make_rasmussen_combined_witness
+  )
+
+  for (interface in names(witness_factories)) {
+    for (name in names(cases)) {
+      info <- paste(interface, name)
+      witness <- witness_factories[[interface]](
+        fn = function(x) if (x == 0) 1 else Inf,
+        gr = function(x) -1
+      )
+      args <- modifyList(
+        list(
+          witness = witness,
+          par = 0,
+          ls_max_fn = Inf,
+          ls_max_gr = Inf,
+          ls_max_fg = Inf
+        ),
+        cases[[name]]
+      )
+
+      result <- do.call(run_rasmussen_witness, args)
+
+      expect_equal(witness$fn_par(), c(0, 1, 0.5), info = info)
+      expect_equal(witness$gr_par(), c(0, 1, 0.5), info = info)
+      if (interface == "combined") {
+        expect_equal(witness$combined_par(), c(1, 0.5), info = info)
+      }
+      expect_identical(witness$counts(), c(fn = 3L, gr = 3L), info = info)
+      expect_budget_counts(result, witness)
+      expect_equal(result$par, 0, info = info)
+      expect_equal(result$f, 1, info = info)
+      expect_equal(result$g, -1, info = info)
+    }
   }
 })
 
