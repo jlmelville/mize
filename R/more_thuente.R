@@ -401,8 +401,7 @@ update_more_thuente_interval <- function(state, policy) {
       best$d,
       trial$alpha,
       trial$f,
-      trial$d,
-      suppress_warnings = TRUE
+      trial$d
     )
     quadratic_proposal <- quadratic_interpolate(
       best$alpha,
@@ -412,7 +411,7 @@ update_more_thuente_interval <- function(state, policy) {
       trial$f
     )
 
-    if (is.nan(cubic_proposal)) {
+    if (!isTRUE(is.finite(cubic_proposal))) {
       next_alpha <- quadratic_proposal
     } else if (
       abs(cubic_proposal - best$alpha) < abs(quadratic_proposal - best$alpha)
@@ -436,8 +435,7 @@ update_more_thuente_interval <- function(state, policy) {
       best$d,
       trial$alpha,
       trial$f,
-      trial$d,
-      suppress_warnings = TRUE
+      trial$d
     )
     secant_proposal <- quadratic_interpolateg(
       trial$alpha,
@@ -446,7 +444,7 @@ update_more_thuente_interval <- function(state, policy) {
       best$d
     )
 
-    if (is.nan(cubic_proposal)) {
+    if (!isTRUE(is.finite(cubic_proposal))) {
       next_alpha <- secant_proposal
     } else if (
       abs(cubic_proposal - trial$alpha) > abs(secant_proposal - trial$alpha)
@@ -524,10 +522,9 @@ update_more_thuente_interval <- function(state, policy) {
         other$d,
         trial$alpha,
         trial$f,
-        trial$d,
-        suppress_warnings = TRUE
+        trial$d
       )
-      if (is.nan(cubic_proposal)) {
+      if (!isTRUE(is.finite(cubic_proposal))) {
         cubic_proposal <- (other$alpha + trial$alpha) / 2
       }
       next_alpha <- safeguard_more_thuente_cubic(

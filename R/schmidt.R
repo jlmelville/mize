@@ -123,13 +123,13 @@ classify_schmidt_expansion <- function(
 ) {
   initial_step <- expansion_state$initial_step
   armijo_failed <- !condition_policy$armijo(initial_step, trial_step)
-  insufficient_decrease <- expansion_state$iteration > 1L &&
+  objective_stopped_decreasing <- expansion_state$iteration >= 1L &&
     trial_step$f >= expansion_state$previous_step$f
   accepted <- !armijo_failed &&
-    !insufficient_decrease &&
+    !objective_stopped_decreasing &&
     condition_policy$curvature(initial_step, trial_step)
   has_bracket <- armijo_failed ||
-    insufficient_decrease ||
+    objective_stopped_decreasing ||
     (!accepted && trial_step$d >= 0)
 
   list(

@@ -11,30 +11,40 @@
 # @param x2 x value at second point.
 # @param f2 f(x) value at second point.
 # @param g2 f'(x) value at second point.
-# @param suppress_warnings If TRUE, don't warn if the interpolation creates a
-#   non-finite value.
-# @return Cubic interpolated estimate of minimum value of x.
+# @return Cubic interpolated estimate of the minimizing x, or `NA_real_` when
+#   no finite proposal can be computed.
 cubic_interpolate <- function(
   x1,
   f1,
   g1,
   x2,
   f2,
-  g2,
-  suppress_warnings = FALSE
+  g2
 ) {
-  cubic_shape <- g1 + g2 - 3 * ((f1 - f2) / (x1 - x2))
-
-  if (suppress_warnings) {
-    suppressWarnings(
-      cubic_root <- sign(x2 - x1) * sqrt(cubic_shape^2 - g1 * g2)
-    )
-  } else {
-    cubic_root <- sign(x2 - x1) * sqrt(cubic_shape^2 - g1 * g2)
+  alpha_difference <- x1 - x2
+  if (!isTRUE(is.finite(alpha_difference)) || alpha_difference == 0) {
+    return(NA_real_)
   }
-  x2 -
+
+  cubic_shape <- g1 + g2 - 3 * ((f1 - f2) / alpha_difference)
+  discriminant <- cubic_shape^2 - g1 * g2
+  if (!isTRUE(is.finite(discriminant)) || discriminant < 0) {
+    return(NA_real_)
+  }
+
+  cubic_root <- sign(x2 - x1) * sqrt(discriminant)
+  denominator <- g2 - g1 + 2 * cubic_root
+  if (!isTRUE(is.finite(denominator)) || denominator == 0) {
+    return(NA_real_)
+  }
+
+  proposed_alpha <- x2 -
     (x2 - x1) *
-      ((g2 + cubic_root - cubic_shape) / (g2 - g1 + 2 * cubic_root))
+      ((g2 + cubic_root - cubic_shape) / denominator)
+  if (!isTRUE(is.finite(proposed_alpha))) {
+    return(NA_real_)
+  }
+  proposed_alpha
 }
 
 # Estimate Minimum By Quadratic Interpolation With One Gradient

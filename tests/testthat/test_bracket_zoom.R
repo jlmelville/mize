@@ -9,6 +9,26 @@ test_that("Schmidt Wolfe validates its numerical safeguards", {
   )
 })
 
+test_that("Schmidt brackets when the expanded objective stops decreasing", {
+  initial_step <- list(alpha = 0, f = 1, df = -1, d = -1)
+  previous_step <- list(alpha = 1, f = 0.5, df = -1, d = -1)
+  trial_step <- list(alpha = 2, f = 0.5, df = -1, d = -1)
+  expansion_state <- list(
+    initial_step = initial_step,
+    previous_step = previous_step,
+    iteration = 1L
+  )
+
+  result <- classify_schmidt_expansion(
+    expansion_state,
+    trial_step,
+    new_line_condition_policy(0.05, 0.1)
+  )
+
+  expect_false(result$accepted)
+  expect_equal(result$bracket, list(previous_step, trial_step))
+})
+
 test_that("bracket-and-zoom validates entry conditions before callbacks", {
   searches <- list(
     rasmussen = new_rasmussen_wolfe_search(0.05, 0.1),

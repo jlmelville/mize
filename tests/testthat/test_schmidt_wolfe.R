@@ -237,3 +237,37 @@ test_that("Schmidt Wolfe recovers from an undefined cubic expansion", {
   expect_equal(result$nfn, 2)
   expect_equal(result$ngr, 2)
 })
+
+test_that("Schmidt Wolfe zooms when expansion stops improving", {
+  evaluated_steps <- list()
+  phi <- function(alpha, calc_gradient = TRUE) {
+    evaluation <- length(evaluated_steps) + 1L
+    step <- if (evaluation <= 2L) {
+      list(alpha = alpha, f = 0, df = -1, d = -1, par = alpha)
+    } else {
+      list(alpha = alpha, f = -0.1, df = 0, d = 0, par = alpha)
+    }
+    evaluated_steps[[evaluation]] <<- step
+    step
+  }
+  initial_step <- list(alpha = 0, f = 1, df = -1, d = -1, par = 0)
+
+  result <- new_schmidt_wolfe_search(
+    armijo_constant = 0.05,
+    curvature_constant = 0.1,
+    max_evaluations = 4
+  )(
+    phi = phi,
+    step0 = initial_step,
+    alpha = 1,
+    pm = 1
+  )
+
+  evaluated_alphas <- vapply(evaluated_steps, `[[`, numeric(1L), "alpha")
+  expect_equal(evaluated_alphas[1:2], c(1, 5.505))
+  expect_gt(evaluated_alphas[[3L]], evaluated_alphas[[1L]])
+  expect_lt(evaluated_alphas[[3L]], evaluated_alphas[[2L]])
+  expect_equal(result$step, evaluated_steps[[3L]])
+  expect_identical(result$nfn, 3L)
+  expect_identical(result$ngr, 3L)
+})

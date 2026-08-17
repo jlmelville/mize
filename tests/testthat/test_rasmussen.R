@@ -163,32 +163,59 @@ test_that("Rasmussen validates its supported safeguards", {
   )
 })
 
-test_that("Rasmussen safeguards undefined cubic proposals", {
-  first_step <- list(alpha = 0.9493646, f = 1.04033, d = 0.6949782)
-  second_step <- list(alpha = 0.1898729, f = 0.8138197, d = 0.03981831)
+test_that("Rasmussen safeguards invalid cubic proposals", {
+  initial_step <- list(alpha = 0, f = 1, d = -1)
+  expansion_step <- list(alpha = 1, f = 0, d = -1)
+  lower_step <- list(alpha = 0.1898729, f = 0.8138197, d = 0.03981831)
+  upper_step <- list(alpha = 0.9493646, f = 1.04033, d = 0.6949782)
 
-  expect_warning(
-    expansion_alpha <- propose_rasmussen_expansion_cubic_alpha(
-      first_step,
-      second_step
-    ),
-    NA
-  )
-  expect_warning(
-    zoom_alpha <- propose_rasmussen_zoom_cubic_alpha(first_step, second_step),
-    NA
-  )
-  expect_true(is.nan(expansion_alpha))
-  expect_true(is.nan(zoom_alpha))
-  expect_equal(
-    safeguard_rasmussen_zoom_alpha(
-      zoom_alpha,
-      lower_alpha = second_step$alpha,
-      upper_alpha = first_step$alpha,
+  expect_no_warning(
+    expansion_alpha <- propose_rasmussen_expansion_alpha(
+      initial_step,
+      expansion_step,
+      expansion_factor = 3,
       interior_fraction = 0.1
-    ),
-    mean(c(first_step$alpha, second_step$alpha))
+    )
   )
+  expect_no_warning(
+    zoom_alpha <- propose_rasmussen_zoom_alpha(
+      new_rasmussen_zoom(list(lower_step, upper_step)),
+      initial_step = list(alpha = 0, f = 2, d = -1),
+      interior_fraction = 0.1
+    )
+  )
+
+  expect_equal(expansion_alpha, 3)
+  expect_true(is.finite(zoom_alpha))
+  expect_gt(zoom_alpha, lower_step$alpha)
+  expect_lt(zoom_alpha, upper_step$alpha)
+})
+
+test_that("Rasmussen terminates after repeated invalid expansion cubics", {
+  evaluated_alphas <- numeric()
+  phi <- function(alpha, calc_gradient = TRUE) {
+    evaluated_alphas <<- c(evaluated_alphas, alpha)
+    list(alpha = alpha, f = 1 - alpha, df = -1, d = -1, par = alpha)
+  }
+  initial_step <- list(alpha = 0, f = 1, df = -1, d = -1, par = 0)
+
+  expect_no_warning(
+    result <- new_rasmussen_wolfe_search(
+      armijo_constant = 0.05,
+      curvature_constant = 0.1,
+      max_evaluations = 3
+    )(
+      phi,
+      step0 = initial_step,
+      alpha = 1,
+      pm = 1
+    )
+  )
+
+  expect_equal(evaluated_alphas, c(1, 3, 9))
+  expect_equal(result$step$alpha, 9)
+  expect_identical(result$nfn, 3L)
+  expect_identical(result$ngr, 3L)
 })
 
 test_that("Rasmussen checks zoom progress without skipping the next proposal", {

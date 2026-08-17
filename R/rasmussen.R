@@ -148,6 +148,9 @@ propose_rasmussen_expansion_cubic_alpha <- function(
   second_step
 ) {
   alpha_difference <- second_step$alpha - first_step$alpha
+  if (!isTRUE(is.finite(alpha_difference)) || alpha_difference == 0) {
+    return(NA_real_)
+  }
   linear_coefficient <- 6 *
     (first_step$f - second_step$f) +
     3 * (second_step$d + first_step$d) * alpha_difference
@@ -156,13 +159,20 @@ propose_rasmussen_expansion_cubic_alpha <- function(
     (2 * first_step$d + second_step$d) * alpha_difference
   discriminant <- quadratic_coefficient^2 -
     linear_coefficient * first_step$d * alpha_difference
+  if (!isTRUE(is.finite(discriminant)) || discriminant < 0) {
+    return(NA_real_)
+  }
 
-  suppressWarnings(
-    first_step$alpha -
-      first_step$d *
-        alpha_difference^2 /
-        (quadratic_coefficient + sqrt(discriminant))
-  )
+  denominator <- quadratic_coefficient + sqrt(discriminant)
+  if (!isTRUE(is.finite(denominator)) || denominator == 0) {
+    return(NA_real_)
+  }
+  proposed_alpha <- first_step$alpha -
+    first_step$d * alpha_difference^2 / denominator
+  if (!isTRUE(is.finite(proposed_alpha))) {
+    return(NA_real_)
+  }
+  proposed_alpha
 }
 
 propose_rasmussen_zoom_cubic_alpha <- function(first_step, second_step) {
@@ -172,8 +182,7 @@ propose_rasmussen_zoom_cubic_alpha <- function(first_step, second_step) {
     first_step$d,
     second_step$alpha,
     second_step$f,
-    second_step$d,
-    suppress_warnings = TRUE
+    second_step$d
   )
 }
 
@@ -216,7 +225,7 @@ safeguard_rasmussen_zoom_alpha <- function(
   interior_fraction
 ) {
   if (!isTRUE(is.finite(proposed_alpha))) {
-    proposed_alpha <- (lower_alpha + upper_alpha) / 2
+    proposed_alpha <- lower_alpha + (upper_alpha - lower_alpha) / 2
   }
   interval_width <- upper_alpha - lower_alpha
   min(
