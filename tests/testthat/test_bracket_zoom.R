@@ -12,19 +12,21 @@ test_that("Schmidt Wolfe validates its numerical safeguards", {
 test_that("Schmidt brackets when the expanded objective stops decreasing", {
   initial_step <- list(alpha = 0, f = 1, df = -1, d = -1)
   previous_step <- list(alpha = 1, f = 0.5, df = -1, d = -1)
-  trial_step <- list(alpha = 2, f = 0.5, df = -1, d = -1)
+  trial_step <- list(alpha = 2, f = 0.5, df = 0, d = 0)
   expansion_state <- list(
     initial_step = initial_step,
     previous_step = previous_step,
     iteration = 1L
   )
+  conditions <- new_line_condition_policy(0.05, 0.1)
 
   result <- classify_schmidt_expansion(
     expansion_state,
     trial_step,
-    new_line_condition_policy(0.05, 0.1)
+    conditions
   )
 
+  expect_true(conditions$wolfe(initial_step, trial_step))
   expect_false(result$accepted)
   expect_equal(result$bracket, list(previous_step, trial_step))
 })
@@ -118,11 +120,11 @@ test_that("Rasmussen zoom stops when no interior alpha is representable", {
 })
 
 test_that("Schmidt zoom proposals stay safeguarded inside their bracket", {
-  zoom_state <- list(
-    first_step = list(alpha = 0, f = 1, df = -1, d = -1),
-    second_step = list(alpha = 1, f = 2, df = 1, d = 1),
-    insufficient_progress = TRUE
-  )
+  zoom_state <- initialize_schmidt_zoom_state(list(
+    list(alpha = 0, f = 1, df = -1, d = -1),
+    list(alpha = 1, f = 2, df = 1, d = 1)
+  ))
+  zoom_state$previous_proposal_not_safely_interior <- TRUE
 
   proposal <- propose_schmidt_zoom_alpha(
     zoom_state,
@@ -137,13 +139,12 @@ test_that("Schmidt zoom updates preserve the lower-value role", {
   conditions <- new_line_condition_policy(0.1, 0.5)
   initial_step <- list(alpha = 0, f = 1, df = -1, d = -1)
   trial_step <- list(alpha = 1, f = 0.5, df = -1, d = -1)
-  zoom_state <- list(
-    first_step = initial_step,
-    second_step = list(alpha = 2, f = 2, df = 1, d = 1),
-    insufficient_progress = FALSE
-  )
+  other_step <- list(alpha = 2, f = 2, df = 1, d = 1)
+  zoom_state <- initialize_schmidt_zoom_state(list(other_step, initial_step))
+  expect_equal(zoom_state$endpoints, list(other_step, initial_step))
+
   old_width <- abs(
-    zoom_state$second_step$alpha - zoom_state$first_step$alpha
+    zoom_state$endpoints[[2L]]$alpha - zoom_state$endpoints[[1L]]$alpha
   )
 
   zoom_state <- update_schmidt_zoom(
@@ -153,10 +154,31 @@ test_that("Schmidt zoom updates preserve the lower-value role", {
     conditions
   )
   new_width <- abs(
-    zoom_state$second_step$alpha - zoom_state$first_step$alpha
+    zoom_state$endpoints[[2L]]$alpha - zoom_state$endpoints[[1L]]$alpha
   )
-  values <- c(zoom_state$first_step$f, zoom_state$second_step$f)
+  endpoint_values <- vapply(zoom_state$endpoints, `[[`, numeric(1L), "f")
 
   expect_lt(new_width, old_width)
-  expect_equal(min(values), trial_step$f)
+  expect_equal(min(endpoint_values), trial_step$f)
+})
+
+test_that("Schmidt zoom preserves endpoint identity across value ties", {
+  conditions <- new_line_condition_policy(0.1, 0.5)
+  initial_step <- list(alpha = 0, f = 1, df = -1, d = -1)
+  best_step <- list(alpha = 2, f = 0, df = -1, d = -1)
+  tied_trial <- list(alpha = 1, f = 0, df = -1, d = -1)
+  zoom_state <- initialize_schmidt_zoom_state(list(initial_step, best_step))
+
+  zoom_state <- update_schmidt_zoom(
+    zoom_state,
+    tied_trial,
+    initial_step,
+    conditions
+  )
+
+  expect_equal(zoom_state$endpoints, list(tied_trial, best_step))
+  expect_identical(
+    which.min(vapply(zoom_state$endpoints, `[[`, numeric(1L), "f")),
+    1L
+  )
 })

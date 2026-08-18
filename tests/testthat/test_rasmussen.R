@@ -179,7 +179,7 @@ test_that("Rasmussen safeguards invalid cubic proposals", {
   )
   expect_no_warning(
     zoom_alpha <- propose_rasmussen_zoom_alpha(
-      new_rasmussen_zoom(list(lower_step, upper_step)),
+      initialize_rasmussen_zoom_state(list(lower_step, upper_step)),
       initial_step = list(alpha = 0, f = 2, d = -1),
       interior_fraction = 0.1
     )
@@ -216,6 +216,39 @@ test_that("Rasmussen terminates after repeated invalid expansion cubics", {
   expect_equal(result$step$alpha, 9)
   expect_identical(result$nfn, 3L)
   expect_identical(result$ngr, 3L)
+})
+
+test_that("Rasmussen accepts the exact strong-curvature boundary", {
+  evaluated_alphas <- numeric()
+  phi <- function(alpha, calc_gradient = TRUE) {
+    evaluated_alphas <<- c(evaluated_alphas, alpha)
+    list(
+      alpha = alpha,
+      f = 1 - alpha + alpha^2,
+      df = -1 + 2 * alpha,
+      d = -1 + 2 * alpha,
+      par = alpha
+    )
+  }
+  initial_step <- list(alpha = 0, f = 1, df = -1, d = -1, par = 0)
+  conditions <- new_line_condition_policy(0.1, 0.5)
+
+  result <- new_rasmussen_wolfe_search(
+    armijo_constant = 0.1,
+    curvature_constant = 0.5,
+    max_evaluations = 4
+  )(
+    phi,
+    step0 = initial_step,
+    alpha = 0.25,
+    pm = 1
+  )
+
+  expect_equal(evaluated_alphas, 0.25)
+  expect_equal(result$step$alpha, 0.25)
+  expect_true(conditions$wolfe(initial_step, result$step))
+  expect_identical(result$nfn, 1L)
+  expect_identical(result$ngr, 1L)
 })
 
 test_that("Rasmussen checks zoom progress without skipping the next proposal", {

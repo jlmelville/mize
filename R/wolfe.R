@@ -188,7 +188,7 @@ schmidt_armijo_ls <- function(
   line_search(
     new_schmidt_armijo_search(
       armijo_constant = c1,
-      max_fn = max_ls_evaluations,
+      max_evaluations = max_ls_evaluations,
       step_down = step_down
     ),
     name = "schmidt_armijo",

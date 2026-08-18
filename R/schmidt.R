@@ -28,7 +28,7 @@ new_schmidt_wolfe_policy <- function(
   expansion_factor = 10,
   minimum_expansion_fraction = 0.01,
   interior_fraction = 0.1,
-  progress_tolerance = 1e-9
+  parameter_tolerance = 1e-9
 ) {
   validate_bracket_zoom_control(
     expansion_factor,
@@ -49,8 +49,8 @@ new_schmidt_wolfe_policy <- function(
     maximum_open = TRUE
   )
   validate_bracket_zoom_control(
-    progress_tolerance,
-    "progress_tolerance",
+    parameter_tolerance,
+    "parameter_tolerance",
     0
   )
 
@@ -75,21 +75,21 @@ new_schmidt_wolfe_policy <- function(
         upper_alpha = maximum_alpha
       )
     },
-    initialize_zoom = function(bracket) {
-      list(
-        first_step = bracket[[1L]],
-        second_step = bracket[[2L]],
-        insufficient_progress = FALSE
-      )
-    },
+    initialize_zoom = initialize_schmidt_zoom_state,
     propose_zoom = function(zoom_state, initial_step) {
       propose_schmidt_zoom_alpha(zoom_state, interior_fraction)
     },
     zoom_recovery_lower_bound = function(zoom_state) {
-      min(zoom_state$first_step$alpha, zoom_state$second_step$alpha)
+      min(
+        zoom_state$endpoints[[1L]]$alpha,
+        zoom_state$endpoints[[2L]]$alpha
+      )
     },
     zoom_bounds = function(zoom_state) {
-      sort(c(zoom_state$first_step$alpha, zoom_state$second_step$alpha))
+      sort(c(
+        zoom_state$endpoints[[1L]]$alpha,
+        zoom_state$endpoints[[2L]]$alpha
+      ))
     },
     process_zoom_trial = function(
       zoom_state,
@@ -98,19 +98,13 @@ new_schmidt_wolfe_policy <- function(
       condition_policy,
       direction_scale
     ) {
-      zoom_state <- update_schmidt_zoom(
+      process_schmidt_zoom_trial(
         zoom_state,
         trial_step,
         initial_step,
-        condition_policy
-      )
-      list(
-        state = zoom_state,
-        progress_stalled = abs(
-          zoom_state$second_step$alpha - zoom_state$first_step$alpha
-        ) *
-          direction_scale <
-          progress_tolerance
+        condition_policy,
+        direction_scale,
+        parameter_tolerance
       )
     }
   )
@@ -125,16 +119,17 @@ classify_schmidt_expansion <- function(
   armijo_failed <- !condition_policy$armijo(initial_step, trial_step)
   objective_stopped_decreasing <- expansion_state$iteration >= 1L &&
     trial_step$f >= expansion_state$previous_step$f
-  accepted <- !armijo_failed &&
-    !objective_stopped_decreasing &&
+  trial_satisfies_wolfe <- !armijo_failed &&
     condition_policy$curvature(initial_step, trial_step)
-  has_bracket <- armijo_failed ||
+  trial_accepted <- trial_satisfies_wolfe &&
+    !objective_stopped_decreasing
+  bracket_found <- armijo_failed ||
     objective_stopped_decreasing ||
-    (!accepted && trial_step$d >= 0)
+    (!trial_accepted && trial_step$d >= 0)
 
   list(
-    accepted = accepted,
-    bracket = if (has_bracket) {
+    accepted = trial_accepted,
+    bracket = if (bracket_found) {
       list(expansion_state$previous_step, trial_step)
     } else {
       NULL
@@ -142,17 +137,25 @@ classify_schmidt_expansion <- function(
   )
 }
 
+initialize_schmidt_zoom_state <- function(bracket) {
+  # Endpoint position breaks objective-value ties during later updates.
+  list(
+    endpoints = bracket,
+    previous_proposal_not_safely_interior = FALSE
+  )
+}
+
 propose_schmidt_zoom_alpha <- function(zoom_state, interior_fraction) {
   bracket_alphas <- c(
-    zoom_state$first_step$alpha,
-    zoom_state$second_step$alpha
+    zoom_state$endpoints[[1L]]$alpha,
+    zoom_state$endpoints[[2L]]$alpha
   )
   lower_alpha <- min(bracket_alphas)
   upper_alpha <- max(bracket_alphas)
   interval_width <- upper_alpha - lower_alpha
   proposed_alpha <- propose_schmidt_cubic_alpha(
-    zoom_state$first_step,
-    zoom_state$second_step,
+    zoom_state$endpoints[[1L]],
+    zoom_state$endpoints[[2L]],
     lower_alpha = lower_alpha,
     upper_alpha = upper_alpha
   )
@@ -160,18 +163,21 @@ propose_schmidt_zoom_alpha <- function(zoom_state, interior_fraction) {
     proposed_alpha <- mean(bracket_alphas)
   }
 
-  if (
+  proposal_not_safely_interior <-
     interval_width > 0 &&
-      min(
-        upper_alpha - proposed_alpha,
-        proposed_alpha - lower_alpha
-      ) /
-        interval_width <
-        interior_fraction
-  ) {
-    outside_interval <- proposed_alpha >= upper_alpha ||
+    min(
+      upper_alpha - proposed_alpha,
+      proposed_alpha - lower_alpha
+    ) /
+      interval_width <
+      interior_fraction
+  if (proposal_not_safely_interior) {
+    proposal_not_strictly_interior <- proposed_alpha >= upper_alpha ||
       proposed_alpha <= lower_alpha
-    if (zoom_state$insufficient_progress || outside_interval) {
+    if (
+      zoom_state$previous_proposal_not_safely_interior ||
+        proposal_not_strictly_interior
+    ) {
       if (
         abs(proposed_alpha - upper_alpha) < abs(proposed_alpha - lower_alpha)
       ) {
@@ -179,12 +185,12 @@ propose_schmidt_zoom_alpha <- function(zoom_state, interior_fraction) {
       } else {
         proposed_alpha <- lower_alpha + interior_fraction * interval_width
       }
-      zoom_state$insufficient_progress <- FALSE
+      zoom_state$previous_proposal_not_safely_interior <- FALSE
     } else {
-      zoom_state$insufficient_progress <- TRUE
+      zoom_state$previous_proposal_not_safely_interior <- TRUE
     }
   } else {
-    zoom_state$insufficient_progress <- FALSE
+    zoom_state$previous_proposal_not_safely_interior <- FALSE
   }
 
   list(alpha = proposed_alpha, state = zoom_state)
@@ -196,33 +202,55 @@ update_schmidt_zoom <- function(
   initial_step,
   condition_policy
 ) {
-  step_names <- c("first_step", "second_step")
-  lower_value_position <- which.min(c(
-    zoom_state$first_step$f,
-    zoom_state$second_step$f
+  best_index <- which.min(c(
+    zoom_state$endpoints[[1L]]$f,
+    zoom_state$endpoints[[2L]]$f
   ))
-  other_position <- 3L - lower_value_position
-  lower_value_name <- step_names[[lower_value_position]]
-  other_name <- step_names[[other_position]]
-  lower_value_step <- zoom_state[[lower_value_name]]
-  other_step <- zoom_state[[other_name]]
+  other_index <- 3L - best_index
+  best_step <- zoom_state$endpoints[[best_index]]
+  other_step <- zoom_state$endpoints[[other_index]]
 
   if (
     !condition_policy$armijo(initial_step, trial_step) ||
-      trial_step$f >= lower_value_step$f
+      trial_step$f >= best_step$f
   ) {
-    zoom_state[[other_name]] <- trial_step
+    zoom_state$endpoints[[other_index]] <- trial_step
   } else {
     if (
       trial_step$d *
-        (other_step$alpha - lower_value_step$alpha) >=
+        (other_step$alpha - best_step$alpha) >=
         0
     ) {
-      zoom_state[[other_name]] <- lower_value_step
+      zoom_state$endpoints[[other_index]] <- best_step
     }
-    zoom_state[[lower_value_name]] <- trial_step
+    zoom_state$endpoints[[best_index]] <- trial_step
   }
   zoom_state
+}
+
+process_schmidt_zoom_trial <- function(
+  zoom_state,
+  trial_step,
+  initial_step,
+  condition_policy,
+  direction_scale,
+  parameter_tolerance
+) {
+  zoom_state <- update_schmidt_zoom(
+    zoom_state,
+    trial_step,
+    initial_step,
+    condition_policy
+  )
+  alpha_interval_width <- abs(
+    zoom_state$endpoints[[2L]]$alpha -
+      zoom_state$endpoints[[1L]]$alpha
+  )
+  list(
+    state = zoom_state,
+    progress_stalled = alpha_interval_width * direction_scale <
+      parameter_tolerance
+  )
 }
 
 # Armijo search ------------------------------------------------------------
@@ -230,12 +258,12 @@ update_schmidt_zoom <- function(
 new_schmidt_armijo_search <- function(
   armijo_constant = 0.05,
   step_down = NULL,
-  max_fn = Inf,
-  progress_tolerance = 1e-9
+  max_evaluations = Inf,
+  parameter_tolerance = 1e-9
 ) {
   validate_line_scalar(armijo_constant, "armijo_constant")
-  validate_line_evaluation_limit(max_fn, "max_fn")
-  validate_line_scalar(progress_tolerance, "progress_tolerance")
+  validate_line_evaluation_limit(max_evaluations, "max_evaluations")
+  validate_line_scalar(parameter_tolerance, "parameter_tolerance")
   if (
     is.na(armijo_constant) ||
       !is.finite(armijo_constant) ||
@@ -245,11 +273,11 @@ new_schmidt_armijo_search <- function(
     stop("armijo_constant must be between zero and one")
   }
   if (
-    is.na(progress_tolerance) ||
-      !is.finite(progress_tolerance) ||
-      progress_tolerance < 0
+    is.na(parameter_tolerance) ||
+      !is.finite(parameter_tolerance) ||
+      parameter_tolerance < 0
   ) {
-    stop("progress_tolerance must be nonnegative and finite")
+    stop("parameter_tolerance must be nonnegative and finite")
   }
   if (!is.null(step_down)) {
     validate_line_scalar(step_down, "step_down")
@@ -275,12 +303,17 @@ new_schmidt_armijo_search <- function(
     total_max_fg = Inf,
     pm
   ) {
-    max_evaluations <- if (evaluates_gradient) {
-      min(max_fn, total_max_fn, total_max_gr, floor(total_max_fg / 2))
+    evaluation_limit <- if (evaluates_gradient) {
+      min(
+        max_evaluations,
+        total_max_fn,
+        total_max_gr,
+        floor(total_max_fg / 2)
+      )
     } else {
-      min(max_fn, total_max_fn, total_max_fg)
+      min(max_evaluations, total_max_fn, total_max_fg)
     }
-    if (max_evaluations <= 0) {
+    if (evaluation_limit <= 0) {
       return(list(
         step = step0,
         nfn = 0L,
@@ -295,9 +328,9 @@ new_schmidt_armijo_search <- function(
       initial_alpha = alpha,
       armijo_constant = armijo_constant,
       fixed_reduction_factor = fixed_reduction_factor,
-      max_evaluations = max_evaluations,
+      max_evaluations = evaluation_limit,
       direction_scale = norm_inf(pm),
-      progress_tolerance = progress_tolerance
+      parameter_tolerance = parameter_tolerance
     )
   }
 }
@@ -310,12 +343,12 @@ run_schmidt_armijo_search <- function(
   fixed_reduction_factor,
   max_evaluations,
   direction_scale,
-  progress_tolerance
+  parameter_tolerance
 ) {
   evaluates_gradient <- is.null(fixed_reduction_factor)
   function_evaluations <- 0L
   gradient_evaluations <- 0L
-  best_decrease <- NULL
+  best_decreasing_step <- NULL
   trial_alpha <- initial_alpha
   is_initial_trial <- TRUE
 
@@ -326,14 +359,15 @@ run_schmidt_armijo_search <- function(
       gradient_evaluations <- gradient_evaluations + 1L
     }
 
-    trial_is_usable <- schmidt_armijo_trial_is_usable(trial_step)
-    has_strict_decrease <- trial_is_usable &&
+    trial_step_is_usable <- schmidt_armijo_step_is_usable(trial_step)
+    has_strict_decrease <- trial_step_is_usable &&
       isTRUE(trial_step$f < initial_step$f)
     if (
       has_strict_decrease &&
-        (is.null(best_decrease) || trial_step$f < best_decrease$f)
+        (is.null(best_decreasing_step) ||
+          trial_step$f < best_decreasing_step$f)
     ) {
-      best_decrease <- trial_step
+      best_decreasing_step <- trial_step
     }
 
     if (
@@ -349,7 +383,7 @@ run_schmidt_armijo_search <- function(
 
     if (
       !is_initial_trial &&
-        direction_scale * trial_alpha <= progress_tolerance
+        direction_scale * trial_alpha <= parameter_tolerance
     ) {
       break
     }
@@ -369,7 +403,11 @@ run_schmidt_armijo_search <- function(
     is_initial_trial <- FALSE
   }
 
-  selected_step <- if (is.null(best_decrease)) initial_step else best_decrease
+  selected_step <- if (is.null(best_decreasing_step)) {
+    initial_step
+  } else {
+    best_decreasing_step
+  }
   finalize_schmidt_armijo_result(
     step = selected_step,
     function_evaluations = function_evaluations,
@@ -390,7 +428,7 @@ finalize_schmidt_armijo_result <- function(
   )
 }
 
-schmidt_armijo_trial_is_usable <- function(step) {
+schmidt_armijo_step_is_usable <- function(step) {
   isTRUE(is.finite(step$alpha)) &&
     isTRUE(is.finite(step$f)) &&
     (is.null(step$df) || all(is.finite(step$df))) &&
@@ -419,12 +457,8 @@ propose_schmidt_armijo_alpha <- function(
       any(!is.finite(trial_step$df)) ||
       !isTRUE(is.finite(trial_step$d))
   ) {
-    return(propose_schmidt_quadratic_alpha(
-      initial_step,
-      trial_step,
-      lower_alpha = 0,
-      upper_alpha = trial_step$alpha
-    ))
+    proposed_alpha <- propose_quadratic_alpha(initial_step, trial_step)
+    return(min(max(proposed_alpha, 0), trial_step$alpha))
   }
 
   propose_schmidt_cubic_alpha(
@@ -433,18 +467,6 @@ propose_schmidt_armijo_alpha <- function(
     lower_alpha = 0,
     upper_alpha = trial_step$alpha
   )
-}
-
-# A finite value without a usable trial gradient can still define a quadratic
-# proposal with the initial slope.
-propose_schmidt_quadratic_alpha <- function(
-  initial_point,
-  trial_point,
-  lower_alpha,
-  upper_alpha
-) {
-  proposed_alpha <- propose_quadratic_alpha(initial_point, trial_point)
-  min(max(proposed_alpha, lower_alpha), upper_alpha)
 }
 
 safeguard_schmidt_armijo_alpha <- function(
@@ -465,41 +487,41 @@ safeguard_schmidt_armijo_alpha <- function(
 # Schmidt cubic proposal ---------------------------------------------------
 
 propose_schmidt_cubic_alpha <- function(
-  first_point,
-  second_point,
-  lower_alpha = min(first_point$alpha, second_point$alpha),
-  upper_alpha = max(first_point$alpha, second_point$alpha)
+  first_step,
+  second_step,
+  lower_alpha = min(first_step$alpha, second_step$alpha),
+  upper_alpha = max(first_step$alpha, second_step$alpha)
 ) {
-  if (first_point$alpha <= second_point$alpha) {
-    lower_point <- first_point
-    upper_point <- second_point
+  if (first_step$alpha <= second_step$alpha) {
+    lower_step <- first_step
+    upper_step <- second_step
   } else {
-    lower_point <- second_point
-    upper_point <- first_point
+    lower_step <- second_step
+    upper_step <- first_step
   }
-  if (lower_point$alpha == upper_point$alpha) {
-    return(lower_point$alpha)
+  if (lower_step$alpha == upper_step$alpha) {
+    return(lower_step$alpha)
   }
   midpoint_alpha <- lower_alpha + (upper_alpha - lower_alpha) / 2
 
-  cubic_shape <- lower_point$d +
-    upper_point$d -
+  cubic_shape <- lower_step$d +
+    upper_step$d -
     3 *
-      (lower_point$f - upper_point$f) /
-      (lower_point$alpha - upper_point$alpha)
-  discriminant <- cubic_shape^2 - lower_point$d * upper_point$d
+      (lower_step$f - upper_step$f) /
+      (lower_step$alpha - upper_step$alpha)
+  discriminant <- cubic_shape^2 - lower_step$d * upper_step$d
   if (!isTRUE(is.finite(discriminant)) || discriminant < 0) {
     return(midpoint_alpha)
   }
 
-  cubic_root <- sqrt(discriminant)
-  denominator <- upper_point$d - lower_point$d + 2 * cubic_root
+  discriminant_root <- sqrt(discriminant)
+  denominator <- upper_step$d - lower_step$d + 2 * discriminant_root
   if (!isTRUE(is.finite(denominator)) || denominator == 0) {
     return(midpoint_alpha)
   }
-  proposed_alpha <- upper_point$alpha -
-    (upper_point$alpha - lower_point$alpha) *
-      ((upper_point$d + cubic_root - cubic_shape) / denominator)
+  proposed_alpha <- upper_step$alpha -
+    (upper_step$alpha - lower_step$alpha) *
+      ((upper_step$d + discriminant_root - cubic_shape) / denominator)
   if (!isTRUE(is.finite(proposed_alpha))) {
     return(midpoint_alpha)
   }

@@ -25,10 +25,13 @@ test_that("Schmidt Armijo controls reject invalid types and ranges", {
   )
   expect_error(new_schmidt_armijo_search(step_down = "half"), "step_down")
   expect_error(new_schmidt_armijo_search(step_down = 2), "step_down")
-  expect_error(new_schmidt_armijo_search(max_fn = -1), "max_fn")
   expect_error(
-    new_schmidt_armijo_search(progress_tolerance = Inf),
-    "progress_tolerance"
+    new_schmidt_armijo_search(max_evaluations = -1),
+    "max_evaluations"
+  )
+  expect_error(
+    new_schmidt_armijo_search(parameter_tolerance = Inf),
+    "parameter_tolerance"
   )
 })
 
@@ -55,7 +58,7 @@ test_that("Armijo backtracking accepts steps with sufficient decrease", {
     setup <- condition_setup(case$fg, case$x)
     res <- new_schmidt_armijo_search(
       armijo_constant = case$c1,
-      max_fn = 10000
+      max_evaluations = 10000
     )(
       phi = setup$phi,
       step0 = setup$step0,
@@ -77,7 +80,10 @@ test_that("Schmidt Armijo accepts internal phi results without parameters", {
     list(alpha = alpha, f = 0, df = -1, d = -1)
   }
 
-  res <- new_schmidt_armijo_search(armijo_constant = 0.1, max_fn = 1)(
+  res <- new_schmidt_armijo_search(
+    armijo_constant = 0.1,
+    max_evaluations = 1
+  )(
     phi = phi,
     step0 = step0,
     alpha = 0.5,
@@ -101,7 +107,10 @@ test_that("Schmidt cubic Armijo backs off a nonfinite objective", {
     list(alpha = alpha, f = 0, df = 0, d = 0, par = alpha)
   }
 
-  result <- new_schmidt_armijo_search(armijo_constant = 0.1, max_fn = 2)(
+  result <- new_schmidt_armijo_search(
+    armijo_constant = 0.1,
+    max_evaluations = 2
+  )(
     phi = phi,
     step0 = step0,
     alpha = 1,
@@ -125,7 +134,10 @@ test_that("Schmidt cubic Armijo uses values when a trial gradient is nonfinite",
     list(alpha = alpha, f = 0, df = 0, d = 0, par = alpha)
   }
 
-  result <- new_schmidt_armijo_search(armijo_constant = 0.1, max_fn = 2)(
+  result <- new_schmidt_armijo_search(
+    armijo_constant = 0.1,
+    max_evaluations = 2
+  )(
     phi = phi,
     step0 = step0,
     alpha = 1,
@@ -501,7 +513,7 @@ test_that("line searches return the initial step when evaluation budgets are exh
 
   armijo_res <- new_schmidt_armijo_search(
     armijo_constant = c1,
-    max_fn = 0
+    max_evaluations = 0
   )(
     phi = setup$phi,
     step0 = setup$step0,

@@ -67,7 +67,7 @@ new_rasmussen_wolfe_policy <- function(
         interior_fraction
       )
     },
-    initialize_zoom = new_rasmussen_zoom,
+    initialize_zoom = initialize_rasmussen_zoom_state,
     propose_zoom = function(zoom_state, initial_step) {
       list(
         alpha = propose_rasmussen_zoom_alpha(
@@ -108,14 +108,16 @@ classify_rasmussen_expansion <- function(
   condition_policy
 ) {
   initial_step <- expansion_state$initial_step
-  has_bracket <- trial_step$d >
+  armijo_failed <- !condition_policy$armijo(initial_step, trial_step)
+  trial_accepted <- !armijo_failed &&
+    condition_policy$curvature(initial_step, trial_step)
+  bracket_found <- trial_step$d >
     condition_policy$curvature_constant * initial_step$d ||
-    !condition_policy$armijo(initial_step, trial_step)
+    armijo_failed
 
   list(
-    accepted = has_bracket &&
-      condition_policy$wolfe(initial_step, trial_step),
-    bracket = if (has_bracket) {
+    accepted = trial_accepted,
+    bracket = if (bracket_found) {
       list(initial_step, trial_step)
     } else {
       NULL
@@ -151,19 +153,19 @@ propose_rasmussen_expansion_cubic_alpha <- function(
   if (!isTRUE(is.finite(alpha_difference)) || alpha_difference == 0) {
     return(NA_real_)
   }
-  linear_coefficient <- 6 *
+  scaled_cubic_term <- 6 *
     (first_step$f - second_step$f) +
     3 * (second_step$d + first_step$d) * alpha_difference
-  quadratic_coefficient <- 3 *
+  scaled_quadratic_term <- 3 *
     (second_step$f - first_step$f) -
     (2 * first_step$d + second_step$d) * alpha_difference
-  discriminant <- quadratic_coefficient^2 -
-    linear_coefficient * first_step$d * alpha_difference
+  discriminant <- scaled_quadratic_term^2 -
+    scaled_cubic_term * first_step$d * alpha_difference
   if (!isTRUE(is.finite(discriminant)) || discriminant < 0) {
     return(NA_real_)
   }
 
-  denominator <- quadratic_coefficient + sqrt(discriminant)
+  denominator <- scaled_quadratic_term + sqrt(discriminant)
   if (!isTRUE(is.finite(denominator)) || denominator == 0) {
     return(NA_real_)
   }
@@ -175,18 +177,7 @@ propose_rasmussen_expansion_cubic_alpha <- function(
   proposed_alpha
 }
 
-propose_rasmussen_zoom_cubic_alpha <- function(first_step, second_step) {
-  cubic_interpolate(
-    first_step$alpha,
-    first_step$f,
-    first_step$d,
-    second_step$alpha,
-    second_step$f,
-    second_step$d
-  )
-}
-
-new_rasmussen_zoom <- function(bracket) {
+initialize_rasmussen_zoom_state <- function(bracket) {
   if (bracket[[1L]]$alpha <= bracket[[2L]]$alpha) {
     lower_step <- bracket[[1L]]
     upper_step <- bracket[[2L]]
@@ -205,9 +196,13 @@ propose_rasmussen_zoom_alpha <- function(
   proposed_alpha <- if (zoom_state$upper_step$f > initial_step$f) {
     propose_quadratic_alpha(zoom_state$lower_step, zoom_state$upper_step)
   } else {
-    propose_rasmussen_zoom_cubic_alpha(
-      zoom_state$lower_step,
-      zoom_state$upper_step
+    cubic_interpolate(
+      zoom_state$lower_step$alpha,
+      zoom_state$lower_step$f,
+      zoom_state$lower_step$d,
+      zoom_state$upper_step$alpha,
+      zoom_state$upper_step$f,
+      zoom_state$upper_step$d
     )
   }
   safeguard_rasmussen_zoom_alpha(
@@ -258,7 +253,7 @@ process_rasmussen_zoom_trial <- function(
   condition_policy,
   relative_interval_tolerance
 ) {
-  progress_stalled <- rasmussen_zoom_has_stalled(
+  interval_tolerance_reached <- rasmussen_zoom_interval_is_small(
     zoom_state,
     trial_step,
     relative_interval_tolerance
@@ -270,11 +265,11 @@ process_rasmussen_zoom_trial <- function(
       initial_step,
       condition_policy
     ),
-    progress_stalled = progress_stalled
+    progress_stalled = interval_tolerance_reached
   )
 }
 
-rasmussen_zoom_has_stalled <- function(
+rasmussen_zoom_interval_is_small <- function(
   zoom_state,
   trial_step,
   relative_interval_tolerance
