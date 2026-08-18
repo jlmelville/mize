@@ -11,8 +11,12 @@ run_rasmussen_oracle <- function(
   approximate_armijo = FALSE,
   strong_curvature = TRUE
 ) {
-  initial_step <- make_step0(objective, initial_parameter, direction)
-  search <- new_rasmussen_wolfe_search(
+  initial_point <- make_initial_line_point(
+    objective,
+    initial_parameter,
+    direction
+  )
+  search <- make_rasmussen_wolfe_search(
     armijo_constant = armijo_constant,
     curvature_constant = curvature_constant,
     max_evaluations = 10000,
@@ -22,47 +26,48 @@ run_rasmussen_oracle <- function(
     relative_interval_tolerance = relative_interval_tolerance
   )
   result <- search(
-    phi = make_phi_alpha(
+    evaluate_line = make_line_function(
       initial_parameter,
       objective,
       direction,
       calc_gradient_default = TRUE
     ),
-    step0 = initial_step,
-    alpha = initial_alpha,
-    pm = direction
+    initial_point = initial_point,
+    initial_alpha = initial_alpha,
+    search_direction = direction
   )
-  result$step$par <- initial_parameter + result$step$alpha * direction
-  result$step0 <- initial_step
+  result$line_point$parameters <- initial_parameter +
+    result$line_point$alpha * direction
+  result$initial_point <- initial_point
   result
 }
 
 expect_rasmussen_oracle <- function(result, expected, info) {
   expect_equal(
-    result$step$par,
+    result$line_point$parameters,
     expected$parameter,
     tolerance = 1e-4,
     info = info
   )
   expect_equal(
-    result$step$f,
+    result$line_point$value,
     expected$value,
     tolerance = 1e-4,
     info = info
   )
   expect_equal_abs(
-    result$step$df,
+    result$line_point$gradient,
     expected$gradient,
     tolerance = 1e-4,
     info = info
   )
   expect_equal(
-    result$step$alpha,
+    result$line_point$alpha,
     expected$alpha,
     tolerance = 1e-4,
     info = info
   )
-  expect_equal(result$nfn, expected$evaluations, info = info)
+  expect_equal(result$function_evaluations, expected$evaluations, info = info)
 }
 
 rasmussen_table_oracles <- list(
@@ -142,15 +147,15 @@ rasmussen_table_oracles <- list(
 
 test_that("Rasmussen validates its supported safeguards", {
   expect_error(
-    new_rasmussen_wolfe_search(0.05, 0.1, expansion_factor = 1),
+    make_rasmussen_wolfe_search(0.05, 0.1, expansion_factor = 1),
     "expansion_factor"
   )
   expect_error(
-    new_rasmussen_wolfe_search(0.05, 0.1, interior_fraction = 0.5),
+    make_rasmussen_wolfe_search(0.05, 0.1, interior_fraction = 0.5),
     "interior_fraction"
   )
   expect_error(
-    new_rasmussen_wolfe_search(
+    make_rasmussen_wolfe_search(
       0.05,
       0.1,
       relative_interval_tolerance = -1
@@ -158,20 +163,20 @@ test_that("Rasmussen validates its supported safeguards", {
     "relative_interval_tolerance"
   )
   expect_error(
-    new_rasmussen_wolfe_search(0.05, 0.1, max_evaluations = 1.5),
+    make_rasmussen_wolfe_search(0.05, 0.1, max_evaluations = 1.5),
     "whole number"
   )
 })
 
 test_that("Rasmussen safeguards invalid cubic proposals", {
-  initial_step <- list(alpha = 0, f = 1, d = -1)
-  expansion_step <- list(alpha = 1, f = 0, d = -1)
-  lower_step <- list(alpha = 0.1898729, f = 0.8138197, d = 0.03981831)
-  upper_step <- list(alpha = 0.9493646, f = 1.04033, d = 0.6949782)
+  initial_point <- list(alpha = 0, value = 1, slope = -1)
+  expansion_step <- list(alpha = 1, value = 0, slope = -1)
+  lower_point <- list(alpha = 0.1898729, value = 0.8138197, slope = 0.03981831)
+  upper_point <- list(alpha = 0.9493646, value = 1.04033, slope = 0.6949782)
 
   expect_no_warning(
     expansion_alpha <- propose_rasmussen_expansion_alpha(
-      initial_step,
+      initial_point,
       expansion_step,
       expansion_factor = 3,
       interior_fraction = 0.1
@@ -179,43 +184,55 @@ test_that("Rasmussen safeguards invalid cubic proposals", {
   )
   expect_no_warning(
     zoom_alpha <- propose_rasmussen_zoom_alpha(
-      initialize_rasmussen_zoom_state(list(lower_step, upper_step)),
-      initial_step = list(alpha = 0, f = 2, d = -1),
+      initialize_rasmussen_zoom_state(list(lower_point, upper_point)),
+      initial_point = list(alpha = 0, value = 2, slope = -1),
       interior_fraction = 0.1
     )
   )
 
   expect_equal(expansion_alpha, 3)
   expect_true(is.finite(zoom_alpha))
-  expect_gt(zoom_alpha, lower_step$alpha)
-  expect_lt(zoom_alpha, upper_step$alpha)
+  expect_gt(zoom_alpha, lower_point$alpha)
+  expect_lt(zoom_alpha, upper_point$alpha)
 })
 
 test_that("Rasmussen terminates after repeated invalid expansion cubics", {
   evaluated_alphas <- numeric()
   phi <- function(alpha, calc_gradient = TRUE) {
     evaluated_alphas <<- c(evaluated_alphas, alpha)
-    list(alpha = alpha, f = 1 - alpha, df = -1, d = -1, par = alpha)
+    list(
+      alpha = alpha,
+      value = 1 - alpha,
+      gradient = -1,
+      slope = -1,
+      parameters = alpha
+    )
   }
-  initial_step <- list(alpha = 0, f = 1, df = -1, d = -1, par = 0)
+  initial_point <- list(
+    alpha = 0,
+    value = 1,
+    gradient = -1,
+    slope = -1,
+    parameters = 0
+  )
 
   expect_no_warning(
-    result <- new_rasmussen_wolfe_search(
+    result <- make_rasmussen_wolfe_search(
       armijo_constant = 0.05,
       curvature_constant = 0.1,
       max_evaluations = 3
     )(
       phi,
-      step0 = initial_step,
-      alpha = 1,
-      pm = 1
+      initial_point = initial_point,
+      initial_alpha = 1,
+      search_direction = 1
     )
   )
 
   expect_equal(evaluated_alphas, c(1, 3, 9))
-  expect_equal(result$step$alpha, 9)
-  expect_identical(result$nfn, 3L)
-  expect_identical(result$ngr, 3L)
+  expect_equal(result$line_point$alpha, 9)
+  expect_identical(result$function_evaluations, 3L)
+  expect_identical(result$gradient_evaluations, 3L)
 })
 
 test_that("Rasmussen accepts the exact strong-curvature boundary", {
@@ -224,31 +241,37 @@ test_that("Rasmussen accepts the exact strong-curvature boundary", {
     evaluated_alphas <<- c(evaluated_alphas, alpha)
     list(
       alpha = alpha,
-      f = 1 - alpha + alpha^2,
-      df = -1 + 2 * alpha,
-      d = -1 + 2 * alpha,
-      par = alpha
+      value = 1 - alpha + alpha^2,
+      gradient = -1 + 2 * alpha,
+      slope = -1 + 2 * alpha,
+      parameters = alpha
     )
   }
-  initial_step <- list(alpha = 0, f = 1, df = -1, d = -1, par = 0)
-  conditions <- new_line_condition_policy(0.1, 0.5)
+  initial_point <- list(
+    alpha = 0,
+    value = 1,
+    gradient = -1,
+    slope = -1,
+    parameters = 0
+  )
+  conditions <- make_line_condition_policy(0.1, 0.5)
 
-  result <- new_rasmussen_wolfe_search(
+  result <- make_rasmussen_wolfe_search(
     armijo_constant = 0.1,
     curvature_constant = 0.5,
     max_evaluations = 4
   )(
     phi,
-    step0 = initial_step,
-    alpha = 0.25,
-    pm = 1
+    initial_point = initial_point,
+    initial_alpha = 0.25,
+    search_direction = 1
   )
 
   expect_equal(evaluated_alphas, 0.25)
-  expect_equal(result$step$alpha, 0.25)
-  expect_true(conditions$wolfe(initial_step, result$step))
-  expect_identical(result$nfn, 1L)
-  expect_identical(result$ngr, 1L)
+  expect_equal(result$line_point$alpha, 0.25)
+  expect_true(conditions$wolfe(initial_point, result$line_point))
+  expect_identical(result$function_evaluations, 1L)
+  expect_identical(result$gradient_evaluations, 1L)
 })
 
 test_that("Rasmussen checks zoom progress without skipping the next proposal", {
@@ -270,10 +293,10 @@ test_that("Rasmussen checks zoom progress without skipping the next proposal", {
     armijo_constant = 0.0013907,
     curvature_constant = 0.5281278
   )
-  conditions <- new_line_condition_policy(0.0013907, 0.5281278)
+  conditions <- make_line_condition_policy(0.0013907, 0.5281278)
 
-  expect_equal(result$nfn, 16)
-  expect_true(conditions$wolfe(result$step0, result$step))
+  expect_equal(result$function_evaluations, 16)
+  expect_true(conditions$wolfe(result$initial_point, result$line_point))
 })
 
 # These rounded outputs characterize the supported Rasmussen search. They are

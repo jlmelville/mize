@@ -17,79 +17,100 @@ validate_line_evaluation_limit <- function(value, name) {
   }
 }
 
-validate_line_step <- function(step) {
-  if (!is.list(step)) {
-    stop("line step must be a list")
+validate_line_point_structure <- function(line_point) {
+  if (!is.list(line_point)) {
+    stop("line point must be a list")
   }
-  for (name in c("alpha", "f", "d")) {
-    if (!is.numeric(step[[name]]) || length(step[[name]]) != 1L) {
-      stop("line step ", name, " must be a numeric scalar")
+  for (name in c("alpha", "value", "slope")) {
+    if (
+      !is.numeric(line_point[[name]]) ||
+        length(line_point[[name]]) != 1L
+    ) {
+      stop("line point ", name, " must be a numeric scalar")
     }
   }
-  if (!is.null(step$df) && !is.numeric(step$df)) {
-    stop("line step df must be numeric or NULL")
+  if (!is.null(line_point$gradient) && !is.numeric(line_point$gradient)) {
+    stop("line point gradient must be numeric or NULL")
   }
-  if (!is.null(step$par) && !is.numeric(step$par)) {
-    stop("line step par must be numeric or NULL")
+  if (!is.null(line_point$parameters) && !is.numeric(line_point$parameters)) {
+    stop("line point parameters must be numeric or NULL")
   }
-  step
+  line_point
 }
 
-line_step_is_usable <- function(step) {
-  isTRUE(is.finite(step$alpha)) &&
-    isTRUE(is.finite(step$f)) &&
-    isTRUE(is.finite(step$d)) &&
-    (is.null(step$df) || all(is.finite(step$df))) &&
-    (is.null(step$par) || all(is.finite(step$par)))
+validate_initial_line_point <- function(line_point) {
+  line_point <- validate_line_point_structure(line_point)
+  if (is.null(line_point$gradient)) {
+    stop("initial line point gradient must be numeric")
+  }
+  line_point
 }
 
-new_line_evaluator <- function(
-  phi,
-  initial_step = NULL,
+validate_wolfe_trial_point <- function(line_point) {
+  line_point <- validate_line_point_structure(line_point)
+  if (is.null(line_point$gradient)) {
+    stop("Wolfe trial point gradient must be numeric")
+  }
+  if (is.null(line_point$parameters)) {
+    stop("Wolfe trial point parameters must be numeric")
+  }
+  line_point
+}
+
+initial_line_point_is_usable <- function(line_point) {
+  isTRUE(is.finite(line_point$alpha)) &&
+    isTRUE(is.finite(line_point$value)) &&
+    isTRUE(is.finite(line_point$slope)) &&
+    !is.null(line_point$gradient) &&
+    all(is.finite(line_point$gradient)) &&
+    (is.null(line_point$parameters) || all(is.finite(line_point$parameters)))
+}
+
+wolfe_trial_point_is_usable <- function(line_point) {
+  initial_line_point_is_usable(line_point) &&
+    !is.null(line_point$parameters) &&
+    all(is.finite(line_point$parameters))
+}
+
+make_line_evaluator <- function(
+  evaluate_line,
+  initial_point = NULL,
   max_evaluations = Inf
 ) {
-  if (!is.function(phi)) {
-    stop("phi must be a function")
+  if (!is.function(evaluate_line)) {
+    stop("evaluate_line must be a function")
   }
   validate_line_evaluation_limit(max_evaluations, "max_evaluations")
-  if (!is.null(initial_step)) {
-    initial_step <- validate_line_step(initial_step)
+  if (!is.null(initial_point)) {
+    initial_point <- validate_initial_line_point(initial_point)
   }
 
   evaluation_count <- 0L
-  best_decrease <- NULL
-  recovered_nonfinite <- FALSE
+  best_decreasing_point <- NULL
   evaluator <- function(alpha, calc_gradient = TRUE) {
     if (evaluation_count >= max_evaluations) {
       stop("line evaluator budget exhausted")
     }
-    step <- phi(alpha, calc_gradient = calc_gradient)
+    line_point <- evaluate_line(alpha, calc_gradient = calc_gradient)
     evaluation_count <<- evaluation_count + 1L
-    step <- validate_line_step(step)
+    line_point <- validate_wolfe_trial_point(line_point)
 
-    has_finite_values <- isTRUE(is.finite(step$f)) &&
-      isTRUE(is.finite(step$d))
-    if (!has_finite_values) {
-      recovered_nonfinite <<- TRUE
-    }
     if (
-      !is.null(initial_step) &&
-        isTRUE(is.finite(step$alpha)) &&
-        has_finite_values &&
-        (is.null(step$df) || all(is.finite(step$df))) &&
-        (is.null(step$par) || all(is.finite(step$par))) &&
-        step$f < initial_step$f &&
-        (is.null(best_decrease) || step$f < best_decrease$f)
+      !is.null(initial_point) &&
+        wolfe_trial_point_is_usable(line_point) &&
+        line_point$value < initial_point$value &&
+        (is.null(best_decreasing_point) ||
+          line_point$value < best_decreasing_point$value)
     ) {
-      best_decrease <<- step
+      best_decreasing_point <<- line_point
     }
-    step
+    line_point
   }
   attr(evaluator, "line_evaluator") <- evaluator
   evaluator
 }
 
-new_line_condition_policy <- function(
+make_line_condition_policy <- function(
   armijo_constant,
   curvature_constant,
   approximate_armijo = FALSE,
@@ -132,30 +153,30 @@ new_line_condition_policy <- function(
   ) {
     stop("strong_curvature must be TRUE or FALSE")
   }
-  exact_armijo <- function(initial_step, trial_step, ...) {
-    trial_step$f <=
-      initial_step$f +
-        armijo_constant * trial_step$alpha * initial_step$d
+  exact_armijo <- function(initial_point, trial_point, ...) {
+    trial_point$value <=
+      initial_point$value +
+        armijo_constant * trial_point$alpha * initial_point$slope
   }
   selected_armijo <- if (approximate_armijo) {
-    function(initial_step, trial_step, ...) {
-      exact_armijo(initial_step, trial_step) ||
-        (trial_step$f <=
-          initial_step$f +
-            approximation_tolerance * abs(initial_step$f) &&
-          (2 * armijo_constant - 1) * initial_step$d >= trial_step$d)
+    function(initial_point, trial_point, ...) {
+      exact_armijo(initial_point, trial_point) ||
+        (trial_point$value <=
+          initial_point$value +
+            approximation_tolerance * abs(initial_point$value) &&
+          (2 * armijo_constant - 1) * initial_point$slope >= trial_point$slope)
     }
   } else {
     exact_armijo
   }
 
   selected_curvature <- if (strong_curvature) {
-    function(initial_step, trial_step, ...) {
-      abs(trial_step$d) <= -curvature_constant * initial_step$d
+    function(initial_point, trial_point, ...) {
+      abs(trial_point$slope) <= -curvature_constant * initial_point$slope
     }
   } else {
-    function(initial_step, trial_step, ...) {
-      trial_step$d > curvature_constant * initial_step$d
+    function(initial_point, trial_point, ...) {
+      trial_point$slope >= curvature_constant * initial_point$slope
     }
   }
 
@@ -164,40 +185,49 @@ new_line_condition_policy <- function(
     curvature_constant = curvature_constant,
     armijo = selected_armijo,
     curvature = selected_curvature,
-    wolfe = function(initial_step, trial_step, ...) {
-      selected_armijo(initial_step, trial_step) &&
-        selected_curvature(initial_step, trial_step)
+    wolfe = function(initial_point, trial_point, ...) {
+      selected_armijo(initial_point, trial_point) &&
+        selected_curvature(initial_point, trial_point)
     }
   )
 }
 
 finalize_wolfe_line_search_result <- function(
-  candidate,
+  accepted_point,
   evaluator,
-  termination_reason,
-  gradient_is_current = NULL
+  termination_reason
 ) {
   evaluator_state <- environment(evaluator)
-  candidate_is_usable <- !is.null(candidate) &&
-    line_step_is_usable(candidate)
+  accepted_point_is_usable <- !is.null(accepted_point) &&
+    wolfe_trial_point_is_usable(accepted_point)
 
-  if (candidate_is_usable && identical(termination_reason, "wolfe")) {
-    selected_step <- candidate
-  } else if (!is.null(evaluator_state$best_decrease)) {
-    selected_step <- evaluator_state$best_decrease
+  if (accepted_point_is_usable && identical(termination_reason, "wolfe")) {
+    selected_point <- accepted_point
+  } else if (!is.null(evaluator_state$best_decreasing_point)) {
+    selected_point <- evaluator_state$best_decreasing_point
   } else {
-    selected_step <- evaluator_state$initial_step
+    selected_point <- evaluator_state$initial_point
   }
 
   evaluations <- evaluator_state$evaluation_count
-  result <- list(step = selected_step, nfn = evaluations, ngr = evaluations)
-  if (!is.null(gradient_is_current)) {
-    result$is_gr_curr <- gradient_is_current
-  }
-  result
+  list(
+    line_point = selected_point,
+    function_evaluations = evaluations,
+    gradient_evaluations = evaluations
+  )
 }
 
-new_wolfe_line_search <- function(
+make_line_search_core_result <- function(
+  termination_reason,
+  accepted_point = NULL
+) {
+  list(
+    accepted_point = accepted_point,
+    termination_reason = termination_reason
+  )
+}
+
+make_wolfe_line_search <- function(
   core,
   armijo_constant,
   curvature_constant,
@@ -208,12 +238,12 @@ new_wolfe_line_search <- function(
   method_policy = list()
 ) {
   validate_line_evaluation_limit(max_evaluations, "max_evaluations")
-  evaluator <- new_line_evaluator(
+  evaluator <- make_line_evaluator(
     function(alpha, calc_gradient = TRUE) NULL,
     max_evaluations = 0
   )
   evaluator_state <- environment(evaluator)
-  condition_policy <- new_line_condition_policy(
+  condition_policy <- make_line_condition_policy(
     armijo_constant = armijo_constant,
     curvature_constant = curvature_constant,
     approximate_armijo = approximate_armijo,
@@ -222,49 +252,63 @@ new_wolfe_line_search <- function(
   )
 
   function(
-    phi,
-    step0,
-    alpha,
-    total_max_fn = Inf,
-    total_max_gr = Inf,
-    total_max_fg = Inf,
-    pm = NULL
+    evaluate_line,
+    initial_point,
+    initial_alpha,
+    remaining_function_evaluations = Inf,
+    remaining_gradient_evaluations = Inf,
+    remaining_combined_evaluations = Inf,
+    search_direction = NULL
   ) {
-    step0 <- validate_line_step(step0)
+    initial_point <- validate_initial_line_point(initial_point)
+    validate_line_scalar(initial_alpha, "initial_alpha")
+    if (
+      is.na(initial_alpha) ||
+        !is.finite(initial_alpha) ||
+        initial_alpha <= 0
+    ) {
+      stop("initial_alpha must be positive and finite")
+    }
     evaluation_limit <- min(
       max_evaluations,
-      total_max_fn,
-      total_max_gr,
-      floor(total_max_fg / 2)
+      remaining_function_evaluations,
+      remaining_gradient_evaluations,
+      floor(remaining_combined_evaluations / 2)
     )
-    evaluator_state$phi <- phi
+    evaluator_state$evaluate_line <- evaluate_line
     evaluator_state$max_evaluations <- evaluation_limit
-    evaluator_state$initial_step <- step0
+    evaluator_state$initial_point <- initial_point
     evaluator_state$evaluation_count <- 0L
-    evaluator_state$best_decrease <- NULL
-    evaluator_state$recovered_nonfinite <- FALSE
+    evaluator_state$best_decreasing_point <- NULL
 
     if (evaluation_limit <= 0) {
-      core_result <- list(
-        candidate = NULL,
-        termination_reason = "budget_exhausted"
-      )
+      core_result <- make_line_search_core_result("budget_exhausted")
+    } else if (!initial_line_point_is_usable(initial_point)) {
+      core_result <- make_line_search_core_result("nonfinite_initial_point")
     } else {
       core_result <- core(
         evaluator = evaluator,
-        initial_step = step0,
-        initial_alpha = alpha,
+        initial_point = initial_point,
+        initial_alpha = initial_alpha,
         condition_policy = condition_policy,
-        search_direction = pm,
+        search_direction = search_direction,
         method_policy = method_policy
       )
     }
 
-    finalize_wolfe_line_search_result(
-      candidate = core_result$candidate,
+    if (
+      identical(core_result$termination_reason, "wolfe") &&
+        !wolfe_trial_point_is_usable(core_result$accepted_point)
+    ) {
+      core_result <- make_line_search_core_result("invalid_wolfe_point")
+    }
+
+    finalized_result <- finalize_wolfe_line_search_result(
+      accepted_point = core_result$accepted_point,
       evaluator = evaluator,
-      termination_reason = core_result$termination_reason,
-      gradient_is_current = core_result$gradient_is_current
+      termination_reason = core_result$termination_reason
     )
+    finalized_result$termination_reason <- core_result$termination_reason
+    finalized_result
   }
 }

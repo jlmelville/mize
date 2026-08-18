@@ -1,40 +1,40 @@
 test_that("Schmidt Wolfe validates its numerical safeguards", {
   expect_error(
-    new_schmidt_wolfe_policy(expansion_factor = 1),
+    make_schmidt_wolfe_policy(expansion_factor = 1),
     "expansion_factor"
   )
   expect_error(
-    new_schmidt_wolfe_policy(interior_fraction = 0.5),
+    make_schmidt_wolfe_policy(interior_fraction = 0.5),
     "interior_fraction"
   )
 })
 
 test_that("Schmidt brackets when the expanded objective stops decreasing", {
-  initial_step <- list(alpha = 0, f = 1, df = -1, d = -1)
-  previous_step <- list(alpha = 1, f = 0.5, df = -1, d = -1)
-  trial_step <- list(alpha = 2, f = 0.5, df = 0, d = 0)
+  initial_point <- list(alpha = 0, value = 1, gradient = -1, slope = -1)
+  previous_point <- list(alpha = 1, value = 0.5, gradient = -1, slope = -1)
+  trial_point <- list(alpha = 2, value = 0.5, gradient = 0, slope = 0)
   expansion_state <- list(
-    initial_step = initial_step,
-    previous_step = previous_step,
+    initial_point = initial_point,
+    previous_point = previous_point,
     iteration = 1L
   )
-  conditions <- new_line_condition_policy(0.05, 0.1)
+  conditions <- make_line_condition_policy(0.05, 0.1)
 
   result <- classify_schmidt_expansion(
     expansion_state,
-    trial_step,
+    trial_point,
     conditions
   )
 
-  expect_true(conditions$wolfe(initial_step, trial_step))
+  expect_true(conditions$wolfe(initial_point, trial_point))
   expect_false(result$accepted)
-  expect_equal(result$bracket, list(previous_step, trial_step))
+  expect_equal(result$bracket, list(previous_point, trial_point))
 })
 
 test_that("bracket-and-zoom validates entry conditions before callbacks", {
   searches <- list(
-    rasmussen = new_rasmussen_wolfe_search(0.05, 0.1),
-    schmidt = new_schmidt_wolfe_search(0.05, 0.1)
+    rasmussen = make_rasmussen_wolfe_search(0.05, 0.1),
+    schmidt = make_schmidt_wolfe_search(0.05, 0.1)
   )
   phi <- function(alpha, calc_gradient = TRUE) {
     stop("phi should not be called")
@@ -42,29 +42,52 @@ test_that("bracket-and-zoom validates entry conditions before callbacks", {
 
   for (name in names(searches)) {
     search <- searches[[name]]
-    descent_step <- list(alpha = 0, f = 1, df = -1, d = -1, par = 0)
+    descent_step <- list(
+      alpha = 0,
+      value = 1,
+      gradient = -1,
+      slope = -1,
+      parameters = 0
+    )
     for (alpha in c(0, -1, Inf, -Inf, NA_real_, NaN)) {
       expect_error(
-        search(phi, descent_step, alpha = alpha, pm = 1),
+        search(phi, descent_step, initial_alpha = alpha, search_direction = 1),
         "initial_alpha",
         info = paste(name, alpha)
       )
     }
 
-    non_descent_step <- list(alpha = 0, f = 1, df = 1, d = 1, par = 0)
-    result <- search(phi, non_descent_step, alpha = 1, pm = 1)
-    expect_equal(result$step, non_descent_step, info = name)
-    expect_identical(result$nfn, 0L, info = name)
-    expect_identical(result$ngr, 0L, info = name)
+    non_descent_step <- list(
+      alpha = 0,
+      value = 1,
+      gradient = 1,
+      slope = 1,
+      parameters = 0
+    )
+    result <- search(
+      phi,
+      non_descent_step,
+      initial_alpha = 1,
+      search_direction = 1
+    )
+    expect_equal(result$line_point, non_descent_step, info = name)
+    expect_identical(result$function_evaluations, 0L, info = name)
+    expect_identical(result$gradient_evaluations, 0L, info = name)
   }
 })
 
 test_that("bracket-and-zoom expansion never evaluates an infinite proposal", {
   searches <- list(
-    rasmussen = new_rasmussen_wolfe_search(0.05, 0.1),
-    schmidt = new_schmidt_wolfe_search(0.05, 0.1)
+    rasmussen = make_rasmussen_wolfe_search(0.05, 0.1),
+    schmidt = make_schmidt_wolfe_search(0.05, 0.1)
   )
-  initial_step <- list(alpha = 0, f = 0, df = -1, d = -1, par = 0)
+  initial_point <- list(
+    alpha = 0,
+    value = 0,
+    gradient = -1,
+    slope = -1,
+    parameters = 0
+  )
 
   for (name in names(searches)) {
     evaluated_alphas <- numeric()
@@ -73,14 +96,20 @@ test_that("bracket-and-zoom expansion never evaluates an infinite proposal", {
         stop("non-finite alpha reached the callback")
       }
       evaluated_alphas <<- c(evaluated_alphas, alpha)
-      list(alpha = alpha, f = -alpha, df = -1, d = -1, par = alpha)
+      list(
+        alpha = alpha,
+        value = -alpha,
+        gradient = -1,
+        slope = -1,
+        parameters = alpha
+      )
     }
 
     result <- searches[[name]](
       phi,
-      step0 = initial_step,
-      alpha = 1e308,
-      pm = 1
+      initial_point = initial_point,
+      initial_alpha = 1e308,
+      search_direction = 1
     )
 
     expect_equal(
@@ -88,9 +117,9 @@ test_that("bracket-and-zoom expansion never evaluates an infinite proposal", {
       c(1e308, .Machine$double.xmax),
       info = name
     )
-    expect_equal(result$step$alpha, .Machine$double.xmax, info = name)
-    expect_identical(result$nfn, 2L, info = name)
-    expect_identical(result$ngr, 2L, info = name)
+    expect_equal(result$line_point$alpha, .Machine$double.xmax, info = name)
+    expect_identical(result$function_evaluations, 2L, info = name)
+    expect_identical(result$gradient_evaluations, 2L, info = name)
   }
 })
 
@@ -102,27 +131,33 @@ test_that("Rasmussen zoom stops when no interior alpha is representable", {
     if (length(evaluated_alphas) > 1L) {
       stop("zoom repeated without representable progress")
     }
-    list(alpha = alpha, f = 2, df = 1, d = 1, par = alpha)
+    list(alpha = alpha, value = 2, gradient = 1, slope = 1, parameters = alpha)
   }
-  initial_step <- list(alpha = 0, f = 1, df = -1, d = -1, par = 0)
+  initial_point <- list(
+    alpha = 0,
+    value = 1,
+    gradient = -1,
+    slope = -1,
+    parameters = 0
+  )
 
-  result <- new_rasmussen_wolfe_search(0.05, 0.1)(
+  result <- make_rasmussen_wolfe_search(0.05, 0.1)(
     phi,
-    step0 = initial_step,
-    alpha = smallest_positive,
-    pm = 1
+    initial_point = initial_point,
+    initial_alpha = smallest_positive,
+    search_direction = 1
   )
 
   expect_equal(evaluated_alphas, smallest_positive)
-  expect_equal(result$step, initial_step)
-  expect_identical(result$nfn, 1L)
-  expect_identical(result$ngr, 1L)
+  expect_equal(result$line_point, initial_point)
+  expect_identical(result$function_evaluations, 1L)
+  expect_identical(result$gradient_evaluations, 1L)
 })
 
 test_that("Schmidt zoom proposals stay safeguarded inside their bracket", {
   zoom_state <- initialize_schmidt_zoom_state(list(
-    list(alpha = 0, f = 1, df = -1, d = -1),
-    list(alpha = 1, f = 2, df = 1, d = 1)
+    list(alpha = 0, value = 1, gradient = -1, slope = -1),
+    list(alpha = 1, value = 2, gradient = 1, slope = 1)
   ))
   zoom_state$previous_proposal_not_safely_interior <- TRUE
 
@@ -136,12 +171,12 @@ test_that("Schmidt zoom proposals stay safeguarded inside their bracket", {
 })
 
 test_that("Schmidt zoom updates preserve the lower-value role", {
-  conditions <- new_line_condition_policy(0.1, 0.5)
-  initial_step <- list(alpha = 0, f = 1, df = -1, d = -1)
-  trial_step <- list(alpha = 1, f = 0.5, df = -1, d = -1)
-  other_step <- list(alpha = 2, f = 2, df = 1, d = 1)
-  zoom_state <- initialize_schmidt_zoom_state(list(other_step, initial_step))
-  expect_equal(zoom_state$endpoints, list(other_step, initial_step))
+  conditions <- make_line_condition_policy(0.1, 0.5)
+  initial_point <- list(alpha = 0, value = 1, gradient = -1, slope = -1)
+  trial_point <- list(alpha = 1, value = 0.5, gradient = -1, slope = -1)
+  other_point <- list(alpha = 2, value = 2, gradient = 1, slope = 1)
+  zoom_state <- initialize_schmidt_zoom_state(list(other_point, initial_point))
+  expect_equal(zoom_state$endpoints, list(other_point, initial_point))
 
   old_width <- abs(
     zoom_state$endpoints[[2L]]$alpha - zoom_state$endpoints[[1L]]$alpha
@@ -149,36 +184,87 @@ test_that("Schmidt zoom updates preserve the lower-value role", {
 
   zoom_state <- update_schmidt_zoom(
     zoom_state,
-    trial_step,
-    initial_step,
+    trial_point,
+    initial_point,
     conditions
   )
   new_width <- abs(
     zoom_state$endpoints[[2L]]$alpha - zoom_state$endpoints[[1L]]$alpha
   )
-  endpoint_values <- vapply(zoom_state$endpoints, `[[`, numeric(1L), "f")
+  endpoint_values <- vapply(zoom_state$endpoints, `[[`, numeric(1L), "value")
 
   expect_lt(new_width, old_width)
-  expect_equal(min(endpoint_values), trial_step$f)
+  expect_equal(min(endpoint_values), trial_point$value)
 })
 
 test_that("Schmidt zoom preserves endpoint identity across value ties", {
-  conditions <- new_line_condition_policy(0.1, 0.5)
-  initial_step <- list(alpha = 0, f = 1, df = -1, d = -1)
-  best_step <- list(alpha = 2, f = 0, df = -1, d = -1)
-  tied_trial <- list(alpha = 1, f = 0, df = -1, d = -1)
-  zoom_state <- initialize_schmidt_zoom_state(list(initial_step, best_step))
+  conditions <- make_line_condition_policy(0.1, 0.5)
+  initial_point <- list(alpha = 0, value = 1, gradient = -1, slope = -1)
+  best_point <- list(alpha = 2, value = 0, gradient = -1, slope = -1)
+  tied_trial <- list(alpha = 1, value = 0, gradient = -1, slope = -1)
+  zoom_state <- initialize_schmidt_zoom_state(list(initial_point, best_point))
 
   zoom_state <- update_schmidt_zoom(
     zoom_state,
     tied_trial,
-    initial_step,
+    initial_point,
     conditions
   )
 
-  expect_equal(zoom_state$endpoints, list(tied_trial, best_step))
+  expect_equal(zoom_state$endpoints, list(tied_trial, best_point))
   expect_identical(
-    which.min(vapply(zoom_state$endpoints, `[[`, numeric(1L), "f")),
+    which.min(vapply(zoom_state$endpoints, `[[`, numeric(1L), "value")),
     1L
   )
+})
+
+test_that("bracket-and-zoom reports method-specific tolerance reasons", {
+  initial_point <- list(
+    alpha = 0,
+    value = 1,
+    gradient = -1,
+    slope = -1,
+    parameters = 0
+  )
+  evaluate_line <- function(alpha, calc_gradient = TRUE) {
+    list(
+      alpha = alpha,
+      value = 2,
+      gradient = 1,
+      slope = 1,
+      parameters = alpha
+    )
+  }
+  searches <- list(
+    rasmussen = list(
+      search = make_rasmussen_wolfe_search(
+        armijo_constant = 0.05,
+        curvature_constant = 0.1,
+        relative_interval_tolerance = 10
+      ),
+      reason = "relative_interval_tolerance"
+    ),
+    schmidt = list(
+      search = make_wolfe_line_search(
+        core = run_bracket_zoom,
+        armijo_constant = 0.05,
+        curvature_constant = 0.1,
+        method_policy = make_schmidt_wolfe_policy(parameter_tolerance = 10)
+      ),
+      reason = "parameter_tolerance"
+    )
+  )
+
+  for (name in names(searches)) {
+    case <- searches[[name]]
+    result <- case$search(
+      evaluate_line = evaluate_line,
+      initial_point = initial_point,
+      initial_alpha = 1,
+      search_direction = 1
+    )
+
+    expect_identical(result$termination_reason, case$reason, info = name)
+    expect_equal(result$line_point, initial_point, info = name)
+  }
 })

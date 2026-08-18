@@ -736,6 +736,7 @@ test_that("fixed Schmidt Armijo budgets only objective evaluations", {
   cases <- list(
     local_gradient = list(ls_max_gr = 0),
     local_combined = list(ls_max_fg = 1),
+    global_gradient = list(max_gr = 1),
     global_combined = list(max_fg = 3)
   )
 
@@ -1826,4 +1827,103 @@ test_that("cached summary values consume no remaining budget", {
   expect_identical(witness$counts(), c(fn = 0, gr = 0))
   expect_equal(summary$f, 1)
   expect_equal(summary$nf, 0)
+})
+
+test_that("Hager-Zhang initializer respects local and global search budgets", {
+  run_two_steps <- function(ls_max_fn, ls_max_gr, ls_max_fg, ...) {
+    witness <- make_hager_zhang_witness(
+      fn = function(x) 0.5 * x^2,
+      gr = function(x) x
+    )
+    opt <- make_mize(
+      method = "SD",
+      line_search = "hager-zhang",
+      step0 = 0.1,
+      step_next_init = "hz",
+      ls_max_fn = ls_max_fn,
+      ls_max_gr = ls_max_gr,
+      ls_max_fg = ls_max_fg,
+      abs_tol = NULL,
+      rel_tol = NULL,
+      grad_tol = NULL,
+      ginf_tol = NULL,
+      step_tol = NULL,
+      ...
+    )
+    opt <- mize_init(opt, 1, witness$fg)
+    first <- mize_step(opt, 1, witness$fg)
+    calls_before <- witness$counts()
+    second <- mize_step(first$opt, first$par, witness$fg)
+
+    list(
+      witness = witness,
+      first = first,
+      second = second,
+      second_counts = witness$counts() - calls_before
+    )
+  }
+
+  local <- run_two_steps(
+    ls_max_fn = 1,
+    ls_max_gr = 1,
+    ls_max_fg = 2
+  )
+  expect_equal(local$first$par, 0.9)
+  expect_equal(local$second$par, 0.72)
+  expect_identical(local$second_counts, c(fn = 1L, gr = 1L))
+  expect_equal(local$witness$fn_par(), c(1, 0.9, 0.72))
+  expect_equal(local$witness$gr_par(), c(1, 0.9, 0.72))
+  expect_budget_counts(local$second, local$witness)
+
+  global <- run_two_steps(
+    ls_max_fn = 2,
+    ls_max_gr = 1,
+    ls_max_fg = 3,
+    max_fn = 3,
+    max_gr = 3,
+    max_fg = 6
+  )
+  expect_equal(global$second$par, 0.72)
+  expect_identical(global$second_counts, c(fn = 1L, gr = 1L))
+  expect_equal(global$witness$fn_par(), c(1, 0.9, 0.72))
+  expect_equal(global$witness$gr_par(), c(1, 0.9, 0.72))
+  expect_budget_counts(global$second, global$witness)
+})
+
+test_that("Hager-Zhang initializer recovers from a nonfinite objective probe", {
+  witness <- make_hager_zhang_witness(
+    fn = function(x) {
+      if (isTRUE(all.equal(x, 0.891))) NA_real_ else 0.5 * x^2
+    },
+    gr = function(x) x
+  )
+  opt <- make_mize(
+    method = "SD",
+    line_search = "hager-zhang",
+    step0 = 0.1,
+    step_next_init = "hz",
+    ls_max_fn = 2,
+    ls_max_gr = 1,
+    ls_max_fg = 3,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+  opt <- mize_init(opt, 1, witness$fg)
+  first <- mize_step(opt, 1, witness$fg)
+  calls_before <- witness$counts()
+
+  second <- mize_step(first$opt, first$par, witness$fg)
+
+  expect_equal(first$par, 0.9)
+  expect_equal(second$par, 0.72)
+  expect_identical(
+    witness$counts() - calls_before,
+    c(fn = 2L, gr = 1L)
+  )
+  expect_equal(witness$fn_par(), c(1, 0.9, 0.891, 0.72))
+  expect_equal(witness$gr_par(), c(1, 0.9, 0.72))
+  expect_budget_counts(second, witness)
 })

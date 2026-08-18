@@ -116,22 +116,22 @@ run_schmidt_armijo_oracle_case <- function(
 ) {
   initial_parameters <- 0
   direction <- -fg$gr(initial_parameters) / abs(fg$gr(initial_parameters))
-  initial_step <- make_step0(fg, initial_parameters, direction)
-  search <- new_schmidt_armijo_search(
+  initial_point <- make_initial_line_point(fg, initial_parameters, direction)
+  search <- make_schmidt_armijo_search(
     armijo_constant = armijo_constant,
     step_down = step_down
   )
 
   search(
-    phi = make_phi_alpha(
+    evaluate_line = make_line_function(
       initial_parameters,
       fg,
       direction,
       calc_gradient_default = TRUE
     ),
-    step0 = initial_step,
-    alpha = initial_alpha,
-    pm = direction
+    initial_point = initial_point,
+    initial_alpha = initial_alpha,
+    search_direction = direction
   )
 }
 
@@ -149,26 +149,34 @@ test_that("supported Schmidt cubic Armijo outputs match their oracle", {
       info <- paste(case_name, "row", row)
 
       expect_equal(
-        result$step$alpha,
+        result$line_point$alpha,
         expected$selected_alpha,
         tolerance = 1e-4,
         info = info
       )
       expect_equal(
-        result$step$f,
+        result$line_point$value,
         expected$value,
         tolerance = 1e-4,
         info = info
       )
       expect_equal_abs(
-        result$step$df,
+        result$line_point$gradient,
         expected$gradient,
         tolerance = 1e-4,
         info = info
       )
-      expect_equal(result$nfn, expected$evaluations, info = info)
-      expect_equal(result$ngr, expected$evaluations, info = info)
-      expect_true(result$is_gr_curr, info = info)
+      expect_equal(
+        result$function_evaluations,
+        expected$evaluations,
+        info = info
+      )
+      expect_equal(
+        result$gradient_evaluations,
+        expected$evaluations,
+        info = info
+      )
+      expect_true(result$gradient_is_current, info = info)
     }
   }
 })
@@ -187,21 +195,25 @@ test_that("supported Schmidt fixed Armijo outputs match their oracle", {
       info <- paste(case_name, "row", row)
 
       expect_equal(
-        result$step$alpha,
+        result$line_point$alpha,
         expected$selected_alpha,
         tolerance = 1e-4,
         info = info
       )
       expect_equal(
-        result$step$f,
+        result$line_point$value,
         expected$value,
         tolerance = 1e-4,
         info = info
       )
-      expect_null(result$step$df, info = info)
-      expect_equal(result$nfn, expected$evaluations, info = info)
-      expect_equal(result$ngr, 0, info = info)
-      expect_false(result$is_gr_curr, info = info)
+      expect_null(result$line_point$gradient, info = info)
+      expect_equal(
+        result$function_evaluations,
+        expected$evaluations,
+        info = info
+      )
+      expect_equal(result$gradient_evaluations, 0, info = info)
+      expect_false(result$gradient_is_current, info = info)
     }
   }
 })

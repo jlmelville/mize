@@ -15,24 +15,24 @@ mtls <- function(
   strong_curvature = TRUE,
   safeguard_cubic = FALSE
 ) {
-  search <- new_wolfe_line_search(
+  search <- make_wolfe_line_search(
     more_thuente_core,
     armijo_constant = c1,
     curvature_constant = c2,
     approximation_tolerance = eps,
     approximate_armijo = approx_armijo,
     strong_curvature = strong_curvature,
-    method_policy = new_more_thuente_policy(
+    method_policy = make_more_thuente_policy(
       safeguard_cubic = safeguard_cubic
     )
   )
   res <- search(
-    phi = make_phi_alpha(x, fg, pv, calc_gradient_default = TRUE),
+    evaluate_line = make_line_function(x, fg, pv, calc_gradient_default = TRUE),
     alpha,
-    step0 = make_step0(fg, x, pv),
-    pm = pv
+    initial_point = make_initial_line_point(fg, x, pv),
+    search_direction = pv
   )
-  res$step$par <- x + res$step$alpha * pv
+  res$line_point$parameters <- x + res$line_point$alpha * pv
   res
 }
 
@@ -46,76 +46,214 @@ mtls <- function(
 # Table 1
 test_that("Table 1", {
   res11 <- mtls(fg = f1, x = 0, alpha = 1e-3, c1 = 0.001, c2 = 0.1)
-  expect_step(res11, x = 1.3650, f = -0.35333, df = -0.0091645, nfev = 6)
+  expect_step(
+    res11,
+    x = 1.3650,
+    value = -0.35333,
+    gradient = -0.0091645,
+    nfev = 6
+  )
   res12 <- mtls(fg = f1, x = 0, alpha = 1e-1, c1 = 0.001, c2 = 0.1)
-  expect_step(res12, x = 1.4414, f = -0.35349, df = 0.0046645, nfev = 3)
+  expect_step(
+    res12,
+    x = 1.4414,
+    value = -0.35349,
+    gradient = 0.0046645,
+    nfev = 3
+  )
   res13 <- mtls(fg = f1, x = 0, alpha = 1e1, c1 = 0.001, c2 = 0.1)
-  expect_step(res13, x = 10, f = -0.098039, df = 0.0094195, nfev = 1)
+  expect_step(res13, x = 10, value = -0.098039, gradient = 0.0094195, nfev = 1)
   res14 <- mtls(fg = f1, x = 0, alpha = 1e3, c1 = 0.001, c2 = 0.1)
-  expect_step(res14, x = 36.888, f = -0.027070, df = 7.3169e-004, nfev = 4)
+  expect_step(
+    res14,
+    x = 36.888,
+    value = -0.027070,
+    gradient = 7.3169e-004,
+    nfev = 4
+  )
 })
 
 # Table 2
 test_that("Table 2", {
   # # gradient 7.1e-9
   res21 <- mtls(fg = f2, x = 0, alpha = 1e-3, c1 = 0.1, c2 = 0.1)
-  expect_step(res21, x = 1.5960, f = -2.6214, df = 3.8113e-009, nfev = 12)
+  expect_step(
+    res21,
+    x = 1.5960,
+    value = -2.6214,
+    gradient = 3.8113e-009,
+    nfev = 12
+  )
   # gradient 10e-10 could be a typo in the paper and should be 1.0e-10?
   res22 <- mtls(fg = f2, x = 0, alpha = 1e-1, c1 = 0.1, c2 = 0.1)
-  expect_step(res22, x = 1.5960, f = -2.6214, df = 1.0106e-010, nfev = 8)
+  expect_step(
+    res22,
+    x = 1.5960,
+    value = -2.6214,
+    gradient = 1.0106e-010,
+    nfev = 8
+  )
   res23 <- mtls(fg = f2, x = 0, alpha = 1e1, c1 = 0.1, c2 = 0.1)
-  expect_step(res23, x = 1.5960, f = -2.6214, df = -4.9725e-009, nfev = 8)
+  expect_step(
+    res23,
+    x = 1.5960,
+    value = -2.6214,
+    gradient = -4.9725e-009,
+    nfev = 8
+  )
   res24 <- mtls(fg = f2, x = 0, alpha = 1e3, c1 = 0.1, c2 = 0.1)
-  expect_step(res24, x = 1.5960, f = -2.6214, df = -2.3091e-008, nfev = 11)
+  expect_step(
+    res24,
+    x = 1.5960,
+    value = -2.6214,
+    gradient = -2.3091e-008,
+    nfev = 11
+  )
 })
 
 # Table 3
 test_that("Table 3", {
   res31 <- mtls(fg = f3, x = 0, alpha = 1e-3, c1 = 0.1, c2 = 0.1)
-  expect_step(res31, x = 1.0, f = -0.011160, df = -5.1440e-005, nfev = 12)
+  expect_step(
+    res31,
+    x = 1.0,
+    value = -0.011160,
+    gradient = -5.1440e-005,
+    nfev = 12
+  )
   res32 <- mtls(fg = f3, x = 0, alpha = 1e-1, c1 = 0.1, c2 = 0.1)
-  expect_step(res32, x = 1.0, f = -0.011160, df = -1.9224e-004, nfev = 12)
+  expect_step(
+    res32,
+    x = 1.0,
+    value = -0.011160,
+    gradient = -1.9224e-004,
+    nfev = 12
+  )
   res33 <- mtls(fg = f3, x = 0, alpha = 1e1, c1 = 0.1, c2 = 0.1)
-  expect_step(res33, x = 1.0, f = -0.011160, df = -1.9892e-006, nfev = 10)
+  expect_step(
+    res33,
+    x = 1.0,
+    value = -0.011160,
+    gradient = -1.9892e-006,
+    nfev = 10
+  )
   res34 <- mtls(fg = f3, x = 0, alpha = 1e3, c1 = 0.1, c2 = 0.1)
-  expect_step(res34, x = 1.0, f = -0.011160, df = -1.5789e-005, nfev = 13)
+  expect_step(
+    res34,
+    x = 1.0,
+    value = -0.011160,
+    gradient = -1.5789e-005,
+    nfev = 13
+  )
 })
 
 # Table 4
 test_that("Table 4", {
   # alpha = 0.08
   res41 <- mtls(fg = f4, x = 0, alpha = 1e-3, c1 = 0.001, c2 = 0.001)
-  expect_step(res41, x = 0.085, f = 0.99901, df = -6.8531e-005, nfev = 4)
+  expect_step(
+    res41,
+    x = 0.085,
+    value = 0.99901,
+    gradient = -6.8531e-005,
+    nfev = 4
+  )
   res42 <- mtls(fg = f4, x = 0, alpha = 1e-1, c1 = 0.001, c2 = 0.001)
-  expect_step(res42, x = 0.1, f = 0.99901, df = -4.9330e-005, nfev = 1)
+  expect_step(
+    res42,
+    x = 0.1,
+    value = 0.99901,
+    gradient = -4.9330e-005,
+    nfev = 1
+  )
   res43 <- mtls(fg = f4, x = 0, alpha = 1e1, c1 = 0.001, c2 = 0.001)
-  expect_step(res43, x = 0.34910, f = 0.999, df = -2.9195e-006, nfev = 3)
+  expect_step(
+    res43,
+    x = 0.34910,
+    value = 0.999,
+    gradient = -2.9195e-006,
+    nfev = 3
+  )
   res44 <- mtls(fg = f4, x = 0, alpha = 1e3, c1 = 0.001, c2 = 0.001)
-  expect_step(res44, x = 0.8294, f = 0.999, df = 1.6436e-005, nfev = 4)
+  expect_step(
+    res44,
+    x = 0.8294,
+    value = 0.999,
+    gradient = 1.6436e-005,
+    nfev = 4
+  )
 })
 
 # Table 5
 test_that("Table 5", {
   res51 <- mtls(fg = f5, x = 0, alpha = 1e-3, c1 = 0.001, c2 = 0.001)
-  expect_step(res51, x = 0.075011, f = 0.99138, df = 1.9025e-004, nfev = 6)
+  expect_step(
+    res51,
+    x = 0.075011,
+    value = 0.99138,
+    gradient = 1.9025e-004,
+    nfev = 6
+  )
   res52 <- mtls(fg = f5, x = 0, alpha = 1e-1, c1 = 0.001, c2 = 0.001)
-  expect_step(res52, x = 0.07751, f = 0.99139, df = 7.3935e-004, nfev = 3)
+  expect_step(
+    res52,
+    x = 0.07751,
+    value = 0.99139,
+    gradient = 7.3935e-004,
+    nfev = 3
+  )
   res53 <- mtls(fg = f5, x = 0, alpha = 1e1, c1 = 0.001, c2 = 0.001)
-  expect_step(res53, x = 0.073142, f = 0.99138, df = -2.5691e-004, nfev = 7)
+  expect_step(
+    res53,
+    x = 0.073142,
+    value = 0.99138,
+    gradient = -2.5691e-004,
+    nfev = 7
+  )
   res54 <- mtls(fg = f5, x = 0, alpha = 1e3, c1 = 0.001, c2 = 0.001)
-  expect_step(res54, x = 0.076159, f = 0.99139, df = 4.4913e-004, nfev = 8)
+  expect_step(
+    res54,
+    x = 0.076159,
+    value = 0.99139,
+    gradient = 4.4913e-004,
+    nfev = 8
+  )
 })
 
 # Table 6
 test_that("Table 6", {
   res61 <- mtls(fg = f6, x = 0, alpha = 1e-3, c1 = 0.001, c2 = 0.001)
-  expect_step(res61, x = 0.9279, f = 0.99139, df = 5.2203e-004, nfev = 13)
+  expect_step(
+    res61,
+    x = 0.9279,
+    value = 0.99139,
+    gradient = 5.2203e-004,
+    nfev = 13
+  )
   res62 <- mtls(fg = f6, x = 0, alpha = 1e-1, c1 = 0.001, c2 = 0.001)
-  expect_step(res62, x = 0.92615, f = 0.99138, df = 8.3588e-005, nfev = 11)
+  expect_step(
+    res62,
+    x = 0.92615,
+    value = 0.99138,
+    gradient = 8.3588e-005,
+    nfev = 11
+  )
   res63 <- mtls(fg = f6, x = 0, alpha = 1e1, c1 = 0.001, c2 = 0.001)
-  expect_step(res63, x = 0.92478, f = 0.99138, df = -2.3788e-004, nfev = 8)
+  expect_step(
+    res63,
+    x = 0.92478,
+    value = 0.99138,
+    gradient = -2.3788e-004,
+    nfev = 8
+  )
   res64 <- mtls(fg = f6, x = 0, alpha = 1e3, c1 = 0.001, c2 = 0.001)
-  expect_step(res64, x = 0.92440, f = 0.99139, df = -3.2498e-004, nfev = 11)
+  expect_step(
+    res64,
+    x = 0.92440,
+    value = 0.99139,
+    gradient = -3.2498e-004,
+    nfev = 11
+  )
 })
 
 # Test line search modification in
@@ -132,7 +270,13 @@ test_that("Safeguard Cubic", {
     c2 = 0.1,
     safeguard_cubic = TRUE
   )
-  expect_step(res32c, x = 1.0, f = -0.011160, df = -1.5842e-10, nfev = 13)
+  expect_step(
+    res32c,
+    x = 1.0,
+    value = -0.011160,
+    gradient = -1.5842e-10,
+    nfev = 13
+  )
   res64c <- mtls(
     fg = f6,
     x = 0,
@@ -141,7 +285,13 @@ test_that("Safeguard Cubic", {
     c2 = 0.001,
     safeguard_cubic = TRUE
   )
-  expect_step(res64c, x = 0.92525, f = 0.99138, df = -1.2989e-4, nfev = 10)
+  expect_step(
+    res64c,
+    x = 0.92525,
+    value = 0.99138,
+    gradient = -1.2989e-4,
+    nfev = 10
+  )
 })
 
 
@@ -152,8 +302,8 @@ test_that("Function modification", {
   expect_step(
     res4m,
     x = 0.99615,
-    f = 0.99913,
-    df = 0.032049,
+    value = 0.99913,
+    gradient = 0.032049,
     alpha = 0.0038522,
     nfev = 6
   )
@@ -161,8 +311,8 @@ test_that("Function modification", {
   expect_step(
     res5m,
     x = 0.99599,
-    f = 0.99914,
-    df = 0.038284,
+    value = 0.99914,
+    gradient = 0.038284,
     alpha = 0.0040126,
     nfev = 6
   )
@@ -170,8 +320,8 @@ test_that("Function modification", {
   expect_step(
     res6m,
     x = 0.95655,
-    f = 0.99157,
-    df = 0.016504,
+    value = 0.99157,
+    gradient = 0.016504,
     alpha = 0.043447,
     nfev = 4
   )
@@ -179,9 +329,9 @@ test_that("Function modification", {
 
 test_that("More-Thuente interval updates reject invalid state without mutation", {
   make_interval_point <- function(alpha, f, d) {
-    list(alpha = alpha, f = f, d = d, df = d)
+    list(alpha = alpha, value = f, slope = d, gradient = d)
   }
-  policy <- new_more_thuente_policy(alpha_max = 4)
+  policy <- make_more_thuente_policy(alpha_max = 4)
 
   invalid_cases <- list(
     trial_outside_bracket = list(
@@ -202,7 +352,7 @@ test_that("More-Thuente interval updates reject invalid state without mutation",
   # cannot exercise without first constructing an invalid state.
   for (case_name in names(invalid_cases)) {
     case <- invalid_cases[[case_name]]
-    state <- new_more_thuente_search_state(
+    state <- initialize_more_thuente_search_state(
       case$best_endpoint,
       case$trial_point$alpha,
       policy
@@ -228,9 +378,9 @@ test_that("More-Thuente interval updates reject invalid state without mutation",
 
 test_that("More-Thuente interval updates cover all four mathematical cases", {
   make_interval_point <- function(alpha, f, d) {
-    list(alpha = alpha, f = f, d = d, df = d)
+    list(alpha = alpha, value = f, slope = d, gradient = d)
   }
-  policy <- new_more_thuente_policy(alpha_max = 4)
+  policy <- make_more_thuente_policy(alpha_max = 4)
   initial <- make_interval_point(0, 0, -1)
   cases <- list(
     higher_value = list(
@@ -269,7 +419,7 @@ test_that("More-Thuente interval updates cover all four mathematical cases", {
 
   for (case_name in names(cases)) {
     case <- cases[[case_name]]
-    state <- new_more_thuente_search_state(
+    state <- initialize_more_thuente_search_state(
       initial,
       case$trial$alpha,
       policy
@@ -305,19 +455,19 @@ test_that("More-Thuente interval updates cover all four mathematical cases", {
       info = case_name
     )
     expect_equal(
-      result$state$trial_point[c("f", "d", "df")],
-      case$trial[c("f", "d", "df")],
+      result$state$trial_point[c("value", "slope", "gradient")],
+      case$trial[c("value", "slope", "gradient")],
       info = case_name
     )
   }
 })
 
 test_that("More-Thuente termination guard reports named reasons", {
-  step0 <- list(alpha = 0, f = 1, d = -1, df = -1)
+  initial_point <- list(alpha = 0, value = 1, slope = -1, gradient = -1)
   cases <- list(
     alpha_min = list(
       expected = "alpha_min",
-      step = list(alpha = 0, f = 2, d = -1, df = -1),
+      point = list(alpha = 0, value = 2, slope = -1, gradient = -1),
       is_bracketed = FALSE,
       interval_update_case = "initial",
       trial_lower_bound = 0,
@@ -330,7 +480,7 @@ test_that("More-Thuente termination guard reports named reasons", {
     ),
     alpha_max = list(
       expected = "alpha_max",
-      step = list(alpha = 10, f = 0.5, d = -2, df = -2),
+      point = list(alpha = 10, value = 0.5, slope = -2, gradient = -2),
       is_bracketed = FALSE,
       interval_update_case = "initial",
       trial_lower_bound = 0,
@@ -343,7 +493,7 @@ test_that("More-Thuente termination guard reports named reasons", {
     ),
     rounding = list(
       expected = "rounding_stagnation",
-      step = list(alpha = 2, f = 2, d = -1, df = -1),
+      point = list(alpha = 2, value = 2, slope = -1, gradient = -1),
       is_bracketed = FALSE,
       interval_update_case = "invalid",
       trial_lower_bound = 0,
@@ -356,7 +506,7 @@ test_that("More-Thuente termination guard reports named reasons", {
     ),
     narrow_bracket = list(
       expected = "relative_interval_tolerance",
-      step = list(alpha = 1 + 5e-13, f = 2, d = -1, df = -1),
+      point = list(alpha = 1 + 5e-13, value = 2, slope = -1, gradient = -1),
       is_bracketed = TRUE,
       interval_update_case = "initial",
       trial_lower_bound = 1,
@@ -371,21 +521,25 @@ test_that("More-Thuente termination guard reports named reasons", {
 
   for (case_name in names(cases)) {
     case <- cases[[case_name]]
-    policy <- new_more_thuente_policy(
+    policy <- make_more_thuente_policy(
       relative_interval_tolerance = case$relative_interval_tolerance,
       alpha_min = case$alpha_min,
       alpha_max = case$alpha_max
     )
-    state <- new_more_thuente_search_state(step0, case$step$alpha, policy)
-    state$trial_point <- case$step
+    state <- initialize_more_thuente_search_state(
+      initial_point,
+      case$point$alpha,
+      policy
+    )
+    state$trial_point <- case$point
     state$is_bracketed <- case$is_bracketed
     state$interval_update_case <- case$interval_update_case
     state$trial_lower_bound <- case$trial_lower_bound
     state$trial_upper_bound <- case$trial_upper_bound
     reason <- classify_more_thuente_termination(
       state = state,
-      initial_point = step0,
-      condition_policy = new_line_condition_policy(1e-4, 0.9),
+      initial_point = initial_point,
+      condition_policy = make_line_condition_policy(1e-4, 0.9),
       policy = policy,
       evaluation_count = case$evaluation_count,
       max_evaluations = case$max_evaluations
@@ -396,7 +550,7 @@ test_that("More-Thuente termination guard reports named reasons", {
 })
 
 test_that("More-Thuente policy owns named algorithm defaults", {
-  policy <- new_more_thuente_policy()
+  policy <- make_more_thuente_policy()
 
   expect_equal(policy$relative_interval_tolerance, .Machine$double.eps)
   expect_equal(policy$contraction_factor, 0.66)
@@ -406,8 +560,8 @@ test_that("More-Thuente policy owns named algorithm defaults", {
   expect_false(policy$safeguard_cubic)
   expect_equal(policy$cubic_interior_fraction, 0.001)
 
-  state <- new_more_thuente_search_state(
-    list(alpha = 0, f = 1, d = -1, df = -1),
+  state <- initialize_more_thuente_search_state(
+    list(alpha = 0, value = 1, slope = -1, gradient = -1),
     initial_alpha = 1,
     policy = policy
   )
@@ -430,19 +584,19 @@ test_that("More-Thuente policy owns named algorithm defaults", {
 })
 
 test_that("More-Thuente termination reasons retain their precedence", {
-  initial <- list(alpha = 0, f = 1, d = -1, df = -1)
-  policy <- new_more_thuente_policy(
+  initial <- list(alpha = 0, value = 1, slope = -1, gradient = -1)
+  policy <- make_more_thuente_policy(
     relative_interval_tolerance = 1,
     alpha_max = 10
   )
-  conditions <- new_line_condition_policy(1e-4, 0.9)
-  state <- new_more_thuente_search_state(initial, 1, policy)
+  conditions <- make_line_condition_policy(1e-4, 0.9)
+  state <- initialize_more_thuente_search_state(initial, 1, policy)
   state$is_bracketed <- TRUE
   state$trial_lower_bound <- 0.5
   state$trial_upper_bound <- 1
   state$interval_update_case <- "invalid"
 
-  state$trial_point <- list(alpha = 1, f = 0, d = 0, df = 0)
+  state$trial_point <- list(alpha = 1, value = 0, slope = 0, gradient = 0)
   expect_identical(
     classify_more_thuente_termination(
       state,
@@ -455,7 +609,7 @@ test_that("More-Thuente termination reasons retain their precedence", {
     "wolfe"
   )
 
-  state$trial_point <- list(alpha = 1, f = 2, d = -1, df = -1)
+  state$trial_point <- list(alpha = 1, value = 2, slope = -1, gradient = -1)
   expect_identical(
     classify_more_thuente_termination(
       state,
@@ -469,7 +623,7 @@ test_that("More-Thuente termination reasons retain their precedence", {
   )
 
   state$is_bracketed <- FALSE
-  state$trial_point <- list(alpha = 0, f = 2, d = -1, df = -1)
+  state$trial_point <- list(alpha = 0, value = 2, slope = -1, gradient = -1)
   expect_identical(
     classify_more_thuente_termination(
       state,
@@ -484,10 +638,10 @@ test_that("More-Thuente termination reasons retain their precedence", {
 })
 
 test_that("More-Thuente termination reasons select the same endpoint roles", {
-  policy <- new_more_thuente_policy()
-  best <- list(alpha = 0.5, f = 0.25, d = -0.5, df = -0.5)
-  trial <- list(alpha = 1, f = 0, d = 0, df = 0)
-  state <- new_more_thuente_search_state(best, trial$alpha, policy)
+  policy <- make_more_thuente_policy()
+  best <- list(alpha = 0.5, value = 0.25, slope = -0.5, gradient = -0.5)
+  trial <- list(alpha = 1, value = 0, slope = 0, gradient = 0)
+  state <- initialize_more_thuente_search_state(best, trial$alpha, policy)
   state$best_endpoint <- best
   state$trial_point <- trial
 

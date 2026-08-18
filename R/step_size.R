@@ -225,7 +225,8 @@ backtracking <- function(
         num_steps <- 0
 
         while (
-          (!is.finite(opt$fn) || !armijo_ok(f0, d0, alpha, opt$fn, c1)) &&
+          (!is.finite(opt$fn) ||
+            !armijo_condition_is_met(f0, d0, alpha, opt$fn, c1)) &&
             alpha > sub_stage$min_value &&
             num_steps < max_fn
         ) {

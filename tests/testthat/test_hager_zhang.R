@@ -5,6 +5,16 @@
 # # Allow termination after bracket phase and bisection step size generation
 # # Remove the "flat" secant termination check
 
+make_hager_zhang_trial_point <- function(alpha, value, slope) {
+  list(
+    alpha = alpha,
+    value = value,
+    slope = slope,
+    gradient = slope,
+    parameters = alpha
+  )
+}
+
 run_hager_zhang_oracle <- function(
   fg,
   x,
@@ -16,7 +26,7 @@ run_hager_zhang_oracle <- function(
   strong_curvature = TRUE,
   approximate_armijo = TRUE
 ) {
-  step0 <- make_step0(fg, x, search_direction)
+  initial_point <- make_initial_line_point(fg, x, search_direction)
   search <- make_hager_zhang_search(
     armijo_constant = c1,
     curvature_constant = c2,
@@ -25,25 +35,25 @@ run_hager_zhang_oracle <- function(
     approximate_armijo = approximate_armijo
   )
   result <- search(
-    phi = make_phi_alpha(
+    evaluate_line = make_line_function(
       x,
       fg,
       search_direction,
       calc_gradient_default = TRUE
     ),
-    step0 = step0,
-    alpha = alpha,
-    pm = search_direction
+    initial_point = initial_point,
+    initial_alpha = alpha,
+    search_direction = search_direction
   )
 
-  result$step$par <- x + result$step$alpha * search_direction
-  result$step0 <- step0
+  result$line_point$parameters <- x + result$line_point$alpha * search_direction
+  result$initial_point <- initial_point
   result
 }
 
 run_scripted_hager_zhang_search <- function(
   script,
-  initial_step = list(alpha = 0, f = 1, d = -1, df = -1),
+  initial_point = make_hager_zhang_trial_point(0, 1, -1),
   armijo_constant = 0.1,
   curvature_constant = 0.1,
   max_evaluations = nrow(script),
@@ -59,11 +69,10 @@ run_scripted_hager_zhang_search <- function(
     }
     expect_equal(alpha, script$alpha[[next_row]])
     evaluated_alphas <<- c(evaluated_alphas, alpha)
-    list(
-      alpha = alpha,
-      f = script$f[[next_row]],
-      d = script$d[[next_row]],
-      df = script$d[[next_row]]
+    make_hager_zhang_trial_point(
+      alpha,
+      script$value[[next_row]],
+      script$slope[[next_row]]
     )
   }
 
@@ -74,10 +83,10 @@ run_scripted_hager_zhang_search <- function(
     strong_curvature = strong_curvature,
     approximate_armijo = approximate_armijo
   )(
-    phi = evaluate,
-    step0 = initial_step,
-    alpha = script$alpha[[1L]],
-    pm = 1
+    evaluate_line = evaluate,
+    initial_point = initial_point,
+    initial_alpha = script$alpha[[1L]],
+    search_direction = 1
   )
 
   list(result = result, evaluated_alphas = evaluated_alphas)
@@ -93,8 +102,8 @@ hager_zhang_oracle_tables <- list(
     cases = data.frame(
       initial_alpha = c(1e-3, 1e-1, 1e1, 1e3),
       alpha = c(1.6674, 1.347, 10, 1000),
-      f = c(-0.3488, -0.3531, -0.098039, -0.001),
-      df = c(0.0341, -0.0128, 0.0094195, 1e-6),
+      value = c(-0.3488, -0.3531, -0.098039, -0.001),
+      gradient = c(0.0341, -0.0128, 0.0094195, 1e-6),
       evaluations = c(8, 5, 1, 1)
     )
   ),
@@ -105,8 +114,8 @@ hager_zhang_oracle_tables <- list(
     cases = data.frame(
       initial_alpha = c(1e-3, 1e-1, 1e1, 1e3),
       alpha = rep(1.5960, 4),
-      f = rep(-2.6214, 4),
-      df = c(4.544e-10, 5.0324e-8, 2.4178e-8, -7.7762e-9),
+      value = rep(-2.6214, 4),
+      gradient = c(4.544e-10, 5.0324e-8, 2.4178e-8, -7.7762e-9),
       evaluations = c(18, 11, 18, 28)
     )
   ),
@@ -117,8 +126,8 @@ hager_zhang_oracle_tables <- list(
     cases = data.frame(
       initial_alpha = c(1e-3, 1e-1, 1e1, 1e3),
       alpha = rep(1, 4),
-      f = rep(-0.011160, 4),
-      df = c(9.6246e-6, 7.9295e-11, 1.4194e-5, 1.4194e-5),
+      value = rep(-0.011160, 4),
+      gradient = c(9.6246e-6, 7.9295e-11, 1.4194e-5, 1.4194e-5),
       evaluations = c(18, 5, 16, 16)
     )
   ),
@@ -131,8 +140,8 @@ hager_zhang_oracle_tables <- list(
     cases = data.frame(
       initial_alpha = c(1e-3, 1e-1, 1e1, 1e3),
       alpha = c(0.025, 0.1, 0.37038, 0.45725),
-      f = c(0.999021, 0.99901, 0.99900, 0.99900),
-      df = c(-7.9772e-4, -4.9330e-5, -2.3812e-6, -6.9346e-7),
+      value = c(0.999021, 0.99901, 0.99900, 0.99900),
+      gradient = c(-7.9772e-4, -4.9330e-5, -2.3812e-6, -6.9346e-7),
       evaluations = c(3, 1, 4, 8)
     )
   ),
@@ -143,8 +152,8 @@ hager_zhang_oracle_tables <- list(
     cases = data.frame(
       initial_alpha = c(1e-3, 1e-1, 1e1, 1e3),
       alpha = c(0.070774, 0.074780, 0.075689, 0.072346),
-      f = c(0.99139, 0.99138, 0.99139, 0.99139),
-      df = c(-8.7407e-4, 1.3656e-4, 3.4459e-4, -4.5779e-4),
+      value = c(0.99139, 0.99138, 0.99139, 0.99139),
+      gradient = c(-8.7407e-4, 1.3656e-4, 3.4459e-4, -4.5779e-4),
       evaluations = c(6, 6, 12, 19)
     )
   ),
@@ -155,8 +164,8 @@ hager_zhang_oracle_tables <- list(
     cases = data.frame(
       initial_alpha = c(1e-3, 1e-1, 1e1, 1e3),
       alpha = c(0.92494, 0.92420, 0.92888, 0.92353),
-      f = c(0.99138, 0.99139, 0.99139, 0.99139),
-      df = c(-2.0254e-4, -3.7009e-4, 7.8102e-4, -5.1728e-4),
+      value = c(0.99138, 0.99139, 0.99139, 0.99139),
+      gradient = c(-2.0254e-4, -3.7009e-4, 7.8102e-4, -5.1728e-4),
       evaluations = c(20, 18, 11, 13)
     )
   )
@@ -178,8 +187,8 @@ test_that("Hager-Zhang matches numerical characterization oracles", {
       expect_step(
         result,
         x = expected$alpha,
-        f = expected$f,
-        df = expected$df,
+        value = expected$value,
+        gradient = expected$gradient,
         nfev = expected$evaluations
       )
     }
@@ -196,8 +205,8 @@ test_that("Hager-Zhang matches numerical characterization oracles", {
   expect_step(
     budget_limited,
     x = 1.9531,
-    f = -0.6290,
-    df = 13.3859,
+    value = -0.6290,
+    gradient = 13.3859,
     nfev = 20
   )
 })
@@ -206,8 +215,8 @@ test_that("Hager-Zhang matches shifted-start characterization oracles", {
   expected <- data.frame(
     alpha = c(0.5, 0.50224, 0.49776),
     x = c(0.5, 0.49776, 0.50224),
-    f = c(0.999, 0.99461, 0.99461),
-    df = c(0, 0.0087509, -0.0087509)
+    value = c(0.999, 0.99461, 0.99461),
+    gradient = c(0, 0.0087509, -0.0087509)
   )
   objective_functions <- list(f4, f5, f6)
 
@@ -222,8 +231,8 @@ test_that("Hager-Zhang matches shifted-start characterization oracles", {
     expect_step(
       result,
       x = expected$x[[row]],
-      f = expected$f[[row]],
-      df = expected$df[[row]],
+      value = expected$value[[row]],
+      gradient = expected$gradient[[row]],
       alpha = expected$alpha[[row]],
       nfev = 2
     )
@@ -233,15 +242,15 @@ test_that("Hager-Zhang matches shifted-start characterization oracles", {
 test_that("Hager-Zhang finalizes failed repair from the best strict decrease", {
   run <- run_scripted_hager_zhang_search(data.frame(
     alpha = c(1, 5, 1.8, 1.4),
-    f = c(1 + 5e-7, 2, 2, 0),
-    d = c(-1, 4, -1, -1)
+    value = c(1 + 5e-7, 2, 2, 0),
+    slope = c(-1, 4, -1, -1)
   ))
 
   expect_equal(run$evaluated_alphas, c(1, 5, 1.8, 1.4))
-  expect_equal(run$result$step$alpha, 1.4)
-  expect_equal(run$result$step$f, 0)
-  expect_identical(run$result$nfn, 4L)
-  expect_identical(run$result$ngr, 4L)
+  expect_equal(run$result$line_point$alpha, 1.4)
+  expect_equal(run$result$line_point$value, 0)
+  expect_identical(run$result$function_evaluations, 4L)
+  expect_identical(run$result$gradient_evaluations, 4L)
   expect_identical(run$result$termination_reason, "budget_exhausted")
 })
 
@@ -252,16 +261,11 @@ test_that("Hager-Zhang treats zero slope as a bracketing endpoint", {
   slope <- function(alpha) {
     2 * alpha^3 - 4.26 * alpha^2 + 2.76 * alpha - 0.5
   }
-  initial_step <- list(alpha = 0, f = 1, d = -0.5, df = -0.5)
+  initial_point <- list(alpha = 0, value = 1, slope = -0.5, gradient = -0.5)
   evaluated_alphas <- numeric()
   evaluate <- function(alpha, calc_gradient = TRUE) {
     evaluated_alphas <<- c(evaluated_alphas, alpha)
-    list(
-      alpha = alpha,
-      f = objective(alpha),
-      d = slope(alpha),
-      df = slope(alpha)
-    )
+    make_hager_zhang_trial_point(alpha, objective(alpha), slope(alpha))
   }
 
   result <- make_hager_zhang_search(
@@ -271,63 +275,63 @@ test_that("Hager-Zhang treats zero slope as a bracketing endpoint", {
     strong_curvature = FALSE,
     approximate_armijo = FALSE
   )(
-    phi = evaluate,
-    step0 = initial_step,
-    alpha = 1,
-    pm = 1
+    evaluate_line = evaluate,
+    initial_point = initial_point,
+    initial_alpha = 1,
+    search_direction = 1
   )
 
   expect_equal(evaluated_alphas, c(1, 0.5))
-  expect_equal(result$step$alpha, 0.5)
-  expect_identical(result$nfn, 2L)
-  expect_identical(result$ngr, 2L)
+  expect_equal(result$line_point$alpha, 0.5)
+  expect_identical(result$function_evaluations, 2L)
+  expect_identical(result$gradient_evaluations, 2L)
   expect_identical(result$termination_reason, "wolfe")
 })
 
 test_that("Hager-Zhang accepts the final expansion callback", {
   run <- run_scripted_hager_zhang_search(data.frame(
     alpha = c(1, 5),
-    f = c(0.9, 1 + 5e-7),
-    d = c(-1, 0)
+    value = c(0.9, 1 + 5e-7),
+    slope = c(-1, 0)
   ))
 
   expect_equal(run$evaluated_alphas, c(1, 5))
-  expect_equal(run$result$step$alpha, 5)
-  expect_identical(run$result$nfn, 2L)
-  expect_identical(run$result$ngr, 2L)
+  expect_equal(run$result$line_point$alpha, 5)
+  expect_identical(run$result$function_evaluations, 2L)
+  expect_identical(run$result$gradient_evaluations, 2L)
   expect_identical(run$result$termination_reason, "wolfe")
 })
 
 test_that("Hager-Zhang accepts the final contraction midpoint", {
   run <- run_scripted_hager_zhang_search(data.frame(
     alpha = c(1, 5, 4.5, 2.75),
-    f = c(0, 2, 2, 0),
-    d = c(-1, 1 / 7, 1 / 7, 0)
+    value = c(0, 2, 2, 0),
+    slope = c(-1, 1 / 7, 1 / 7, 0)
   ))
 
   expect_equal(run$evaluated_alphas, c(1, 5, 4.5, 2.75))
-  expect_equal(run$result$step$alpha, 2.75)
-  expect_identical(run$result$nfn, 4L)
-  expect_identical(run$result$ngr, 4L)
+  expect_equal(run$result$line_point$alpha, 2.75)
+  expect_identical(run$result$function_evaluations, 4L)
+  expect_identical(run$result$gradient_evaluations, 4L)
   expect_identical(run$result$termination_reason, "wolfe")
 })
 
 test_that("Hager-Zhang counts evaluations used to repair a secant bracket", {
-  initial_step <- list(alpha = 0, f = 0, d = -1, df = -1)
+  initial_point <- list(alpha = 0, value = 0, slope = -1, gradient = -1)
   evaluated_alphas <- numeric()
   evaluate <- function(alpha, calc_gradient = TRUE) {
     evaluated_alphas <<- c(evaluated_alphas, alpha)
     if (isTRUE(all.equal(alpha, 1))) {
-      return(list(alpha = alpha, f = -1, d = -1, df = -1))
+      return(make_hager_zhang_trial_point(alpha, value = -1, slope = -1))
     }
     if (isTRUE(all.equal(alpha, 5))) {
-      return(list(alpha = alpha, f = 1, d = 4, df = 4))
+      return(make_hager_zhang_trial_point(alpha, value = 1, slope = 4))
     }
     if (isTRUE(all.equal(alpha, 1.8))) {
-      return(list(alpha = alpha, f = 1, d = -1, df = -1))
+      return(make_hager_zhang_trial_point(alpha, value = 1, slope = -1))
     }
     if (isTRUE(all.equal(alpha, 1.4))) {
-      return(list(alpha = alpha, f = -0.5, d = 1, df = 1))
+      return(make_hager_zhang_trial_point(alpha, value = -0.5, slope = 1))
     }
     stop("unexpected alpha: ", alpha)
   }
@@ -338,34 +342,34 @@ test_that("Hager-Zhang counts evaluations used to repair a secant bracket", {
     max_evaluations = 4,
     strong_curvature = FALSE
   )(
-    phi = evaluate,
-    step0 = initial_step,
-    alpha = 1,
-    pm = 1
+    evaluate_line = evaluate,
+    initial_point = initial_point,
+    initial_alpha = 1,
+    search_direction = 1
   )
 
   expect_equal(evaluated_alphas, c(1, 5, 1.8, 1.4))
-  expect_equal(result$step$alpha, 1.4)
-  expect_identical(result$nfn, 4L)
-  expect_identical(result$ngr, 4L)
+  expect_equal(result$line_point$alpha, 1.4)
+  expect_identical(result$function_evaluations, 4L)
+  expect_identical(result$gradient_evaluations, 4L)
   expect_identical(result$termination_reason, "wolfe")
 })
 
 test_that("Hager-Zhang safely handles a nonfinite second secant trial", {
-  initial_step <- list(alpha = 0, f = 0, d = -1, df = -1)
+  initial_point <- list(alpha = 0, value = 0, slope = -1, gradient = -1)
   evaluated_alphas <- numeric()
   evaluate <- function(alpha, calc_gradient = TRUE) {
     evaluated_alphas <<- c(evaluated_alphas, alpha)
     if (isTRUE(all.equal(alpha, 1))) {
-      return(list(alpha = alpha, f = -1, d = -1, df = -1))
+      return(make_hager_zhang_trial_point(alpha, value = -1, slope = -1))
     }
     if (isTRUE(all.equal(alpha, 5))) {
-      return(list(alpha = alpha, f = 1, d = 4, df = 4))
+      return(make_hager_zhang_trial_point(alpha, value = 1, slope = 4))
     }
     if (isTRUE(all.equal(alpha, 1.8))) {
-      return(list(alpha = alpha, f = 1, d = 0.5, df = 0.5))
+      return(make_hager_zhang_trial_point(alpha, value = 1, slope = 0.5))
     }
-    list(alpha = alpha, f = Inf, d = NaN, df = NaN)
+    make_hager_zhang_trial_point(alpha, value = Inf, slope = NaN)
   }
 
   result <- make_hager_zhang_search(
@@ -374,36 +378,36 @@ test_that("Hager-Zhang safely handles a nonfinite second secant trial", {
     max_evaluations = 4,
     strong_curvature = FALSE
   )(
-    phi = evaluate,
-    step0 = initial_step,
-    alpha = 1,
-    pm = 1
+    evaluate_line = evaluate,
+    initial_point = initial_point,
+    initial_alpha = 1,
+    search_direction = 1
   )
 
   expect_equal(evaluated_alphas, c(1, 5, 1.8, 47 / 35))
-  expect_equal(result$step$alpha, 1)
-  expect_identical(result$nfn, 4L)
-  expect_identical(result$ngr, 4L)
+  expect_equal(result$line_point$alpha, 1)
+  expect_identical(result$function_evaluations, 4L)
+  expect_identical(result$gradient_evaluations, 4L)
 })
 
 test_that("Hager-Zhang recovers a finite second secant trial within budget", {
-  initial_step <- list(alpha = 0, f = 0, d = -1, df = -1)
+  initial_point <- list(alpha = 0, value = 0, slope = -1, gradient = -1)
   evaluated_alphas <- numeric()
   evaluate <- function(alpha, calc_gradient = TRUE) {
     evaluated_alphas <<- c(evaluated_alphas, alpha)
     if (isTRUE(all.equal(alpha, 1))) {
-      return(list(alpha = alpha, f = -1, d = -1, df = -1))
+      return(make_hager_zhang_trial_point(alpha, value = -1, slope = -1))
     }
     if (isTRUE(all.equal(alpha, 5))) {
-      return(list(alpha = alpha, f = 1, d = 4, df = 4))
+      return(make_hager_zhang_trial_point(alpha, value = 1, slope = 4))
     }
     if (isTRUE(all.equal(alpha, 1.8))) {
-      return(list(alpha = alpha, f = 1, d = 0.5, df = 0.5))
+      return(make_hager_zhang_trial_point(alpha, value = 1, slope = 0.5))
     }
     if (isTRUE(all.equal(alpha, 41 / 35))) {
-      return(list(alpha = alpha, f = -0.5, d = 0, df = 0))
+      return(make_hager_zhang_trial_point(alpha, value = -0.5, slope = 0))
     }
-    list(alpha = alpha, f = Inf, d = NaN, df = NaN)
+    make_hager_zhang_trial_point(alpha, value = Inf, slope = NaN)
   }
 
   result <- make_hager_zhang_search(
@@ -412,27 +416,27 @@ test_that("Hager-Zhang recovers a finite second secant trial within budget", {
     max_evaluations = 5,
     strong_curvature = FALSE
   )(
-    phi = evaluate,
-    step0 = initial_step,
-    alpha = 1,
-    pm = 1
+    evaluate_line = evaluate,
+    initial_point = initial_point,
+    initial_alpha = 1,
+    search_direction = 1
   )
 
   expect_equal(evaluated_alphas, c(1, 5, 1.8, 47 / 35, 41 / 35))
-  expect_equal(result$step$alpha, 41 / 35)
-  expect_identical(result$nfn, 5L)
-  expect_identical(result$ngr, 5L)
+  expect_equal(result$line_point$alpha, 41 / 35)
+  expect_identical(result$function_evaluations, 5L)
+  expect_identical(result$gradient_evaluations, 5L)
   expect_identical(result$termination_reason, "wolfe")
 })
 
 test_that("Hager-Zhang does not evaluate an overflowing expansion proposal", {
-  initial_step <- list(alpha = 0, f = 1, d = -1, df = -1)
+  initial_point <- list(alpha = 0, value = 1, slope = -1, gradient = -1)
   initial_alpha <- .Machine$double.xmax / 2
   evaluated_alphas <- numeric()
   evaluate <- function(alpha, calc_gradient = TRUE) {
     expect_true(is.finite(alpha))
     evaluated_alphas <<- c(evaluated_alphas, alpha)
-    list(alpha = alpha, f = 0, d = -1, df = -1)
+    make_hager_zhang_trial_point(alpha, value = 0, slope = -1)
   }
 
   result <- make_hager_zhang_search(
@@ -441,47 +445,47 @@ test_that("Hager-Zhang does not evaluate an overflowing expansion proposal", {
     max_evaluations = Inf,
     strong_curvature = FALSE
   )(
-    phi = evaluate,
-    step0 = initial_step,
-    alpha = initial_alpha,
-    pm = 1
+    evaluate_line = evaluate,
+    initial_point = initial_point,
+    initial_alpha = initial_alpha,
+    search_direction = 1
   )
 
   expect_equal(evaluated_alphas, c(initial_alpha, .Machine$double.xmax))
-  expect_equal(result$step$alpha, initial_alpha)
-  expect_identical(result$nfn, 2L)
-  expect_identical(result$ngr, 2L)
+  expect_equal(result$line_point$alpha, initial_alpha)
+  expect_identical(result$function_evaluations, 2L)
+  expect_identical(result$gradient_evaluations, 2L)
   expect_identical(result$termination_reason, "progress_failure")
 })
 
 test_that("Hager-Zhang rejects unusable initial slopes without a callback", {
   cases <- list(
-    nonfinite = list(slope = NaN, reason = "nonfinite_initial_step"),
+    nonfinite = list(slope = NaN, reason = "nonfinite_initial_point"),
     ascent = list(slope = 1, reason = "non_descent_direction")
   )
 
   for (case_name in names(cases)) {
     case <- cases[[case_name]]
-    initial_step <- list(
+    initial_point <- list(
       alpha = 0,
-      f = 1,
-      d = case$slope,
-      df = case$slope
+      value = 1,
+      slope = case$slope,
+      gradient = case$slope
     )
     evaluate <- function(alpha, calc_gradient = TRUE) {
       stop("line evaluator should not be called")
     }
 
     result <- make_hager_zhang_search()(
-      phi = evaluate,
-      step0 = initial_step,
-      alpha = 1,
-      pm = 1
+      evaluate_line = evaluate,
+      initial_point = initial_point,
+      initial_alpha = 1,
+      search_direction = 1
     )
 
-    expect_identical(result$step, initial_step, info = case_name)
-    expect_identical(result$nfn, 0L, info = case_name)
-    expect_identical(result$ngr, 0L, info = case_name)
+    expect_identical(result$line_point, initial_point, info = case_name)
+    expect_identical(result$function_evaluations, 0L, info = case_name)
+    expect_identical(result$gradient_evaluations, 0L, info = case_name)
     expect_identical(
       result$termination_reason,
       case$reason,
@@ -491,21 +495,27 @@ test_that("Hager-Zhang rejects unusable initial slopes without a callback", {
 })
 
 test_that("Hager-Zhang does not return an unusable recovered step", {
-  initial_step <- list(alpha = 0, f = 1, d = -1, df = -1)
+  initial_point <- list(alpha = 0, value = 1, slope = -1, gradient = -1)
   evaluate <- function(alpha, calc_gradient = TRUE) {
-    list(alpha = alpha, f = 0, d = 0, df = NaN)
+    list(
+      alpha = alpha,
+      value = 0,
+      slope = 0,
+      gradient = NaN,
+      parameters = alpha
+    )
   }
 
   result <- make_hager_zhang_search(max_evaluations = 1)(
-    phi = evaluate,
-    step0 = initial_step,
-    alpha = 1,
-    pm = 1
+    evaluate_line = evaluate,
+    initial_point = initial_point,
+    initial_alpha = 1,
+    search_direction = 1
   )
 
-  expect_identical(result$step, initial_step)
-  expect_identical(result$nfn, 1L)
-  expect_identical(result$ngr, 1L)
+  expect_identical(result$line_point, initial_point)
+  expect_identical(result$function_evaluations, 1L)
+  expect_identical(result$gradient_evaluations, 1L)
   expect_identical(result$termination_reason, "nonfinite_recovery")
 })
 
@@ -546,4 +556,48 @@ test_that("Hager-Zhang policy rejects unusable numerical controls", {
       info = control_name
     )
   }
+})
+
+test_that("Hager-Zhang first alpha uses the squared Euclidean gradient norm", {
+  expect_equal(
+    propose_first_hager_zhang_alpha(c(0, 0), 1, c(1, 1)),
+    0.005
+  )
+
+  extreme_alpha <- propose_first_hager_zhang_alpha(
+    .Machine$double.xmax,
+    1,
+    .Machine$double.xmin
+  )
+  expect_true(is.finite(extreme_alpha))
+  expect_gt(extreme_alpha, 0)
+})
+
+test_that("Hager-Zhang next alpha survives unusable optional models", {
+  initial_point <- list(alpha = 0, value = 1, slope = -1)
+  missing_probe <- propose_next_hager_zhang_alpha(
+    function(alpha, calc_gradient = FALSE) {
+      list(alpha = alpha, value = NA_real_)
+    },
+    previous_alpha = 1,
+    initial_point = initial_point
+  )
+  expect_equal(missing_probe$alpha, 2)
+  expect_identical(missing_probe$function_evaluations, 1L)
+
+  extreme_step <- list(
+    alpha = 0,
+    value = .Machine$double.xmax,
+    slope = -.Machine$double.xmax
+  )
+  extreme_result <- propose_next_hager_zhang_alpha(
+    function(alpha, calc_gradient = FALSE) {
+      list(alpha = alpha, value = -.Machine$double.xmax)
+    },
+    previous_alpha = .Machine$double.xmax,
+    initial_point = extreme_step
+  )
+  expect_true(is.finite(extreme_result$alpha))
+  expect_gt(extreme_result$alpha, 0)
+  expect_identical(extreme_result$function_evaluations, 1L)
 })

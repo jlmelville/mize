@@ -5,6 +5,11 @@
 * Fixed several optimizer edge cases found during cleanup.
 * Wolfe line searches now require an explicitly numeric `step0` to be a
 positive finite scalar; string initializers are unchanged.
+* Line searches using weak Wolfe curvature now accept equality at the
+curvature boundary. The optional Hager-Zhang initializer probe now counts
+toward the line search's local function and combined evaluation limits.
+Hager-Zhang initializer arithmetic also safely handles non-finite values and
+uses the specified Euclidean gradient norm.
 * New function: `check_mize_gradient()`, which compares an analytic gradient
 with a finite-difference approximation.
 * `mize()` now returns status fields: `converged`,

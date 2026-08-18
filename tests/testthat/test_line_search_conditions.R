@@ -10,27 +10,27 @@ condition_quadratic_fg <- function(center = 10) {
 }
 
 condition_setup <- function(fg, x, pv = -fg$gr(x) / abs(fg$gr(x))) {
-  step0 <- make_step0(fg, x, pv)
+  initial_point <- make_initial_line_point(fg, x, pv)
   list(
     pv = pv,
-    step0 = step0,
-    phi = make_phi_alpha(x, fg, pv, calc_gradient_default = TRUE)
+    initial_point = initial_point,
+    evaluate_line = make_line_function(x, fg, pv, calc_gradient_default = TRUE)
   )
 }
 
 test_that("Schmidt Armijo controls reject invalid types and ranges", {
   expect_error(
-    new_schmidt_armijo_search(armijo_constant = NA_real_),
+    make_schmidt_armijo_search(armijo_constant = NA_real_),
     "armijo_constant"
   )
-  expect_error(new_schmidt_armijo_search(step_down = "half"), "step_down")
-  expect_error(new_schmidt_armijo_search(step_down = 2), "step_down")
+  expect_error(make_schmidt_armijo_search(step_down = "half"), "step_down")
+  expect_error(make_schmidt_armijo_search(step_down = 2), "step_down")
   expect_error(
-    new_schmidt_armijo_search(max_evaluations = -1),
+    make_schmidt_armijo_search(max_evaluations = -1),
     "max_evaluations"
   )
   expect_error(
-    new_schmidt_armijo_search(parameter_tolerance = Inf),
+    make_schmidt_armijo_search(parameter_tolerance = Inf),
     "parameter_tolerance"
   )
 })
@@ -56,98 +56,122 @@ test_that("Armijo backtracking accepts steps with sufficient decrease", {
 
   for (case in cases) {
     setup <- condition_setup(case$fg, case$x)
-    res <- new_schmidt_armijo_search(
+    res <- make_schmidt_armijo_search(
       armijo_constant = case$c1,
       max_evaluations = 10000
     )(
-      phi = setup$phi,
-      step0 = setup$step0,
-      alpha = case$alpha,
-      pm = setup$pv
+      evaluate_line = setup$evaluate_line,
+      initial_point = setup$initial_point,
+      initial_alpha = case$alpha,
+      search_direction = setup$pv
     )
 
-    expect_true(res$step$alpha > 0, info = case$name)
+    expect_true(res$line_point$alpha > 0, info = case$name)
     expect_true(
-      armijo_ok_step(setup$step0, res$step, case$c1),
+      line_point_satisfies_armijo(setup$initial_point, res$line_point, case$c1),
       info = case$name
     )
   }
 })
 
 test_that("Schmidt Armijo accepts internal phi results without parameters", {
-  step0 <- list(alpha = 0, f = 1, df = -1, d = -1)
+  initial_point <- list(alpha = 0, value = 1, gradient = -1, slope = -1)
   phi <- function(alpha, calc_gradient = TRUE) {
-    list(alpha = alpha, f = 0, df = -1, d = -1)
+    list(alpha = alpha, value = 0, gradient = -1, slope = -1)
   }
 
-  res <- new_schmidt_armijo_search(
+  res <- make_schmidt_armijo_search(
     armijo_constant = 0.1,
     max_evaluations = 1
   )(
-    phi = phi,
-    step0 = step0,
-    alpha = 0.5,
-    pm = 1
+    evaluate_line = phi,
+    initial_point = initial_point,
+    initial_alpha = 0.5,
+    search_direction = 1
   )
 
-  expect_equal(res$step$alpha, 0.5)
-  expect_equal(res$step$f, 0)
-  expect_equal(res$nfn, 1)
-  expect_equal(res$ngr, 1)
+  expect_equal(res$line_point$alpha, 0.5)
+  expect_equal(res$line_point$value, 0)
+  expect_equal(res$function_evaluations, 1)
+  expect_equal(res$gradient_evaluations, 1)
 })
 
 test_that("Schmidt cubic Armijo backs off a nonfinite objective", {
   evaluated <- numeric()
-  step0 <- list(alpha = 0, f = 1, df = -1, d = -1, par = 0)
+  initial_point <- list(
+    alpha = 0,
+    value = 1,
+    gradient = -1,
+    slope = -1,
+    parameters = 0
+  )
   phi <- function(alpha, calc_gradient = TRUE) {
     evaluated <<- c(evaluated, alpha)
     if (alpha >= 1) {
-      return(list(alpha = alpha, f = Inf, df = Inf, d = Inf, par = alpha))
+      return(list(
+        alpha = alpha,
+        value = Inf,
+        gradient = Inf,
+        slope = Inf,
+        parameters = alpha
+      ))
     }
-    list(alpha = alpha, f = 0, df = 0, d = 0, par = alpha)
+    list(alpha = alpha, value = 0, gradient = 0, slope = 0, parameters = alpha)
   }
 
-  result <- new_schmidt_armijo_search(
+  result <- make_schmidt_armijo_search(
     armijo_constant = 0.1,
     max_evaluations = 2
   )(
-    phi = phi,
-    step0 = step0,
-    alpha = 1,
-    pm = 1
+    evaluate_line = phi,
+    initial_point = initial_point,
+    initial_alpha = 1,
+    search_direction = 1
   )
 
   expect_equal(evaluated, c(1, 0.5))
-  expect_equal(result$step$alpha, 0.5)
-  expect_equal(result$nfn, 2)
-  expect_equal(result$ngr, 2)
+  expect_equal(result$line_point$alpha, 0.5)
+  expect_equal(result$function_evaluations, 2)
+  expect_equal(result$gradient_evaluations, 2)
 })
 
 test_that("Schmidt cubic Armijo uses values when a trial gradient is nonfinite", {
   evaluated <- numeric()
-  step0 <- list(alpha = 0, f = 1, df = -1, d = -1, par = 0)
+  initial_point <- list(
+    alpha = 0,
+    value = 1,
+    gradient = -1,
+    slope = -1,
+    parameters = 0
+  )
   phi <- function(alpha, calc_gradient = TRUE) {
     evaluated <<- c(evaluated, alpha)
     if (alpha == 1) {
-      return(list(alpha = alpha, f = 2, df = Inf, d = Inf, par = alpha))
+      return(list(
+        alpha = alpha,
+        value = 2,
+        gradient = Inf,
+        slope = Inf,
+        parameters = alpha
+      ))
     }
-    list(alpha = alpha, f = 0, df = 0, d = 0, par = alpha)
+    list(alpha = alpha, value = 0, gradient = 0, slope = 0, parameters = alpha)
   }
 
-  result <- new_schmidt_armijo_search(
+  result <- make_schmidt_armijo_search(
     armijo_constant = 0.1,
     max_evaluations = 2
   )(
-    phi = phi,
-    step0 = step0,
-    alpha = 1,
-    pm = 1
+    evaluate_line = phi,
+    initial_point = initial_point,
+    initial_alpha = 1,
+    search_direction = 1
   )
 
   expect_equal(evaluated, c(1, 0.25))
-  expect_equal(result$step$alpha, 0.25)
-  expect_equal(result$nfn, 2)
-  expect_equal(result$ngr, 2)
+  expect_equal(result$line_point$alpha, 0.25)
+  expect_equal(result$function_evaluations, 2)
+  expect_equal(result$gradient_evaluations, 2)
 })
 
 test_that("More-Thuente successful steps satisfy strong Wolfe conditions", {
@@ -188,23 +212,23 @@ test_that("More-Thuente successful steps satisfy strong Wolfe conditions", {
 
   for (case in cases) {
     setup <- condition_setup(case$fg, case$x)
-    search <- new_wolfe_line_search(
+    search <- make_wolfe_line_search(
       more_thuente_core,
       armijo_constant = case$c1,
       curvature_constant = case$c2,
       max_evaluations = 10000,
-      method_policy = new_more_thuente_policy()
+      method_policy = make_more_thuente_policy()
     )
     res <- search(
-      phi = setup$phi,
-      step0 = setup$step0,
-      alpha = case$alpha,
-      pm = setup$pv
+      evaluate_line = setup$evaluate_line,
+      initial_point = setup$initial_point,
+      initial_alpha = case$alpha,
+      search_direction = setup$pv
     )
-    conditions <- new_line_condition_policy(case$c1, case$c2)
+    conditions <- make_line_condition_policy(case$c1, case$c2)
 
     expect_true(
-      conditions$wolfe(setup$step0, res$step),
+      conditions$wolfe(setup$initial_point, res$line_point),
       info = case$name
     )
   }
@@ -220,15 +244,15 @@ test_that("Rasmussen and Schmidt successful steps satisfy strong Wolfe condition
       c1 = 0.001,
       c2 = 0.1,
       run = function(setup, case) {
-        new_rasmussen_wolfe_search(
+        make_rasmussen_wolfe_search(
           armijo_constant = case$c1,
           curvature_constant = case$c2,
           max_evaluations = 10000
         )(
-          phi = setup$phi,
-          step0 = setup$step0,
-          alpha = case$alpha,
-          pm = setup$pv
+          evaluate_line = setup$evaluate_line,
+          initial_point = setup$initial_point,
+          initial_alpha = case$alpha,
+          search_direction = setup$pv
         )
       }
     ),
@@ -240,15 +264,15 @@ test_that("Rasmussen and Schmidt successful steps satisfy strong Wolfe condition
       c1 = 0.001,
       c2 = 0.1,
       run = function(setup, case) {
-        new_schmidt_wolfe_search(
+        make_schmidt_wolfe_search(
           armijo_constant = case$c1,
           curvature_constant = case$c2,
           max_evaluations = 10000
         )(
-          phi = setup$phi,
-          step0 = setup$step0,
-          alpha = case$alpha,
-          pm = setup$pv
+          evaluate_line = setup$evaluate_line,
+          initial_point = setup$initial_point,
+          initial_alpha = case$alpha,
+          search_direction = setup$pv
         )
       }
     )
@@ -257,10 +281,10 @@ test_that("Rasmussen and Schmidt successful steps satisfy strong Wolfe condition
   for (case in cases) {
     setup <- condition_setup(case$fg, case$x)
     res <- case$run(setup, case)
-    conditions <- new_line_condition_policy(case$c1, case$c2)
+    conditions <- make_line_condition_policy(case$c1, case$c2)
 
     expect_true(
-      conditions$wolfe(setup$step0, res$step),
+      conditions$wolfe(setup$initial_point, res$line_point),
       info = case$name
     )
   }
@@ -271,57 +295,60 @@ test_that("weak Wolfe configuration does not require strong curvature", {
   c2 <- 0.1
   alpha <- 12.5
   setup <- condition_setup(condition_quadratic_fg(), x = 0, pv = 1)
-  weak_conditions <- new_line_condition_policy(
+  weak_conditions <- make_line_condition_policy(
     c1,
     c2,
     strong_curvature = FALSE
   )
-  strong_conditions <- new_line_condition_policy(c1, c2)
+  strong_conditions <- make_line_condition_policy(c1, c2)
 
   results <- list(
-    `more-thuente` = new_wolfe_line_search(
+    `more-thuente` = make_wolfe_line_search(
       more_thuente_core,
       armijo_constant = c1,
       curvature_constant = c2,
       max_evaluations = 100,
       strong_curvature = FALSE,
-      method_policy = new_more_thuente_policy()
+      method_policy = make_more_thuente_policy()
     )(
-      phi = setup$phi,
-      step0 = setup$step0,
-      alpha = alpha,
-      pm = setup$pv
+      evaluate_line = setup$evaluate_line,
+      initial_point = setup$initial_point,
+      initial_alpha = alpha,
+      search_direction = setup$pv
     ),
-    rasmussen = new_rasmussen_wolfe_search(
+    rasmussen = make_rasmussen_wolfe_search(
       armijo_constant = c1,
       curvature_constant = c2,
       max_evaluations = 100,
       strong_curvature = FALSE
     )(
-      phi = setup$phi,
-      step0 = setup$step0,
-      alpha = alpha,
-      pm = setup$pv
+      evaluate_line = setup$evaluate_line,
+      initial_point = setup$initial_point,
+      initial_alpha = alpha,
+      search_direction = setup$pv
     ),
-    schmidt = new_schmidt_wolfe_search(
+    schmidt = make_schmidt_wolfe_search(
       armijo_constant = c1,
       curvature_constant = c2,
       max_evaluations = 100,
       strong_curvature = FALSE
     )(
-      phi = setup$phi,
-      step0 = setup$step0,
-      alpha = alpha,
-      pm = setup$pv
+      evaluate_line = setup$evaluate_line,
+      initial_point = setup$initial_point,
+      initial_alpha = alpha,
+      search_direction = setup$pv
     )
   )
 
   for (name in names(results)) {
-    step <- results[[name]]$step
+    step <- results[[name]]$line_point
 
     expect_equal(step$alpha, alpha, info = name)
-    expect_true(weak_conditions$wolfe(setup$step0, step), info = name)
-    expect_false(strong_conditions$wolfe(setup$step0, step), info = name)
+    expect_true(weak_conditions$wolfe(setup$initial_point, step), info = name)
+    expect_false(
+      strong_conditions$wolfe(setup$initial_point, step),
+      info = name
+    )
   }
 })
 
@@ -355,7 +382,7 @@ test_that("Hager-Zhang returned steps satisfy approximate weak Wolfe conditions"
 
   for (case in cases) {
     setup <- condition_setup(case$fg, case$x)
-    conditions <- new_line_condition_policy(
+    conditions <- make_line_condition_policy(
       armijo_constant = case$c1,
       curvature_constant = case$c2,
       approximate_armijo = TRUE,
@@ -370,27 +397,39 @@ test_that("Hager-Zhang returned steps satisfy approximate weak Wolfe conditions"
       approximate_armijo = TRUE
     )
     res <- search(
-      phi = setup$phi,
-      step0 = setup$step0,
-      alpha = case$alpha,
-      pm = setup$pv
+      evaluate_line = setup$evaluate_line,
+      initial_point = setup$initial_point,
+      initial_alpha = case$alpha,
+      search_direction = setup$pv
     )
 
     expect_true(
-      conditions$wolfe(setup$step0, res$step),
+      conditions$wolfe(setup$initial_point, res$line_point),
       info = case$name
     )
   }
 })
 
 test_that("Hager-Zhang initial exhaustion distinguishes acceptance from fallback", {
-  quartic_start <- list(alpha = 0, f = 1, df = 4, d = -16)
-  quartic_trial <- list(alpha = 1, f = 81, df = -108, d = 432)
+  quartic_start <- list(alpha = 0, value = 1, gradient = 4, slope = -16)
+  quartic_trial <- list(alpha = 1, value = 81, gradient = -108, slope = 432)
 
-  expect_true(curvature_ok_step(quartic_start, quartic_trial, c2 = 0.5))
-  expect_false(strong_curvature_ok_step(quartic_start, quartic_trial, c2 = 0.5))
-  expect_false(armijo_ok_step(quartic_start, quartic_trial, c1 = 0.1))
-  weak_conditions <- new_line_condition_policy(
+  expect_true(line_point_satisfies_weak_curvature(
+    quartic_start,
+    quartic_trial,
+    c2 = 0.5
+  ))
+  expect_false(line_point_satisfies_strong_curvature(
+    quartic_start,
+    quartic_trial,
+    c2 = 0.5
+  ))
+  expect_false(line_point_satisfies_armijo(
+    quartic_start,
+    quartic_trial,
+    c1 = 0.1
+  ))
+  weak_conditions <- make_line_condition_policy(
     armijo_constant = 0.1,
     curvature_constant = 0.5,
     approximate_armijo = TRUE,
@@ -401,36 +440,46 @@ test_that("Hager-Zhang initial exhaustion distinguishes acceptance from fallback
     weak_conditions$wolfe(quartic_start, quartic_trial)
   )
 
-  linear_start <- list(alpha = 0, f = 1, df = -1, d = -1)
-  linear_trial <- list(alpha = 1, f = 0, df = -1, d = -1)
+  linear_start <- list(alpha = 0, value = 1, gradient = -1, slope = -1)
+  linear_trial <- list(alpha = 1, value = 0, gradient = -1, slope = -1)
 
-  expect_true(armijo_ok_step(linear_start, linear_trial, c1 = 0.1))
-  expect_false(curvature_ok_step(linear_start, linear_trial, c2 = 0.5))
+  expect_true(line_point_satisfies_armijo(linear_start, linear_trial, c1 = 0.1))
+  expect_false(line_point_satisfies_weak_curvature(
+    linear_start,
+    linear_trial,
+    c2 = 0.5
+  ))
   expect_false(weak_conditions$wolfe(linear_start, linear_trial))
 })
 
 test_that("Hager-Zhang repairs a high-value negative-slope bound", {
-  make_step <- function(alpha, f, d) {
-    list(alpha = alpha, f = f, d = d, df = d)
+  make_line_point <- function(alpha, value, slope) {
+    list(
+      alpha = alpha,
+      value = value,
+      slope = slope,
+      gradient = slope,
+      parameters = alpha
+    )
   }
 
-  initial_step <- make_step(alpha = 0, f = 0, d = -1)
+  initial_point <- make_line_point(alpha = 0, value = 0, slope = -1)
   bracket <- make_hager_zhang_bracket(
-    lower_endpoint = make_step(alpha = 1, f = -1, d = -1),
-    upper_endpoint = make_step(alpha = 8, f = 2, d = 1)
+    lower_endpoint = make_line_point(alpha = 1, value = -1, slope = -1),
+    upper_endpoint = make_line_point(alpha = 8, value = 2, slope = 1)
   )
-  trial_step <- make_step(alpha = 8, f = 2, d = -1)
+  trial_point <- make_line_point(alpha = 8, value = 2, slope = -1)
   evaluate <- function(alpha, calc_gradient = TRUE) {
     if (alpha > 4) {
-      make_step(alpha, f = 1, d = -1)
+      make_line_point(alpha, value = 1, slope = -1)
     } else if (alpha < 3) {
-      make_step(alpha, f = -1, d = -1)
+      make_line_point(alpha, value = -1, slope = -1)
     } else {
-      make_step(alpha, f = -0.5, d = 1)
+      make_line_point(alpha, value = -0.5, slope = 1)
     }
   }
-  evaluator <- new_line_evaluator(evaluate, max_evaluations = 5)
-  condition_policy <- new_line_condition_policy(
+  evaluator <- make_line_evaluator(evaluate, max_evaluations = 5)
+  condition_policy <- make_line_condition_policy(
     armijo_constant = 0.1,
     curvature_constant = 0.5,
     approximate_armijo = TRUE,
@@ -439,8 +488,8 @@ test_that("Hager-Zhang repairs a high-value negative-slope bound", {
 
   result <- update_hager_zhang_bracket(
     bracket = bracket,
-    trial_step = trial_step,
-    initial_step = initial_step,
+    trial_point = trial_point,
+    initial_point = initial_point,
     evaluator = evaluator,
     approximate_decrease_tolerance = 0,
     condition_policy = condition_policy,
@@ -454,30 +503,36 @@ test_that("Hager-Zhang repairs a high-value negative-slope bound", {
     c(lower_endpoint = 2.75, upper_endpoint = 3.625)
   )
   expect_equal(
-    vapply(result$bracket, `[[`, numeric(1), "d"),
+    vapply(result$bracket, `[[`, numeric(1), "slope"),
     c(lower_endpoint = -1, upper_endpoint = 1)
   )
-  expect_true(result$bracket$lower_endpoint$f <= initial_step$f)
+  expect_true(result$bracket$lower_endpoint$value <= initial_point$value)
 })
 
 test_that("Hager-Zhang retains bracket repair completed at budget exhaustion", {
-  make_step <- function(alpha, f, d) {
-    list(alpha = alpha, f = f, d = d, df = d)
+  make_line_point <- function(alpha, value, slope) {
+    list(
+      alpha = alpha,
+      value = value,
+      slope = slope,
+      gradient = slope,
+      parameters = alpha
+    )
   }
-  initial_step <- make_step(alpha = 0, f = 1, d = -1)
+  initial_point <- make_line_point(alpha = 0, value = 1, slope = -1)
   bracket <- make_hager_zhang_bracket(
-    lower_endpoint = make_step(alpha = 1, f = 1 + 5e-7, d = -1),
-    upper_endpoint = make_step(alpha = 5, f = 2, d = 4)
+    lower_endpoint = make_line_point(alpha = 1, value = 1 + 5e-7, slope = -1),
+    upper_endpoint = make_line_point(alpha = 5, value = 2, slope = 4)
   )
-  trial_step <- make_step(alpha = 1.8, f = 2, d = -1)
-  evaluator <- new_line_evaluator(
+  trial_point <- make_line_point(alpha = 1.8, value = 2, slope = -1)
+  evaluator <- make_line_evaluator(
     function(alpha, calc_gradient = TRUE) {
       expect_equal(alpha, 1.4)
-      make_step(alpha, f = 0, d = -1)
+      make_line_point(alpha, value = 0, slope = -1)
     },
     max_evaluations = 1
   )
-  condition_policy <- new_line_condition_policy(
+  condition_policy <- make_line_condition_policy(
     armijo_constant = 0.1,
     curvature_constant = 0.1,
     approximate_armijo = TRUE,
@@ -486,8 +541,8 @@ test_that("Hager-Zhang retains bracket repair completed at budget exhaustion", {
 
   result <- refine_hager_zhang_bracket_with_secants(
     bracket = bracket,
-    trial_step = trial_step,
-    initial_step = initial_step,
+    trial_point = trial_point,
+    initial_point = initial_point,
     evaluator = evaluator,
     approximate_decrease_tolerance = 1e-6,
     condition_policy = condition_policy,
@@ -504,20 +559,26 @@ test_that("Hager-Zhang retains bracket repair completed at budget exhaustion", {
 })
 
 test_that("Hager-Zhang bracket updates have explicit trial classifications", {
-  make_step <- function(alpha, f, d) {
-    list(alpha = alpha, f = f, d = d, df = d)
+  make_line_point <- function(alpha, value, slope) {
+    list(
+      alpha = alpha,
+      value = value,
+      slope = slope,
+      gradient = slope,
+      parameters = alpha
+    )
   }
-  initial_step <- make_step(alpha = 0, f = 0, d = -1)
+  initial_point <- make_line_point(alpha = 0, value = 0, slope = -1)
   bracket <- make_hager_zhang_bracket(
-    lower_endpoint = make_step(alpha = 1, f = -1, d = -1),
-    upper_endpoint = make_step(alpha = 8, f = 1, d = 1)
+    lower_endpoint = make_line_point(alpha = 1, value = -1, slope = -1),
+    upper_endpoint = make_line_point(alpha = 8, value = 1, slope = 1)
   )
   cases <- list(
-    nonfinite_trial = make_step(alpha = 4, f = Inf, d = NaN),
-    outside_bracket = make_step(alpha = 9, f = -1, d = -1),
-    upper_endpoint = make_step(alpha = 4, f = -0.5, d = 0),
-    lower_endpoint = make_step(alpha = 4, f = -0.5, d = -1),
-    needs_bisection = make_step(alpha = 4, f = 0.5, d = -1)
+    nonfinite_trial = make_line_point(alpha = 4, value = Inf, slope = NaN),
+    outside_bracket = make_line_point(alpha = 9, value = -1, slope = -1),
+    upper_endpoint = make_line_point(alpha = 4, value = -0.5, slope = 0),
+    lower_endpoint = make_line_point(alpha = 4, value = -0.5, slope = -1),
+    needs_bisection = make_line_point(alpha = 4, value = 0.5, slope = -1)
   )
 
   for (classification in names(cases)) {
@@ -525,7 +586,7 @@ test_that("Hager-Zhang bracket updates have explicit trial classifications", {
       classify_hager_zhang_trial(
         bracket,
         cases[[classification]],
-        initial_step,
+        initial_point,
         approximate_decrease_tolerance = 0
       ),
       classification
@@ -538,24 +599,24 @@ test_that("line searches return the initial step when evaluation budgets are exh
   c2 <- 0.1
   alpha <- 12.5
   setup <- condition_setup(condition_quadratic_fg(), x = 0, pv = 1)
-  weak_conditions <- new_line_condition_policy(
+  weak_conditions <- make_line_condition_policy(
     c1,
     c2,
     strong_curvature = FALSE
   )
 
   wolfe_searches <- list(
-    `more-thuente` = new_wolfe_line_search(
+    `more-thuente` = make_wolfe_line_search(
       more_thuente_core,
       armijo_constant = c1,
       curvature_constant = c2,
       max_evaluations = 0,
-      method_policy = new_more_thuente_policy(
+      method_policy = make_more_thuente_policy(
         alpha_max = Inf,
         safeguard_cubic = FALSE
       )
     ),
-    rasmussen = new_rasmussen_wolfe_search(
+    rasmussen = make_rasmussen_wolfe_search(
       armijo_constant = c1,
       curvature_constant = c2,
       max_evaluations = 0,
@@ -563,7 +624,7 @@ test_that("line searches return the initial step when evaluation budgets are exh
       expansion_factor = 3,
       relative_interval_tolerance = 1e-6
     ),
-    schmidt = new_schmidt_wolfe_search(
+    schmidt = make_schmidt_wolfe_search(
       armijo_constant = c1,
       curvature_constant = c2,
       max_evaluations = 0
@@ -577,31 +638,34 @@ test_that("line searches return the initial step when evaluation budgets are exh
 
   for (name in names(wolfe_searches)) {
     res <- wolfe_searches[[name]](
-      phi = setup$phi,
-      step0 = setup$step0,
-      alpha = alpha,
-      pm = setup$pv
+      evaluate_line = setup$evaluate_line,
+      initial_point = setup$initial_point,
+      initial_alpha = alpha,
+      search_direction = setup$pv
     )
 
-    expect_equal(res$nfn, 0, info = name)
-    expect_equal(res$ngr, 0, info = name)
-    expect_equal(res$step$alpha, 0, info = name)
-    expect_false(weak_conditions$wolfe(setup$step0, res$step), info = name)
+    expect_equal(res$function_evaluations, 0, info = name)
+    expect_equal(res$gradient_evaluations, 0, info = name)
+    expect_equal(res$line_point$alpha, 0, info = name)
+    expect_false(
+      weak_conditions$wolfe(setup$initial_point, res$line_point),
+      info = name
+    )
   }
 
-  armijo_res <- new_schmidt_armijo_search(
+  armijo_res <- make_schmidt_armijo_search(
     armijo_constant = c1,
     max_evaluations = 0
   )(
-    phi = setup$phi,
-    step0 = setup$step0,
-    alpha = alpha,
-    pm = setup$pv
+    evaluate_line = setup$evaluate_line,
+    initial_point = setup$initial_point,
+    initial_alpha = alpha,
+    search_direction = setup$pv
   )
 
-  expect_equal(armijo_res$nfn, 0)
-  expect_equal(armijo_res$ngr, 0)
-  expect_equal(armijo_res$step$alpha, 0)
+  expect_equal(armijo_res$function_evaluations, 0)
+  expect_equal(armijo_res$gradient_evaluations, 0)
+  expect_equal(armijo_res$line_point$alpha, 0)
 })
 
 test_that("finite-value guard backs off non-finite line-search evaluations", {
@@ -621,11 +685,16 @@ test_that("finite-value guard backs off non-finite line-search evaluations", {
   )
   setup <- condition_setup(fg, x = 0, pv = 1)
 
-  res <- find_finite(setup$phi, alpha = 4, min_alpha = 0, max_fn = 4)
+  res <- recover_finite_line_point(
+    setup$evaluate_line,
+    alpha = 4,
+    min_alpha = 0,
+    max_evaluations = 4
+  )
 
-  expect_true(res$ok)
-  expect_lte(res$step$alpha, 1)
-  expect_true(step_is_finite(res$step))
+  expect_true(res$succeeded)
+  expect_lte(res$line_point$alpha, 1)
+  expect_true(wolfe_trial_point_is_usable(res$line_point))
 })
 
 test_that("finite-value recovery rejects a non-finite initial alpha", {
@@ -633,11 +702,16 @@ test_that("finite-value recovery rejects a non-finite initial alpha", {
     stop("phi should not be called")
   }
 
-  res <- find_finite(phi, alpha = Inf, min_alpha = 0, max_fn = Inf)
+  res <- recover_finite_line_point(
+    phi,
+    alpha = Inf,
+    min_alpha = 0,
+    max_evaluations = Inf
+  )
 
-  expect_null(res$step)
-  expect_identical(res$nfn, 0L)
-  expect_false(res$ok)
+  expect_null(res$line_point)
+  expect_identical(res$function_evaluations, 0L)
+  expect_false(res$succeeded)
 })
 
 test_that("finite-value recovery stops without representable progress", {
@@ -648,18 +722,79 @@ test_that("finite-value recovery stops without representable progress", {
     if (length(evaluated_alphas) > 1L) {
       stop("recovery repeated an endpoint")
     }
-    list(alpha = alpha, f = Inf, df = Inf, d = Inf, par = alpha)
+    list(
+      alpha = alpha,
+      value = Inf,
+      gradient = Inf,
+      slope = Inf,
+      parameters = alpha
+    )
   }
 
-  res <- find_finite(
+  res <- recover_finite_line_point(
     phi,
     alpha = smallest_positive,
     min_alpha = 0,
-    max_fn = Inf
+    max_evaluations = Inf
   )
 
   expect_equal(evaluated_alphas, smallest_positive)
-  expect_equal(res$step$alpha, smallest_positive)
-  expect_identical(res$nfn, 1L)
-  expect_false(res$ok)
+  expect_equal(res$line_point$alpha, smallest_positive)
+  expect_identical(res$function_evaluations, 1L)
+  expect_false(res$succeeded)
+})
+
+test_that("weak Wolfe curvature includes the exact boundary", {
+  initial_point <- list(
+    alpha = 0,
+    value = 1,
+    gradient = -1,
+    slope = -1,
+    parameters = 0
+  )
+  boundary_step <- list(
+    alpha = 0.25,
+    value = 0.8125,
+    gradient = -0.5,
+    slope = -0.5
+  )
+  conditions <- make_line_condition_policy(
+    armijo_constant = 0.1,
+    curvature_constant = 0.5,
+    approximate_armijo = TRUE,
+    strong_curvature = FALSE
+  )
+
+  expect_true(weak_curvature_condition_is_met(-1, -0.5, 0.5))
+  expect_true(conditions$wolfe(initial_point, boundary_step))
+
+  evaluated_alphas <- numeric()
+  evaluate <- function(alpha, calc_gradient = TRUE) {
+    evaluated_alphas <<- c(evaluated_alphas, alpha)
+    list(
+      alpha = alpha,
+      value = 1 - alpha + alpha^2,
+      gradient = -1 + 2 * alpha,
+      slope = -1 + 2 * alpha,
+      parameters = alpha
+    )
+  }
+  result <- make_hager_zhang_search(
+    armijo_constant = 0.1,
+    curvature_constant = 0.5,
+    max_evaluations = 20,
+    strong_curvature = FALSE,
+    approximate_armijo = TRUE
+  )(
+    evaluate_line = evaluate,
+    initial_point = initial_point,
+    initial_alpha = 0.25,
+    search_direction = 1
+  )
+
+  expect_equal(evaluated_alphas, 0.25)
+  expect_equal(result$line_point$alpha, 0.25)
+  expect_identical(result$function_evaluations, 1L)
+  expect_identical(result$gradient_evaluations, 1L)
+  expect_identical(result$termination_reason, "wolfe")
 })

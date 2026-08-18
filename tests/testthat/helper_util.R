@@ -15,20 +15,24 @@ expect_equal_abs <- function(object, expected, tolerance, info = NULL) {
 expect_step <- function(
   actual,
   x,
-  f,
-  df,
+  value,
+  gradient,
   alpha = x,
   nfev,
   tolerance = 1e-4,
   check_grad = TRUE
 ) {
-  expect_equal(actual$step$par, x, tolerance = tolerance)
-  expect_equal(actual$step$f, f, tolerance = tolerance)
+  expect_equal(actual$line_point$parameters, x, tolerance = tolerance)
+  expect_equal(actual$line_point$value, value, tolerance = tolerance)
   if (check_grad) {
-    expect_equal_abs(actual$step$df, df, tolerance = tolerance)
+    expect_equal_abs(
+      actual$line_point$gradient,
+      gradient,
+      tolerance = tolerance
+    )
   }
-  expect_equal(actual$step$alpha, alpha, tolerance = tolerance)
-  expect_equal(actual$nfn, nfev)
+  expect_equal(actual$line_point$alpha, alpha, tolerance = tolerance)
+  expect_equal(actual$function_evaluations, nfev)
 }
 
 # Finite Difference -------------------------------------------------------
@@ -240,17 +244,23 @@ tricky_fg <- function() {
 
 # Line Search Util --------------------------------------------------------
 
-# Create Initial Step Value
+# Create Initial Line Point
 #
 # Given a set of start parameters and a search direction, initializes the
-# step data. Utility function for testing.
-make_step0 <- function(fg, x, pv, f = fg$fn(x), df = fg$gr(x)) {
+# line-point data. Utility function for testing.
+make_initial_line_point <- function(
+  fg,
+  parameters,
+  search_direction,
+  value = fg$fn(parameters),
+  gradient = fg$gr(parameters)
+) {
   list(
-    x = x,
     alpha = 0,
-    f = f,
-    df = df,
-    d = dot(pv, df)
+    value = value,
+    gradient = gradient,
+    slope = dot(search_direction, gradient),
+    parameters = parameters
   )
 }
 

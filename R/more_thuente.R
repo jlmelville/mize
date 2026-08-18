@@ -11,7 +11,7 @@
 #  of the More-Thuente method.
 more_thuente_core <- function(
   evaluator,
-  initial_step,
+  initial_point,
   initial_alpha,
   condition_policy,
   search_direction,
@@ -19,19 +19,23 @@ more_thuente_core <- function(
 ) {
   result <- run_more_thuente_search(
     evaluator = evaluator,
-    initial_point = initial_step,
+    initial_point = initial_point,
     initial_alpha = initial_alpha,
     condition_policy = condition_policy,
     policy = method_policy
   )
 
-  list(
-    candidate = result$candidate,
-    termination_reason = result$state$termination_reason
+  make_line_search_core_result(
+    termination_reason = result$state$termination_reason,
+    accepted_point = if (identical(result$state$termination_reason, "wolfe")) {
+      result$candidate
+    } else {
+      NULL
+    }
   )
 }
 
-new_more_thuente_policy <- function(
+make_more_thuente_policy <- function(
   relative_interval_tolerance = .Machine$double.eps,
   contraction_factor = 0.66,
   expansion_factor = 4,
@@ -106,7 +110,7 @@ new_more_thuente_policy <- function(
   )
 }
 
-new_more_thuente_search_state <- function(
+initialize_more_thuente_search_state <- function(
   initial_point,
   initial_alpha,
   policy
@@ -134,20 +138,17 @@ run_more_thuente_search <- function(
   condition_policy,
   policy
 ) {
-  state <- new_more_thuente_search_state(
+  state <- initialize_more_thuente_search_state(
     initial_point = initial_point,
     initial_alpha = initial_alpha,
     policy = policy
   )
-  if (initial_alpha <= 0) {
-    stop("initial_alpha must be positive")
-  }
-  if (initial_point$d >= 0) {
+  if (initial_point$slope >= 0) {
     state$termination_reason <- "non_descent_direction"
     return(list(candidate = initial_point, state = state))
   }
 
-  armijo_slope <- condition_policy$armijo_constant * initial_point$d
+  armijo_slope <- condition_policy$armijo_constant * initial_point$slope
   evaluator_state <- environment(evaluator)
 
   repeat {
@@ -187,17 +188,17 @@ run_more_thuente_search <- function(
       )
     }
 
-    recovered <- find_finite(
-      phi = evaluator,
+    recovered <- recover_finite_line_point(
+      evaluate_line = evaluator,
       alpha = state$trial_point$alpha,
       min_alpha = state$trial_lower_bound,
-      max_fn = Inf
+      max_evaluations = Inf
     )
-    if (!recovered$ok) {
+    if (!recovered$succeeded) {
       state$termination_reason <- "nonfinite_recovery"
       return(list(candidate = initial_point, state = state))
     }
-    state$trial_point <- recovered$step
+    state$trial_point <- recovered$line_point
 
     state$termination_reason <- classify_more_thuente_termination(
       state = state,
@@ -217,7 +218,7 @@ run_more_thuente_search <- function(
 
     if (
       state$modified_function_stage &&
-        wolfe_ok_step(
+        line_point_satisfies_weak_wolfe(
           initial_point,
           state$trial_point,
           condition_policy$armijo_constant,
@@ -231,7 +232,7 @@ run_more_thuente_search <- function(
     }
 
     use_modified_function <- state$modified_function_stage &&
-      state$trial_point$f <= state$best_endpoint$f &&
+      state$trial_point$value <= state$best_endpoint$value &&
       !condition_policy$armijo(initial_point, state$trial_point)
 
     if (use_modified_function) {
@@ -310,7 +311,7 @@ classify_more_thuente_termination <- function(
   if (
     trial$alpha == policy$alpha_max &&
       condition_policy$armijo(initial_point, trial) &&
-      !curvature_ok_step(
+      !line_point_satisfies_weak_curvature(
         initial_point,
         trial,
         condition_policy$armijo_constant
@@ -321,7 +322,7 @@ classify_more_thuente_termination <- function(
   if (
     trial$alpha == policy$alpha_min &&
       (!condition_policy$armijo(initial_point, trial) ||
-        curvature_ok_step(
+        line_point_satisfies_weak_curvature(
           initial_point,
           trial,
           condition_policy$armijo_constant
@@ -363,14 +364,14 @@ select_more_thuente_candidate <- function(state) {
 
 modify_more_thuente_point <- function(point, armijo_slope) {
   modified_point <- point
-  modified_point$f <- point$f - point$alpha * armijo_slope
-  modified_point$d <- point$d - armijo_slope
+  modified_point$value <- point$value - point$alpha * armijo_slope
+  modified_point$slope <- point$slope - armijo_slope
   modified_point
 }
 
 unmodify_more_thuente_point <- function(point, armijo_slope) {
-  point$f <- point$f + point$alpha * armijo_slope
-  point$d <- point$d + armijo_slope
+  point$value <- point$value + point$alpha * armijo_slope
+  point$slope <- point$slope + armijo_slope
   point
 }
 
@@ -383,32 +384,32 @@ update_more_thuente_interval <- function(state, policy) {
     (state$is_bracketed &&
       (trial$alpha <= min(best$alpha, other$alpha) ||
         trial$alpha >= max(best$alpha, other$alpha))) ||
-      best$d * (trial$alpha - best$alpha) >= 0 ||
+      best$slope * (trial$alpha - best$alpha) >= 0 ||
       state$trial_upper_bound < state$trial_lower_bound
   ) {
     return(list(state = state, classification = "invalid"))
   }
 
-  opposite_slope <- trial$d * (best$d / abs(best$d)) < 0
+  opposite_slope <- trial$slope * (best$slope / abs(best$slope)) < 0
   is_bounded <- FALSE
 
-  if (trial$f > best$f) {
+  if (trial$value > best$value) {
     classification <- "higher_trial_value"
     is_bounded <- TRUE
     cubic_proposal <- cubic_interpolate(
       best$alpha,
-      best$f,
-      best$d,
+      best$value,
+      best$slope,
       trial$alpha,
-      trial$f,
-      trial$d
+      trial$value,
+      trial$slope
     )
     quadratic_proposal <- quadratic_interpolate(
       best$alpha,
-      best$f,
-      best$d,
+      best$value,
+      best$slope,
       trial$alpha,
-      trial$f
+      trial$value
     )
 
     if (!isTRUE(is.finite(cubic_proposal))) {
@@ -431,17 +432,17 @@ update_more_thuente_interval <- function(state, policy) {
     classification <- "lower_value_opposite_slope"
     cubic_proposal <- cubic_interpolate(
       best$alpha,
-      best$f,
-      best$d,
+      best$value,
+      best$slope,
       trial$alpha,
-      trial$f,
-      trial$d
+      trial$value,
+      trial$slope
     )
-    secant_proposal <- quadratic_interpolateg(
+    secant_proposal <- propose_slope_secant_alpha(
       trial$alpha,
-      trial$d,
+      trial$slope,
       best$alpha,
-      best$d
+      best$slope
     )
 
     if (!isTRUE(is.finite(cubic_proposal))) {
@@ -459,29 +460,29 @@ update_more_thuente_interval <- function(state, policy) {
       next_alpha <- secant_proposal
     }
     state$is_bracketed <- TRUE
-  } else if (abs(trial$d) < abs(best$d)) {
+  } else if (abs(trial$slope) < abs(best$slope)) {
     classification <- "lower_value_reduced_slope_magnitude"
     is_bounded <- TRUE
 
     theta <- 3 *
-      (best$f - trial$f) /
+      (best$value - trial$value) /
       (trial$alpha - best$alpha) +
-      best$d +
-      trial$d
-    scale <- norm(rbind(theta, best$d, trial$d), "i")
+      best$slope +
+      trial$slope
+    scale <- norm(rbind(theta, best$slope, trial$slope), "i")
     gamma <- scale *
       sqrt(
         max(
           0,
           (theta / scale)^2 -
-            (best$d / scale) * (trial$d / scale)
+            (best$slope / scale) * (trial$slope / scale)
         )
       )
     if (trial$alpha > best$alpha) {
       gamma <- -gamma
     }
-    p <- (gamma - trial$d) + theta
-    q <- (gamma + (best$d - trial$d)) + gamma
+    p <- (gamma - trial$slope) + theta
+    q <- (gamma + (best$slope - trial$slope)) + gamma
     ratio <- p / q
 
     if (ratio < 0 && gamma != 0) {
@@ -491,11 +492,11 @@ update_more_thuente_interval <- function(state, policy) {
     } else {
       cubic_proposal <- state$trial_lower_bound
     }
-    secant_proposal <- quadratic_interpolateg(
+    secant_proposal <- propose_slope_secant_alpha(
       trial$alpha,
-      trial$d,
+      trial$slope,
       best$alpha,
-      best$d
+      best$slope
     )
 
     if (state$is_bracketed) {
@@ -518,11 +519,11 @@ update_more_thuente_interval <- function(state, policy) {
     if (state$is_bracketed) {
       cubic_proposal <- cubic_interpolate(
         other$alpha,
-        other$f,
-        other$d,
+        other$value,
+        other$slope,
         trial$alpha,
-        trial$f,
-        trial$d
+        trial$value,
+        trial$slope
       )
       if (!isTRUE(is.finite(cubic_proposal))) {
         cubic_proposal <- (other$alpha + trial$alpha) / 2
@@ -540,7 +541,7 @@ update_more_thuente_interval <- function(state, policy) {
     }
   }
 
-  if (trial$f > best$f) {
+  if (trial$value > best$value) {
     state$other_endpoint <- trial
   } else {
     if (opposite_slope) {

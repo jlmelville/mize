@@ -76,13 +76,13 @@ delta_bar_delta <- function(
       delta <- get_gr_curr(opt, iter)
 
       if (!is.numeric(sub_stage$epsilon)) {
-        d0 <- dot(delta, stage$direction$value)
-        sub_stage$epsilon <- guess_alpha0(
+        initial_slope <- dot(delta, stage$direction$value)
+        sub_stage$epsilon <- guess_initial_alpha(
           sub_stage$epsilon,
-          x0 = NULL,
-          f0 = NULL,
-          gr0 = delta,
-          d0 = d0,
+          parameters = NULL,
+          value = NULL,
+          gradient = delta,
+          slope = initial_slope,
           try_newton_step = FALSE
         )
       }
