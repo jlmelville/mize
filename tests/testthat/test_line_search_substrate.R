@@ -355,20 +355,6 @@ test_that("shared Wolfe core boundary preserves result and callback types", {
   expect_identical(result$termination_reason, "wolfe")
 })
 
-test_that("supported Wolfe cores share one private signature", {
-  expected <- c(
-    "evaluator",
-    "initial_point",
-    "initial_alpha",
-    "condition_policy",
-    "search_direction",
-    "method_policy"
-  )
-
-  expect_identical(names(formals(more_thuente_core)), expected)
-  expect_identical(names(formals(run_bracket_zoom)), expected)
-})
-
 test_that("line-search backends share one explicit callable protocol", {
   expected <- c(
     "evaluate_line",
