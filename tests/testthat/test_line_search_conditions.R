@@ -355,29 +355,29 @@ test_that("Hager-Zhang returned steps satisfy approximate weak Wolfe conditions"
 
   for (case in cases) {
     setup <- condition_setup(case$fg, case$x)
-    res <- line_search_hz(
-      alpha = case$alpha,
-      step0 = setup$step0,
-      phi = setup$phi,
-      c1 = case$c1,
-      c2 = case$c2,
-      max_fn = 100,
+    conditions <- new_line_condition_policy(
+      armijo_constant = case$c1,
+      curvature_constant = case$c2,
+      approximate_armijo = TRUE,
       strong_curvature = FALSE,
-      always_check_convergence = TRUE,
-      approx_armijo = TRUE
+      approximation_tolerance = 1e-6
+    )
+    search <- make_hager_zhang_search(
+      armijo_constant = case$c1,
+      curvature_constant = case$c2,
+      max_evaluations = 100,
+      strong_curvature = FALSE,
+      approximate_armijo = TRUE
+    )
+    res <- search(
+      phi = setup$phi,
+      step0 = setup$step0,
+      alpha = case$alpha,
+      pm = setup$pv
     )
 
-    eps_k <- 1e-6 * abs(setup$step0$f)
     expect_true(
-      hz_ok_step(
-        step = res$step,
-        step0 = setup$step0,
-        c1 = case$c1,
-        c2 = case$c2,
-        eps = eps_k,
-        strong_curvature = FALSE,
-        approx_armijo = TRUE
-      ),
+      conditions$wolfe(setup$step0, res$step),
       info = case$name
     )
   }
@@ -390,17 +390,15 @@ test_that("Hager-Zhang initial exhaustion distinguishes acceptance from fallback
   expect_true(curvature_ok_step(quartic_start, quartic_trial, c2 = 0.5))
   expect_false(strong_curvature_ok_step(quartic_start, quartic_trial, c2 = 0.5))
   expect_false(armijo_ok_step(quartic_start, quartic_trial, c1 = 0.1))
-  expect_false(approx_armijo_ok_step(quartic_start, quartic_trial, c1 = 0.1))
+  weak_conditions <- new_line_condition_policy(
+    armijo_constant = 0.1,
+    curvature_constant = 0.5,
+    approximate_armijo = TRUE,
+    strong_curvature = FALSE,
+    approximation_tolerance = 1e-6
+  )
   expect_false(
-    hz_ok_step(
-      quartic_trial,
-      quartic_start,
-      c1 = 0.1,
-      c2 = 0.5,
-      eps = 1e-6,
-      strong_curvature = FALSE,
-      approx_armijo = TRUE
-    )
+    weak_conditions$wolfe(quartic_start, quartic_trial)
   )
 
   linear_start <- list(alpha = 0, f = 1, df = -1, d = -1)
@@ -408,55 +406,131 @@ test_that("Hager-Zhang initial exhaustion distinguishes acceptance from fallback
 
   expect_true(armijo_ok_step(linear_start, linear_trial, c1 = 0.1))
   expect_false(curvature_ok_step(linear_start, linear_trial, c2 = 0.5))
-  expect_false(
-    hz_ok_step(
-      linear_trial,
-      linear_start,
-      c1 = 0.1,
-      c2 = 0.5,
-      eps = 1e-6,
-      strong_curvature = FALSE,
-      approx_armijo = TRUE
-    )
-  )
+  expect_false(weak_conditions$wolfe(linear_start, linear_trial))
 })
 
-test_that("Hager-Zhang U3 bracket update bisects to a positive-slope bound", {
-  hz_step <- function(alpha, f, d) {
+test_that("Hager-Zhang repairs a high-value negative-slope bound", {
+  make_step <- function(alpha, f, d) {
     list(alpha = alpha, f = f, d = d, df = d)
   }
 
-  step0 <- hz_step(alpha = 0, f = 0, d = -1)
-  bracket <- list(
-    hz_step(alpha = 1, f = -1, d = -1),
-    hz_step(alpha = 8, f = 2, d = 1)
+  initial_step <- make_step(alpha = 0, f = 0, d = -1)
+  bracket <- make_hager_zhang_bracket(
+    lower_endpoint = make_step(alpha = 1, f = -1, d = -1),
+    upper_endpoint = make_step(alpha = 8, f = 2, d = 1)
   )
-  step_c <- hz_step(alpha = 8, f = 2, d = -1)
-  phi <- function(alpha) {
+  trial_step <- make_step(alpha = 8, f = 2, d = -1)
+  evaluate <- function(alpha, calc_gradient = TRUE) {
     if (alpha > 4) {
-      hz_step(alpha, f = 1, d = -1)
+      make_step(alpha, f = 1, d = -1)
     } else if (alpha < 3) {
-      hz_step(alpha, f = -1, d = -1)
+      make_step(alpha, f = -1, d = -1)
     } else {
-      hz_step(alpha, f = -0.5, d = 1)
+      make_step(alpha, f = -0.5, d = 1)
     }
   }
-
-  res <- update_bracket_hz(
-    bracket = bracket,
-    step_c = step_c,
-    step0 = step0,
-    phi = phi,
-    eps = 0,
-    max_fn = 5,
-    theta = 0.5
+  evaluator <- new_line_evaluator(evaluate, max_evaluations = 5)
+  condition_policy <- new_line_condition_policy(
+    armijo_constant = 0.1,
+    curvature_constant = 0.5,
+    approximate_armijo = TRUE,
+    strong_curvature = TRUE
   )
 
-  expect_true(res$ok)
-  expect_equal(res$nfn, 3)
-  expect_equal(unname(bracket_props(res$bracket, "alpha")), c(2.75, 3.625))
-  expect_equal(unname(bracket_props(res$bracket, "d")), c(-1, 1))
-  expect_true(res$bracket[[1]]$f <= step0$f)
+  result <- update_hager_zhang_bracket(
+    bracket = bracket,
+    trial_step = trial_step,
+    initial_step = initial_step,
+    evaluator = evaluator,
+    approximate_decrease_tolerance = 0,
+    condition_policy = condition_policy,
+    method_policy = make_hager_zhang_policy()
+  )
+
+  expect_true(result$succeeded)
+  expect_identical(environment(evaluator)$evaluation_count, 3L)
+  expect_equal(
+    vapply(result$bracket, `[[`, numeric(1), "alpha"),
+    c(lower_endpoint = 2.75, upper_endpoint = 3.625)
+  )
+  expect_equal(
+    vapply(result$bracket, `[[`, numeric(1), "d"),
+    c(lower_endpoint = -1, upper_endpoint = 1)
+  )
+  expect_true(result$bracket$lower_endpoint$f <= initial_step$f)
+})
+
+test_that("Hager-Zhang retains bracket repair completed at budget exhaustion", {
+  make_step <- function(alpha, f, d) {
+    list(alpha = alpha, f = f, d = d, df = d)
+  }
+  initial_step <- make_step(alpha = 0, f = 1, d = -1)
+  bracket <- make_hager_zhang_bracket(
+    lower_endpoint = make_step(alpha = 1, f = 1 + 5e-7, d = -1),
+    upper_endpoint = make_step(alpha = 5, f = 2, d = 4)
+  )
+  trial_step <- make_step(alpha = 1.8, f = 2, d = -1)
+  evaluator <- new_line_evaluator(
+    function(alpha, calc_gradient = TRUE) {
+      expect_equal(alpha, 1.4)
+      make_step(alpha, f = 0, d = -1)
+    },
+    max_evaluations = 1
+  )
+  condition_policy <- new_line_condition_policy(
+    armijo_constant = 0.1,
+    curvature_constant = 0.1,
+    approximate_armijo = TRUE,
+    strong_curvature = FALSE
+  )
+
+  result <- refine_hager_zhang_bracket_with_secants(
+    bracket = bracket,
+    trial_step = trial_step,
+    initial_step = initial_step,
+    evaluator = evaluator,
+    approximate_decrease_tolerance = 1e-6,
+    condition_policy = condition_policy,
+    method_policy = make_hager_zhang_policy()
+  )
+
+  expect_false(result$succeeded)
+  expect_identical(result$termination_reason, "budget_exhausted")
+  expect_identical(environment(evaluator)$evaluation_count, 1L)
+  expect_equal(
+    vapply(result$bracket, `[[`, numeric(1), "alpha"),
+    c(lower_endpoint = 1.4, upper_endpoint = 1.8)
+  )
+})
+
+test_that("Hager-Zhang bracket updates have explicit trial classifications", {
+  make_step <- function(alpha, f, d) {
+    list(alpha = alpha, f = f, d = d, df = d)
+  }
+  initial_step <- make_step(alpha = 0, f = 0, d = -1)
+  bracket <- make_hager_zhang_bracket(
+    lower_endpoint = make_step(alpha = 1, f = -1, d = -1),
+    upper_endpoint = make_step(alpha = 8, f = 1, d = 1)
+  )
+  cases <- list(
+    nonfinite_trial = make_step(alpha = 4, f = Inf, d = NaN),
+    outside_bracket = make_step(alpha = 9, f = -1, d = -1),
+    upper_endpoint = make_step(alpha = 4, f = -0.5, d = 0),
+    lower_endpoint = make_step(alpha = 4, f = -0.5, d = -1),
+    needs_bisection = make_step(alpha = 4, f = 0.5, d = -1)
+  )
+
+  for (classification in names(cases)) {
+    expect_identical(
+      classify_hager_zhang_trial(
+        bracket,
+        cases[[classification]],
+        initial_step,
+        approximate_decrease_tolerance = 0
+      ),
+      classification
+    )
+  }
 })
 
 test_that("line searches return the initial step when evaluation budgets are exhausted", {
@@ -494,7 +568,11 @@ test_that("line searches return the initial step when evaluation budgets are exh
       curvature_constant = c2,
       max_evaluations = 0
     ),
-    `hager-zhang` = hager_zhang(c1 = c1, c2 = c2, max_fn = 0)
+    `hager-zhang` = make_hager_zhang_search(
+      armijo_constant = c1,
+      curvature_constant = c2,
+      max_evaluations = 0
+    )
   )
 
   for (name in names(wolfe_searches)) {

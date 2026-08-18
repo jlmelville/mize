@@ -230,15 +230,15 @@ hager_zhang_ls <- function(
     stop("c2 must be between c1 and 1")
   }
 
-  max_ls_fn <- min(max_fn, max_gr, floor(max_fg / 2))
+  max_ls_evaluations <- min(max_fn, max_gr, floor(max_fg / 2))
 
   line_search(
-    hager_zhang(
-      c1 = c1,
-      c2 = c2,
-      max_fn = max_ls_fn,
+    make_hager_zhang_search(
+      armijo_constant = c1,
+      curvature_constant = c2,
+      max_evaluations = max_ls_evaluations,
       strong_curvature = strong_curvature,
-      approx_armijo = approx_armijo
+      approximate_armijo = approx_armijo
     ),
     name = "hager-zhang",
     max_alpha_mult = max_alpha_mult,
@@ -874,60 +874,4 @@ strong_curvature_ok_step <- function(step0, step, c2) {
 # Are the Wolfe Conditions Met for the Given Step?
 wolfe_ok_step <- function(step0, step, c1, c2) {
   armijo_ok_step(step0, step, c1) && curvature_ok_step(step0, step, c2)
-}
-
-# Is the approximate Armijo condition met?
-#
-# Suggested by Hager and Zhang (2005) as part of the Approximate Wolfe
-# Conditions. The second of these conditions is identical to the (weak)
-# curvature condition.
-#
-# The first condition applies the armijo condition to a quadratic approximation
-# to the function, which allows for higher precision in finding the minimizer.
-#
-# It is suggested that the approximate version of the Armijo condition be used
-# when fa is 'close' to f0, e.g. fa <= f0 + eps * |f0| where eps = 1e-6
-#
-# c1 should be < 0.5
-approx_armijo_ok <- function(d0, da, c1) {
-  (2 * c1 - 1) * d0 >= da
-}
-
-# Is the approximate Armijo condition met for the given step?
-approx_armijo_ok_step <- function(step0, step, c1) {
-  approx_armijo_ok(step0$d, step$d, c1)
-}
-
-
-# Bracket -----------------------------------------------------------------
-
-# extracts all the properties (e.g. 'f', 'df', 'd' or 'alpha') from all members
-# of the bracket. Works if there are one or two bracket members. Can get
-# multiple properties at once, by providing an array of the properties,
-# e.g. bracket_props(bracket, c('f', 'd'))
-bracket_props <- function(bracket, prop) {
-  unlist(sapply(bracket, `[`, prop))
-}
-
-bracket_width <- function(bracket) {
-  bracket_range <- bracket_props(bracket, "alpha")
-  abs(bracket_range[2] - bracket_range[1])
-}
-
-bracket_min_alpha <- function(bracket) {
-  min(bracket_props(bracket, "alpha"))
-}
-
-is_in_bracket <- function(bracket, alpha) {
-  is_in_range(alpha, bracket[[1]]$alpha, bracket[[2]]$alpha)
-}
-
-format_bracket <- function(bracket) {
-  paste0(
-    "[",
-    formatC(bracket[[1]]$alpha),
-    ", ",
-    formatC(bracket[[2]]$alpha),
-    "]"
-  )
 }
