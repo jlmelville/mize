@@ -26,12 +26,8 @@ more_thuente_core <- function(
   )
 
   make_line_search_core_result(
-    termination_reason = result$state$termination_reason,
-    accepted_point = if (identical(result$state$termination_reason, "wolfe")) {
-      result$candidate
-    } else {
-      NULL
-    }
+    termination_reason = result$termination_reason,
+    accepted_point = result$accepted_point
   )
 }
 
@@ -117,17 +113,35 @@ initialize_more_thuente_search_state <- function(
 ) {
   interval_width <- policy$alpha_max - policy$alpha_min
   list(
-    best_endpoint = initial_point,
+    reference_endpoint = initial_point,
     other_endpoint = initial_point,
-    trial_point = list(alpha = initial_alpha),
+    next_trial_alpha = initial_alpha,
     is_bracketed = FALSE,
-    modified_function_stage = TRUE,
-    current_interval_width = interval_width,
-    previous_interval_width = 2 * interval_width,
-    trial_lower_bound = policy$alpha_min,
-    trial_upper_bound = policy$alpha_max,
-    interval_update_case = "initial",
-    termination_reason = NULL
+    stage = "auxiliary",
+    interval_width = interval_width,
+    two_trial_reference_width = 2 * interval_width
+  )
+}
+
+derive_more_thuente_trial_bounds <- function(state, policy) {
+  if (state$is_bracketed) {
+    return(list(
+      lower = min(
+        state$reference_endpoint$alpha,
+        state$other_endpoint$alpha
+      ),
+      upper = max(
+        state$reference_endpoint$alpha,
+        state$other_endpoint$alpha
+      )
+    ))
+  }
+
+  list(
+    lower = state$reference_endpoint$alpha,
+    upper = state$next_trial_alpha +
+      policy$expansion_factor *
+        (state$next_trial_alpha - state$reference_endpoint$alpha)
   )
 }
 
@@ -144,83 +158,91 @@ run_more_thuente_search <- function(
     policy = policy
   )
   if (initial_point$slope >= 0) {
-    state$termination_reason <- "non_descent_direction"
-    return(list(candidate = initial_point, state = state))
+    return(list(
+      accepted_point = NULL,
+      termination_reason = "non_descent_direction",
+      state = state
+    ))
   }
 
   armijo_slope <- condition_policy$armijo_constant * initial_point$slope
   evaluator_state <- environment(evaluator)
+  previous_transition_is_valid <- TRUE
 
   repeat {
-    if (state$is_bracketed) {
-      state$trial_lower_bound <- min(
-        state$best_endpoint$alpha,
-        state$other_endpoint$alpha
-      )
-      state$trial_upper_bound <- max(
-        state$best_endpoint$alpha,
-        state$other_endpoint$alpha
-      )
-    } else {
-      state$trial_lower_bound <- state$best_endpoint$alpha
-      state$trial_upper_bound <- state$trial_point$alpha +
-        policy$expansion_factor *
-          (state$trial_point$alpha - state$best_endpoint$alpha)
-    }
-
-    state$trial_point$alpha <- max(
-      state$trial_point$alpha,
-      policy$alpha_min
-    )
-    state$trial_point$alpha <- min(
-      state$trial_point$alpha,
-      policy$alpha_max
-    )
+    trial_bounds <- derive_more_thuente_trial_bounds(state, policy)
+    state$next_trial_alpha <- max(state$next_trial_alpha, policy$alpha_min)
+    state$next_trial_alpha <- min(state$next_trial_alpha, policy$alpha_max)
 
     if (policy$verbose) {
       message(
         "Bracket: [",
-        formatC(state$trial_lower_bound),
+        formatC(trial_bounds$lower),
         ", ",
-        formatC(state$trial_upper_bound),
+        formatC(trial_bounds$upper),
         "] alpha = ",
-        formatC(state$trial_point$alpha)
+        formatC(state$next_trial_alpha)
       )
     }
 
     recovered <- recover_finite_line_point(
       evaluate_line = evaluator,
-      alpha = state$trial_point$alpha,
-      min_alpha = state$trial_lower_bound,
+      alpha = state$next_trial_alpha,
+      min_alpha = trial_bounds$lower,
       max_evaluations = Inf
     )
     if (!recovered$succeeded) {
-      state$termination_reason <- "nonfinite_recovery"
-      return(list(candidate = initial_point, state = state))
+      return(list(
+        accepted_point = NULL,
+        termination_reason = "nonfinite_recovery",
+        state = state
+      ))
     }
-    state$trial_point <- recovered$line_point
+    trial_point <- recovered$line_point
 
-    state$termination_reason <- classify_more_thuente_termination(
+    termination_reason <- classify_more_thuente_termination(
       state = state,
+      trial_point = trial_point,
+      trial_bounds = trial_bounds,
+      previous_transition_is_valid = previous_transition_is_valid,
       initial_point = initial_point,
       condition_policy = condition_policy,
       policy = policy,
       evaluation_count = evaluator_state$evaluation_count,
       max_evaluations = evaluator_state$max_evaluations
     )
-    if (!is.null(state$termination_reason)) {
-      candidate <- select_more_thuente_candidate(state)
+    if (!is.null(termination_reason)) {
       if (policy$verbose) {
-        message("alpha = ", formatC(candidate$alpha))
+        reported_alpha <- if (
+          termination_reason %in%
+            c(
+              "budget_exhausted",
+              "relative_interval_tolerance",
+              "rounding_stagnation"
+            )
+        ) {
+          state$reference_endpoint$alpha
+        } else {
+          trial_point$alpha
+        }
+        message("alpha = ", formatC(reported_alpha))
       }
-      return(list(candidate = candidate, state = state))
+      return(list(
+        accepted_point = if (identical(termination_reason, "wolfe")) {
+          trial_point
+        } else {
+          NULL
+        },
+        termination_reason = termination_reason,
+        state = state
+      ))
     }
 
     if (
-      state$modified_function_stage &&
+      identical(state$stage, "auxiliary") &&
         line_point_satisfies_weak_wolfe(
           initial_point,
-          state$trial_point,
+          trial_point,
           condition_policy$armijo_constant,
           min(
             condition_policy$armijo_constant,
@@ -228,69 +250,55 @@ run_more_thuente_search <- function(
           )
         )
     ) {
-      state$modified_function_stage <- FALSE
+      state$stage <- "objective"
     }
 
-    use_modified_function <- state$modified_function_stage &&
-      state$trial_point$value <= state$best_endpoint$value &&
-      !condition_policy$armijo(initial_point, state$trial_point)
-
-    if (use_modified_function) {
-      modified_state <- state
-      modified_state$best_endpoint <- modify_more_thuente_point(
-        state$best_endpoint,
-        armijo_slope
-      )
-      modified_state$other_endpoint <- modify_more_thuente_point(
-        state$other_endpoint,
-        armijo_slope
-      )
-      modified_state$trial_point <- modify_more_thuente_point(
-        state$trial_point,
-        armijo_slope
-      )
-
-      update <- update_more_thuente_interval(modified_state, policy)
-      state$best_endpoint <- unmodify_more_thuente_point(
-        update$state$best_endpoint,
-        armijo_slope
-      )
-      state$other_endpoint <- unmodify_more_thuente_point(
-        update$state$other_endpoint,
-        armijo_slope
-      )
-      state$trial_point$alpha <- update$state$trial_point$alpha
-      state$is_bracketed <- update$state$is_bracketed
-      state$interval_update_case <- update$classification
-    } else {
-      update <- update_more_thuente_interval(state, policy)
-      state <- update$state
-      state$interval_update_case <- update$classification
+    use_auxiliary_measure <- identical(state$stage, "auxiliary") &&
+      trial_point$value <= state$reference_endpoint$value &&
+      !condition_policy$armijo(initial_point, trial_point)
+    advance <- advance_more_thuente_interval(
+      state = state,
+      trial_point = trial_point,
+      trial_bounds = trial_bounds,
+      armijo_slope = if (use_auxiliary_measure) armijo_slope else 0,
+      policy = policy
+    )
+    state <- advance$state
+    previous_transition_is_valid <- advance$transition_is_valid
+    if (!advance$proposal_is_finite) {
+      return(list(
+        accepted_point = NULL,
+        termination_reason = "nonfinite_recovery",
+        state = state
+      ))
     }
 
     if (state$is_bracketed) {
       new_interval_width <- abs(
-        state$other_endpoint$alpha - state$best_endpoint$alpha
+        state$other_endpoint$alpha - state$reference_endpoint$alpha
       )
       if (
         new_interval_width >=
-          policy$contraction_factor * state$previous_interval_width
+          policy$contraction_factor * state$two_trial_reference_width
       ) {
         if (policy$verbose) {
           message("Interval did not decrease sufficiently: bisecting")
         }
-        state$trial_point$alpha <- state$best_endpoint$alpha +
+        state$next_trial_alpha <- state$reference_endpoint$alpha +
           0.5 *
-            (state$other_endpoint$alpha - state$best_endpoint$alpha)
+            (state$other_endpoint$alpha - state$reference_endpoint$alpha)
       }
-      state$previous_interval_width <- state$current_interval_width
-      state$current_interval_width <- new_interval_width
+      state$two_trial_reference_width <- state$interval_width
+      state$interval_width <- new_interval_width
     }
   }
 }
 
 classify_more_thuente_termination <- function(
   state,
+  trial_point,
+  trial_bounds,
+  previous_transition_is_valid,
   initial_point,
   condition_policy,
   policy,
@@ -298,33 +306,32 @@ classify_more_thuente_termination <- function(
   max_evaluations
 ) {
   reason <- NULL
-  trial <- state$trial_point
 
   if (
     (state$is_bracketed &&
-      (trial$alpha <= state$trial_lower_bound ||
-        trial$alpha >= state$trial_upper_bound)) ||
-      identical(state$interval_update_case, "invalid")
+      (trial_point$alpha <= trial_bounds$lower ||
+        trial_point$alpha >= trial_bounds$upper)) ||
+      !previous_transition_is_valid
   ) {
     reason <- "rounding_stagnation"
   }
   if (
-    trial$alpha == policy$alpha_max &&
-      condition_policy$armijo(initial_point, trial) &&
+    trial_point$alpha == policy$alpha_max &&
+      condition_policy$armijo(initial_point, trial_point) &&
       !line_point_satisfies_weak_curvature(
         initial_point,
-        trial,
+        trial_point,
         condition_policy$armijo_constant
       )
   ) {
     reason <- "alpha_max"
   }
   if (
-    trial$alpha == policy$alpha_min &&
-      (!condition_policy$armijo(initial_point, trial) ||
+    trial_point$alpha == policy$alpha_min &&
+      (!condition_policy$armijo(initial_point, trial_point) ||
         line_point_satisfies_weak_curvature(
           initial_point,
-          trial,
+          trial_point,
           condition_policy$armijo_constant
         ))
   ) {
@@ -335,91 +342,113 @@ classify_more_thuente_termination <- function(
   }
   if (
     state$is_bracketed &&
-      state$trial_upper_bound - state$trial_lower_bound <=
-        policy$relative_interval_tolerance * state$trial_upper_bound
+      trial_bounds$upper - trial_bounds$lower <=
+        policy$relative_interval_tolerance * trial_bounds$upper
   ) {
     reason <- "relative_interval_tolerance"
   }
-  if (condition_policy$wolfe(initial_point, trial)) {
+  if (condition_policy$wolfe(initial_point, trial_point)) {
     reason <- "wolfe"
   }
 
   reason
 }
 
-select_more_thuente_candidate <- function(state) {
-  if (
-    state$termination_reason %in%
-      c(
-        "budget_exhausted",
-        "relative_interval_tolerance",
-        "rounding_stagnation"
-      )
-  ) {
-    state$best_endpoint
-  } else {
-    state$trial_point
-  }
+measure_more_thuente_point <- function(point, armijo_slope = 0) {
+  list(
+    value = point$value - point$alpha * armijo_slope,
+    slope = point$slope - armijo_slope
+  )
 }
 
-modify_more_thuente_point <- function(point, armijo_slope) {
-  modified_point <- point
-  modified_point$value <- point$value - point$alpha * armijo_slope
-  modified_point$slope <- point$slope - armijo_slope
-  modified_point
-}
-
-unmodify_more_thuente_point <- function(point, armijo_slope) {
-  point$value <- point$value + point$alpha * armijo_slope
-  point$slope <- point$slope + armijo_slope
-  point
-}
-
-update_more_thuente_interval <- function(state, policy) {
-  best <- state$best_endpoint
+classify_more_thuente_case <- function(
+  state,
+  trial_point,
+  trial_bounds,
+  reference_measure,
+  trial_measure
+) {
+  reference <- state$reference_endpoint
   other <- state$other_endpoint
-  trial <- state$trial_point
-
   if (
     (state$is_bracketed &&
-      (trial$alpha <= min(best$alpha, other$alpha) ||
-        trial$alpha >= max(best$alpha, other$alpha))) ||
-      best$slope * (trial$alpha - best$alpha) >= 0 ||
-      state$trial_upper_bound < state$trial_lower_bound
+      (trial_point$alpha <= min(reference$alpha, other$alpha) ||
+        trial_point$alpha >= max(reference$alpha, other$alpha))) ||
+      reference_measure$slope *
+        (trial_point$alpha - reference$alpha) >=
+        0 ||
+      trial_bounds$upper < trial_bounds$lower
   ) {
-    return(list(state = state, classification = "invalid"))
+    return(list(
+      classification = "invalid",
+      is_bounded = FALSE
+    ))
   }
 
-  opposite_slope <- trial$slope * (best$slope / abs(best$slope)) < 0
-  is_bounded <- FALSE
-
-  if (trial$value > best$value) {
+  opposite_slope <- trial_measure$slope *
+    (reference_measure$slope / abs(reference_measure$slope)) <
+    0
+  if (trial_measure$value > reference_measure$value) {
     classification <- "higher_trial_value"
     is_bounded <- TRUE
+  } else if (opposite_slope) {
+    classification <- "lower_value_opposite_slope"
+    is_bounded <- FALSE
+  } else if (abs(trial_measure$slope) < abs(reference_measure$slope)) {
+    classification <- "lower_value_reduced_slope_magnitude"
+    is_bounded <- TRUE
+  } else {
+    classification <- "lower_value_unreduced_slope_magnitude"
+    is_bounded <- FALSE
+  }
+
+  list(
+    classification = classification,
+    is_bounded = is_bounded
+  )
+}
+
+propose_more_thuente_trial <- function(
+  state,
+  trial_point,
+  trial_bounds,
+  reference_measure,
+  other_measure,
+  trial_measure,
+  case,
+  policy
+) {
+  reference <- state$reference_endpoint
+  other <- state$other_endpoint
+  classification <- case$classification
+
+  if (identical(classification, "higher_trial_value")) {
     cubic_proposal <- cubic_interpolate(
-      best$alpha,
-      best$value,
-      best$slope,
-      trial$alpha,
-      trial$value,
-      trial$slope
+      reference$alpha,
+      reference_measure$value,
+      reference_measure$slope,
+      trial_point$alpha,
+      trial_measure$value,
+      trial_measure$slope
     )
     quadratic_proposal <- quadratic_interpolate(
-      best$alpha,
-      best$value,
-      best$slope,
-      trial$alpha,
-      trial$value
+      reference$alpha,
+      reference_measure$value,
+      reference_measure$slope,
+      trial_point$alpha,
+      trial_measure$value
     )
+    cubic_is_valid <- isTRUE(is.finite(cubic_proposal))
 
-    if (!isTRUE(is.finite(cubic_proposal))) {
+    if (!cubic_is_valid) {
       next_alpha <- quadratic_proposal
     } else if (
-      abs(cubic_proposal - best$alpha) < abs(quadratic_proposal - best$alpha)
+      abs(cubic_proposal - reference$alpha) <
+        abs(quadratic_proposal - reference$alpha)
     ) {
       next_alpha <- safeguard_more_thuente_cubic(
         cubic_proposal,
-        best$alpha,
+        reference$alpha,
         other$alpha,
         policy
       )
@@ -427,145 +456,254 @@ update_more_thuente_interval <- function(state, policy) {
       next_alpha <- cubic_proposal +
         (quadratic_proposal - cubic_proposal) / 2
     }
-    state$is_bracketed <- TRUE
-  } else if (opposite_slope) {
-    classification <- "lower_value_opposite_slope"
+  } else if (identical(classification, "lower_value_opposite_slope")) {
     cubic_proposal <- cubic_interpolate(
-      best$alpha,
-      best$value,
-      best$slope,
-      trial$alpha,
-      trial$value,
-      trial$slope
+      reference$alpha,
+      reference_measure$value,
+      reference_measure$slope,
+      trial_point$alpha,
+      trial_measure$value,
+      trial_measure$slope
     )
     secant_proposal <- propose_slope_secant_alpha(
-      trial$alpha,
-      trial$slope,
-      best$alpha,
-      best$slope
+      trial_point$alpha,
+      trial_measure$slope,
+      reference$alpha,
+      reference_measure$slope
     )
+    cubic_is_valid <- isTRUE(is.finite(cubic_proposal))
 
-    if (!isTRUE(is.finite(cubic_proposal))) {
+    if (!cubic_is_valid) {
       next_alpha <- secant_proposal
     } else if (
-      abs(cubic_proposal - trial$alpha) > abs(secant_proposal - trial$alpha)
+      abs(cubic_proposal - trial_point$alpha) >
+        abs(secant_proposal - trial_point$alpha)
     ) {
       next_alpha <- safeguard_more_thuente_cubic(
         cubic_proposal,
-        best$alpha,
+        reference$alpha,
         other$alpha,
         policy
       )
     } else {
       next_alpha <- secant_proposal
     }
-    state$is_bracketed <- TRUE
-  } else if (abs(trial$slope) < abs(best$slope)) {
-    classification <- "lower_value_reduced_slope_magnitude"
-    is_bounded <- TRUE
-
+  } else if (identical(classification, "lower_value_reduced_slope_magnitude")) {
     theta <- 3 *
-      (best$value - trial$value) /
-      (trial$alpha - best$alpha) +
-      best$slope +
-      trial$slope
-    scale <- norm(rbind(theta, best$slope, trial$slope), "i")
+      (reference_measure$value - trial_measure$value) /
+      (trial_point$alpha - reference$alpha) +
+      reference_measure$slope +
+      trial_measure$slope
+    scale <- norm(
+      rbind(theta, reference_measure$slope, trial_measure$slope),
+      "i"
+    )
     gamma <- scale *
       sqrt(
         max(
           0,
           (theta / scale)^2 -
-            (best$slope / scale) * (trial$slope / scale)
+            (reference_measure$slope / scale) *
+              (trial_measure$slope / scale)
         )
       )
-    if (trial$alpha > best$alpha) {
+    if (trial_point$alpha > reference$alpha) {
       gamma <- -gamma
     }
-    p <- (gamma - trial$slope) + theta
-    q <- (gamma + (best$slope - trial$slope)) + gamma
+    p <- (gamma - trial_measure$slope) + theta
+    q <- (gamma +
+      (reference_measure$slope - trial_measure$slope)) +
+      gamma
     ratio <- p / q
 
     if (ratio < 0 && gamma != 0) {
-      cubic_proposal <- trial$alpha + ratio * (best$alpha - trial$alpha)
-    } else if (trial$alpha > best$alpha) {
-      cubic_proposal <- state$trial_upper_bound
+      cubic_proposal <- trial_point$alpha +
+        ratio * (reference$alpha - trial_point$alpha)
+    } else if (trial_point$alpha > reference$alpha) {
+      cubic_proposal <- trial_bounds$upper
     } else {
-      cubic_proposal <- state$trial_lower_bound
+      cubic_proposal <- trial_bounds$lower
     }
     secant_proposal <- propose_slope_secant_alpha(
-      trial$alpha,
-      trial$slope,
-      best$alpha,
-      best$slope
+      trial_point$alpha,
+      trial_measure$slope,
+      reference$alpha,
+      reference_measure$slope
     )
 
     if (state$is_bracketed) {
       if (
-        abs(trial$alpha - cubic_proposal) < abs(trial$alpha - secant_proposal)
+        abs(trial_point$alpha - cubic_proposal) <
+          abs(trial_point$alpha - secant_proposal)
       ) {
         next_alpha <- cubic_proposal
       } else {
         next_alpha <- secant_proposal
       }
     } else if (
-      abs(trial$alpha - cubic_proposal) > abs(trial$alpha - secant_proposal)
+      abs(trial_point$alpha - cubic_proposal) >
+        abs(trial_point$alpha - secant_proposal)
     ) {
       next_alpha <- cubic_proposal
     } else {
       next_alpha <- secant_proposal
     }
-  } else {
-    classification <- "lower_value_unreduced_slope_magnitude"
-    if (state$is_bracketed) {
-      cubic_proposal <- cubic_interpolate(
-        other$alpha,
-        other$value,
-        other$slope,
-        trial$alpha,
-        trial$value,
-        trial$slope
-      )
-      if (!isTRUE(is.finite(cubic_proposal))) {
-        cubic_proposal <- (other$alpha + trial$alpha) / 2
-      }
-      next_alpha <- safeguard_more_thuente_cubic(
-        cubic_proposal,
-        best$alpha,
-        other$alpha,
-        policy
-      )
-    } else if (trial$alpha > best$alpha) {
-      next_alpha <- state$trial_upper_bound
-    } else {
-      next_alpha <- state$trial_lower_bound
+  } else if (state$is_bracketed) {
+    cubic_proposal <- cubic_interpolate(
+      other$alpha,
+      other_measure$value,
+      other_measure$slope,
+      trial_point$alpha,
+      trial_measure$value,
+      trial_measure$slope
+    )
+    cubic_is_valid <- isTRUE(is.finite(cubic_proposal))
+    if (!cubic_is_valid) {
+      cubic_proposal <- (other$alpha + trial_point$alpha) / 2
     }
+    next_alpha <- safeguard_more_thuente_cubic(
+      cubic_proposal,
+      reference$alpha,
+      other$alpha,
+      policy
+    )
+  } else if (trial_point$alpha > reference$alpha) {
+    next_alpha <- trial_bounds$upper
+  } else {
+    next_alpha <- trial_bounds$lower
   }
 
-  if (trial$value > best$value) {
-    state$other_endpoint <- trial
+  list(alpha = next_alpha, is_bounded = case$is_bounded)
+}
+
+update_more_thuente_endpoints <- function(
+  reference_endpoint,
+  other_endpoint,
+  trial_point,
+  classification
+) {
+  if (identical(classification, "higher_trial_value")) {
+    other_endpoint <- trial_point
+  } else if (identical(classification, "lower_value_opposite_slope")) {
+    other_endpoint <- reference_endpoint
+    reference_endpoint <- trial_point
   } else {
-    if (opposite_slope) {
-      state$other_endpoint <- best
-    }
-    state$best_endpoint <- trial
+    reference_endpoint <- trial_point
   }
 
-  next_alpha <- min(state$trial_upper_bound, next_alpha)
-  next_alpha <- max(state$trial_lower_bound, next_alpha)
-  if (state$is_bracketed && is_bounded) {
-    weighted_midpoint <- state$best_endpoint$alpha +
+  list(
+    reference_endpoint = reference_endpoint,
+    other_endpoint = other_endpoint
+  )
+}
+
+safeguard_more_thuente_trial <- function(
+  proposal,
+  endpoints,
+  is_bracketed,
+  trial_bounds,
+  policy
+) {
+  next_alpha <- min(trial_bounds$upper, proposal$alpha)
+  next_alpha <- max(trial_bounds$lower, next_alpha)
+  if (is_bracketed && proposal$is_bounded) {
+    weighted_midpoint <- endpoints$reference_endpoint$alpha +
       policy$contraction_factor *
-        (state$other_endpoint$alpha - state$best_endpoint$alpha)
-    if (state$other_endpoint$alpha > state$best_endpoint$alpha) {
+        (endpoints$other_endpoint$alpha -
+          endpoints$reference_endpoint$alpha)
+    if (endpoints$other_endpoint$alpha > endpoints$reference_endpoint$alpha) {
       next_alpha <- min(weighted_midpoint, next_alpha)
     } else {
       next_alpha <- max(weighted_midpoint, next_alpha)
     }
   }
 
-  state$trial_point$alpha <- next_alpha
-  state$interval_update_case <- classification
-  list(state = state, classification = classification)
+  proposal_is_finite <- isTRUE(is.finite(next_alpha))
+
+  list(
+    alpha = next_alpha,
+    is_finite = proposal_is_finite
+  )
+}
+
+advance_more_thuente_interval <- function(
+  state,
+  trial_point,
+  trial_bounds,
+  armijo_slope,
+  policy
+) {
+  if (armijo_slope == 0) {
+    reference_measure <- state$reference_endpoint
+    other_measure <- state$other_endpoint
+    trial_measure <- trial_point
+  } else {
+    reference_measure <- measure_more_thuente_point(
+      state$reference_endpoint,
+      armijo_slope
+    )
+    other_measure <- measure_more_thuente_point(
+      state$other_endpoint,
+      armijo_slope
+    )
+    trial_measure <- measure_more_thuente_point(trial_point, armijo_slope)
+  }
+  case <- classify_more_thuente_case(
+    state,
+    trial_point,
+    trial_bounds,
+    reference_measure,
+    trial_measure
+  )
+  if (identical(case$classification, "invalid")) {
+    return(list(
+      state = state,
+      classification = case$classification,
+      transition_is_valid = FALSE,
+      proposal_is_finite = TRUE
+    ))
+  }
+
+  proposal <- propose_more_thuente_trial(
+    state,
+    trial_point,
+    trial_bounds,
+    reference_measure,
+    other_measure,
+    trial_measure,
+    case,
+    policy
+  )
+  endpoints <- update_more_thuente_endpoints(
+    state$reference_endpoint,
+    state$other_endpoint,
+    trial_point,
+    case$classification
+  )
+  is_bracketed <- state$is_bracketed ||
+    case$classification %in%
+      c("higher_trial_value", "lower_value_opposite_slope")
+  safeguarded <- safeguard_more_thuente_trial(
+    proposal,
+    endpoints,
+    is_bracketed,
+    trial_bounds,
+    policy
+  )
+
+  state$reference_endpoint <- endpoints$reference_endpoint
+  state$other_endpoint <- endpoints$other_endpoint
+  state$is_bracketed <- is_bracketed
+  if (safeguarded$is_finite) {
+    state$next_trial_alpha <- safeguarded$alpha
+  }
+
+  list(
+    state = state,
+    classification = case$classification,
+    transition_is_valid = TRUE,
+    proposal_is_finite = safeguarded$is_finite
+  )
 }
 
 safeguard_more_thuente_cubic <- function(

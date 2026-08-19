@@ -341,55 +341,59 @@ test_that("More-Thuente endpoint roles preserve the paper invariants", {
   armijo_slope <- -0.1
   policy <- make_more_thuente_policy(alpha_max = 4)
   state <- initialize_more_thuente_search_state(initial, 1, policy)
-  state$best_endpoint <- modify_more_thuente_point(initial, armijo_slope)
-  state$other_endpoint <- modify_more_thuente_point(initial, armijo_slope)
-  state$trial_point <- modify_more_thuente_point(
-    point(1, -0.05, 0.5),
+  trial_bounds <- list(lower = 0, upper = 4)
+
+  auxiliary_update <- advance_more_thuente_interval(
+    state = state,
+    trial_point = point(1, -0.05, 0.5),
+    trial_bounds = trial_bounds,
+    armijo_slope = armijo_slope,
+    policy = policy
+  )
+  state <- auxiliary_update$state
+  expect_equal(state$reference_endpoint$value, 0)
+  expect_equal(state$other_endpoint$value, -0.05)
+  reference <- measure_more_thuente_point(
+    state$reference_endpoint,
     armijo_slope
   )
-  state$trial_lower_bound <- 0
-  state$trial_upper_bound <- 4
-
-  auxiliary_update <- update_more_thuente_interval(state, policy)$state
-  reference <- auxiliary_update$best_endpoint
-  other <- auxiliary_update$other_endpoint
+  other <- measure_more_thuente_point(state$other_endpoint, armijo_slope)
 
   expect_lte(reference$value, other$value)
   expect_lte(reference$value, 0)
-  expect_lt(reference$slope * (other$alpha - reference$alpha), 0)
+  expect_lt(
+    reference$slope *
+      (state$other_endpoint$alpha - state$reference_endpoint$alpha),
+    0
+  )
 
-  next_alpha <- auxiliary_update$trial_point$alpha
-  auxiliary_update$best_endpoint <- unmodify_more_thuente_point(
-    reference,
-    armijo_slope
-  )
-  auxiliary_update$other_endpoint <- unmodify_more_thuente_point(
-    other,
-    armijo_slope
-  )
+  next_alpha <- state$next_trial_alpha
   objective_trial <- point(next_alpha, -0.2, 0.2)
-  objective_measure <- modify_more_thuente_point(
+  objective_measure <- measure_more_thuente_point(
     objective_trial,
     armijo_slope
   )
   expect_lte(objective_measure$value, 0)
   expect_gte(objective_trial$slope, 0)
 
-  auxiliary_update$trial_point <- objective_trial
-  auxiliary_update$trial_lower_bound <- min(
-    auxiliary_update$best_endpoint$alpha,
-    auxiliary_update$other_endpoint$alpha
+  objective_bounds <- list(
+    lower = min(
+      state$reference_endpoint$alpha,
+      state$other_endpoint$alpha
+    ),
+    upper = max(
+      state$reference_endpoint$alpha,
+      state$other_endpoint$alpha
+    )
   )
-  auxiliary_update$trial_upper_bound <- max(
-    auxiliary_update$best_endpoint$alpha,
-    auxiliary_update$other_endpoint$alpha
-  )
-
-  objective_update <- update_more_thuente_interval(
-    auxiliary_update,
-    policy
+  objective_update <- advance_more_thuente_interval(
+    state = state,
+    trial_point = objective_trial,
+    trial_bounds = objective_bounds,
+    armijo_slope = 0,
+    policy = policy
   )$state
-  reference <- objective_update$best_endpoint
+  reference <- objective_update$reference_endpoint
   other <- objective_update$other_endpoint
 
   expect_lte(reference$value, other$value)
@@ -452,7 +456,7 @@ test_that("More-Thuente stage switch includes zero auxiliary slope", {
 
   expect_lt(boundary$slope, 0)
   expect_equal(
-    modify_more_thuente_point(boundary, armijo_slope)$slope,
+    measure_more_thuente_point(boundary, armijo_slope)$slope,
     0
   )
   expect_equal(run_stage_case(armijo_slope)[[3]], 3)
@@ -507,13 +511,13 @@ test_that("More-Thuente interval updates reject invalid state without mutation",
 
   invalid_cases <- list(
     trial_outside_bracket = list(
-      best_endpoint = make_interval_point(1, 0, -1),
+      reference_endpoint = make_interval_point(1, 0, -1),
       other_endpoint = make_interval_point(3, 1, 1),
       trial_point = make_interval_point(4, 2, 0.5),
       is_bracketed = TRUE
     ),
     zero_best_slope = list(
-      best_endpoint = make_interval_point(0, 0, 0),
+      reference_endpoint = make_interval_point(0, 0, 0),
       other_endpoint = make_interval_point(0, 0, 0),
       trial_point = make_interval_point(1, -1, -1),
       is_bracketed = FALSE
@@ -525,18 +529,21 @@ test_that("More-Thuente interval updates reject invalid state without mutation",
   for (case_name in names(invalid_cases)) {
     case <- invalid_cases[[case_name]]
     state <- initialize_more_thuente_search_state(
-      case$best_endpoint,
+      case$reference_endpoint,
       case$trial_point$alpha,
       policy
     )
-    state$best_endpoint <- case$best_endpoint
+    state$reference_endpoint <- case$reference_endpoint
     state$other_endpoint <- case$other_endpoint
-    state$trial_point <- case$trial_point
     state$is_bracketed <- case$is_bracketed
-    state$trial_lower_bound <- 0
-    state$trial_upper_bound <- 4
     result <- tryCatch(
-      update_more_thuente_interval(state, policy),
+      advance_more_thuente_interval(
+        state = state,
+        trial_point = case$trial_point,
+        trial_bounds = list(lower = 0, upper = 4),
+        armijo_slope = 0,
+        policy = policy
+      ),
       error = identity
     )
 
@@ -544,6 +551,7 @@ test_that("More-Thuente interval updates reject invalid state without mutation",
     if (!inherits(result, "error")) {
       expect_identical(result$state, state, info = case_name)
       expect_identical(result$classification, "invalid", info = case_name)
+      expect_false(result$transition_is_valid, info = case_name)
     }
   }
 })
@@ -559,7 +567,7 @@ test_that("More-Thuente interval updates cover all four mathematical cases", {
       trial = make_interval_point(1, 1, -0.5),
       classification = "higher_trial_value",
       is_bracketed = TRUE,
-      best_endpoint = initial,
+      reference_endpoint = initial,
       other_endpoint = make_interval_point(1, 1, -0.5),
       next_alpha = 0.10056217060402
     ),
@@ -567,7 +575,7 @@ test_that("More-Thuente interval updates cover all four mathematical cases", {
       trial = make_interval_point(1, -0.5, 0.5),
       classification = "lower_value_opposite_slope",
       is_bracketed = TRUE,
-      best_endpoint = make_interval_point(1, -0.5, 0.5),
+      reference_endpoint = make_interval_point(1, -0.5, 0.5),
       other_endpoint = initial,
       next_alpha = 2 / 3
     ),
@@ -575,7 +583,7 @@ test_that("More-Thuente interval updates cover all four mathematical cases", {
       trial = make_interval_point(1, -0.5, -0.25),
       classification = "lower_value_reduced_slope_magnitude",
       is_bracketed = FALSE,
-      best_endpoint = make_interval_point(1, -0.5, -0.25),
+      reference_endpoint = make_interval_point(1, -0.5, -0.25),
       other_endpoint = initial,
       next_alpha = 4
     ),
@@ -583,7 +591,7 @@ test_that("More-Thuente interval updates cover all four mathematical cases", {
       trial = make_interval_point(1, -0.5, -2),
       classification = "lower_value_unreduced_slope_magnitude",
       is_bracketed = FALSE,
-      best_endpoint = make_interval_point(1, -0.5, -2),
+      reference_endpoint = make_interval_point(1, -0.5, -2),
       other_endpoint = initial,
       next_alpha = 4
     )
@@ -596,10 +604,13 @@ test_that("More-Thuente interval updates cover all four mathematical cases", {
       case$trial$alpha,
       policy
     )
-    state$trial_point <- case$trial
-    state$trial_lower_bound <- 0
-    state$trial_upper_bound <- 4
-    result <- update_more_thuente_interval(state, policy)
+    result <- advance_more_thuente_interval(
+      state = state,
+      trial_point = case$trial,
+      trial_bounds = list(lower = 0, upper = 4),
+      armijo_slope = 0,
+      policy = policy
+    )
 
     expect_identical(
       result$classification,
@@ -612,8 +623,8 @@ test_that("More-Thuente interval updates cover all four mathematical cases", {
       info = case_name
     )
     expect_equal(
-      result$state$best_endpoint,
-      case$best_endpoint,
+      result$state$reference_endpoint,
+      case$reference_endpoint,
       info = case_name
     )
     expect_equal(
@@ -622,13 +633,8 @@ test_that("More-Thuente interval updates cover all four mathematical cases", {
       info = case_name
     )
     expect_equal(
-      result$state$trial_point$alpha,
+      result$state$next_trial_alpha,
       case$next_alpha,
-      info = case_name
-    )
-    expect_equal(
-      result$state$trial_point[c("value", "slope", "gradient")],
-      case$trial[c("value", "slope", "gradient")],
       info = case_name
     )
   }
@@ -641,9 +647,9 @@ test_that("More-Thuente termination guard reports named reasons", {
       expected = "alpha_min",
       point = list(alpha = 0, value = 2, slope = -1, gradient = -1),
       is_bracketed = FALSE,
-      interval_update_case = "initial",
       trial_lower_bound = 0,
       trial_upper_bound = 4,
+      previous_transition_is_valid = TRUE,
       alpha_min = 0,
       alpha_max = 10,
       evaluation_count = 1,
@@ -654,9 +660,9 @@ test_that("More-Thuente termination guard reports named reasons", {
       expected = "alpha_max",
       point = list(alpha = 10, value = 0.5, slope = -2, gradient = -2),
       is_bracketed = FALSE,
-      interval_update_case = "initial",
       trial_lower_bound = 0,
       trial_upper_bound = 10,
+      previous_transition_is_valid = TRUE,
       alpha_min = 0,
       alpha_max = 10,
       evaluation_count = 1,
@@ -667,9 +673,9 @@ test_that("More-Thuente termination guard reports named reasons", {
       expected = "rounding_stagnation",
       point = list(alpha = 2, value = 2, slope = -1, gradient = -1),
       is_bracketed = FALSE,
-      interval_update_case = "invalid",
       trial_lower_bound = 0,
       trial_upper_bound = 4,
+      previous_transition_is_valid = FALSE,
       alpha_min = 0,
       alpha_max = 10,
       evaluation_count = 1,
@@ -680,9 +686,9 @@ test_that("More-Thuente termination guard reports named reasons", {
       expected = "relative_interval_tolerance",
       point = list(alpha = 1 + 5e-13, value = 2, slope = -1, gradient = -1),
       is_bracketed = TRUE,
-      interval_update_case = "initial",
       trial_lower_bound = 1,
       trial_upper_bound = 1 + 1e-12,
+      previous_transition_is_valid = TRUE,
       alpha_min = 0,
       alpha_max = 10,
       evaluation_count = 1,
@@ -703,13 +709,15 @@ test_that("More-Thuente termination guard reports named reasons", {
       case$point$alpha,
       policy
     )
-    state$trial_point <- case$point
     state$is_bracketed <- case$is_bracketed
-    state$interval_update_case <- case$interval_update_case
-    state$trial_lower_bound <- case$trial_lower_bound
-    state$trial_upper_bound <- case$trial_upper_bound
     reason <- classify_more_thuente_termination(
       state = state,
+      trial_point = case$point,
+      trial_bounds = list(
+        lower = case$trial_lower_bound,
+        upper = case$trial_upper_bound
+      ),
+      previous_transition_is_valid = case$previous_transition_is_valid,
       initial_point = initial_point,
       condition_policy = make_line_condition_policy(1e-4, 0.9),
       policy = policy,
@@ -723,6 +731,12 @@ test_that("More-Thuente termination guard reports named reasons", {
 
 test_that("More-Thuente policy owns named algorithm defaults", {
   policy <- make_more_thuente_policy()
+  initial_point <- list(
+    alpha = 0,
+    value = 1,
+    slope = -1,
+    gradient = -1
+  )
 
   expect_equal(policy$relative_interval_tolerance, .Machine$double.eps)
   expect_equal(policy$contraction_factor, 0.66)
@@ -733,26 +747,17 @@ test_that("More-Thuente policy owns named algorithm defaults", {
   expect_equal(policy$cubic_interior_fraction, 0.001)
 
   state <- initialize_more_thuente_search_state(
-    list(alpha = 0, value = 1, slope = -1, gradient = -1),
+    initial_point,
     initial_alpha = 1,
     policy = policy
   )
-  expect_named(
-    state,
-    c(
-      "best_endpoint",
-      "other_endpoint",
-      "trial_point",
-      "is_bracketed",
-      "modified_function_stage",
-      "current_interval_width",
-      "previous_interval_width",
-      "trial_lower_bound",
-      "trial_upper_bound",
-      "interval_update_case",
-      "termination_reason"
-    )
-  )
+  expect_identical(state$reference_endpoint, initial_point)
+  expect_identical(state$other_endpoint, initial_point)
+  expect_identical(state$next_trial_alpha, 1)
+  expect_false(state$is_bracketed)
+  expect_identical(state$stage, "auxiliary")
+  expect_identical(state$interval_width, Inf)
+  expect_identical(state$two_trial_reference_width, Inf)
 })
 
 test_that("More-Thuente termination reasons retain their precedence", {
@@ -764,30 +769,34 @@ test_that("More-Thuente termination reasons retain their precedence", {
   conditions <- make_line_condition_policy(1e-4, 0.9)
   state <- initialize_more_thuente_search_state(initial, 1, policy)
   state$is_bracketed <- TRUE
-  state$trial_lower_bound <- 0.5
-  state$trial_upper_bound <- 1
-  state$interval_update_case <- "invalid"
+  trial_bounds <- list(lower = 0.5, upper = 1)
 
-  state$trial_point <- list(alpha = 1, value = 0, slope = 0, gradient = 0)
+  trial_point <- list(alpha = 1, value = 0, slope = 0, gradient = 0)
   expect_identical(
     classify_more_thuente_termination(
-      state,
-      initial,
-      conditions,
-      policy,
+      state = state,
+      trial_point = trial_point,
+      trial_bounds = trial_bounds,
+      previous_transition_is_valid = FALSE,
+      initial_point = initial,
+      condition_policy = conditions,
+      policy = policy,
       evaluation_count = 1,
       max_evaluations = 1
     ),
     "wolfe"
   )
 
-  state$trial_point <- list(alpha = 1, value = 2, slope = -1, gradient = -1)
+  trial_point <- list(alpha = 1, value = 2, slope = -1, gradient = -1)
   expect_identical(
     classify_more_thuente_termination(
-      state,
-      initial,
-      conditions,
-      policy,
+      state = state,
+      trial_point = trial_point,
+      trial_bounds = trial_bounds,
+      previous_transition_is_valid = FALSE,
+      initial_point = initial,
+      condition_policy = conditions,
+      policy = policy,
       evaluation_count = 1,
       max_evaluations = 1
     ),
@@ -795,47 +804,19 @@ test_that("More-Thuente termination reasons retain their precedence", {
   )
 
   state$is_bracketed <- FALSE
-  state$trial_point <- list(alpha = 0, value = 2, slope = -1, gradient = -1)
+  trial_point <- list(alpha = 0, value = 2, slope = -1, gradient = -1)
   expect_identical(
     classify_more_thuente_termination(
-      state,
-      initial,
-      conditions,
-      policy,
+      state = state,
+      trial_point = trial_point,
+      trial_bounds = trial_bounds,
+      previous_transition_is_valid = FALSE,
+      initial_point = initial,
+      condition_policy = conditions,
+      policy = policy,
       evaluation_count = 1,
       max_evaluations = 1
     ),
     "budget_exhausted"
   )
-})
-
-test_that("More-Thuente termination reasons select the same endpoint roles", {
-  policy <- make_more_thuente_policy()
-  best <- list(alpha = 0.5, value = 0.25, slope = -0.5, gradient = -0.5)
-  trial <- list(alpha = 1, value = 0, slope = 0, gradient = 0)
-  state <- initialize_more_thuente_search_state(best, trial$alpha, policy)
-  state$best_endpoint <- best
-  state$trial_point <- trial
-
-  for (reason in c(
-    "budget_exhausted",
-    "relative_interval_tolerance",
-    "rounding_stagnation"
-  )) {
-    state$termination_reason <- reason
-    expect_identical(
-      select_more_thuente_candidate(state),
-      best,
-      info = reason
-    )
-  }
-
-  for (reason in c("wolfe", "alpha_min", "alpha_max")) {
-    state$termination_reason <- reason
-    expect_identical(
-      select_more_thuente_candidate(state),
-      trial,
-      info = reason
-    )
-  }
 })
