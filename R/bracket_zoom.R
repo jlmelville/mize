@@ -86,7 +86,7 @@ run_bracket_zoom <- function(
 
   zoom_state <- method_policy$initialize_zoom(bracket)
   direction_scale <- if (is.null(search_direction)) {
-    0
+    NULL
   } else {
     max(abs(search_direction))
   }

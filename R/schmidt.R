@@ -249,7 +249,8 @@ process_schmidt_zoom_trial <- function(
   list(
     state = zoom_state,
     termination_reason = if (
-      alpha_interval_width * direction_scale < parameter_tolerance
+      !is.null(direction_scale) &&
+        alpha_interval_width * direction_scale < parameter_tolerance
     ) {
       "parameter_tolerance"
     } else {

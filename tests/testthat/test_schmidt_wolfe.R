@@ -300,3 +300,51 @@ test_that("Schmidt Wolfe zooms when expansion stops improving", {
   expect_identical(result$function_evaluations, 3L)
   expect_identical(result$gradient_evaluations, 3L)
 })
+
+test_that("Schmidt Wolfe disables parameter tolerance without a direction", {
+  evaluated_steps <- list()
+  evaluate_line <- function(alpha, calc_gradient = TRUE) {
+    evaluation <- length(evaluated_steps) + 1L
+    point <- if (evaluation <= 3L) {
+      list(
+        alpha = alpha,
+        value = if (evaluation <= 2L) 0 else -0.1,
+        gradient = -1,
+        slope = -1,
+        parameters = alpha
+      )
+    } else {
+      list(
+        alpha = alpha,
+        value = -0.2,
+        gradient = 0,
+        slope = 0,
+        parameters = alpha
+      )
+    }
+    evaluated_steps[[evaluation]] <<- point
+    point
+  }
+  initial_point <- list(
+    alpha = 0,
+    value = 1,
+    gradient = -1,
+    slope = -1,
+    parameters = 0
+  )
+
+  result <- make_schmidt_wolfe_search(
+    armijo_constant = 0.05,
+    curvature_constant = 0.1,
+    max_evaluations = 5
+  )(
+    evaluate_line = evaluate_line,
+    initial_point = initial_point,
+    initial_alpha = 1
+  )
+
+  expect_identical(result$termination_reason, "wolfe")
+  expect_identical(result$function_evaluations, 4L)
+  expect_identical(result$gradient_evaluations, 4L)
+  expect_equal(result$line_point, evaluated_steps[[4L]])
+})
