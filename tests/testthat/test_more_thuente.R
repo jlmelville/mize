@@ -327,6 +327,178 @@ test_that("Function modification", {
   )
 })
 
+test_that("More-Thuente endpoint roles preserve the paper invariants", {
+  point <- function(alpha, value, slope) {
+    list(
+      alpha = alpha,
+      value = value,
+      slope = slope,
+      gradient = slope,
+      parameters = alpha
+    )
+  }
+  initial <- point(0, 0, -1)
+  armijo_slope <- -0.1
+  policy <- make_more_thuente_policy(alpha_max = 4)
+  state <- initialize_more_thuente_search_state(initial, 1, policy)
+  state$best_endpoint <- modify_more_thuente_point(initial, armijo_slope)
+  state$other_endpoint <- modify_more_thuente_point(initial, armijo_slope)
+  state$trial_point <- modify_more_thuente_point(
+    point(1, -0.05, 0.5),
+    armijo_slope
+  )
+  state$trial_lower_bound <- 0
+  state$trial_upper_bound <- 4
+
+  auxiliary_update <- update_more_thuente_interval(state, policy)$state
+  reference <- auxiliary_update$best_endpoint
+  other <- auxiliary_update$other_endpoint
+
+  expect_lte(reference$value, other$value)
+  expect_lte(reference$value, 0)
+  expect_lt(reference$slope * (other$alpha - reference$alpha), 0)
+
+  next_alpha <- auxiliary_update$trial_point$alpha
+  auxiliary_update$best_endpoint <- unmodify_more_thuente_point(
+    reference,
+    armijo_slope
+  )
+  auxiliary_update$other_endpoint <- unmodify_more_thuente_point(
+    other,
+    armijo_slope
+  )
+  objective_trial <- point(next_alpha, -0.2, 0.2)
+  objective_measure <- modify_more_thuente_point(
+    objective_trial,
+    armijo_slope
+  )
+  expect_lte(objective_measure$value, 0)
+  expect_gte(objective_trial$slope, 0)
+
+  auxiliary_update$trial_point <- objective_trial
+  auxiliary_update$trial_lower_bound <- min(
+    auxiliary_update$best_endpoint$alpha,
+    auxiliary_update$other_endpoint$alpha
+  )
+  auxiliary_update$trial_upper_bound <- max(
+    auxiliary_update$best_endpoint$alpha,
+    auxiliary_update$other_endpoint$alpha
+  )
+
+  objective_update <- update_more_thuente_interval(
+    auxiliary_update,
+    policy
+  )$state
+  reference <- objective_update$best_endpoint
+  other <- objective_update$other_endpoint
+
+  expect_lte(reference$value, other$value)
+  expect_lt(reference$slope * (other$alpha - reference$alpha), 0)
+})
+
+test_that("More-Thuente stage switch includes zero auxiliary slope", {
+  c1 <- 0.1
+  initial <- list(
+    alpha = 0,
+    value = 0,
+    slope = -1,
+    gradient = -1,
+    parameters = 0
+  )
+  armijo_slope <- c1 * initial$slope
+  run_stage_case <- function(slope) {
+    evaluated_alphas <- numeric()
+    evaluation <- 0L
+    evaluate_line <- function(alpha, calc_gradient = TRUE) {
+      evaluation <<- evaluation + 1L
+      evaluated_alphas <<- c(evaluated_alphas, alpha)
+      if (evaluation == 1L) {
+        value <- armijo_slope * alpha
+        trial_slope <- slope
+      } else if (evaluation == 2L) {
+        value <- -0.2
+        trial_slope <- 0.05
+      } else {
+        value <- 1
+        trial_slope <- 1
+      }
+      list(
+        alpha = alpha,
+        value = value,
+        slope = trial_slope,
+        gradient = trial_slope,
+        parameters = alpha
+      )
+    }
+    evaluator <- make_line_evaluator(
+      evaluate_line,
+      initial_point = initial,
+      max_evaluations = 3
+    )
+    conditions <- make_line_condition_policy(c1, 0.9)
+    # Wolfe success normally wins before the stage update. Suppressing only
+    # that terminal decision exposes the existing stage transition itself.
+    conditions$wolfe <- function(...) FALSE
+    run_more_thuente_search(
+      evaluator = evaluator,
+      initial_point = initial,
+      initial_alpha = 1,
+      condition_policy = conditions,
+      policy = make_more_thuente_policy(alpha_max = 4)
+    )
+    evaluated_alphas
+  }
+  boundary <- list(alpha = 1, value = armijo_slope, slope = armijo_slope)
+
+  expect_lt(boundary$slope, 0)
+  expect_equal(
+    modify_more_thuente_point(boundary, armijo_slope)$slope,
+    0
+  )
+  expect_equal(run_stage_case(armijo_slope)[[3]], 3)
+  expect_lt(run_stage_case(armijo_slope - 1e-8)[[3]], 2)
+})
+
+test_that("More-Thuente bisects after insufficient two-trial contraction", {
+  evaluated_alphas <- numeric()
+  evaluate_line <- make_line_function(
+    parameters = 0,
+    fg = f3,
+    search_direction = 1,
+    calc_gradient_default = TRUE
+  )
+  traced_evaluate_line <- function(alpha, calc_gradient = TRUE) {
+    evaluated_alphas <<- c(evaluated_alphas, alpha)
+    evaluate_line(alpha, calc_gradient)
+  }
+  search <- make_wolfe_line_search(
+    more_thuente_core,
+    armijo_constant = 0.1,
+    curvature_constant = 0.1,
+    method_policy = make_more_thuente_policy()
+  )
+
+  result <- search(
+    evaluate_line = traced_evaluate_line,
+    initial_point = make_initial_line_point(f3, 0, 1),
+    initial_alpha = 0.1,
+    search_direction = 1
+  )
+  reference_width <- evaluated_alphas[[3]] - evaluated_alphas[[2]]
+  two_trial_width <- evaluated_alphas[[3]] - evaluated_alphas[[5]]
+  bisected_alpha <- evaluated_alphas[[6]]
+
+  expect_gte(two_trial_width, 0.66 * reference_width)
+  expect_equal(
+    bisected_alpha,
+    evaluated_alphas[[5]] + two_trial_width / 2
+  )
+  expect_gt(bisected_alpha, evaluated_alphas[[5]])
+  expect_lt(bisected_alpha, evaluated_alphas[[3]])
+  expect_true(is.finite(bisected_alpha))
+  expect_identical(result$termination_reason, "wolfe")
+})
+
 test_that("More-Thuente interval updates reject invalid state without mutation", {
   make_interval_point <- function(alpha, f, d) {
     list(alpha = alpha, value = f, slope = d, gradient = d)
