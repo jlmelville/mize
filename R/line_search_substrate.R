@@ -183,6 +183,8 @@ make_line_condition_policy <- function(
   list(
     armijo_constant = armijo_constant,
     curvature_constant = curvature_constant,
+    exact_armijo = exact_armijo,
+    selected_armijo = selected_armijo,
     armijo = selected_armijo,
     curvature = selected_curvature,
     wolfe = function(initial_point, trial_point, ...) {

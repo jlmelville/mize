@@ -226,6 +226,9 @@ test_that("condition policy selects exact, approximate, and curvature rules", {
   )
   expect_false(exact$armijo(initial_point, approximate_trial))
   expect_true(approximate$armijo(initial_point, approximate_trial))
+  expect_false(approximate$exact_armijo(initial_point, approximate_trial))
+  expect_true(approximate$selected_armijo(initial_point, approximate_trial))
+  expect_identical(approximate$armijo, approximate$selected_armijo)
   expect_true(approximate$curvature(initial_point, approximate_trial))
   expect_true(approximate$wolfe(initial_point, approximate_trial))
 

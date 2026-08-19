@@ -240,10 +240,10 @@ run_more_thuente_search <- function(
 
     if (
       identical(state$stage, "auxiliary") &&
-        line_point_satisfies_weak_wolfe(
+        condition_policy$exact_armijo(initial_point, trial_point) &&
+        line_point_satisfies_weak_curvature(
           initial_point,
           trial_point,
-          condition_policy$armijo_constant,
           min(
             condition_policy$armijo_constant,
             condition_policy$curvature_constant
@@ -255,7 +255,7 @@ run_more_thuente_search <- function(
 
     use_auxiliary_measure <- identical(state$stage, "auxiliary") &&
       trial_point$value <= state$reference_endpoint$value &&
-      !condition_policy$armijo(initial_point, trial_point)
+      !condition_policy$selected_armijo(initial_point, trial_point)
     advance <- advance_more_thuente_interval(
       state = state,
       trial_point = trial_point,
@@ -317,7 +317,7 @@ classify_more_thuente_termination <- function(
   }
   if (
     trial_point$alpha == policy$alpha_max &&
-      condition_policy$armijo(initial_point, trial_point) &&
+      condition_policy$selected_armijo(initial_point, trial_point) &&
       !line_point_satisfies_weak_curvature(
         initial_point,
         trial_point,
@@ -328,7 +328,7 @@ classify_more_thuente_termination <- function(
   }
   if (
     trial_point$alpha == policy$alpha_min &&
-      (!condition_policy$armijo(initial_point, trial_point) ||
+      (!condition_policy$selected_armijo(initial_point, trial_point) ||
         line_point_satisfies_weak_curvature(
           initial_point,
           trial_point,
