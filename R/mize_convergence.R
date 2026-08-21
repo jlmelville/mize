@@ -32,7 +32,8 @@
 #' @param calc_gr (Optional). If `TRUE`, force calculation of gradient if
 #'  not already cached in `opt`, even if it would not be needed for
 #'  convergence checking.
-#' @return A list with the following items:
+#' @return A list containing the available items below. Items whose owning
+#' method or calculation did not supply a value are omitted.
 #'
 #' * `opt`: Optimizer with updated state (e.g. function and gradient
 #'  counts).
@@ -46,6 +47,14 @@
 #'  if `par_old` is provided.
 #' * `alpha`: Step length of the gradient descent part of the step.
 #' * `mu`: Momentum coefficient for this iteration.
+#' * `alpha_init`: Initial line-search step length after safeguards.
+#' * `slope_init`: Directional derivative at the start of the line search.
+#' * `ls_reason`: Reason the line search stopped.
+#' * `ls_outcome`: Kind of point selected by the line search.
+#' * `ls_nf`, `ls_ng`: Function and gradient callbacks owned by the line search.
+#' * `direction_reason`: Exact-Newton direction provenance.
+#'
+#' See the 'Progress' section of [mize()] for diagnostic value meanings.
 #' @export
 #' @examples
 #' rb_fg <- list(

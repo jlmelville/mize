@@ -275,6 +275,43 @@
 #' If `method` type `"momentum"` is specified with no other values,
 #' the momentum scheme will default to a constant value of `0.9`.
 #'
+#' @section Progress:
+#'
+#' If `store_progress = TRUE`, the returned `progress` data frame records the
+#' information available at each stored iteration. Common columns are `f`,
+#' `g2n`, `ginfn`, cumulative function and gradient counts `nf` and `ng`, the
+#' realized outer `step`, the gradient-descent step length `alpha`, and the
+#' momentum coefficient `mu`. Columns are included only when their owning
+#' method or calculation supplies them.
+#'
+#' Line searches may add these diagnostic columns:
+#'
+#' * `alpha_init`: Initial step length used by the line search after
+#'   initialization and safeguards.
+#' * `slope_init`: Directional derivative at the start of the search.
+#' * `ls_reason`: Why the line search stopped, such as `"wolfe"`,
+#'   `"armijo"`, or `"budget_exhausted"`.
+#' * `ls_outcome`: Kind of point ultimately selected: `"wolfe"`, `"armijo"`,
+#'   `"improving_fallback"`, or `"no_step"`. This is independent of
+#'   `ls_reason`; for example, an exhausted search can still return an evaluated
+#'   improving point.
+#' * `ls_nf` and `ls_ng`: Function and gradient callbacks owned by that outer
+#'   line search, excluding its cached starting point. An objective-only
+#'   Hager-Zhang initializer probe is included in `ls_nf`.
+#'
+#' Exact Newton (`method = "NEWTON"`) may add `direction_reason`, which records
+#' how its direction was produced: `"hessian_solve"`, `"hessian_diagonal"`,
+#' `"inverse_hessian_multiply"`, `"inverse_hessian_diagonal"`,
+#' `"cholesky_fallback"`, or `"direction_check_fallback"`. The two fallback
+#' values mean that steepest descent was used because Cholesky factorization
+#' failed, or because the computed direction was non-finite or not a descent
+#' direction, respectively.
+#'
+#' When a diagnostic column first appears after earlier progress rows, numeric
+#' columns use `NA_real_` in those rows and categorical columns use
+#' `NA_character_`. A method-specific column is absent if its owning stage never
+#' produced it.
+#'
 #' @section Convergence:
 #'
 #' There are several ways for the optimization to terminate. The type of
@@ -288,8 +325,9 @@
 #' based termination (`"abs_tol"`, `"rel_tol"`, `"grad_tol"`,
 #' `"ginf_tol"`, or `"step_tol"`). The `status` value is `"converged"` for
 #' those tolerance exits, `"budget_exhausted"` for `"max_iter"`, `"max_fn"`,
-#' `"max_gr"`, or `"max_fg"`, `"failed"` for `"fn_inf"` or `"gr_inf"`,
-#' and `"terminated"` for any other termination reason.
+#' `"max_gr"`, or `"max_fg"`, `"failed"` for `"fn_inf"`, `"gr_inf"`, or
+#' `"line_search_failed"`, and `"terminated"` for any other termination
+#' reason.
 #'
 #' The following parameters control various stopping criteria:
 #'
@@ -335,9 +373,19 @@
 #' Normal final reporting may then evaluate the objective only if doing so
 #' violates neither `max_fn` nor `max_fg`.
 #'
+#' If a line search selects `ls_outcome = "no_step"` and the complete optimizer
+#' iteration also realizes a zero step, optimization terminates with
+#' `terminate$what = "line_search_failed"`, the line-search reason in
+#' `terminate$val`, `status = "failed"`, and `converged = FALSE`. A global
+#' callback budget reached by that attempt takes precedence. A nonzero
+#' transition from a later optimizer stage is not classified as a no-step
+#' failure.
+#'
 #' Convergence is checked between specific iterations. How often is determined
 #' by the `check_conv_every` parameter, which specifies the number of
 #' iterations between each check. By default, this is set for every iteration.
+#' Line-search no-step failures are checked immediately, independently of this
+#' cadence.
 #'
 #' Be aware that if `abs_tol` or `rel_tol` are non-`NULL`, this
 #' requires the function to have been evaluated at the current position at the
@@ -363,9 +411,9 @@
 #' Note also that if the `verbose` parameter is `TRUE`, then a summary
 #' of the results so far will be logged to the console whenever a convergence
 #' check is carried out. If the `store_progress` parameter is `TRUE`,
-#' then the same information will be returned as a data frame in the return
-#' value. For a long optimization this could be a lot of data, so by default it
-#' is not stored.
+#' then progress summaries and available method-specific diagnostics will be
+#' returned as a data frame. For a long optimization this could be a lot of
+#' data, so by default it is not stored.
 #'
 #' Other ways for the optimization to terminate is if an iteration generates a
 #' non-finite (i.e. `Inf` or `NaN`) gradient or function value.
@@ -523,7 +571,7 @@
 #' optimization to the console.
 #' @param store_progress If `TRUE` store information about the progress
 #' of the optimization in a data frame, and include it as part of the return
-#' value.
+#' value. See the 'Progress' section.
 #' @return A list with components:
 #'
 #' * `par`: Optimized parameters. Normally, this is the best set of
@@ -575,11 +623,10 @@
 #' * `status`: Short string classifying the termination reason. One of
 #'  `"converged"`, `"budget_exhausted"`, `"failed"`, or `"terminated"`.
 #' * `message`: Human-readable summary of the termination reason.
-#' * `progress`: Optional data frame containing information on the
-#'  value of the function, gradient, momentum, and step sizes evaluated at each
-#'  iteration where convergence is checked. Only present if
-#'  `store_progress` is set to `TRUE`. Could get quite large if the
-#'  optimization is long and the convergence is checked regularly.
+#' * `progress`: Optional data frame containing optimization progress and
+#'  method-specific diagnostics. Only present if `store_progress` is set to
+#'  `TRUE`. See the 'Progress' section. Could get quite large if the
+#'  optimization is long and progress is stored regularly.
 #' @references
 #'
 #' Gilbert, J. C., & Nocedal, J. (1992). Global convergence properties of conjugate gradient methods for optimization.

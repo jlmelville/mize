@@ -15,6 +15,12 @@ with a finite-difference approximation.
 * `mize()` now returns status fields: `converged`,
 `status`, and `message`, plus explicit best/last result fields (`best_par`,
 `best_f`, `last_par`, and `last_f`).
+* With `store_progress = TRUE`, `mize()` now exposes optional line-search
+reason, selected-point provenance, local callback counts, initial scale, and
+exact-Newton direction provenance. A line search that selects no usable step
+and produces no complete optimizer transition now reports `line_search_failed`
+instead of tolerance convergence; an exact global callback budget retains
+precedence.
 
 # mize 0.2.5
 

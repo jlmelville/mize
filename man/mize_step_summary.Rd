@@ -28,7 +28,8 @@ not already cached in \code{opt}, even if it would not be needed for
 convergence checking.}
 }
 \value{
-A list with the following items:
+A list containing the available items below. Items whose owning
+method or calculation did not supply a value are omitted.
 \itemize{
 \item \code{opt}: Optimizer with updated state (e.g. function and gradient
 counts).
@@ -42,7 +43,15 @@ counts).
 if \code{par_old} is provided.
 \item \code{alpha}: Step length of the gradient descent part of the step.
 \item \code{mu}: Momentum coefficient for this iteration.
+\item \code{alpha_init}: Initial line-search step length after safeguards.
+\item \code{slope_init}: Directional derivative at the start of the line search.
+\item \code{ls_reason}: Reason the line search stopped.
+\item \code{ls_outcome}: Kind of point selected by the line search.
+\item \code{ls_nf}, \code{ls_ng}: Function and gradient callbacks owned by the line search.
+\item \code{direction_reason}: Exact-Newton direction provenance.
 }
+
+See the 'Progress' section of \code{\link[=mize]{mize()}} for diagnostic value meanings.
 }
 \description{
 Produces a result summary for an optimization iteration. Information such as

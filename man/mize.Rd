@@ -246,7 +246,7 @@ optimization to the console.}
 
 \item{store_progress}{If \code{TRUE} store information about the progress
 of the optimization in a data frame, and include it as part of the return
-value.}
+value. See the 'Progress' section.}
 }
 \value{
 A list with components:
@@ -300,11 +300,10 @@ the tolerance-based convergence criteria.
 \item \code{status}: Short string classifying the termination reason. One of
 \code{"converged"}, \code{"budget_exhausted"}, \code{"failed"}, or \code{"terminated"}.
 \item \code{message}: Human-readable summary of the termination reason.
-\item \code{progress}: Optional data frame containing information on the
-value of the function, gradient, momentum, and step sizes evaluated at each
-iteration where convergence is checked. Only present if
-\code{store_progress} is set to \code{TRUE}. Could get quite large if the
-optimization is long and the convergence is checked regularly.
+\item \code{progress}: Optional data frame containing optimization progress and
+method-specific diagnostics. Only present if \code{store_progress} is set to
+\code{TRUE}. See the 'Progress' section. Could get quite large if the
+optimization is long and progress is stored regularly.
 }
 }
 \description{
@@ -601,6 +600,46 @@ If \code{method} type \code{"momentum"} is specified with no other values,
 the momentum scheme will default to a constant value of \code{0.9}.
 }
 
+\section{Progress}{
+
+
+If \code{store_progress = TRUE}, the returned \code{progress} data frame records the
+information available at each stored iteration. Common columns are \code{f},
+\code{g2n}, \code{ginfn}, cumulative function and gradient counts \code{nf} and \code{ng}, the
+realized outer \code{step}, the gradient-descent step length \code{alpha}, and the
+momentum coefficient \code{mu}. Columns are included only when their owning
+method or calculation supplies them.
+
+Line searches may add these diagnostic columns:
+\itemize{
+\item \code{alpha_init}: Initial step length used by the line search after
+initialization and safeguards.
+\item \code{slope_init}: Directional derivative at the start of the search.
+\item \code{ls_reason}: Why the line search stopped, such as \code{"wolfe"},
+\code{"armijo"}, or \code{"budget_exhausted"}.
+\item \code{ls_outcome}: Kind of point ultimately selected: \code{"wolfe"}, \code{"armijo"},
+\code{"improving_fallback"}, or \code{"no_step"}. This is independent of
+\code{ls_reason}; for example, an exhausted search can still return an evaluated
+improving point.
+\item \code{ls_nf} and \code{ls_ng}: Function and gradient callbacks owned by that outer
+line search, excluding its cached starting point. An objective-only
+Hager-Zhang initializer probe is included in \code{ls_nf}.
+}
+
+Exact Newton (\code{method = "NEWTON"}) may add \code{direction_reason}, which records
+how its direction was produced: \code{"hessian_solve"}, \code{"hessian_diagonal"},
+\code{"inverse_hessian_multiply"}, \code{"inverse_hessian_diagonal"},
+\code{"cholesky_fallback"}, or \code{"direction_check_fallback"}. The two fallback
+values mean that steepest descent was used because Cholesky factorization
+failed, or because the computed direction was non-finite or not a descent
+direction, respectively.
+
+When a diagnostic column first appears after earlier progress rows, numeric
+columns use \code{NA_real_} in those rows and categorical columns use
+\code{NA_character_}. A method-specific column is absent if its owning stage never
+produced it.
+}
+
 \section{Convergence}{
 
 
@@ -615,8 +654,9 @@ The \code{converged}, \code{status}, and \code{message} return values summarize
 based termination (\code{"abs_tol"}, \code{"rel_tol"}, \code{"grad_tol"},
 \code{"ginf_tol"}, or \code{"step_tol"}). The \code{status} value is \code{"converged"} for
 those tolerance exits, \code{"budget_exhausted"} for \code{"max_iter"}, \code{"max_fn"},
-\code{"max_gr"}, or \code{"max_fg"}, \code{"failed"} for \code{"fn_inf"} or \code{"gr_inf"},
-and \code{"terminated"} for any other termination reason.
+\code{"max_gr"}, or \code{"max_fg"}, \code{"failed"} for \code{"fn_inf"}, \code{"gr_inf"}, or
+\code{"line_search_failed"}, and \code{"terminated"} for any other termination
+reason.
 
 The following parameters control various stopping criteria:
 \itemize{
@@ -662,9 +702,19 @@ convergence or a non-finite failure, that observed result takes precedence.
 Normal final reporting may then evaluate the objective only if doing so
 violates neither \code{max_fn} nor \code{max_fg}.
 
+If a line search selects \code{ls_outcome = "no_step"} and the complete optimizer
+iteration also realizes a zero step, optimization terminates with
+\code{terminate$what = "line_search_failed"}, the line-search reason in
+\code{terminate$val}, \code{status = "failed"}, and \code{converged = FALSE}. A global
+callback budget reached by that attempt takes precedence. A nonzero
+transition from a later optimizer stage is not classified as a no-step
+failure.
+
 Convergence is checked between specific iterations. How often is determined
 by the \code{check_conv_every} parameter, which specifies the number of
 iterations between each check. By default, this is set for every iteration.
+Line-search no-step failures are checked immediately, independently of this
+cadence.
 
 Be aware that if \code{abs_tol} or \code{rel_tol} are non-\code{NULL}, this
 requires the function to have been evaluated at the current position at the
@@ -690,9 +740,9 @@ convergence limits to be exceeded by a greater amount.
 Note also that if the \code{verbose} parameter is \code{TRUE}, then a summary
 of the results so far will be logged to the console whenever a convergence
 check is carried out. If the \code{store_progress} parameter is \code{TRUE},
-then the same information will be returned as a data frame in the return
-value. For a long optimization this could be a lot of data, so by default it
-is not stored.
+then progress summaries and available method-specific diagnostics will be
+returned as a data frame. For a long optimization this could be a lot of
+data, so by default it is not stored.
 
 Other ways for the optimization to terminate is if an iteration generates a
 non-finite (i.e. \code{Inf} or \code{NaN}) gradient or function value.
