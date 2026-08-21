@@ -427,3 +427,88 @@ test_that("Schmidt Armijo reports selected-point outcomes", {
     expect_identical(result$terminate$what, case$termination)
   }
 })
+
+test_that("exact Newton reports public direction provenance", {
+  objective_hessian <- diag(c(2, 4))
+  inverse_hessian <- diag(1 / diag(objective_hessian))
+  cases <- list(
+    hessian_matrix = list(
+      hs = objective_hessian,
+      reason = "hessian_solve"
+    ),
+    hessian_diagonal = list(
+      hs = diag(objective_hessian),
+      reason = "hessian_diagonal"
+    ),
+    inverse_hessian_matrix = list(
+      hi = inverse_hessian,
+      reason = "inverse_hessian_multiply"
+    ),
+    inverse_hessian_diagonal = list(
+      hi = diag(inverse_hessian),
+      reason = "inverse_hessian_diagonal"
+    ),
+    cholesky_failure = list(
+      hs = diag(c(1, -1)),
+      reason = "cholesky_fallback"
+    ),
+    direction_check_failure = list(
+      hi = -diag(2),
+      reason = "direction_check_fallback"
+    )
+  )
+
+  for (case_name in names(cases)) {
+    case <- cases[[case_name]]
+    fg <- list(
+      fn = function(x) {
+        drop(0.5 * crossprod(x, objective_hessian %*% x))
+      },
+      gr = function(x) {
+        as.vector(objective_hessian %*% x)
+      }
+    )
+    if (!is.null(case$hs)) {
+      fg$hs <- function(x) case$hs
+    }
+    if (!is.null(case$hi)) {
+      fg$hi <- function(x) case$hi
+    }
+
+    result <- mize(
+      par = c(1, -1),
+      fg = fg,
+      method = "NEWTON",
+      line_search = "More-Thuente",
+      step0 = 1,
+      max_iter = 1,
+      abs_tol = NULL,
+      rel_tol = NULL,
+      grad_tol = NULL,
+      ginf_tol = NULL,
+      step_tol = NULL,
+      store_progress = TRUE
+    )
+    progress <- result$progress
+
+    expect_true(is.character(progress$direction_reason), info = case_name)
+    expect_true(is.na(progress$direction_reason[1]), info = case_name)
+    expect_identical(
+      progress$direction_reason[nrow(progress)],
+      case$reason,
+      info = case_name
+    )
+  }
+})
+
+test_that("direction provenance is absent for non-Newton methods", {
+  result <- mize(
+    par = c(2, -1),
+    fg = optimizer_diagnostic_quadratic(),
+    method = "BFGS",
+    max_iter = 1,
+    store_progress = TRUE
+  )
+
+  expect_false("direction_reason" %in% names(result$progress))
+})

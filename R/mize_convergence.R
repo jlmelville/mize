@@ -197,6 +197,9 @@ mize_step_summary <- function(
     res[[diagnostic_name]] <- step_size_diagnostics[[diagnostic_name]]
   }
 
+  direction_diagnostics <- opt$stages[["gradient_descent"]]$direction
+  res$direction_reason <- direction_diagnostics$direction_reason
+
   if ("momentum" %in% names(opt$stages)) {
     res$mu <- opt$stages[["momentum"]]$step_size$value
     if (is.null(res$mu)) {

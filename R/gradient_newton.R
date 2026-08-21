@@ -34,22 +34,27 @@ newton_direction <- function(try_safe_chol = FALSE) {
           if (is.null(rm)) {
             # message("Hessian is not positive-definite, resetting to SD")
             pm <- -gm
+            direction_reason <- "cholesky_fallback"
           } else {
             # Forward and back solving is "only" O(N^2)
             pm <- hessian_solve(rm, gm)
+            direction_reason <- "hessian_solve"
           }
         } else {
           # vector: assume it's a diagonal approximation of B
           pm <- -(1 / bm) * gm
+          direction_reason <- "hessian_diagonal"
         }
       } else if (!is.null(fg$hi)) {
         # H, an approximation to (or exact) inverse of the Hessian
         hm <- validate_inverse_hessian(fg$hi(par), length(par))
         if (methods::is(hm, "matrix")) {
           pm <- -hm %*% gm
+          direction_reason <- "inverse_hessian_multiply"
         } else {
           # vector: assume it's a diagonal approximation of H
           pm <- -hm * gm
+          direction_reason <- "inverse_hessian_diagonal"
         }
       } else {
         stop("No hi or hs function available for Hessian information")
@@ -58,8 +63,10 @@ newton_direction <- function(try_safe_chol = FALSE) {
       descent <- dot(gm, pm)
       if (any(!is.finite(pm)) || !is.finite(descent) || descent >= 0) {
         pm <- -gm
+        direction_reason <- "direction_check_fallback"
       }
       sub_stage$value <- pm
+      sub_stage$direction_reason <- direction_reason
       list(sub_stage = sub_stage)
     }
   ))
