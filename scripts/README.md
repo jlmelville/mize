@@ -9,6 +9,9 @@ excluded from R package builds.
 `benchmark-optimizers.R` compares `mize` optimizers with `stats::optim()` on a
 small set of smooth unconstrained optimization problems. It is a permanent
 developer benchmark harness, not a pass/fail package validation command.
+Optional `funconstrain` case discovery and starting-point resolution live in
+the sourceable `funconstrain-mize-harness.R` helper; sourcing that helper only
+defines its adapter functions and does not run a benchmark.
 
 Use `testthat::test_local()` or `R CMD check` to check that the package works
 as expected. Use this benchmark script when you want local evidence about
