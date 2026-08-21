@@ -22,6 +22,33 @@ By default, mize receives each case's combined objective/gradient callback.
 Use `--callbacks separate` or `--callbacks combined,separate` to measure the
 separate-callback path under otherwise identical settings.
 
+### Funconstrain Adapter Schema
+
+The sourceable helper preserves the benchmark's `case$name`, `case$source`,
+`case$par`, and `case$fg` fields. It maps funconstrain callbacks as follows:
+
+- `fn` to `fg$fn`
+- `gr` to `fg$gr`
+- optional `fg` to `fg$fg`
+- optional `he` to mize's `fg$hs` name
+
+Additional developer metadata is kept outside `fg`:
+
+- `start` records the resolved parameters, requested and actual dimensions,
+  and whether a fixed, requested-dimension, default, or fallback start was
+  selected.
+- `factory` records the factory name, supplied arguments, and effective
+  arguments after defaults.
+- `provenance` records the installed funconstrain version. A source commit is
+  marked unavailable unless it was supplied by the caller or recorded in the
+  installed package metadata.
+- `reference` retains `fmin` and `xmin` as non-callback metadata. Its
+  applicability flags are `TRUE`, `FALSE`, or `NA` for applicable, inapplicable,
+  or not yet encoded, with a corresponding basis string. The helper encodes the
+  documented variable-dimension rules for Extended Rosenbrock, Variably
+  Dimensioned, and Chebyquad; it does not infer applicability merely because a
+  stored `xmin` has the requested length.
+
 ### Dependencies
 
 Built-in benchmark cases use base R plus packages that ship with R:
