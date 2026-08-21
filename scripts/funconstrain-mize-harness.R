@@ -206,6 +206,107 @@ funconstrain_reference_metadata <- function(name, problem, dimension, maker) {
   )
 }
 
+validate_funconstrain_case <- function(case) {
+  case_label <- paste0("funconstrain case ", case$name)
+  fail <- function(...) {
+    stop(case_label, " ", ..., call. = FALSE)
+  }
+
+  if (!is.list(case$fg)) {
+    fail("must provide callbacks in a list")
+  }
+
+  required_callbacks <- c("fn", "gr", "hs")
+  missing_callbacks <- setdiff(required_callbacks, names(case$fg))
+  if (length(missing_callbacks) > 0L) {
+    fail(
+      "is missing required callback(s): ",
+      paste0("fg$", missing_callbacks, collapse = ", ")
+    )
+  }
+
+  invalid_callbacks <- required_callbacks[
+    !vapply(case$fg[required_callbacks], is.function, logical(1))
+  ]
+  if (length(invalid_callbacks) > 0L) {
+    fail(
+      "requires function callback(s): ",
+      paste0("fg$", invalid_callbacks, collapse = ", ")
+    )
+  }
+
+  par <- case$par
+  if (!is.numeric(par) || !is.null(dim(par)) || length(par) == 0L) {
+    fail("starting parameters must be a non-empty numeric vector")
+  }
+  dimension <- length(par)
+
+  evaluate_callback <- function(callback_name) {
+    tryCatch(
+      case$fg[[callback_name]](par),
+      error = function(err) {
+        fail(
+          "callback fg$",
+          callback_name,
+          " failed at the resolved start: ",
+          conditionMessage(err)
+        )
+      }
+    )
+  }
+
+  objective <- evaluate_callback("fn")
+  valid_objective <- is.numeric(objective) &&
+    is.null(dim(objective)) &&
+    length(objective) == 1L &&
+    is.finite(objective)
+  if (!valid_objective) {
+    fail(
+      "callback fg$fn must return a finite numeric scalar at the resolved start"
+    )
+  }
+
+  gradient <- evaluate_callback("gr")
+  valid_gradient <- is.numeric(gradient) &&
+    is.null(dim(gradient)) &&
+    length(gradient) == dimension
+  if (!valid_gradient) {
+    fail(
+      "callback fg$gr must return a numeric vector of length ",
+      dimension,
+      " at the resolved start"
+    )
+  }
+
+  hessian <- evaluate_callback("hs")
+  if (!is.matrix(hessian) || !is.numeric(hessian)) {
+    fail("callback fg$hs must return a numeric matrix at the resolved start")
+  }
+  if (!identical(dim(hessian), c(dimension, dimension))) {
+    fail(
+      "callback fg$hs must return a ",
+      dimension,
+      " x ",
+      dimension,
+      " matrix at the resolved start"
+    )
+  }
+  if (!all(is.finite(hessian))) {
+    fail("callback fg$hs must return only finite values at the resolved start")
+  }
+
+  hessian_scale <- max(1, max(abs(hessian)))
+  relative_asymmetry <- max(abs(hessian - t(hessian))) / hessian_scale
+  symmetry_tolerance <- sqrt(.Machine$double.eps)
+  if (relative_asymmetry > symmetry_tolerance) {
+    fail(
+      "callback fg$hs must return an approximately symmetric matrix at the resolved start"
+    )
+  }
+
+  invisible(case)
+}
+
 funconstrain_problem_case <- function(
   name,
   n,
@@ -232,7 +333,7 @@ funconstrain_problem_case <- function(
     fg$hs <- problem$he
   }
 
-  list(
+  case <- list(
     name = paste0("funconstrain-", name),
     source = "funconstrain",
     par = start$par,
@@ -251,6 +352,8 @@ funconstrain_problem_case <- function(
       maker = maker
     )
   )
+  validate_funconstrain_case(case)
+  case
 }
 
 optional_funconstrain_cases <- function(

@@ -30,7 +30,7 @@ The sourceable helper preserves the benchmark's `case$name`, `case$source`,
 - `fn` to `fg$fn`
 - `gr` to `fg$gr`
 - optional `fg` to `fg$fg`
-- optional `he` to mize's `fg$hs` name
+- `he` to mize's `fg$hs` name
 
 Additional developer metadata is kept outside `fg`:
 
@@ -48,6 +48,20 @@ Additional developer metadata is kept outside `fg`:
   documented variable-dimension rules for Extended Rosenbrock, Variably
   Dimensioned, and Chebyquad; it does not infer applicability merely because a
   stored `xmin` has the requested length.
+
+Each adapted case is validated once at its resolved starting parameters.
+`fg$fn`, `fg$gr`, and `fg$hs` must be functions; the starting parameters must
+be a non-empty numeric vector; and the callbacks must return a finite scalar
+objective, an equally sized numeric gradient vector, and a finite numeric
+Hessian of the corresponding square dimensions. The Hessian must also be
+approximately symmetric using a scale-aware relative tolerance of
+`sqrt(.Machine$double.eps)`. The optional combined `fg$fg` callback is not
+required by the adapter.
+
+This is a developer-boundary usability check, not a claim that the Hessian is
+the derivative of the gradient or that it supplies a useful Newton direction.
+Those numerical-integrity and direction checks remain separate benchmark
+probes.
 
 ### Dependencies
 
