@@ -106,6 +106,14 @@ mize_validate_positive_numeric <- function(value, argument, allow_inf = FALSE) {
   invisible(value)
 }
 
+mize_validate_flag <- function(value, argument) {
+  if (!is.logical(value) || length(value) != 1L || is.na(value)) {
+    stop(argument, " must be TRUE or FALSE", call. = FALSE)
+  }
+
+  invisible(value)
+}
+
 mize_validate_initial_par <- function(par) {
   if (!is.numeric(par) || !is.null(dim(par)) || length(par) == 0) {
     stop("par must be a non-empty numeric vector", call. = FALSE)
@@ -601,15 +609,9 @@ make_mize <- function(
       if (is.null(c2)) {
         c2 <- 0.9
       }
-      if (is.null(try_newton_step)) {
-        try_newton_step <- TRUE
-      }
     } else {
       if (is.null(c2)) {
         c2 <- 0.1
-      }
-      if (is.null(try_newton_step)) {
-        try_newton_step <- FALSE
       }
     }
 
@@ -681,11 +683,9 @@ make_mize <- function(
     if (
       line_search %in%
         c(
-          "more-thuente",
           "mt",
           "rasmussen",
-          "schmidt",
-          "minfunc"
+          "schmidt"
         )
     ) {
       if (is.null(strong_curvature)) {
@@ -719,6 +719,14 @@ make_mize <- function(
       if (is.null(step_next_init)) {
         step_next_init <- "quad"
       }
+    }
+
+    if (line_search %in% wolfe_searches) {
+      mize_validate_flag(strong_curvature, "strong_curvature")
+      mize_validate_flag(approx_armijo, "approx_armijo")
+    }
+    if (line_search == "mt") {
+      mize_validate_flag(ls_safe_cubic, "ls_safe_cubic")
     }
 
     if (line_search %in% gradient_searches && !is.numeric(step_next_init)) {

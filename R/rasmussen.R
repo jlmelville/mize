@@ -37,25 +37,6 @@ make_rasmussen_wolfe_policy <- function(
   expansion_factor = 3,
   relative_interval_tolerance = 1e-6
 ) {
-  validate_bracket_zoom_control(
-    interior_fraction,
-    "interior_fraction",
-    0,
-    0.5,
-    maximum_open = TRUE
-  )
-  validate_bracket_zoom_control(
-    expansion_factor,
-    "expansion_factor",
-    1,
-    minimum_open = TRUE
-  )
-  validate_bracket_zoom_control(
-    relative_interval_tolerance,
-    "relative_interval_tolerance",
-    0
-  )
-
   list(
     expansion_recovery_lower_bound = function(expansion_state) 0,
     classify_expansion = classify_rasmussen_expansion,
@@ -108,7 +89,7 @@ classify_rasmussen_expansion <- function(
   condition_policy
 ) {
   initial_point <- expansion_state$initial_point
-  armijo_failed <- !condition_policy$armijo(initial_point, trial_point)
+  armijo_failed <- !condition_policy$selected_armijo(initial_point, trial_point)
   trial_accepted <- !armijo_failed &&
     condition_policy$curvature(initial_point, trial_point)
   bracket_found <- trial_point$slope >
@@ -237,7 +218,7 @@ update_rasmussen_zoom <- function(
 ) {
   if (
     trial_point$slope > 0 ||
-      !condition_policy$armijo(initial_point, trial_point)
+      !condition_policy$selected_armijo(initial_point, trial_point)
   ) {
     zoom_state$upper_point <- trial_point
   } else {

@@ -1326,6 +1326,30 @@ test_that("range-checked numeric controls reject malformed scalars", {
     list(
       args = list(line_search = "mt", step_next_init = 0),
       argument = "step_next_init"
+    ),
+    list(
+      args = list(line_search = "mt", strong_curvature = "bad"),
+      argument = "strong_curvature"
+    ),
+    list(
+      args = list(line_search = "mt", strong_curvature = NA),
+      argument = "strong_curvature"
+    ),
+    list(
+      args = list(line_search = "mt", approx_armijo = c(TRUE, FALSE)),
+      argument = "approx_armijo"
+    ),
+    list(
+      args = list(line_search = "mt", approx_armijo = NA),
+      argument = "approx_armijo"
+    ),
+    list(
+      args = list(line_search = "mt", ls_safe_cubic = 1),
+      argument = "ls_safe_cubic"
+    ),
+    list(
+      args = list(line_search = "mt", ls_safe_cubic = NA),
+      argument = "ls_safe_cubic"
     )
   )
 

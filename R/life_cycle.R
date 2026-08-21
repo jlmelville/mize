@@ -325,31 +325,3 @@ depend_to_hook <- function(
 
   register_hook(opt, f, stage_type, sub_stage_type)
 }
-
-# Lists all functions and the phases/events they should fire for.
-list_hooks <- function(opt) {
-  message("handlers")
-  if (!is.null(opt$handlers)) {
-    handlers <- opt$handlers
-    for (phase in names(handlers)) {
-      phandlers <- handlers[[phase]]
-      for (advice in names(phandlers)) {
-        message(advice, " ", phase)
-      }
-    }
-  }
-
-  message("hooks")
-  if (!is.null(opt$hooks)) {
-    hooks <- opt$hooks
-    for (phase in names(hooks)) {
-      phooks <- hooks[[phase]]
-      for (advice in names(phooks)) {
-        aphooks <- phooks[[advice]]
-        for (name in names(aphooks)) {
-          message(advice, " ", phase, ": ", name)
-        }
-      }
-    }
-  }
-}

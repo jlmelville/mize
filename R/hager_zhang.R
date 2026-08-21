@@ -18,10 +18,6 @@ make_hager_zhang_search <- function(
   approximate_armijo = TRUE,
   method_policy = make_hager_zhang_policy()
 ) {
-  validate_line_evaluation_limit(max_evaluations, "max_evaluations")
-  if (!inherits(method_policy, "hager_zhang_policy")) {
-    stop("method_policy must be a Hager-Zhang policy")
-  }
   make_wolfe_line_search(
     core = run_hager_zhang_search,
     armijo_constant = armijo_constant,
@@ -41,48 +37,12 @@ make_hager_zhang_policy <- function(
   interval_contraction_factor = 0.66,
   relative_interval_tolerance = 1e-6
 ) {
-  validate_bracket_zoom_control(
-    approximation_tolerance,
-    "approximation_tolerance",
-    minimum = 0
-  )
-  validate_bracket_zoom_control(
-    bisection_fraction,
-    "bisection_fraction",
-    minimum = 0,
-    maximum = 1,
-    minimum_open = TRUE,
-    maximum_open = TRUE
-  )
-  validate_bracket_zoom_control(
-    expansion_factor,
-    "expansion_factor",
-    minimum = 1,
-    minimum_open = TRUE
-  )
-  validate_bracket_zoom_control(
-    interval_contraction_factor,
-    "interval_contraction_factor",
-    minimum = 0,
-    maximum = 1,
-    minimum_open = TRUE,
-    maximum_open = TRUE
-  )
-  validate_bracket_zoom_control(
-    relative_interval_tolerance,
-    "relative_interval_tolerance",
-    minimum = 0
-  )
-
-  structure(
-    list(
-      approximation_tolerance = approximation_tolerance,
-      bisection_fraction = bisection_fraction,
-      expansion_factor = expansion_factor,
-      interval_contraction_factor = interval_contraction_factor,
-      relative_interval_tolerance = relative_interval_tolerance
-    ),
-    class = "hager_zhang_policy"
+  list(
+    approximation_tolerance = approximation_tolerance,
+    bisection_fraction = bisection_fraction,
+    expansion_factor = expansion_factor,
+    interval_contraction_factor = interval_contraction_factor,
+    relative_interval_tolerance = relative_interval_tolerance
   )
 }
 
@@ -95,27 +55,27 @@ run_hager_zhang_search <- function(
   search_direction = NULL
 ) {
   if (initial_point$slope >= 0) {
-    return(make_hager_zhang_search_result("non_descent_direction"))
+    return(make_line_search_core_result("non_descent_direction"))
   }
 
   approximate_decrease_tolerance <-
     method_policy$approximation_tolerance * abs(initial_point$value)
   recovery <- recover_finite_line_point(
-    evaluate_line = evaluator,
+    evaluator = evaluator,
     alpha = initial_alpha,
     min_alpha = 0,
     max_evaluations = Inf
   )
   if (!isTRUE(recovery$succeeded)) {
-    return(make_hager_zhang_search_result("nonfinite_recovery"))
+    return(make_line_search_core_result("nonfinite_recovery"))
   }
   trial_point <- recovery$line_point
 
   if (condition_policy$wolfe(initial_point, trial_point)) {
-    return(make_hager_zhang_search_result("wolfe", trial_point))
+    return(make_line_search_core_result("wolfe", trial_point))
   }
   if (!hager_zhang_budget_available(evaluator)) {
-    return(make_hager_zhang_search_result("budget_exhausted"))
+    return(make_line_search_core_result("budget_exhausted"))
   }
 
   bracket_result <- find_hager_zhang_bracket(
@@ -128,17 +88,17 @@ run_hager_zhang_search <- function(
   )
   bracket <- bracket_result$bracket
   if (!is.null(bracket_result$accepted_point)) {
-    return(make_hager_zhang_search_result(
+    return(make_line_search_core_result(
       "wolfe",
       bracket_result$accepted_point
     ))
   }
   if (!bracket_result$succeeded) {
-    return(make_hager_zhang_search_result(bracket_result$termination_reason))
+    return(make_line_search_core_result(bracket_result$termination_reason))
   }
 
   if (!hager_zhang_budget_available(evaluator)) {
-    return(make_hager_zhang_search_result("budget_exhausted"))
+    return(make_line_search_core_result("budget_exhausted"))
   }
 
   previous_bracket <- bracket
@@ -153,25 +113,25 @@ run_hager_zhang_search <- function(
       hager_zhang_bracket_upper_alpha(previous_bracket)
     )
     if (is.null(proposed_alpha)) {
-      return(make_hager_zhang_search_result("progress_failure"))
+      return(make_line_search_core_result("progress_failure"))
     }
 
     recovery <- recover_finite_line_point(
-      evaluate_line = evaluator,
+      evaluator = evaluator,
       alpha = proposed_alpha,
       min_alpha = hager_zhang_bracket_lower_alpha(previous_bracket),
       max_evaluations = Inf
     )
     if (!isTRUE(recovery$succeeded)) {
-      return(make_hager_zhang_search_result("nonfinite_recovery"))
+      return(make_line_search_core_result("nonfinite_recovery"))
     }
     trial_point <- recovery$line_point
 
     if (condition_policy$wolfe(initial_point, trial_point)) {
-      return(make_hager_zhang_search_result("wolfe", trial_point))
+      return(make_line_search_core_result("wolfe", trial_point))
     }
     if (!hager_zhang_budget_available(evaluator)) {
-      return(make_hager_zhang_search_result("budget_exhausted"))
+      return(make_line_search_core_result("budget_exhausted"))
     }
 
     secant_result <- refine_hager_zhang_bracket_with_secants(
@@ -185,23 +145,23 @@ run_hager_zhang_search <- function(
     )
     bracket <- secant_result$bracket
     if (!is.null(secant_result$accepted_point)) {
-      return(make_hager_zhang_search_result(
+      return(make_line_search_core_result(
         "wolfe",
         secant_result$accepted_point
       ))
     }
     if (!secant_result$succeeded) {
-      return(make_hager_zhang_search_result(secant_result$termination_reason))
+      return(make_line_search_core_result(secant_result$termination_reason))
     }
 
     if (!hager_zhang_budget_available(evaluator)) {
-      return(make_hager_zhang_search_result("budget_exhausted"))
+      return(make_line_search_core_result("budget_exhausted"))
     }
 
     previous_width <- hager_zhang_bracket_width(previous_bracket)
     current_width <- hager_zhang_bracket_width(bracket)
     if (hager_zhang_bracket_is_small(bracket, method_policy)) {
-      return(make_hager_zhang_search_result("relative_interval_tolerance"))
+      return(make_line_search_core_result("relative_interval_tolerance"))
     }
 
     if (
@@ -213,17 +173,17 @@ run_hager_zhang_search <- function(
         hager_zhang_bracket_upper_alpha(bracket)
       )
       if (is.null(midpoint_alpha)) {
-        return(make_hager_zhang_search_result("progress_failure"))
+        return(make_line_search_core_result("progress_failure"))
       }
 
       recovery <- recover_finite_line_point(
-        evaluate_line = evaluator,
+        evaluator = evaluator,
         alpha = midpoint_alpha,
         min_alpha = hager_zhang_bracket_lower_alpha(bracket),
         max_evaluations = Inf
       )
       if (!isTRUE(recovery$succeeded)) {
-        return(make_hager_zhang_search_result("nonfinite_recovery"))
+        return(make_line_search_core_result("nonfinite_recovery"))
       }
       midpoint_point <- recovery$line_point
 
@@ -238,17 +198,17 @@ run_hager_zhang_search <- function(
       )
       bracket <- update_result$bracket
       if (!is.null(update_result$accepted_point)) {
-        return(make_hager_zhang_search_result(
+        return(make_line_search_core_result(
           "wolfe",
           update_result$accepted_point
         ))
       }
       if (!update_result$succeeded) {
-        return(make_hager_zhang_search_result(update_result$termination_reason))
+        return(make_line_search_core_result(update_result$termination_reason))
       }
 
       if (!hager_zhang_budget_available(evaluator)) {
-        return(make_hager_zhang_search_result("budget_exhausted"))
+        return(make_line_search_core_result("budget_exhausted"))
       }
     }
 
@@ -324,7 +284,7 @@ find_hager_zhang_bracket <- function(
     }
 
     recovery <- recover_finite_line_point(
-      evaluate_line = evaluator,
+      evaluator = evaluator,
       alpha = proposed_alpha,
       min_alpha = trial_point$alpha,
       max_evaluations = Inf
@@ -467,7 +427,7 @@ bisect_hager_zhang_bracket <- function(
     }
 
     recovery <- recover_finite_line_point(
-      evaluate_line = evaluator,
+      evaluator = evaluator,
       alpha = proposed_alpha,
       min_alpha = lower_alpha,
       max_evaluations = Inf
@@ -559,7 +519,7 @@ refine_hager_zhang_bracket_with_secants <- function(
   }
 
   recovery <- recover_finite_line_point(
-    evaluate_line = evaluator,
+    evaluator = evaluator,
     alpha = second_secant_alpha,
     min_alpha = hager_zhang_bracket_lower_alpha(updated_bracket),
     max_evaluations = Inf
@@ -656,16 +616,6 @@ make_hager_zhang_bracket_result <- function(
   list(
     bracket = bracket,
     succeeded = succeeded,
-    termination_reason = termination_reason,
-    accepted_point = accepted_point
-  )
-}
-
-make_hager_zhang_search_result <- function(
-  termination_reason,
-  accepted_point = NULL
-) {
-  make_line_search_core_result(
     termination_reason = termination_reason,
     accepted_point = accepted_point
   )

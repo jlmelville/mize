@@ -20,15 +20,8 @@ more_thuente_ls <- function(
   max_fg = Inf,
   approx_armijo = FALSE,
   strong_curvature = TRUE,
-  safeguard_cubic = FALSE,
-  debug = FALSE
+  safeguard_cubic = FALSE
 ) {
-  if (!is_in_range(c1, 0, 1, lopen = FALSE, ropen = FALSE)) {
-    stop("c1 must be between 0 and 1")
-  }
-  if (!is.null(c2) && !is_in_range(c2, c1, 1, lopen = FALSE, ropen = FALSE)) {
-    stop("c2 must be between c1 and 1")
-  }
   max_line_evaluations <- min(max_fn, max_gr, floor(max_fg / 2))
 
   line_search(
@@ -48,8 +41,7 @@ more_thuente_ls <- function(
     max_alpha_mult = max_alpha_mult,
     initializer = initializer,
     initial_step_length = initial_step_length,
-    try_newton_step = try_newton_step,
-    debug = debug
+    try_newton_step = try_newton_step
   )
 }
 
@@ -70,16 +62,8 @@ rasmussen_ls <- function(
   max_gr = Inf,
   max_fg = Inf,
   strong_curvature = TRUE,
-  approx_armijo = FALSE,
-  debug = FALSE
+  approx_armijo = FALSE
 ) {
-  if (!is_in_range(c1, 0, 1, lopen = FALSE, ropen = FALSE)) {
-    stop("c1 must be between 0 and 1")
-  }
-  if (!is.null(c2) && !is_in_range(c2, c1, 1, lopen = FALSE, ropen = FALSE)) {
-    stop("c2 must be between c1 and 1")
-  }
-
   max_line_evaluations <- min(max_fn, max_gr, floor(max_fg / 2))
 
   line_search(
@@ -97,8 +81,7 @@ rasmussen_ls <- function(
     initializer = initializer,
     initial_step_length = initial_step_length,
     try_newton_step = try_newton_step,
-    eps = eps,
-    debug = debug
+    eps = eps
   )
 }
 
@@ -117,16 +100,8 @@ schmidt_ls <- function(
   max_gr = Inf,
   max_fg = Inf,
   strong_curvature = TRUE,
-  approx_armijo = FALSE,
-  debug = FALSE
+  approx_armijo = FALSE
 ) {
-  if (!is_in_range(c1, 0, 1, lopen = FALSE, ropen = FALSE)) {
-    stop("c1 must be between 0 and 1")
-  }
-  if (!is.null(c2) && !is_in_range(c2, c1, 1, lopen = FALSE, ropen = FALSE)) {
-    stop("c2 must be between c1 and 1")
-  }
-
   max_line_evaluations <- min(max_fn, max_gr, floor(max_fg / 2))
 
   line_search(
@@ -142,8 +117,7 @@ schmidt_ls <- function(
     initializer = initializer,
     initial_step_length = initial_step_length,
     try_newton_step = try_newton_step,
-    eps = eps,
-    debug = debug
+    eps = eps
   )
 }
 
@@ -158,13 +132,8 @@ schmidt_armijo_ls <- function(
   eps = .Machine$double.eps,
   max_fn = Inf,
   max_gr = Inf,
-  max_fg = Inf,
-  debug = FALSE
+  max_fg = Inf
 ) {
-  if (!is_in_range(c1, 0, 1, lopen = FALSE, ropen = FALSE)) {
-    stop("c1 must be between 0 and 1")
-  }
-
   max_line_evaluations <- if (is.null(step_down)) {
     min(max_fn, max_gr, floor(max_fg / 2))
   } else {
@@ -182,8 +151,7 @@ schmidt_armijo_ls <- function(
     initializer = initializer,
     initial_step_length = initial_step_length,
     try_newton_step = try_newton_step,
-    eps = eps,
-    debug = debug
+    eps = eps
   )
 }
 
@@ -202,16 +170,8 @@ hager_zhang_ls <- function(
   max_gr = Inf,
   max_fg = Inf,
   strong_curvature = FALSE,
-  approx_armijo = TRUE,
-  debug = FALSE
+  approx_armijo = TRUE
 ) {
-  if (!is_in_range(c1, 0, 1, lopen = FALSE, ropen = FALSE)) {
-    stop("c1 must be between 0 and 1")
-  }
-  if (!is.null(c2) && !is_in_range(c2, c1, 1, lopen = FALSE, ropen = FALSE)) {
-    stop("c2 must be between c1 and 1")
-  }
-
   max_line_evaluations <- min(max_fn, max_gr, floor(max_fg / 2))
 
   line_search(
@@ -230,8 +190,7 @@ hager_zhang_ls <- function(
     local_gradient_evaluation_limit = max_gr,
     local_combined_evaluation_limit = max_fg,
     try_newton_step = try_newton_step,
-    eps = eps,
-    debug = debug
+    eps = eps
   )
 }
 
@@ -247,7 +206,6 @@ line_search <- function(
   local_gradient_evaluation_limit = Inf,
   local_combined_evaluation_limit = Inf,
   max_alpha_mult = Inf,
-  debug = FALSE,
   eps = .Machine$double.eps
 ) {
   if (!is.numeric(initializer)) {
@@ -295,10 +253,23 @@ line_search <- function(
       sub_stage$previous_slope <- NULL
       sub_stage$previous_value <- NULL
       sub_stage$gradient <- NULL
+      sub_stage$alpha_init <- NULL
+      sub_stage$slope_init <- NULL
+      sub_stage$ls_reason <- NULL
+      sub_stage$ls_outcome <- NULL
+      sub_stage$ls_nf <- NULL
+      sub_stage$ls_ng <- NULL
 
       list(opt = opt, sub_stage = sub_stage)
     },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
+      sub_stage$alpha_init <- NULL
+      sub_stage$slope_init <- NULL
+      sub_stage$ls_reason <- NULL
+      sub_stage$ls_outcome <- NULL
+      sub_stage$ls_nf <- NULL
+      sub_stage$ls_ng <- NULL
+
       search_direction <- stage$direction$value
       if (norm2(search_direction) < .Machine$double.eps) {
         sub_stage$value <- 0
@@ -323,8 +294,10 @@ line_search <- function(
         alpha = 0,
         value = initial_value,
         gradient = get_gr_curr(opt, iter),
-        slope = dot(get_gr_curr(opt, iter), search_direction)
+        slope = dot(get_gr_curr(opt, iter), search_direction),
+        parameters = par
       )
+      sub_stage$slope_init <- initial_point$slope
 
       previous_alpha <- sub_stage$value
 
@@ -332,8 +305,7 @@ line_search <- function(
         par,
         fg,
         search_direction,
-        calc_gradient_default = TRUE,
-        debug = debug
+        calc_gradient_default = TRUE
       )
 
       remaining_function_evaluations <- local_function_evaluation_limit
@@ -365,6 +337,7 @@ line_search <- function(
       }
 
       proposed_initial_alpha <- 0
+      probe_function_evaluations <- 0L
       if (is.numeric(initializer)) {
         proposed_initial_alpha <- initializer
       } else if (
@@ -442,12 +415,17 @@ line_search <- function(
       if (initializer_is_nonfinite) {
         sub_stage$value <- 0
         sub_stage$initial_alpha <- 0
+        sub_stage$ls_reason <- "nonfinite_initial_alpha"
+        sub_stage$ls_outcome <- "no_step"
+        sub_stage$ls_nf <- probe_function_evaluations
+        sub_stage$ls_ng <- 0L
         if (is_last_stage(opt, stage)) {
           opt <- set_fn_new(opt, initial_point$value, iter)
           sub_stage$gradient <- initial_point$gradient
           sub_stage$gradient_is_current <- TRUE
         }
       } else {
+        sub_stage$alpha_init <- sub_stage$value
         search_result <- search_line(
           evaluate_line = evaluate_line,
           initial_point = initial_point,
@@ -457,36 +435,25 @@ line_search <- function(
           remaining_combined_evaluations = remaining_combined_evaluations,
           search_direction = search_direction
         )
-        if (debug && !is.null(search_result$termination_reason)) {
-          message(
-            name,
-            " line search terminated: ",
-            search_result$termination_reason
-          )
-        }
         opt$counts$fn <- opt$counts$fn + search_result$function_evaluations
         opt$counts$gr <- opt$counts$gr + search_result$gradient_evaluations
 
-        realized_parameters <-
-          par + (search_result$line_point$alpha * search_direction)
-        if (all(is.finite(realized_parameters))) {
-          sub_stage$gradient_is_current <- search_result$gradient_is_current
-          sub_stage$value <- search_result$line_point$alpha
+        sub_stage$ls_reason <- search_result$termination_reason
+        sub_stage$ls_outcome <- search_result$outcome
+        sub_stage$ls_nf <-
+          probe_function_evaluations + search_result$function_evaluations
+        sub_stage$ls_ng <- search_result$gradient_evaluations
 
-          if (is_last_stage(opt, stage)) {
-            opt <- set_fn_new(opt, search_result$line_point$value, iter)
-            if (is.null(search_result$line_point$gradient)) {
-              sub_stage$gradient <- rep(sub_stage$eps, length(par))
-            } else {
-              sub_stage$gradient <- search_result$line_point$gradient
-            }
-          }
-        } else {
-          sub_stage$value <- 0
-          if (is_last_stage(opt, stage)) {
-            opt <- set_fn_new(opt, initial_point$value, iter)
-            sub_stage$gradient <- initial_point$gradient
-            sub_stage$gradient_is_current <- TRUE
+        sub_stage$gradient_is_current <-
+          !is.null(search_result$line_point$gradient)
+        sub_stage$value <- search_result$line_point$alpha
+
+        if (is_last_stage(opt, stage)) {
+          opt <- set_fn_new(opt, search_result$line_point$value, iter)
+          if (is.null(search_result$line_point$gradient)) {
+            sub_stage$gradient <- rep(sub_stage$eps, length(par))
+          } else {
+            sub_stage$gradient <- search_result$line_point$gradient
           }
         }
       }
@@ -518,8 +485,7 @@ make_line_function <- function(
   parameters,
   fg,
   search_direction,
-  calc_gradient_default = FALSE,
-  debug = FALSE
+  calc_gradient_default = FALSE
 ) {
   # LS functions are responsible for updating fn and gr count
   function(alpha, calc_gradient = calc_gradient_default) {
@@ -538,31 +504,34 @@ make_line_function <- function(
         alpha = alpha,
         value = value,
         gradient = gradient,
-        slope = dot(gradient, search_direction)
+        slope = dot(gradient, search_direction),
+        parameters = trial_parameters
       )
     } else {
       value <- mize_validate_objective_result(
         fg$fn(trial_parameters),
         "fg$fn(par)"
       )
-      line_point <- list(
-        alpha = alpha,
-        value = value
-      )
       if (calc_gradient) {
-        line_point$gradient <- mize_validate_gradient_result(
+        gradient <- mize_validate_gradient_result(
           fg$gr(trial_parameters),
           length(trial_parameters),
           "fg$gr(par)"
         )
-        line_point$slope <- dot(line_point$gradient, search_direction)
+        line_point <- list(
+          alpha = alpha,
+          value = value,
+          gradient = gradient,
+          slope = dot(gradient, search_direction),
+          parameters = trial_parameters
+        )
+      } else {
+        line_point <- list(
+          alpha = alpha,
+          value = value,
+          parameters = trial_parameters
+        )
       }
-    }
-
-    line_point$parameters <- trial_parameters
-
-    if (debug) {
-      message(format_list(line_point))
     }
     line_point
   }
@@ -574,7 +543,7 @@ make_line_function <- function(
 # derivative is non-finite (NaN or infinite), reduce the step size until
 # finite values are found.
 #
-# @param evaluate_line Line function.
+# @param evaluator Managed line evaluator.
 # @param alpha Initial step size.
 # @param min_alpha Minimum step size.
 # @param max_evaluations Maximum number of function evaluations allowed.
@@ -582,26 +551,18 @@ make_line_function <- function(
 #
 # * `line_point`: Valid point or the last point evaluated, or NULL if the
 #     evaluation allowance is zero.
-# * `function_evaluations`: Number of function evaluations.
 # * `succeeded`: Whether a usable point was found.
 recover_finite_line_point <- function(
-  evaluate_line,
+  evaluator,
   alpha,
   min_alpha = 0,
   max_evaluations = 20
 ) {
-  evaluator <- attr(evaluate_line, "line_evaluator")
-  if (!is.null(evaluator)) {
-    evaluator_state <- environment(evaluator)
-    max_evaluations <- min(
-      max_evaluations,
-      max(
-        0,
-        evaluator_state$max_evaluations - evaluator_state$evaluation_count
-      )
-    )
-  }
-  function_evaluations <- 0L
+  evaluator_state <- environment(evaluator)
+  final_evaluation_count <- min(
+    evaluator_state$max_evaluations,
+    evaluator_state$evaluation_count + max_evaluations
+  )
   succeeded <- FALSE
   line_point <- NULL
   if (
@@ -615,15 +576,24 @@ recover_finite_line_point <- function(
   ) {
     return(list(
       line_point = line_point,
-      function_evaluations = function_evaluations,
       succeeded = succeeded
     ))
   }
-  while (function_evaluations < max_evaluations && alpha >= min_alpha) {
-    line_point <- evaluate_line(alpha)
-    function_evaluations <- function_evaluations + 1L
+  while (
+    evaluator_state$evaluation_count < final_evaluation_count &&
+      alpha >= min_alpha
+  ) {
+    line_point <- evaluator(alpha)
     if (wolfe_trial_point_is_usable(line_point)) {
       succeeded <- TRUE
+      if (
+        !is.null(evaluator_state$initial_point) &&
+          line_point$value < evaluator_state$initial_point$value &&
+          (is.null(evaluator_state$best_decreasing_point) ||
+            line_point$value < evaluator_state$best_decreasing_point$value)
+      ) {
+        evaluator_state$best_decreasing_point <- line_point
+      }
       break
     }
     next_alpha <- min_alpha + (alpha - min_alpha) / 2
@@ -638,7 +608,6 @@ recover_finite_line_point <- function(
   }
   list(
     line_point = line_point,
-    function_evaluations = function_evaluations,
     succeeded = succeeded
   )
 }
@@ -934,61 +903,4 @@ line_point_satisfies_weak_curvature <- function(
   c2
 ) {
   weak_curvature_condition_is_met(initial_point$slope, trial_point$slope, c2)
-}
-
-# Strong Curvature Condition
-#
-# Line search test.
-#
-# Ensures that the magnitude of the directional derivative at a candidate step
-# size is no greater than a specified fraction of the magnitude of the slope at
-# the starting point. This condition is used to make the step size lie close to
-# a stationary point. The directional derivative may change sign.
-#
-# In combination with the sufficient decrease condition [armijo_condition_is_met()]
-# these conditions make up the Strong Wolfe conditions.
-#
-# @param initial_slope Directional derivative at the starting point.
-# @param trial_slope Directional derivative at the trial point.
-# @param c2 Curvature condition constant. Should take a value between `c1`
-#  (the constant used in the sufficient decrease condition check) and 1.
-# @return `TRUE` if the strong curvature condition is met.
-strong_curvature_condition_is_met <- function(initial_slope, trial_slope, c2) {
-  abs(trial_slope) <= -c2 * initial_slope
-}
-
-# Strong Curvature Condition
-#
-# Line search test.
-#
-# Ensures that the magnitude of the directional derivative at a candidate step
-# size is no greater than a specified fraction of the magnitude of the slope at
-# the starting point. This condition is used to make the step size lie close to
-# a stationary point. The directional derivative may change sign.
-#
-# In combination with the sufficient decrease condition [armijo_condition_is_met()]
-# these conditions make up the Strong Wolfe conditions.
-#
-# @param initial_point Line search values at starting point.
-# @param trial_point Line search values at a trial point.
-# @param c2 Curvature condition constant. Should take a value between `c1`
-#  (the constant used in the sufficient decrease condition check) and 1.
-# @return `TRUE` if the curvature condition is met.
-line_point_satisfies_strong_curvature <- function(
-  initial_point,
-  trial_point,
-  c2
-) {
-  strong_curvature_condition_is_met(initial_point$slope, trial_point$slope, c2)
-}
-
-# Are the Wolfe Conditions Met for the Given Step?
-line_point_satisfies_weak_wolfe <- function(
-  initial_point,
-  trial_point,
-  c1,
-  c2
-) {
-  line_point_satisfies_armijo(initial_point, trial_point, c1) &&
-    line_point_satisfies_weak_curvature(initial_point, trial_point, c2)
 }

@@ -131,6 +131,11 @@ opt_loop <- function(
         opt <- terminate_on_budget(opt)
       }
 
+      line_search_selected_no_step <- identical(
+        opt$stages[["gradient_descent"]]$step_size$ls_outcome,
+        "no_step"
+      )
+
       if (
         !is.null(opt$terminate) &&
           !(opt$terminate$what %in% c("max_fn", "max_gr", "max_fg"))
@@ -138,10 +143,24 @@ opt_loop <- function(
         break
       }
 
-      # Check termination conditions
-      if (!is.null(check_conv_every) && iter %% check_conv_every == 0) {
+      # Check termination conditions. A failed line search is checked
+      # immediately, independently of the ordinary convergence cadence.
+      convergence_check_due <-
+        !is.null(check_conv_every) && iter %% check_conv_every == 0
+      if (line_search_selected_no_step || convergence_check_due) {
         step_info <- mize_step_summary(opt, par, fg, par0)
-        opt <- check_mize_convergence(step_info)
+        opt <- step_info$opt
+        opt <- terminate_on_budget(opt)
+        step_info$opt <- opt
+
+        if (convergence_check_due) {
+          opt <- check_mize_convergence(step_info)
+        } else if (is.null(opt$terminate)) {
+          line_search_termination <- line_search_no_step_termination(step_info)
+          if (!is.null(line_search_termination)) {
+            opt <- set_mize_termination(opt, line_search_termination)
+          }
+        }
 
         if (store_progress && iter %% log_every == 0) {
           progress <- update_progress(step_info, progress)
@@ -356,7 +375,25 @@ opt_report <- function(
 
 # Transfers data from the result object to the progress data frame
 update_progress <- function(step_info, progress) {
-  possible_names <- c("f", "g2n", "ginfn", "nf", "ng", "step", "alpha", "mu")
+  categorical_names <- c("ls_reason", "ls_outcome", "direction_reason")
+  possible_names <- c(
+    "f",
+    "g2n",
+    "ginfn",
+    "nf",
+    "ng",
+    "step",
+    "alpha",
+    "mu",
+    "alpha_init",
+    "slope_init",
+    "ls_nf",
+    "ls_ng",
+    categorical_names
+  )
+  missing_value <- function(name) {
+    if (name %in% categorical_names) NA_character_ else NA_real_
+  }
   new_names <- Filter(
     function(x) {
       !is.null(step_info[[x]])
@@ -367,14 +404,14 @@ update_progress <- function(step_info, progress) {
 
   progress_row <- lapply(res_names, function(name) {
     value <- step_info[[name]]
-    if (is.null(value)) NA_real_ else value
+    if (is.null(value)) missing_value(name) else value
   })
   names(progress_row) <- res_names
   if (nrow(progress) == 0) {
     progress <- as.data.frame(progress_row)
   } else {
     for (name in setdiff(res_names, colnames(progress))) {
-      progress[[name]] <- rep(NA_real_, nrow(progress))
+      progress[[name]] <- rep(missing_value(name), nrow(progress))
     }
     progress <- rbind(progress, progress_row)
   }
@@ -540,12 +577,6 @@ append_stage <- function(opt, stage) {
   opt
 }
 
-# Add a stage to the beginning of an optimizer stage list
-prepend_stage <- function(opt, stage) {
-  opt$stages <- c(stage, opt$stages)
-  opt
-}
-
 # Initialize a list to store the number of times the function and gradient
 # is called.
 make_counts <- function() {
@@ -692,22 +723,6 @@ calc_gr_curr <- function(opt, par, gr, iter) {
 set_gr_curr <- function(opt, val, iter) {
   opt$cache$gr_curr <- val
   opt$cache$gr_curr_iter <- iter
-  opt
-}
-
-# Uncached gradient evaluation for arbitrary values of par
-calc_gr <- function(opt, par, gr) {
-  terminate <- callback_budget_termination(opt, "gr")
-  if (!is.null(terminate)) {
-    opt <- set_mize_termination(opt, terminate)
-    return(opt)
-  }
-  opt$gr <- mize_validate_gradient_result(
-    gr(par),
-    length(par),
-    "fg$gr(par)"
-  )
-  opt$counts$gr <- opt$counts$gr + 1
   opt
 }
 

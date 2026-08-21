@@ -1,14 +1,3 @@
-test_that("Schmidt Wolfe validates its numerical safeguards", {
-  expect_error(
-    make_schmidt_wolfe_policy(expansion_factor = 1),
-    "expansion_factor"
-  )
-  expect_error(
-    make_schmidt_wolfe_policy(interior_fraction = 0.5),
-    "interior_fraction"
-  )
-})
-
 test_that("Schmidt brackets when the expanded objective stops decreasing", {
   initial_point <- list(alpha = 0, value = 1, gradient = -1, slope = -1)
   previous_point <- list(alpha = 1, value = 0.5, gradient = -1, slope = -1)
@@ -31,7 +20,7 @@ test_that("Schmidt brackets when the expanded objective stops decreasing", {
   expect_equal(result$bracket, list(previous_point, trial_point))
 })
 
-test_that("bracket-and-zoom validates entry conditions before callbacks", {
+test_that("bracket-and-zoom rejects non-descent directions before callbacks", {
   searches <- list(
     rasmussen = make_rasmussen_wolfe_search(0.05, 0.1),
     schmidt = make_schmidt_wolfe_search(0.05, 0.1)
@@ -42,21 +31,6 @@ test_that("bracket-and-zoom validates entry conditions before callbacks", {
 
   for (name in names(searches)) {
     search <- searches[[name]]
-    descent_step <- list(
-      alpha = 0,
-      value = 1,
-      gradient = -1,
-      slope = -1,
-      parameters = 0
-    )
-    for (alpha in c(0, -1, Inf, -Inf, NA_real_, NaN)) {
-      expect_error(
-        search(phi, descent_step, initial_alpha = alpha, search_direction = 1),
-        "initial_alpha",
-        info = paste(name, alpha)
-      )
-    }
-
     non_descent_step <- list(
       alpha = 0,
       value = 1,

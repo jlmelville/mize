@@ -176,7 +176,6 @@ test_that("supported Schmidt cubic Armijo outputs match their oracle", {
         expected$evaluations,
         info = info
       )
-      expect_true(result$gradient_is_current, info = info)
     }
   }
 })
@@ -213,7 +212,6 @@ test_that("supported Schmidt fixed Armijo outputs match their oracle", {
         info = info
       )
       expect_equal(result$gradient_evaluations, 0, info = info)
-      expect_false(result$gradient_is_current, info = info)
     }
   }
 })

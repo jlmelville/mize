@@ -17,17 +17,12 @@ more_thuente_core <- function(
   search_direction,
   method_policy
 ) {
-  result <- run_more_thuente_search(
+  run_more_thuente_search(
     evaluator = evaluator,
     initial_point = initial_point,
     initial_alpha = initial_alpha,
     condition_policy = condition_policy,
     policy = method_policy
-  )
-
-  make_line_search_core_result(
-    termination_reason = result$termination_reason,
-    accepted_point = result$accepted_point
   )
 }
 
@@ -38,71 +33,16 @@ make_more_thuente_policy <- function(
   alpha_min = 0,
   alpha_max = Inf,
   safeguard_cubic = FALSE,
-  cubic_interior_fraction = 0.001,
-  verbose = FALSE
+  cubic_interior_fraction = 0.001
 ) {
-  validate_line_scalar(
-    relative_interval_tolerance,
-    "relative_interval_tolerance"
-  )
-  validate_line_scalar(contraction_factor, "contraction_factor")
-  validate_line_scalar(expansion_factor, "expansion_factor")
-  validate_line_scalar(alpha_min, "alpha_min")
-  validate_line_scalar(alpha_max, "alpha_max")
-  validate_line_scalar(cubic_interior_fraction, "cubic_interior_fraction")
-  if (is.na(relative_interval_tolerance) || relative_interval_tolerance < 0) {
-    stop("relative_interval_tolerance must be nonnegative")
-  }
-  if (
-    is.na(contraction_factor) ||
-      contraction_factor <= 0 ||
-      contraction_factor >= 1
-  ) {
-    stop("contraction_factor must be between zero and one")
-  }
-  if (is.na(expansion_factor) || expansion_factor <= 0) {
-    stop("expansion_factor must be positive")
-  }
-  if (is.na(alpha_min) || alpha_min < 0) {
-    stop("alpha_min must be nonnegative")
-  }
-  if (is.na(alpha_max) || alpha_max < alpha_min) {
-    stop("alpha_max must be at least alpha_min")
-  }
-  if (
-    is.na(cubic_interior_fraction) ||
-      cubic_interior_fraction < 0 ||
-      cubic_interior_fraction >= 1
-  ) {
-    stop("cubic_interior_fraction must be between zero and one")
-  }
-  if (
-    !is.logical(safeguard_cubic) ||
-      length(safeguard_cubic) != 1L ||
-      is.na(safeguard_cubic)
-  ) {
-    stop("safeguard_cubic must be TRUE or FALSE")
-  }
-  if (
-    !is.logical(verbose) ||
-      length(verbose) != 1L ||
-      is.na(verbose)
-  ) {
-    stop("verbose must be TRUE or FALSE")
-  }
-
-  structure(
-    list(
-      relative_interval_tolerance = relative_interval_tolerance,
-      contraction_factor = contraction_factor,
-      expansion_factor = expansion_factor,
-      alpha_min = alpha_min,
-      alpha_max = alpha_max,
-      safeguard_cubic = safeguard_cubic,
-      cubic_interior_fraction = cubic_interior_fraction,
-      verbose = verbose
-    ),
-    class = "more_thuente_policy"
+  list(
+    relative_interval_tolerance = relative_interval_tolerance,
+    contraction_factor = contraction_factor,
+    expansion_factor = expansion_factor,
+    alpha_min = alpha_min,
+    alpha_max = alpha_max,
+    safeguard_cubic = safeguard_cubic,
+    cubic_interior_fraction = cubic_interior_fraction
   )
 }
 
@@ -158,11 +98,7 @@ run_more_thuente_search <- function(
     policy = policy
   )
   if (initial_point$slope >= 0) {
-    return(list(
-      accepted_point = NULL,
-      termination_reason = "non_descent_direction",
-      state = state
-    ))
+    return(make_line_search_core_result("non_descent_direction"))
   }
 
   armijo_slope <- condition_policy$armijo_constant * initial_point$slope
@@ -174,29 +110,14 @@ run_more_thuente_search <- function(
     state$next_trial_alpha <- max(state$next_trial_alpha, policy$alpha_min)
     state$next_trial_alpha <- min(state$next_trial_alpha, policy$alpha_max)
 
-    if (policy$verbose) {
-      message(
-        "Bracket: [",
-        formatC(trial_bounds$lower),
-        ", ",
-        formatC(trial_bounds$upper),
-        "] alpha = ",
-        formatC(state$next_trial_alpha)
-      )
-    }
-
     recovered <- recover_finite_line_point(
-      evaluate_line = evaluator,
+      evaluator = evaluator,
       alpha = state$next_trial_alpha,
       min_alpha = trial_bounds$lower,
       max_evaluations = Inf
     )
     if (!recovered$succeeded) {
-      return(list(
-        accepted_point = NULL,
-        termination_reason = "nonfinite_recovery",
-        state = state
-      ))
+      return(make_line_search_core_result("nonfinite_recovery"))
     }
     trial_point <- recovered$line_point
 
@@ -212,29 +133,13 @@ run_more_thuente_search <- function(
       max_evaluations = evaluator_state$max_evaluations
     )
     if (!is.null(termination_reason)) {
-      if (policy$verbose) {
-        reported_alpha <- if (
-          termination_reason %in%
-            c(
-              "budget_exhausted",
-              "relative_interval_tolerance",
-              "rounding_stagnation"
-            )
-        ) {
-          state$reference_endpoint$alpha
-        } else {
-          trial_point$alpha
-        }
-        message("alpha = ", formatC(reported_alpha))
-      }
-      return(list(
+      return(make_line_search_core_result(
+        termination_reason,
         accepted_point = if (identical(termination_reason, "wolfe")) {
           trial_point
         } else {
           NULL
-        },
-        termination_reason = termination_reason,
-        state = state
+        }
       ))
     }
 
@@ -266,11 +171,7 @@ run_more_thuente_search <- function(
     state <- advance$state
     previous_transition_is_valid <- advance$transition_is_valid
     if (!advance$proposal_is_finite) {
-      return(list(
-        accepted_point = NULL,
-        termination_reason = "nonfinite_recovery",
-        state = state
-      ))
+      return(make_line_search_core_result("nonfinite_recovery"))
     }
 
     if (state$is_bracketed) {
@@ -281,9 +182,6 @@ run_more_thuente_search <- function(
         new_interval_width >=
           policy$contraction_factor * state$two_trial_reference_width
       ) {
-        if (policy$verbose) {
-          message("Interval did not decrease sufficiently: bisecting")
-        }
         state$next_trial_alpha <- state$reference_endpoint$alpha +
           0.5 *
             (state$other_endpoint$alpha - state$reference_endpoint$alpha)
@@ -658,7 +556,6 @@ advance_more_thuente_interval <- function(
   if (identical(case$classification, "invalid")) {
     return(list(
       state = state,
-      classification = case$classification,
       transition_is_valid = FALSE,
       proposal_is_finite = TRUE
     ))
@@ -700,7 +597,6 @@ advance_more_thuente_interval <- function(
 
   list(
     state = state,
-    classification = case$classification,
     transition_is_valid = TRUE,
     proposal_is_finite = safeguarded$is_finite
   )

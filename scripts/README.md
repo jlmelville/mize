@@ -15,6 +15,10 @@ as expected. Use this benchmark script when you want local evidence about
 optimizer behavior, evaluation counts, wall time, termination modes, or
 sensitivity to `mize` line-search and `step0` settings.
 
+By default, mize receives each case's combined objective/gradient callback.
+Use `--callbacks separate` or `--callbacks combined,separate` to measure the
+separate-callback path under otherwise identical settings.
+
 ### Dependencies
 
 Built-in benchmark cases use base R plus packages that ship with R:
@@ -77,8 +81,10 @@ are documented deliberately.
 The CSV columns include:
 
 - problem case and source
+- actual problem dimension and initial objective value
 - optimizer and method
 - `mize` line search and `step0` setting
+- callback mode (`combined` or `separate`)
 - final objective
 - final gradient norm
 - function and gradient evaluation counts
@@ -116,4 +122,21 @@ Rscript scripts/benchmark-optimizers.R \
   --cases rosenbrock \
   --funconstrain-cases rosen,chebyquad \
   --out /tmp/mize-funconstrain-benchmark.csv
+```
+
+The `--spd-n` value is also requested from variable-dimension `funconstrain`
+factories. If a factory rejects that dimension, the harness reports the
+rejection and uses the factory's documented default starting-point dimension;
+the actual dimension is recorded in the CSV.
+
+Compare combined and separate callbacks on the same external cases:
+
+```sh
+Rscript scripts/benchmark-optimizers.R \
+  --cases rosenbrock \
+  --funconstrain-cases rosen,chebyquad \
+  --callbacks combined,separate \
+  --line-search More-Thuente,Hager-Zhang \
+  --step0 default \
+  --out /tmp/mize-callback-benchmark.csv
 ```

@@ -597,15 +597,15 @@ test_that("max_fg with DBD", {
   expect_equal(res$f, 7.914, tolerance = 1e-3)
 })
 
-test_that("max functions per line search", {
-  # This starts at the minimum and probably due to a lack of smoothness
-  # at the minimum due to floating point issues rather than the function itself,
-  # doesn't make a lot of progress - but at least stops after 20 steps
-  # without a max on the line search, this can take 100s of steps to give up
-  # (or worse)
+test_that("local line-search exhaustion is not reported as convergence", {
+  # This starts at the reported minimum, but its finite-precision gradient
+  # still requests a descent search. The local search exhausts its allowance
+  # without finding a usable step.
   res <- mize(c(3, 0.5), tricky_fg(), method = "SD", ls_max_fn = 20)
-  expect_equal(res$terminate$what, "step_tol")
-  expect_equal(res$terminate$val, 0)
+  expect_equal(res$terminate$what, "line_search_failed")
+  expect_equal(res$terminate$val, "budget_exhausted")
+  expect_equal(res$status, "failed")
+  expect_false(res$converged)
   expect_equal(res$nf, 21)
   expect_equal(res$ng, 21)
   expect_equal(res$f, 0, tolerance = 1e-3)

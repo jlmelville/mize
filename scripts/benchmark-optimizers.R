@@ -16,6 +16,8 @@ usage <- function(status = 0L) {
       "  --line-search VALUES       Comma-separated mize line searches.",
       "  --step0 VALUES             Comma-separated mize first-step settings.",
       "                             Use default for each line search default.",
+      "  --callbacks VALUES         Comma-separated mize callback modes:",
+      "                             combined,separate (default: combined).",
       "  --funconstrain-cases NAMES Comma-separated funconstrain problem names.",
       "  --no-funconstrain          Skip optional funconstrain cases.",
       "  --out PATH                 Write CSV results to PATH instead of stdout.",
@@ -53,6 +55,7 @@ parse_args <- function(args) {
     spd_n = 50L,
     line_searches = c("More-Thuente", "Hager-Zhang"),
     step0 = c("default", "1"),
+    callback_modes = "combined",
     include_funconstrain = TRUE,
     funconstrain_cases = c("rosen", "chebyquad"),
     out = NULL
@@ -91,6 +94,9 @@ parse_args <- function(args) {
     } else if (arg == "--step0") {
       config$step0 <- split_arg(read_value())
       i <- i + 1L
+    } else if (arg == "--callbacks") {
+      config$callback_modes <- tolower(split_arg(read_value()))
+      i <- i + 1L
     } else if (arg == "--funconstrain-cases") {
       config$funconstrain_cases <- split_arg(read_value())
       i <- i + 1L
@@ -103,6 +109,18 @@ parse_args <- function(args) {
       stop("Unknown option: ", arg, call. = FALSE)
     }
     i <- i + 1L
+  }
+
+  unknown_callback_modes <- setdiff(
+    config$callback_modes,
+    c("combined", "separate")
+  )
+  if (length(unknown_callback_modes) > 0L) {
+    stop(
+      "Unknown callback mode(s): ",
+      paste(unknown_callback_modes, collapse = ", "),
+      call. = FALSE
+    )
   }
 
   config
@@ -253,13 +271,31 @@ mmds_case <- function() {
   )
 }
 
-funconstrain_x0 <- function(problem, n) {
+funconstrain_x0 <- function(problem, n, name) {
   if (!is.function(problem$x0)) {
     return(problem$x0)
   }
   x0_args <- names(formals(problem$x0))
   if ("n" %in% x0_args) {
-    return(problem$x0(n = n))
+    requested <- tryCatch(problem$x0(n = n), error = identity)
+    if (!inherits(requested, "error")) {
+      return(requested)
+    }
+
+    fallback <- tryCatch(problem$x0(), error = identity)
+    if (inherits(fallback, "error")) {
+      stop(requested)
+    }
+    message(
+      "funconstrain problem ",
+      name,
+      " rejected n = ",
+      n,
+      "; using its default dimension ",
+      length(fallback),
+      "."
+    )
+    return(fallback)
   }
   problem$x0()
 }
@@ -280,7 +316,7 @@ funconstrain_problem_case <- function(name, n) {
   list(
     name = paste0("funconstrain-", name),
     source = "funconstrain",
-    par = funconstrain_x0(problem, n),
+    par = funconstrain_x0(problem, n, name),
     fg = fg
   )
 }
@@ -346,7 +382,11 @@ benchmark_cases <- function(config) {
     )
   }
 
-  cases
+  lapply(cases, function(case) {
+    case$dimension <- length(case$par)
+    case$initial_f <- case$fg$fn(case$par)
+    case
+  })
 }
 
 counted_fg <- function(fg) {
@@ -416,6 +456,7 @@ row_result <- function(
   method,
   line_search,
   step0,
+  callback_mode,
   max_iter,
   final_f,
   grad_norm,
@@ -436,6 +477,9 @@ row_result <- function(
     method = method,
     line_search = line_search,
     step0 = step0,
+    callback_mode = callback_mode,
+    dimension = case$dimension,
+    initial_f = case$initial_f,
     max_iter = max_iter,
     final_f = final_f,
     grad_norm = grad_norm,
@@ -490,6 +534,7 @@ run_optim_case <- function(case, rep, method, max_iter) {
     method = method,
     line_search = NA_character_,
     step0 = NA_character_,
+    callback_mode = "separate",
     max_iter = max_iter,
     final_f = metrics$final_f,
     grad_norm = metrics$grad_norm,
@@ -533,6 +578,18 @@ mize_failure <- function(res) {
   what
 }
 
+mize_fg_for_callback_mode <- function(fg, callback_mode) {
+  if (callback_mode == "combined") {
+    if (!is.function(fg$fg)) {
+      stop("Combined callback mode requires an fg$fg function", call. = FALSE)
+    }
+    return(fg)
+  }
+
+  fg$fg <- NULL
+  fg
+}
+
 run_mize_case <- function(
   case,
   rep,
@@ -540,13 +597,15 @@ run_mize_case <- function(
   cg_update,
   line_search,
   step0,
+  callback_mode,
   max_iter
 ) {
   step0_value <- mize_step0_value(step0)
+  callback_fg <- mize_fg_for_callback_mode(case$fg, callback_mode)
   timed <- run_timed(function() {
     mize(
       par = case$par,
-      fg = case$fg,
+      fg = callback_fg,
       method = method,
       cg_update = cg_update,
       line_search = line_search,
@@ -576,6 +635,7 @@ run_mize_case <- function(
     method = method_label,
     line_search = line_search,
     step0 = step0,
+    callback_mode = callback_mode,
     max_iter = max_iter,
     final_f = metrics$final_f,
     grad_norm = metrics$grad_norm,
@@ -613,15 +673,18 @@ run_case_grid <- function(case, config) {
     for (method_config in mize_methods) {
       for (line_search in config$line_searches) {
         for (step0 in config$step0) {
-          rows[[length(rows) + 1L]] <- run_mize_case(
-            case = case,
-            rep = rep,
-            method = method_config$method,
-            cg_update = method_config$cg_update,
-            line_search = line_search,
-            step0 = step0,
-            max_iter = config$max_iter
-          )
+          for (callback_mode in config$callback_modes) {
+            rows[[length(rows) + 1L]] <- run_mize_case(
+              case = case,
+              rep = rep,
+              method = method_config$method,
+              cg_update = method_config$cg_update,
+              line_search = line_search,
+              step0 = step0,
+              callback_mode = callback_mode,
+              max_iter = config$max_iter
+            )
+          }
         }
       }
     }

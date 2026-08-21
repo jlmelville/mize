@@ -160,7 +160,7 @@ mize_termination_summary <- function(terminate) {
   what <- terminate[["what"]]
   converged_whats <- c("abs_tol", "rel_tol", "grad_tol", "ginf_tol", "step_tol")
   budget_whats <- c("max_iter", "max_fn", "max_gr", "max_fg")
-  failure_whats <- c("fn_inf", "gr_inf")
+  failure_whats <- c("fn_inf", "gr_inf", "line_search_failed")
 
   if (what %in% converged_whats) {
     status <- "converged"
@@ -170,6 +170,14 @@ mize_termination_summary <- function(terminate) {
     status <- "budget_exhausted"
     converged <- FALSE
     message <- paste0("Budget exhausted: ", what, " reached.")
+  } else if (what == "line_search_failed") {
+    status <- "failed"
+    converged <- FALSE
+    message <- paste0(
+      "Failed: line search ended with ",
+      terminate[["val"]],
+      " and selected no step."
+    )
   } else if (what %in% failure_whats) {
     status <- "failed"
     converged <- FALSE

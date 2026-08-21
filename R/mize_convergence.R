@@ -185,6 +185,18 @@ mize_step_summary <- function(
     iter = iter
   )
 
+  step_size_diagnostics <- opt$stages[["gradient_descent"]]$step_size
+  for (diagnostic_name in c(
+    "alpha_init",
+    "slope_init",
+    "ls_reason",
+    "ls_outcome",
+    "ls_nf",
+    "ls_ng"
+  )) {
+    res[[diagnostic_name]] <- step_size_diagnostics[[diagnostic_name]]
+  }
+
   if ("momentum" %in% names(opt$stages)) {
     res$mu <- opt$stages[["momentum"]]$step_size$value
     if (is.null(res$mu)) {
@@ -193,6 +205,39 @@ mize_step_summary <- function(
   }
 
   Filter(Negate(is.null), res)
+}
+
+line_search_no_step_termination <- function(mize_step_info) {
+  if (
+    !identical(mize_step_info$ls_outcome, "no_step") ||
+      !isTRUE(mize_step_info$step == 0)
+  ) {
+    return(NULL)
+  }
+
+  opt <- mize_step_info$opt
+  if (
+    !is.null(opt$terminate) &&
+      opt$terminate$what %in% c("max_fn", "max_gr", "max_fg")
+  ) {
+    return(opt$terminate)
+  }
+
+  convergence <- opt$convergence
+  terminate <- check_counts(
+    opt,
+    convergence$max_fn,
+    convergence$max_gr,
+    convergence$max_fg
+  )
+  if (!is.null(terminate)) {
+    return(terminate)
+  }
+
+  list(
+    what = "line_search_failed",
+    val = mize_step_info$ls_reason
+  )
 }
 
 
@@ -246,6 +291,11 @@ mize_step_summary <- function(
 #' opt <- check_mize_convergence(step_info)
 check_mize_convergence <- function(mize_step_info) {
   opt <- mize_step_info$opt
+
+  terminate <- line_search_no_step_termination(mize_step_info)
+  if (!is.null(terminate)) {
+    return(set_mize_termination(opt, terminate))
+  }
 
   convergence <- opt$convergence
 

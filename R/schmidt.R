@@ -30,30 +30,6 @@ make_schmidt_wolfe_policy <- function(
   interior_fraction = 0.1,
   parameter_tolerance = 1e-9
 ) {
-  validate_bracket_zoom_control(
-    expansion_factor,
-    "expansion_factor",
-    1,
-    minimum_open = TRUE
-  )
-  validate_bracket_zoom_control(
-    minimum_expansion_fraction,
-    "minimum_expansion_fraction",
-    0
-  )
-  validate_bracket_zoom_control(
-    interior_fraction,
-    "interior_fraction",
-    0,
-    0.5,
-    maximum_open = TRUE
-  )
-  validate_bracket_zoom_control(
-    parameter_tolerance,
-    "parameter_tolerance",
-    0
-  )
-
   list(
     expansion_recovery_lower_bound = function(expansion_state) {
       if (expansion_state$iteration == 0L) {
@@ -116,7 +92,7 @@ classify_schmidt_expansion <- function(
   condition_policy
 ) {
   initial_point <- expansion_state$initial_point
-  armijo_failed <- !condition_policy$armijo(initial_point, trial_point)
+  armijo_failed <- !condition_policy$selected_armijo(initial_point, trial_point)
   objective_stopped_decreasing <- expansion_state$iteration >= 1L &&
     trial_point$value >= expansion_state$previous_point$value
   trial_satisfies_wolfe <- !armijo_failed &&
@@ -211,7 +187,7 @@ update_schmidt_zoom <- function(
   other_point <- zoom_state$endpoints[[other_index]]
 
   if (
-    !condition_policy$armijo(initial_point, trial_point) ||
+    !condition_policy$selected_armijo(initial_point, trial_point) ||
       trial_point$value >= best_point$value
   ) {
     zoom_state$endpoints[[other_index]] <- trial_point
@@ -267,36 +243,6 @@ make_schmidt_armijo_search <- function(
   max_evaluations = Inf,
   parameter_tolerance = 1e-9
 ) {
-  validate_line_scalar(armijo_constant, "armijo_constant")
-  validate_line_evaluation_limit(max_evaluations, "max_evaluations")
-  validate_line_scalar(parameter_tolerance, "parameter_tolerance")
-  if (
-    is.na(armijo_constant) ||
-      !is.finite(armijo_constant) ||
-      armijo_constant < 0 ||
-      armijo_constant > 1
-  ) {
-    stop("armijo_constant must be between zero and one")
-  }
-  if (
-    is.na(parameter_tolerance) ||
-      !is.finite(parameter_tolerance) ||
-      parameter_tolerance < 0
-  ) {
-    stop("parameter_tolerance must be nonnegative and finite")
-  }
-  if (!is.null(step_down)) {
-    validate_line_scalar(step_down, "step_down")
-    if (
-      is.na(step_down) ||
-        !is.finite(step_down) ||
-        step_down < 0 ||
-        step_down > 1
-    ) {
-      stop("step_down must be between zero and one")
-    }
-  }
-
   fixed_reduction_factor <- step_down
   evaluates_gradient <- is.null(fixed_reduction_factor)
 
@@ -328,8 +274,8 @@ make_schmidt_armijo_search <- function(
         line_point = initial_point,
         function_evaluations = 0L,
         gradient_evaluations = 0L,
-        gradient_is_current = !is.null(initial_point$gradient),
-        termination_reason = "budget_exhausted"
+        termination_reason = "budget_exhausted",
+        outcome = "no_step"
       ))
     }
 
@@ -396,7 +342,8 @@ run_schmidt_armijo_search <- function(
         line_point = trial_point,
         function_evaluations = function_evaluations,
         gradient_evaluations = gradient_evaluations,
-        termination_reason = "armijo"
+        termination_reason = "armijo",
+        outcome = "armijo"
       ))
     }
 
@@ -424,16 +371,19 @@ run_schmidt_armijo_search <- function(
     is_initial_trial <- FALSE
   }
 
-  selected_point <- if (is.null(best_decreasing_point)) {
-    initial_point
+  if (is.null(best_decreasing_point)) {
+    selected_point <- initial_point
+    outcome <- "no_step"
   } else {
-    best_decreasing_point
+    selected_point <- best_decreasing_point
+    outcome <- "improving_fallback"
   }
   finalize_schmidt_armijo_result(
     line_point = selected_point,
     function_evaluations = function_evaluations,
     gradient_evaluations = gradient_evaluations,
-    termination_reason = termination_reason
+    termination_reason = termination_reason,
+    outcome = outcome
   )
 }
 
@@ -441,14 +391,15 @@ finalize_schmidt_armijo_result <- function(
   line_point,
   function_evaluations,
   gradient_evaluations,
-  termination_reason
+  termination_reason,
+  outcome
 ) {
   list(
     line_point = line_point,
     function_evaluations = function_evaluations,
     gradient_evaluations = gradient_evaluations,
-    gradient_is_current = !is.null(line_point$gradient),
-    termination_reason = termination_reason
+    termination_reason = termination_reason,
+    outcome = outcome
   )
 }
 

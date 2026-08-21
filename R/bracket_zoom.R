@@ -1,21 +1,5 @@
 # Shared bracket-and-zoom control for Rasmussen and Schmidt Wolfe searches.
 
-validate_bracket_zoom_control <- function(
-  value,
-  name,
-  minimum,
-  maximum = Inf,
-  minimum_open = FALSE,
-  maximum_open = FALSE
-) {
-  validate_line_scalar(value, name)
-  below_minimum <- if (minimum_open) value <= minimum else value < minimum
-  above_maximum <- if (maximum_open) value >= maximum else value > maximum
-  if (is.na(value) || !is.finite(value) || below_minimum || above_maximum) {
-    stop(name, " is outside its supported range")
-  }
-}
-
 run_bracket_zoom <- function(
   evaluator,
   initial_point,

@@ -550,7 +550,6 @@ test_that("More-Thuente interval updates reject invalid state without mutation",
     expect_false(inherits(result, "error"), info = case_name)
     if (!inherits(result, "error")) {
       expect_identical(result$state, state, info = case_name)
-      expect_identical(result$classification, "invalid", info = case_name)
       expect_false(result$transition_is_valid, info = case_name)
     }
   }
@@ -565,7 +564,6 @@ test_that("More-Thuente interval updates cover all four mathematical cases", {
   cases <- list(
     higher_value = list(
       trial = make_interval_point(1, 1, -0.5),
-      classification = "higher_trial_value",
       is_bracketed = TRUE,
       reference_endpoint = initial,
       other_endpoint = make_interval_point(1, 1, -0.5),
@@ -573,7 +571,6 @@ test_that("More-Thuente interval updates cover all four mathematical cases", {
     ),
     opposite_slope = list(
       trial = make_interval_point(1, -0.5, 0.5),
-      classification = "lower_value_opposite_slope",
       is_bracketed = TRUE,
       reference_endpoint = make_interval_point(1, -0.5, 0.5),
       other_endpoint = initial,
@@ -581,7 +578,6 @@ test_that("More-Thuente interval updates cover all four mathematical cases", {
     ),
     reduced_slope_magnitude = list(
       trial = make_interval_point(1, -0.5, -0.25),
-      classification = "lower_value_reduced_slope_magnitude",
       is_bracketed = FALSE,
       reference_endpoint = make_interval_point(1, -0.5, -0.25),
       other_endpoint = initial,
@@ -589,7 +585,6 @@ test_that("More-Thuente interval updates cover all four mathematical cases", {
     ),
     unreduced_slope_magnitude = list(
       trial = make_interval_point(1, -0.5, -2),
-      classification = "lower_value_unreduced_slope_magnitude",
       is_bracketed = FALSE,
       reference_endpoint = make_interval_point(1, -0.5, -2),
       other_endpoint = initial,
@@ -612,11 +607,6 @@ test_that("More-Thuente interval updates cover all four mathematical cases", {
       policy = policy
     )
 
-    expect_identical(
-      result$classification,
-      case$classification,
-      info = case_name
-    )
     expect_identical(
       result$state$is_bracketed,
       case$is_bracketed,
@@ -729,7 +719,7 @@ test_that("More-Thuente termination guard reports named reasons", {
   }
 })
 
-test_that("More-Thuente policy owns named algorithm defaults", {
+test_that("More-Thuente initializes its canonical search state", {
   policy <- make_more_thuente_policy()
   initial_point <- list(
     alpha = 0,
@@ -737,14 +727,6 @@ test_that("More-Thuente policy owns named algorithm defaults", {
     slope = -1,
     gradient = -1
   )
-
-  expect_equal(policy$relative_interval_tolerance, .Machine$double.eps)
-  expect_equal(policy$contraction_factor, 0.66)
-  expect_equal(policy$expansion_factor, 4)
-  expect_equal(policy$alpha_min, 0)
-  expect_equal(policy$alpha_max, Inf)
-  expect_false(policy$safeguard_cubic)
-  expect_equal(policy$cubic_interior_fraction, 0.001)
 
   state <- initialize_more_thuente_search_state(
     initial_point,

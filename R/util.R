@@ -65,27 +65,6 @@ vec_formatC <- function(v) {
   )
 }
 
-# convert a list to a strng
-format_list <- function(ll) {
-  Reduce(
-    function(acc, elem) {
-      paste0(
-        acc,
-        ifelse(nchar(acc) == 0, "", " "),
-        elem,
-        " = ",
-        ifelse(
-          length(ll[[elem]]) == 1,
-          formatC(ll[[elem]]),
-          vec_formatC(ll[[elem]])
-        )
-      )
-    },
-    names(ll),
-    ""
-  )
-}
-
 # returns TRUE if x is in the range (left, right). By default, this is
 # an open range, i.e. x == left and x == right is in the range.
 # lopen if FALSE then range is [left, right) i.e. x = left is not in the range

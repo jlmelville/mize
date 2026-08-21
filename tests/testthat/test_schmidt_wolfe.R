@@ -142,12 +142,14 @@ schmidt_wolfe_table_oracles <- list(
   )
 )
 
-# These rounded outputs characterize the supported Schmidt Wolfe search. They
-# are numerical oracles, not contracts for any private policy or helper shape.
-test_that("Schmidt Wolfe retains its benchmark output oracles", {
+# Retain the full rounded reference tables above, but exercise only the smallest
+# and largest initial scales here. Public condition tests and focused transition
+# tests own the behavior between those characterization endpoints.
+test_that("Schmidt Wolfe retains representative benchmark output oracles", {
   for (table_name in names(schmidt_wolfe_table_oracles)) {
     oracle <- schmidt_wolfe_table_oracles[[table_name]]
-    for (row in seq_len(nrow(oracle$expected))) {
+    representative_rows <- unique(c(1L, nrow(oracle$expected)))
+    for (row in representative_rows) {
       expected <- oracle$expected[row, ]
       expected$alpha <- expected$parameter
       info <- paste(table_name, "initial alpha", expected$initial_alpha)

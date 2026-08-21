@@ -144,7 +144,7 @@ record_schmidt_armijo_trace <- function(step_down) {
       fn = result$function_evaluations,
       gr = result$gradient_evaluations
     ),
-    gradient_is_current = result$gradient_is_current
+    gradient_is_current = !is.null(result$line_point$gradient)
   )
 }
 

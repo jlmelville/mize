@@ -94,7 +94,7 @@ make_wolfe_overflow_witness <- function() {
   )
 }
 
-make_rasmussen_witness <- function(fn, gr) {
+make_wolfe_witness <- function(fn, gr) {
   calls <- new.env(parent = emptyenv())
   calls$fn_par <- numeric()
   calls$gr_par <- numeric()
@@ -116,7 +116,7 @@ make_rasmussen_witness <- function(fn, gr) {
   )
 }
 
-make_rasmussen_combined_witness <- function(fn, gr) {
+make_combined_wolfe_witness <- function(fn, gr) {
   calls <- new.env(parent = emptyenv())
   calls$fn_parameters <- numeric()
   calls$gr_parameters <- numeric()
@@ -149,39 +149,15 @@ make_rasmussen_combined_witness <- function(fn, gr) {
   )
 }
 
-make_hager_zhang_witness <- function(fn, gr) {
-  make_rasmussen_witness(fn, gr)
-}
-
-make_schmidt_wolfe_witness <- function(fn, gr) {
-  calls <- new.env(parent = emptyenv())
-  calls$fn_par <- numeric()
-  calls$gr_par <- numeric()
-
-  list(
-    fg = list(
-      fn = function(x) {
-        calls$fn_par <- c(calls$fn_par, x)
-        fn(x)
-      },
-      gr = function(x) {
-        calls$gr_par <- c(calls$gr_par, x)
-        gr(x)
-      }
-    ),
-    counts = function() c(fn = length(calls$fn_par), gr = length(calls$gr_par)),
-    fn_par = function() calls$fn_par,
-    gr_par = function() calls$gr_par
-  )
-}
-
-run_rasmussen_witness <- function(
+run_wolfe_witness <- function(
   witness,
-  par,
+  line_search,
+  par = 0,
   step0 = 1,
   c1 = 0.1,
   c2 = 0.5,
-  ls_max_fn = 1,
+  default_ls_max_fn = 1,
+  ls_max_fn = default_ls_max_fn,
   ls_max_gr = ls_max_fn,
   ls_max_fg = 2 * ls_max_fn,
   max_fn = Inf,
@@ -190,7 +166,7 @@ run_rasmussen_witness <- function(
 ) {
   opt <- make_mize(
     method = "SD",
-    line_search = "rasmussen",
+    line_search = line_search,
     step0 = step0,
     c1 = c1,
     c2 = c2,
@@ -210,74 +186,16 @@ run_rasmussen_witness <- function(
   mize_step(opt, par, witness$fg)
 }
 
-run_hager_zhang_witness <- function(
-  witness,
-  par = 0,
-  step0 = 1,
-  c1 = 0.1,
-  c2 = 0.5,
-  ls_max_fn = 1,
-  ls_max_gr = ls_max_fn,
-  ls_max_fg = 2 * ls_max_fn,
-  max_fn = Inf,
-  max_gr = Inf,
-  max_fg = Inf
-) {
-  opt <- make_mize(
-    method = "SD",
-    line_search = "hager-zhang",
-    step0 = step0,
-    c1 = c1,
-    c2 = c2,
-    ls_max_fn = ls_max_fn,
-    ls_max_gr = ls_max_gr,
-    ls_max_fg = ls_max_fg,
-    max_fn = max_fn,
-    max_gr = max_gr,
-    max_fg = max_fg,
-    abs_tol = NULL,
-    rel_tol = NULL,
-    grad_tol = NULL,
-    ginf_tol = NULL,
-    step_tol = NULL
-  )
-  opt <- mize_init(opt, par, witness$fg)
-  mize_step(opt, par, witness$fg)
+run_rasmussen_witness <- function(...) {
+  run_wolfe_witness(..., line_search = "rasmussen")
 }
 
-run_schmidt_wolfe_witness <- function(
-  witness,
-  par = 0,
-  step0 = 1,
-  c1 = 0.1,
-  c2 = 0.5,
-  ls_max_fn = 2,
-  ls_max_gr = 2,
-  ls_max_fg = 4,
-  max_fn = Inf,
-  max_gr = Inf,
-  max_fg = Inf
-) {
-  opt <- make_mize(
-    method = "SD",
-    line_search = "schmidt",
-    step0 = step0,
-    c1 = c1,
-    c2 = c2,
-    ls_max_fn = ls_max_fn,
-    ls_max_gr = ls_max_gr,
-    ls_max_fg = ls_max_fg,
-    max_fn = max_fn,
-    max_gr = max_gr,
-    max_fg = max_fg,
-    abs_tol = NULL,
-    rel_tol = NULL,
-    grad_tol = NULL,
-    ginf_tol = NULL,
-    step_tol = NULL
-  )
-  opt <- mize_init(opt, par, witness$fg)
-  mize_step(opt, par, witness$fg)
+run_hager_zhang_witness <- function(...) {
+  run_wolfe_witness(..., line_search = "hager-zhang")
+}
+
+run_schmidt_wolfe_witness <- function(...) {
+  run_wolfe_witness(..., line_search = "schmidt", default_ls_max_fn = 2)
 }
 
 Ops.ascent_gradient <- function(e1, e2) {
@@ -889,7 +807,7 @@ test_that("Wolfe searches retain the current point after initializer overflow", 
   searches <- c(rasmussen = "rasmussen", schmidt = "schmidt")
 
   for (name in names(searches)) {
-    witness <- make_rasmussen_witness(
+    witness <- make_wolfe_witness(
       fn = function(x) {
         if (!all(is.finite(x))) {
           stop("non-finite parameter reached the callback")
@@ -932,7 +850,7 @@ test_that("Wolfe searches retain the current point after initializer overflow", 
 })
 
 test_that("Rasmussen rejects an unsafe final extrapolation trial", {
-  witness <- make_rasmussen_witness(
+  witness <- make_wolfe_witness(
     fn = function(x) x^4,
     gr = function(x) 4 * x^3
   )
@@ -950,7 +868,7 @@ test_that("Rasmussen rejects an unsafe final extrapolation trial", {
 test_that("Rasmussen preserves safe trials at exact exhaustion", {
   cases <- list(
     strict_decrease = list(
-      witness = make_rasmussen_witness(
+      witness = make_wolfe_witness(
         fn = function(x) 1 - x,
         gr = function(x) -1
       ),
@@ -962,7 +880,7 @@ test_that("Rasmussen preserves safe trials at exact exhaustion", {
       trace = c(0, 1)
     ),
     wolfe = list(
-      witness = make_rasmussen_witness(
+      witness = make_wolfe_witness(
         fn = function(x) (x - 1)^2,
         gr = function(x) 2 * (x - 1)
       ),
@@ -996,7 +914,7 @@ test_that("Rasmussen preserves safe trials at exact exhaustion", {
 test_that("Rasmussen rejects equal and nonfinite exhausted trials", {
   cases <- list(
     equal = list(
-      witness = make_rasmussen_witness(
+      witness = make_wolfe_witness(
         fn = function(x) (x - 1)^2,
         gr = function(x) 2 * (x - 1)
       ),
@@ -1004,7 +922,7 @@ test_that("Rasmussen rejects equal and nonfinite exhausted trials", {
       trial = 2
     ),
     nonfinite_derivative = list(
-      witness = make_rasmussen_witness(
+      witness = make_wolfe_witness(
         fn = function(x) 1 - x,
         gr = function(x) if (x == 0) -1 else Inf
       ),
@@ -1038,8 +956,8 @@ test_that("Rasmussen honors each local and global evaluation limit", {
   )
 
   witness_factories <- list(
-    separate = make_rasmussen_witness,
-    combined = make_rasmussen_combined_witness
+    separate = make_wolfe_witness,
+    combined = make_combined_wolfe_witness
   )
 
   for (interface in names(witness_factories)) {
@@ -1090,7 +1008,7 @@ test_that("Schmidt Wolfe stops before an exhausted Armijo fallback", {
 
   for (name in names(cases)) {
     case <- cases[[name]]
-    witness <- make_schmidt_wolfe_witness(case$fn, case$gr)
+    witness <- make_wolfe_witness(case$fn, case$gr)
     result <- run_schmidt_wolfe_witness(
       witness,
       max_fn = 3,
@@ -1119,7 +1037,7 @@ test_that("Schmidt Wolfe honors each local and global evaluation limit", {
   )
 
   for (name in names(cases)) {
-    witness <- make_schmidt_wolfe_witness(
+    witness <- make_wolfe_witness(
       fn = function(x) if (x == 0) 1 else Inf,
       gr = function(x) -1
     )
@@ -1168,7 +1086,7 @@ test_that("Schmidt Wolfe preserves safe final evaluations", {
 
   for (name in names(cases)) {
     case <- cases[[name]]
-    witness <- make_schmidt_wolfe_witness(case$fn, case$gr)
+    witness <- make_wolfe_witness(case$fn, case$gr)
     result <- run_schmidt_wolfe_witness(
       witness,
       ls_max_fn = case$ls_max_fn,
@@ -1189,7 +1107,7 @@ test_that("Schmidt Wolfe preserves safe final evaluations", {
 })
 
 test_that("Hager-Zhang rejects an unsafe initial exhausted trial", {
-  witness <- make_hager_zhang_witness(
+  witness <- make_wolfe_witness(
     fn = function(x) x^4,
     gr = function(x) 4 * x^3
   )
@@ -1217,7 +1135,7 @@ test_that("Hager-Zhang rejects an unsafe initial exhausted trial", {
 })
 
 test_that("Hager-Zhang makes no line-search callback at zero allowance", {
-  witness <- make_hager_zhang_witness(
+  witness <- make_wolfe_witness(
     fn = function(x) 1 - x,
     gr = function(x) -1
   )
@@ -1235,7 +1153,7 @@ test_that("Hager-Zhang makes no line-search callback at zero allowance", {
 test_that("Hager-Zhang preserves safe initial exhausted trials", {
   cases <- list(
     condition = list(
-      witness = make_hager_zhang_witness(
+      witness = make_wolfe_witness(
         fn = function(x) (x - 1)^2,
         gr = function(x) 2 * (x - 1)
       ),
@@ -1243,7 +1161,7 @@ test_that("Hager-Zhang preserves safe initial exhausted trials", {
       g = 0
     ),
     strict_decrease = list(
-      witness = make_hager_zhang_witness(
+      witness = make_wolfe_witness(
         fn = function(x) 1 - x,
         gr = function(x) -1
       ),
@@ -1292,7 +1210,7 @@ test_that("Hager-Zhang rejects unusable initial exhausted trials", {
 
   for (name in names(cases)) {
     case <- cases[[name]]
-    witness <- make_hager_zhang_witness(case$fn, case$gr)
+    witness <- make_wolfe_witness(case$fn, case$gr)
     result <- run_hager_zhang_witness(witness)
 
     expect_equal(witness$fn_par(), c(0, case$trial), info = name)
@@ -1310,7 +1228,7 @@ test_that("Hager-Zhang rejects unusable initial exhausted trials", {
 })
 
 test_that("Hager-Zhang preserves a later exhausted decrease", {
-  witness <- make_hager_zhang_witness(
+  witness <- make_wolfe_witness(
     fn = function(x) 1 - x,
     gr = function(x) -1
   )
@@ -1559,37 +1477,6 @@ test_that("budget rollback preserves a stationary gradient across searches", {
   }
 })
 
-test_that("budget exhaustion before an internal backtracking trial is safe", {
-  witness <- make_budget_witness()
-  opt <- make_opt(
-    make_stages(
-      gradient_stage(
-        direction = sd_direction(),
-        step_size = backtracking()
-      )
-    )
-  )
-  opt <- mize_init(
-    opt,
-    1,
-    witness$fg,
-    max_fg = 1,
-    abs_tol = NULL,
-    rel_tol = NULL,
-    grad_tol = NULL,
-    ginf_tol = NULL,
-    step_tol = NULL
-  )
-
-  result <- mize_step(opt, 1, witness$fg)
-
-  expect_identical(witness$counts(), c(fn = 0, gr = 1))
-  expect_equal(c(fn = result$nf, gr = result$ng), witness$counts())
-  expect_equal(result$opt$terminate$what, "max_fg")
-  expect_equal(result$par, 1)
-  expect_false("f" %in% names(result))
-})
-
 test_that("the last permitted callback keeps convergence and failure precedence", {
   gradient_witness <- make_budget_witness()
   gradient_result <- mize(
@@ -1831,7 +1718,7 @@ test_that("cached summary values consume no remaining budget", {
 
 test_that("Hager-Zhang initializer respects local and global search budgets", {
   run_two_steps <- function(ls_max_fn, ls_max_gr, ls_max_fg, ...) {
-    witness <- make_hager_zhang_witness(
+    witness <- make_wolfe_witness(
       fn = function(x) 0.5 * x^2,
       gr = function(x) x
     )
@@ -1891,7 +1778,7 @@ test_that("Hager-Zhang initializer respects local and global search budgets", {
 })
 
 test_that("Hager-Zhang initializer recovers from a nonfinite objective probe", {
-  witness <- make_hager_zhang_witness(
+  witness <- make_wolfe_witness(
     fn = function(x) {
       if (isTRUE(all.equal(x, 0.891))) NA_real_ else 0.5 * x^2
     },

@@ -38,17 +38,6 @@ adaptive_restart <- function(opt, validation_type, wait = 1) {
   )
 }
 
-# Function-based adaptive restart
-adaptive_restart_fn <- function(opt) {
-  adaptive_restart(opt, "fn")
-}
-
-# Gradient-based adaptive restart
-adaptive_restart_gr <- function(opt) {
-  adaptive_restart(opt, "gr")
-}
-
-
 # Replace the usual momentum after step event with one which restarts
 # the momentum if validation failed
 require_adaptive_restart <- function(opt, par, fg, iter, par0, update) {

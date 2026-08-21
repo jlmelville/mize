@@ -32,10 +32,9 @@ test_that("line evaluator validates, recovers, accounts, and tracks decrease", {
   )
   expect_true(recovered$succeeded)
   expect_equal(recovered$line_point$alpha, 2)
-  expect_equal(recovered$function_evaluations, 2)
   expect_equal(evaluator_state$evaluation_count, 2)
 
-  evaluator(1)
+  recover_finite_line_point(evaluator, alpha = 1, max_evaluations = 1)
   expect_equal(evaluator_state$evaluation_count, 3)
   expect_equal(evaluator_state$best_decreasing_point$alpha, 1)
   expect_equal(evaluated, c(4, 2, 1))
@@ -88,17 +87,22 @@ test_that("line evaluator rejects malformed callback results after accounting", 
   }
 })
 
-test_that("finite recovery requires a completely usable line point", {
+test_that("finite recovery rejects nonfinite numeric line points", {
+  initial_point <- list(
+    alpha = 0,
+    value = 1,
+    gradient = -1,
+    slope = -1,
+    parameters = 0
+  )
   cases <- list(
-    missing_gradient = list(gradient = NULL, parameters = 1),
-    missing_parameters = list(gradient = 0, parameters = NULL),
     nonfinite_gradient = list(gradient = NaN, parameters = 1),
     nonfinite_parameters = list(gradient = 0, parameters = NaN)
   )
 
   for (case_name in names(cases)) {
     case <- cases[[case_name]]
-    recovered <- recover_finite_line_point(
+    evaluator <- make_line_evaluator(
       function(alpha, calc_gradient = TRUE) {
         list(
           alpha = alpha,
@@ -108,12 +112,21 @@ test_that("finite recovery requires a completely usable line point", {
           parameters = case$parameters
         )
       },
+      initial_point = initial_point,
+      max_evaluations = 1
+    )
+    recovered <- recover_finite_line_point(
+      evaluator,
       alpha = 1,
       max_evaluations = 1
     )
 
     expect_false(recovered$succeeded, info = case_name)
-    expect_identical(recovered$function_evaluations, 1L, info = case_name)
+    expect_identical(
+      environment(evaluator)$evaluation_count,
+      1L,
+      info = case_name
+    )
   }
 })
 
@@ -224,11 +237,9 @@ test_that("condition policy selects exact, approximate, and curvature rules", {
     strong_curvature = TRUE,
     approximation_tolerance = 0.2
   )
-  expect_false(exact$armijo(initial_point, approximate_trial))
-  expect_true(approximate$armijo(initial_point, approximate_trial))
-  expect_false(approximate$exact_armijo(initial_point, approximate_trial))
+  expect_false(exact$selected_armijo(initial_point, approximate_trial))
   expect_true(approximate$selected_armijo(initial_point, approximate_trial))
-  expect_identical(approximate$armijo, approximate$selected_armijo)
+  expect_false(approximate$exact_armijo(initial_point, approximate_trial))
   expect_true(approximate$curvature(initial_point, approximate_trial))
   expect_true(approximate$wolfe(initial_point, approximate_trial))
 
@@ -240,15 +251,6 @@ test_that("condition policy selects exact, approximate, and curvature rules", {
   expect_true(weak$curvature(initial_point, weak_only_trial))
   expect_false(exact$curvature(initial_point, weak_only_trial))
   expect_true(weak$wolfe(initial_point, weak_only_trial))
-
-  expect_error(
-    make_line_condition_policy(0.6, 0.5),
-    "curvature_constant"
-  )
-  expect_error(
-    make_line_condition_policy(0.1, 0.5, approximate_armijo = NA),
-    "approximate_armijo"
-  )
 })
 
 test_that("Wolfe finalization keeps the best usable evaluated decrease", {
@@ -273,8 +275,12 @@ test_that("Wolfe finalization keeps the best usable evaluated decrease", {
     initial_point,
     max_evaluations = 2
   )
-  evaluator(2)
-  failed_point <- evaluator(3)
+  recover_finite_line_point(evaluator, alpha = 2, max_evaluations = 1)
+  failed_point <- recover_finite_line_point(
+    evaluator,
+    alpha = 3,
+    max_evaluations = 1
+  )$line_point
 
   result <- finalize_wolfe_line_search_result(
     accepted_point = failed_point,
@@ -284,11 +290,17 @@ test_that("Wolfe finalization keeps the best usable evaluated decrease", {
 
   expect_identical(
     names(result),
-    c("line_point", "function_evaluations", "gradient_evaluations")
+    c(
+      "line_point",
+      "function_evaluations",
+      "gradient_evaluations",
+      "outcome"
+    )
   )
   expect_equal(result$line_point$alpha, 2)
   expect_equal(result$function_evaluations, 2)
   expect_equal(result$gradient_evaluations, 2)
+  expect_identical(result$outcome, "improving_fallback")
 })
 
 test_that("shared Wolfe core boundary preserves result and callback types", {
@@ -341,6 +353,7 @@ test_that("shared Wolfe core boundary preserves result and callback types", {
       "line_point",
       "function_evaluations",
       "gradient_evaluations",
+      "outcome",
       "termination_reason"
     )
   )
@@ -351,6 +364,7 @@ test_that("shared Wolfe core boundary preserves result and callback types", {
   expect_equal(result$line_point$alpha, 1)
   expect_equal(result$function_evaluations, 1)
   expect_equal(result$gradient_evaluations, 1)
+  expect_identical(result$outcome, "wolfe")
   expect_equal(observed$initial_point$alpha, 0)
   expect_equal(observed$initial_alpha, 1)
   expect_equal(observed$search_direction, 3)
@@ -384,46 +398,4 @@ test_that("line-search backends share one explicit callable protocol", {
   for (name in names(searches)) {
     expect_identical(names(formals(searches[[name]])), expected, info = name)
   }
-})
-
-test_that("debug output includes the private line-search termination reason", {
-  objective <- list(
-    fn = function(parameters) (parameters - 1)^2,
-    gr = function(parameters) 2 * (parameters - 1)
-  )
-  optimizer <- make_opt(
-    make_stages(
-      gradient_stage(
-        direction = sd_direction(),
-        step_size = hager_zhang_ls(
-          initial_step_length = 0.5,
-          debug = TRUE
-        )
-      ),
-      verbose = FALSE
-    )
-  )
-  optimizer$count_res_fg <- FALSE
-
-  messages <- character()
-  withCallingHandlers(
-    opt_loop(
-      optimizer,
-      par = 0,
-      fg = objective,
-      max_iter = 1,
-      store_progress = FALSE,
-      verbose = FALSE,
-      grad_tol = NULL
-    ),
-    message = function(condition) {
-      messages <<- c(messages, conditionMessage(condition))
-      invokeRestart("muffleMessage")
-    }
-  )
-  expect_true(any(grepl(
-    "hager-zhang line search terminated: wolfe",
-    messages,
-    fixed = TRUE
-  )))
 })
