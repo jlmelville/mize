@@ -15,6 +15,11 @@ usage <- function(status = 0L) {
       "  --reps N                   Repetitions per optimizer/configuration.",
       "  --seed N                   RNG seed used to build reproducible cases.",
       "  --spd-n N                  Dimension for the SPD quadratic case.",
+      "  --methods VALUES           Comma-separated optimizer method profiles.",
+      "                             stats-bfgs,stats-cg,stats-l-bfgs-b,",
+      "                             mize-l-bfgs,mize-bfgs,mize-cg-pr+,",
+      "                             mize-cg-hz+,mize-tn,mize-newton.",
+      "                             The default excludes mize-newton.",
       "  --line-search VALUES       Comma-separated mize line searches.",
       "  --step0 VALUES             Comma-separated mize first-step settings.",
       "                             Use default for each line search default.",
@@ -40,6 +45,47 @@ split_arg <- function(value) {
   parts[nzchar(parts)]
 }
 
+benchmark_method_profiles <- function() {
+  list(
+    `stats-bfgs` = list(optimizer = "stats::optim", method = "BFGS"),
+    `stats-cg` = list(optimizer = "stats::optim", method = "CG"),
+    `stats-l-bfgs-b` = list(
+      optimizer = "stats::optim",
+      method = "L-BFGS-B"
+    ),
+    `mize-l-bfgs` = list(
+      optimizer = "mize",
+      method = "L-BFGS",
+      cg_update = "PR+"
+    ),
+    `mize-bfgs` = list(
+      optimizer = "mize",
+      method = "BFGS",
+      cg_update = "PR+"
+    ),
+    `mize-cg-pr+` = list(
+      optimizer = "mize",
+      method = "CG",
+      cg_update = "PR+"
+    ),
+    `mize-cg-hz+` = list(
+      optimizer = "mize",
+      method = "CG",
+      cg_update = "HZ+"
+    ),
+    `mize-tn` = list(
+      optimizer = "mize",
+      method = "TN",
+      cg_update = "PR+"
+    ),
+    `mize-newton` = list(
+      optimizer = "mize",
+      method = "NEWTON",
+      cg_update = "PR+"
+    )
+  )
+}
+
 parse_int <- function(value, name) {
   parsed <- suppressWarnings(as.integer(value))
   if (is.na(parsed) || parsed < 1L) {
@@ -55,6 +101,7 @@ parse_args <- function(args) {
     reps = 1L,
     seed = 42L,
     spd_n = 50L,
+    methods = setdiff(names(benchmark_method_profiles()), "mize-newton"),
     line_searches = c("More-Thuente", "Hager-Zhang"),
     step0 = c("default", "1"),
     callback_modes = "combined",
@@ -90,6 +137,9 @@ parse_args <- function(args) {
     } else if (arg == "--spd-n") {
       config$spd_n <- parse_int(read_value(), "--spd-n")
       i <- i + 1L
+    } else if (arg == "--methods") {
+      config$methods <- tolower(split_arg(read_value()))
+      i <- i + 1L
     } else if (arg == "--line-search") {
       config$line_searches <- split_arg(read_value())
       i <- i + 1L
@@ -111,6 +161,21 @@ parse_args <- function(args) {
       stop("Unknown option: ", arg, call. = FALSE)
     }
     i <- i + 1L
+  }
+
+  if (length(config$methods) == 0L) {
+    stop("--methods must select at least one method profile", call. = FALSE)
+  }
+  unknown_methods <- setdiff(
+    config$methods,
+    names(benchmark_method_profiles())
+  )
+  if (length(unknown_methods) > 0L) {
+    stop(
+      "Unknown method profile(s): ",
+      paste(unknown_methods, collapse = ", "),
+      call. = FALSE
+    )
   }
 
   unknown_callback_modes <- setdiff(
@@ -569,26 +634,21 @@ run_mize_case <- function(
 }
 
 run_case_grid <- function(case, config) {
-  optim_methods <- c("BFGS", "CG", "L-BFGS-B")
-  mize_methods <- list(
-    list(method = "L-BFGS", cg_update = "PR+"),
-    list(method = "BFGS", cg_update = "PR+"),
-    list(method = "CG", cg_update = "PR+"),
-    list(method = "CG", cg_update = "HZ+"),
-    list(method = "TN", cg_update = "PR+")
-  )
+  method_profiles <- benchmark_method_profiles()[config$methods]
 
   rows <- list()
   for (rep in seq_len(config$reps)) {
-    for (method in optim_methods) {
-      rows[[length(rows) + 1L]] <- run_optim_case(
-        case = case,
-        rep = rep,
-        method = method,
-        max_iter = config$max_iter
-      )
-    }
-    for (method_config in mize_methods) {
+    for (method_config in method_profiles) {
+      if (identical(method_config$optimizer, "stats::optim")) {
+        rows[[length(rows) + 1L]] <- run_optim_case(
+          case = case,
+          rep = rep,
+          method = method_config$method,
+          max_iter = config$max_iter
+        )
+        next
+      }
+
       for (line_search in config$line_searches) {
         for (step0 in config$step0) {
           for (callback_mode in config$callback_modes) {

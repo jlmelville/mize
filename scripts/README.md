@@ -22,6 +22,20 @@ By default, mize receives each case's combined objective/gradient callback.
 Use `--callbacks separate` or `--callbacks combined,separate` to measure the
 separate-callback path under otherwise identical settings.
 
+### Method Selection
+
+Use `--methods` to select one or more explicit optimizer profiles:
+
+- `stats-bfgs`, `stats-cg`, and `stats-l-bfgs-b`
+- `mize-l-bfgs`, `mize-bfgs`, `mize-cg-pr+`, `mize-cg-hz+`, and `mize-tn`
+- `mize-newton` for mize's exact-Hessian Newton method
+
+The default is the original three `stats::optim()` and five mize profiles, so
+existing commands retain their grids. Exact Newton is opt-in because it
+requires a case with an `fg$hs` callback. Each selected mize profile is crossed
+with the requested line searches, first-step settings, and callback modes;
+`stats::optim()` profiles keep their ordinary separate-callback execution.
+
 ### Funconstrain Adapter Schema
 
 The sourceable helper preserves the benchmark's `case$name`, `case$source`,
@@ -178,6 +192,28 @@ Rscript scripts/benchmark-optimizers.R \
   --funconstrain-cases rosen,chebyquad \
   --out /tmp/mize-funconstrain-benchmark.csv
 ```
+
+Run a bounded exact-Newton wiring check across a built-in SPD control, fixed-
+dimension external problems, requested variable dimensions, and one rejected
+dimension that falls back to its factory default:
+
+```sh
+Rscript scripts/benchmark-optimizers.R \
+  --cases spd-quadratic \
+  --funconstrain-cases rosen,brown_bs,meyer,var_dim,chebyquad,ex_powell \
+  --spd-n 5 \
+  --methods mize-newton \
+  --max-iter 1 \
+  --line-search More-Thuente \
+  --step0 default \
+  --callbacks combined,separate \
+  --out /tmp/mize-newton-smoke.csv
+```
+
+This is a harness smoke test, not derivative-integrity or Newton-direction
+evidence. `n_hs_call` confirms that the optimizer consumed the mapped Hessian.
+The CSV records the actual dimension, while the adapter's `start` metadata and
+the fallback message retain the requested-versus-resolved dimension decision.
 
 The `--spd-n` value is also requested from variable-dimension `funconstrain`
 factories. If a factory rejects that dimension, the harness reports the
