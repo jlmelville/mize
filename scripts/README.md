@@ -85,6 +85,60 @@ original callbacks and are excluded. A call to the combined `fg$fg` callback
 increments only `n_fg_call`; it is not also recorded as separate objective and
 gradient calls.
 
+## Hessian Integrity Probe
+
+`hessian-integrity-probe.R` is a deterministic developer check that is separate
+from optimizer benchmarking. It compares the analytic Hessian-vector product
+`H v` with the centered directional difference
+`(g(x + h v) - g(x - h v)) / (2 h)` of the analytic gradient. The generic
+`probe_hessian_integrity()` function accepts any finite numeric probe point;
+the command-line entry point intentionally exercises only each case's resolved
+start in this first study slice. Sourcing the script defines its functions
+without running a probe.
+
+The default directions come from at most three fixed dimensionless patterns:
+uniform, alternating, and linear trend. Duplicate patterns are removed. Each
+pattern is scaled coordinate-wise by `pmax(1, abs(x))` and then normalized to
+unit Euclidean length. The recorded step is
+`h = .Machine$double.eps^(1 / 3) * direction_scale`, so the actual coordinate
+perturbations remain relative to the point's coordinate scales.
+
+The CSV records Hessian and gradient shape and finiteness, Hessian symmetry,
+direction and step scales, absolute and scaled directional residuals, every
+tolerance contribution, the final thresholds, per-direction pass/fail, and an
+overall point-level classification.
+Vector norms are evaluated after scaling by their largest magnitude to avoid
+overflow from squaring large finite entries. A direction cannot pass unless its
+geometry, perturbed points, analytic and finite-difference products, residuals,
+scales, and thresholds are all finite.
+Centered differences also order subtraction and division according to scale:
+small denominators use difference-then-divide, large denominators scale each
+endpoint gradient first, and steps above half the largest double are divided by
+the step and by two sequentially without forming an infinite `2 * h`.
+The directional threshold is the sum of fixed absolute and relative terms,
+both `100 * sqrt(.Machine$double.eps)`, plus the recorded cancellation allowance
+`.Machine$double.eps * gradient_scale / h`. Symmetry uses the adapter's relative
+threshold `sqrt(.Machine$double.eps) * max(1, max(abs(H)))`.
+
+Run a bounded resolved-start probe over the exact built-in SPD quadratic,
+fixed-dimension Rosenbrock and Brown badly scaled cases, and two requested
+dimension-five funconstrain cases:
+
+```sh
+R_LIBS=/private/tmp/mize-funconstrain-metadata-lib \
+  Rscript scripts/hessian-integrity-probe.R \
+  --dimension 5 \
+  --funconstrain-cases rosen,brown_bs,var_dim,chebyquad \
+  --out /private/tmp/mize-hessian-integrity-starts.csv
+```
+
+The SPD control always runs. If funconstrain is unavailable, the script reports
+that fact and writes only the SPD rows; funconstrain remains an optional
+developer dependency. A failed directional check is callback or adapter
+evidence and must stop that problem from being interpreted as an exact-Newton
+benchmark. The probe does not replace a failed Hessian numerically, classify
+Newton directions, or establish behavior away from the resolved start.
+
 ### Dependencies
 
 Built-in benchmark cases use base R plus packages that ship with R:
