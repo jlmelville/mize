@@ -92,9 +92,9 @@ from optimizer benchmarking. It compares the analytic Hessian-vector product
 `H v` with the centered directional difference
 `(g(x + h v) - g(x - h v)) / (2 h)` of the analytic gradient. The generic
 `probe_hessian_integrity()` function accepts any finite numeric probe point;
-the command-line entry point intentionally exercises only each case's resolved
-start in this first study slice. Sourcing the script defines its functions
-without running a probe.
+the command-line entry point exercises only each case's resolved start unless
+the extended point set is selected explicitly. Sourcing the script defines its
+functions without running a probe.
 
 The default directions come from at most three fixed dimensionless patterns:
 uniform, alternating, and linear trend. Duplicate patterns are removed. Each
@@ -137,7 +137,46 @@ that fact and writes only the SPD rows; funconstrain remains an optional
 developer dependency. A failed directional check is callback or adapter
 evidence and must stop that problem from being interpreted as an exact-Newton
 benchmark. The probe does not replace a failed Hessian numerically, classify
-Newton directions, or establish behavior away from the resolved start.
+Newton directions, or establish behavior at points that were not selected.
+
+Use `--point-set extended` to add deterministic optimizer-derived and reference
+points. For each case, the script runs mize `NEWTON` from the resolved start
+with separate callbacks, More-Thuente, its default `step0`, and `max_iter` set
+to one and two. It probes the returned parameters and records both the requested
+cap and the optimizer's actual iteration and termination. Point collection and
+probing use the original callbacks, not the benchmark harness's counted
+wrappers, so they do not alter or claim benchmark callback counts.
+
+The extended point set also considers the exact SPD minimizer and each external
+`xmin`. An external reference is eligible only when `xmin_applicable` is
+exactly `TRUE` and its length equals the resolved dimension. `FALSE` and `NA`
+are never promoted from shape alone. Exact duplicate vectors are probed once;
+the point-selection manifest records excluded and duplicate candidates, their
+basis, and the selected point to which a duplicate was mapped.
+
+Extended runs require a separate manifest path so exclusions are not mixed
+with directional probe rows. The two paths are resolved during argument parsing
+and must differ; an alias is rejected before point collection or file output.
+Explicit output paths must be non-empty. Output-file symbolic links, including
+dangling links, are also rejected rather than followed:
+
+```sh
+R_LIBS=/private/tmp/mize-funconstrain-metadata-lib \
+  Rscript scripts/hessian-integrity-probe.R \
+  --dimension 5 \
+  --funconstrain-cases rosen,brown_bs,var_dim,chebyquad \
+  --point-set extended \
+  --selection-out /private/tmp/mize-hessian-point-selection.csv \
+  --out /private/tmp/mize-hessian-integrity-extended.csv
+```
+
+The directional CSV repeats the optimizer configuration and point provenance
+needed to interpret every selected point. The selection manifest has one row
+per candidate, including point values, eligibility, requested/actual iteration,
+termination, reference applicability and dimension match, selection status,
+candidate dimension, and explicit deduplication target. This point-coverage
+command does not add eigenspectrum classification, Newton/TN direction
+comparison, line-search experiments, or performance conclusions.
 
 ### Dependencies
 

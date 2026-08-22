@@ -350,6 +350,7 @@ hessian_probe_spd_case <- function(n) {
   hessian <- diag(diagonal, nrow = n)
   linear <- seq(-1, 1, length.out = n)
   point <- seq(-0.75, 0.75, length.out = n)
+  minimizer <- linear / diagonal
 
   list(
     name = paste0("spd-quadratic-n", n),
@@ -371,7 +372,319 @@ hessian_probe_spd_case <- function(n) {
       requested_dimension = n,
       requested_dimension_accepted = TRUE,
       actual_dimension = n
+    ),
+    reference = list(
+      xmin = minimizer,
+      xmin_applicable = TRUE,
+      xmin_basis = "exact_spd_minimizer"
     )
+  )
+}
+
+hessian_probe_point_values <- function(point) {
+  if (is.null(point)) {
+    return("")
+  }
+
+  paste(
+    format(point, digits = 17, scientific = TRUE, trim = TRUE),
+    collapse = ";"
+  )
+}
+
+hessian_probe_start_candidate <- function(case) {
+  list(
+    point_id = "resolved_start",
+    point_label = "resolved_start",
+    point_provenance = "adapter_resolved_start",
+    point = case$par,
+    candidate_eligible = TRUE,
+    candidate_basis = "resolved_start",
+    optimizer = NA_character_,
+    method = NA_character_,
+    line_search = NA_character_,
+    step0 = NA_character_,
+    callback_mode = NA_character_,
+    requested_max_iter = NA_integer_,
+    actual_iter = NA_integer_,
+    termination_what = NA_character_,
+    termination_value = NA_character_,
+    reference_xmin_applicable = NA,
+    reference_xmin_basis = NA_character_,
+    reference_dimension_match = NA,
+    error = ""
+  )
+}
+
+hessian_probe_newton_candidates <- function(case, optimizer) {
+  lapply(c(1L, 2L), function(max_iter) {
+    optimizer_fg <- case$fg
+    optimizer_fg$fg <- NULL
+    result <- tryCatch(
+      optimizer(
+        par = case$par,
+        fg = optimizer_fg,
+        method = "NEWTON",
+        line_search = "More-Thuente",
+        step0 = NULL,
+        max_iter = max_iter
+      ),
+      error = identity
+    )
+    failed <- inherits(result, "error")
+    point <- if (failed) NULL else result$par
+    point_valid <- !failed &&
+      is.numeric(point) &&
+      is.null(dim(point)) &&
+      length(point) == length(case$par) &&
+      all(is.finite(point))
+
+    termination_what <- if (
+      failed ||
+        !is.list(result$terminate) ||
+        is.null(result$terminate$what)
+    ) {
+      NA_character_
+    } else {
+      as.character(result$terminate$what)
+    }
+    termination_value <- if (
+      failed ||
+        !is.list(result$terminate) ||
+        is.null(result$terminate$val)
+    ) {
+      NA_character_
+    } else {
+      paste(as.character(result$terminate$val), collapse = ",")
+    }
+    actual_iter <- if (
+      failed ||
+        length(result$iter) != 1L ||
+        !is.numeric(result$iter) ||
+        !is.finite(result$iter)
+    ) {
+      NA_integer_
+    } else {
+      as.integer(result$iter)
+    }
+
+    list(
+      point_id = paste0("newton_max_iter_", max_iter),
+      point_label = paste0("newton_max_iter_", max_iter),
+      point_provenance = "mize_returned_parameters",
+      point = if (point_valid) point else NULL,
+      candidate_eligible = point_valid,
+      candidate_basis = if (failed) {
+        "optimizer_error"
+      } else if (!point_valid) {
+        "invalid_returned_parameters"
+      } else {
+        "mize_returned_parameters"
+      },
+      optimizer = "mize",
+      method = "NEWTON",
+      line_search = "More-Thuente",
+      step0 = "default",
+      callback_mode = "separate",
+      requested_max_iter = max_iter,
+      actual_iter = actual_iter,
+      termination_what = termination_what,
+      termination_value = termination_value,
+      reference_xmin_applicable = NA,
+      reference_xmin_basis = NA_character_,
+      reference_dimension_match = NA,
+      error = if (failed) conditionMessage(result) else ""
+    )
+  })
+}
+
+hessian_probe_reference_candidate <- function(case) {
+  reference <- case$reference
+  if (is.null(reference)) {
+    reference <- list(
+      xmin = NULL,
+      xmin_applicable = FALSE,
+      xmin_basis = "unavailable"
+    )
+  }
+
+  xmin <- reference$xmin
+  applicable <- reference$xmin_applicable
+  basis <- reference$xmin_basis
+  if (is.null(basis) || length(basis) != 1L || is.na(basis)) {
+    basis <- "not_encoded"
+  }
+  dimension_match <- is.numeric(xmin) &&
+    is.null(dim(xmin)) &&
+    length(xmin) == length(case$par)
+  point_valid <- dimension_match && all(is.finite(xmin))
+  candidate_eligible <- identical(applicable, TRUE) && point_valid
+  candidate_basis <- if (!identical(applicable, TRUE)) {
+    basis
+  } else if (!dimension_match) {
+    "dimension_mismatch"
+  } else if (!point_valid) {
+    "invalid_reference_point"
+  } else {
+    "xmin_applicable_true_and_dimension_match"
+  }
+
+  list(
+    point_id = "reference_xmin",
+    point_label = "reference_xmin",
+    point_provenance = "documented_xmin_reference",
+    point = if (is.numeric(xmin) && is.null(dim(xmin))) xmin else NULL,
+    candidate_eligible = candidate_eligible,
+    candidate_basis = candidate_basis,
+    optimizer = NA_character_,
+    method = NA_character_,
+    line_search = NA_character_,
+    step0 = NA_character_,
+    callback_mode = NA_character_,
+    requested_max_iter = NA_integer_,
+    actual_iter = NA_integer_,
+    termination_what = NA_character_,
+    termination_value = NA_character_,
+    reference_xmin_applicable = applicable,
+    reference_xmin_basis = basis,
+    reference_dimension_match = dimension_match,
+    error = ""
+  )
+}
+
+hessian_probe_select_points <- function(case, optimizer) {
+  candidates <- c(
+    list(hessian_probe_start_candidate(case)),
+    hessian_probe_newton_candidates(case, optimizer),
+    list(hessian_probe_reference_candidate(case))
+  )
+  selected <- list()
+
+  for (i in seq_along(candidates)) {
+    candidate <- candidates[[i]]
+    candidate$selection_status <- "excluded"
+    candidate$selection_basis <- candidate$candidate_basis
+    candidate$deduplicated_to <- NA_character_
+
+    if (candidate$candidate_eligible) {
+      duplicate_index <- which(vapply(
+        selected,
+        function(existing) {
+          identical(as.numeric(existing$point), as.numeric(candidate$point))
+        },
+        logical(1)
+      ))
+      if (length(duplicate_index) > 0L) {
+        candidate$selection_status <- "duplicate"
+        candidate$selection_basis <- "identical_to_selected_point"
+        candidate$deduplicated_to <- selected[[duplicate_index[[1L]]]]$point_id
+      } else {
+        candidate$selection_status <- "selected"
+        candidate$selection_basis <- "unique_eligible_point"
+        selected[[length(selected) + 1L]] <- candidate
+      }
+    }
+    candidates[[i]] <- candidate
+  }
+
+  list(candidates = candidates, selected = selected)
+}
+
+hessian_probe_candidate_row <- function(case, candidate) {
+  start <- case$start
+  if (is.null(start)) {
+    start <- list(
+      resolution = "fixed",
+      requested_dimension = length(case$par),
+      requested_dimension_accepted = NA,
+      actual_dimension = length(case$par)
+    )
+  }
+
+  data.frame(
+    case = case$name,
+    source = case$source,
+    start_resolution = start$resolution,
+    requested_dimension = start$requested_dimension,
+    requested_dimension_accepted = start$requested_dimension_accepted,
+    actual_dimension = start$actual_dimension,
+    point_id = candidate$point_id,
+    point_provenance = candidate$point_provenance,
+    point_values = hessian_probe_point_values(candidate$point),
+    candidate_dimension = if (is.null(candidate$point)) {
+      NA_integer_
+    } else {
+      length(candidate$point)
+    },
+    candidate_eligible = candidate$candidate_eligible,
+    candidate_basis = candidate$candidate_basis,
+    selection_status = candidate$selection_status,
+    selection_basis = candidate$selection_basis,
+    deduplicated_to = candidate$deduplicated_to,
+    optimizer = candidate$optimizer,
+    method = candidate$method,
+    line_search = candidate$line_search,
+    step0 = candidate$step0,
+    callback_mode = candidate$callback_mode,
+    requested_max_iter = candidate$requested_max_iter,
+    actual_iter = candidate$actual_iter,
+    termination_what = candidate$termination_what,
+    termination_value = candidate$termination_value,
+    reference_xmin_applicable = candidate$reference_xmin_applicable,
+    reference_xmin_basis = candidate$reference_xmin_basis,
+    reference_dimension_match = candidate$reference_dimension_match,
+    error = candidate$error,
+    stringsAsFactors = FALSE
+  )
+}
+
+hessian_probe_selected_point <- function(case, candidate) {
+  result <- probe_hessian_integrity(
+    fg = case$fg,
+    point = candidate$point,
+    point_label = candidate$point_label
+  )
+  metadata <- hessian_probe_candidate_row(case, candidate)
+  metadata <- metadata[rep(1L, nrow(result)), , drop = FALSE]
+  rownames(metadata) <- NULL
+
+  data.frame(
+    metadata,
+    result,
+    stringsAsFactors = FALSE
+  )
+}
+
+hessian_probe_extended_cases <- function(cases, optimizer) {
+  selections <- lapply(
+    cases,
+    hessian_probe_select_points,
+    optimizer = optimizer
+  )
+  results <- Map(
+    function(case, selection) {
+      do.call(
+        rbind,
+        lapply(selection$selected, hessian_probe_selected_point, case = case)
+      )
+    },
+    cases,
+    selections
+  )
+  manifests <- Map(
+    function(case, selection) {
+      do.call(
+        rbind,
+        lapply(selection$candidates, hessian_probe_candidate_row, case = case)
+      )
+    },
+    cases,
+    selections
+  )
+
+  list(
+    results = do.call(rbind, results),
+    selection = do.call(rbind, manifests)
   )
 }
 
@@ -416,6 +729,33 @@ hessian_probe_parse_int <- function(value, name) {
   parsed
 }
 
+hessian_probe_resolved_output_path <- function(path, option) {
+  if (
+    !is.character(path) ||
+      length(path) != 1L ||
+      is.na(path) ||
+      !nzchar(path)
+  ) {
+    stop(option, " must be a non-empty path", call. = FALSE)
+  }
+
+  expanded <- path.expand(path)
+  link_target <- Sys.readlink(expanded)
+  if (!is.na(link_target) && nzchar(link_target)) {
+    stop(option, " must not be a symbolic link", call. = FALSE)
+  }
+  if (file.exists(expanded)) {
+    return(normalizePath(expanded, winslash = "/", mustWork = TRUE))
+  }
+
+  resolved_parent <- normalizePath(
+    dirname(expanded),
+    winslash = "/",
+    mustWork = FALSE
+  )
+  file.path(resolved_parent, basename(expanded))
+}
+
 hessian_probe_usage <- function(status = 0L) {
   cat(
     paste(
@@ -426,6 +766,8 @@ hessian_probe_usage <- function(status = 0L) {
       "  --dimension N             SPD and requested variable-case dimension.",
       "  --funconstrain-cases NAMES Comma-separated funconstrain factories.",
       "  --no-funconstrain         Run only the exact SPD control.",
+      "  --point-set MODE          resolved-start (default) or extended.",
+      "  --selection-out PATH      Required manifest path for extended points.",
       "  --out PATH                Write CSV results to PATH instead of stdout.",
       "  --help                    Show this help.",
       sep = "\n"
@@ -439,6 +781,8 @@ hessian_probe_parse_args <- function(args) {
     dimension = 5L,
     funconstrain_cases = c("rosen", "brown_bs", "var_dim", "chebyquad"),
     include_funconstrain = TRUE,
+    point_set = "resolved-start",
+    selection_out = NULL,
     out = NULL
   )
 
@@ -465,6 +809,12 @@ hessian_probe_parse_args <- function(args) {
       i <- i + 1L
     } else if (arg == "--no-funconstrain") {
       config$include_funconstrain <- FALSE
+    } else if (arg == "--point-set") {
+      config$point_set <- tolower(read_value())
+      i <- i + 1L
+    } else if (arg == "--selection-out") {
+      config$selection_out <- read_value()
+      i <- i + 1L
     } else if (arg == "--out") {
       config$out <- read_value()
       i <- i + 1L
@@ -472,6 +822,42 @@ hessian_probe_parse_args <- function(args) {
       stop("Unknown option: ", arg, call. = FALSE)
     }
     i <- i + 1L
+  }
+
+  if (!config$point_set %in% c("resolved-start", "extended")) {
+    stop(
+      "--point-set must be resolved-start or extended",
+      call. = FALSE
+    )
+  }
+  if (config$point_set == "extended" && is.null(config$selection_out)) {
+    stop(
+      "--selection-out is required when --point-set extended is selected",
+      call. = FALSE
+    )
+  }
+  resolved_out <- if (is.null(config$out)) {
+    NULL
+  } else {
+    hessian_probe_resolved_output_path(config$out, "--out")
+  }
+  resolved_selection_out <- if (config$point_set == "extended") {
+    hessian_probe_resolved_output_path(
+      config$selection_out,
+      "--selection-out"
+    )
+  } else {
+    NULL
+  }
+  if (
+    config$point_set == "extended" &&
+      !is.null(config$out) &&
+      identical(resolved_out, resolved_selection_out)
+  ) {
+    stop(
+      "--out and --selection-out must resolve to different paths",
+      call. = FALSE
+    )
   }
 
   config
@@ -502,11 +888,40 @@ write_hessian_probe_results <- function(results, out) {
   message("Wrote Hessian-integrity results to ", out)
 }
 
+hessian_probe_load_mize <- function() {
+  if (requireNamespace("pkgload", quietly = TRUE)) {
+    pkgload::load_all(".", export_all = FALSE, helpers = FALSE, quiet = TRUE)
+    return(getExportedValue("mize", "mize"))
+  }
+  if (requireNamespace("mize", quietly = TRUE)) {
+    return(getExportedValue("mize", "mize"))
+  }
+  stop(
+    "Install pkgload or install mize before selecting extended points.",
+    call. = FALSE
+  )
+}
+
+write_hessian_probe_selection <- function(selection, out) {
+  utils::write.csv(selection, file = out, row.names = FALSE, na = "")
+  message("Wrote Hessian point-selection manifest to ", out)
+}
+
 hessian_probe_main <- function() {
   config <- hessian_probe_parse_args(commandArgs(trailingOnly = TRUE))
   cases <- hessian_probe_cases(config)
-  results <- do.call(rbind, lapply(cases, hessian_probe_case))
-  write_hessian_probe_results(results, config$out)
+  if (config$point_set == "resolved-start") {
+    results <- do.call(rbind, lapply(cases, hessian_probe_case))
+    write_hessian_probe_results(results, config$out)
+    return(invisible(NULL))
+  }
+
+  coverage <- hessian_probe_extended_cases(
+    cases,
+    optimizer = hessian_probe_load_mize()
+  )
+  write_hessian_probe_results(coverage$results, config$out)
+  write_hessian_probe_selection(coverage$selection, config$selection_out)
 }
 
 if (sys.nframe() == 0L) {
