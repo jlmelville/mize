@@ -86,6 +86,270 @@ hessian_probe_callback <- function(callback, point) {
   )
 }
 
+hessian_spectrum_control <- function() {
+  list(
+    absolute_tolerance = 0,
+    relative_tolerance = sqrt(.Machine$double.eps)
+  )
+}
+
+hessian_spectrum_symmetrize <- function(hessian) {
+  transposed <- t(hessian)
+  if (all(hessian == transposed)) {
+    return(list(
+      value = hessian,
+      method = "preserved_exact_symmetry"
+    ))
+  }
+
+  left <- as.vector(hessian)
+  right <- as.vector(transposed)
+  overflow_risk <- sign(left) == sign(right) &
+    abs(left) > .Machine$double.xmax - abs(right)
+  averaged <- numeric(length(left))
+  safe_sum <- !overflow_risk
+  averaged[safe_sum] <- (left[safe_sum] + right[safe_sum]) / 2
+  averaged[overflow_risk] <-
+    left[overflow_risk] / 2 + right[overflow_risk] / 2
+  symmetric <- hessian
+  symmetric[] <- averaged
+
+  list(
+    value = symmetric,
+    method = "overflow_safe_pairwise_average"
+  )
+}
+
+classify_hessian_spectrum <- function(
+  hessian,
+  expected_dimension,
+  control = hessian_spectrum_control(),
+  eigen_solver = base::eigen
+) {
+  required_controls <- c("absolute_tolerance", "relative_tolerance")
+  if (
+    !is.list(control) ||
+      !all(required_controls %in% names(control)) ||
+      any(!vapply(control[required_controls], is.numeric, logical(1))) ||
+      any(vapply(control[required_controls], length, integer(1)) != 1L) ||
+      any(!is.finite(unlist(control[required_controls]))) ||
+      control$absolute_tolerance < 0 ||
+      control$relative_tolerance <= 0
+  ) {
+    stop(
+      "spectrum control tolerances must be finite numeric scalars, with absolute tolerance nonnegative and relative tolerance positive",
+      call. = FALSE
+    )
+  }
+  if (
+    !is.numeric(expected_dimension) ||
+      length(expected_dimension) != 1L ||
+      !is.finite(expected_dimension) ||
+      expected_dimension < 1 ||
+      expected_dimension != as.integer(expected_dimension)
+  ) {
+    stop("expected_dimension must be a positive integer", call. = FALSE)
+  }
+  if (!is.function(eigen_solver)) {
+    stop("eigen_solver must be a function", call. = FALSE)
+  }
+
+  expected_dimension <- as.integer(expected_dimension)
+  hessian_shape_ok <- is.matrix(hessian) &&
+    is.numeric(hessian) &&
+    identical(dim(hessian), c(expected_dimension, expected_dimension))
+  hessian_finite <- hessian_shape_ok && all(is.finite(hessian))
+  result <- list(
+    hessian_shape_ok = hessian_shape_ok,
+    hessian_finite = hessian_finite,
+    symmetrization = NA_character_,
+    symmetrized_hessian_finite = FALSE,
+    eigensolver_ok = FALSE,
+    eigensolver_error = "",
+    eigenvalues_finite = FALSE,
+    eigenvalues = "",
+    eigen_min = NA_real_,
+    eigen_max = NA_real_,
+    eigen_abs_min = NA_real_,
+    eigen_abs_max = NA_real_,
+    spectral_scale = NA_real_,
+    spectral_absolute_tolerance = control$absolute_tolerance,
+    spectral_relative_tolerance = control$relative_tolerance,
+    spectral_absolute_tolerance_term = control$absolute_tolerance,
+    spectral_relative_tolerance_term = NA_real_,
+    spectral_sign_tolerance = NA_real_,
+    inertia_positive = NA_integer_,
+    inertia_zero = NA_integer_,
+    inertia_negative = NA_integer_,
+    inertia_unresolved = NA_integer_,
+    has_resolved_positive_curvature = NA,
+    has_resolved_negative_curvature = NA,
+    singular = NA,
+    singularity = "calculation_failed",
+    spectral_condition_estimate = NA_real_,
+    spectral_condition_definition = paste(
+      "max(abs(lambda)) / min(abs(lambda));",
+      "Inf when any exact zero; otherwise NA for unresolved or failed"
+    ),
+    spectral_classification = "calculation_failed"
+  )
+
+  if (!hessian_finite) {
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+
+  symmetrized <- hessian_spectrum_symmetrize(hessian)
+  symmetric_hessian <- symmetrized$value
+  result$symmetrization <- symmetrized$method
+  result$symmetrized_hessian_finite <- all(is.finite(symmetric_hessian))
+  if (!result$symmetrized_hessian_finite) {
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+
+  eigen_result <- tryCatch(
+    eigen_solver(symmetric_hessian, symmetric = TRUE, only.values = TRUE),
+    error = identity
+  )
+  if (inherits(eigen_result, "error")) {
+    result$eigensolver_error <- conditionMessage(eigen_result)
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+  result$eigensolver_ok <- TRUE
+
+  eigenvalues <- eigen_result$values
+  valid_eigenvalues <- is.numeric(eigenvalues) &&
+    is.null(dim(eigenvalues)) &&
+    length(eigenvalues) == expected_dimension
+  if (!valid_eigenvalues) {
+    result$eigensolver_error <- paste0(
+      "eigensolver must return ",
+      expected_dimension,
+      " numeric values"
+    )
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+  result$eigenvalues_finite <- all(is.finite(eigenvalues))
+  if (!result$eigenvalues_finite) {
+    result$eigensolver_error <- "eigensolver returned nonfinite values"
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+
+  eigenvalues <- as.numeric(eigenvalues)
+  absolute_eigenvalues <- abs(eigenvalues)
+  spectral_scale <- max(absolute_eigenvalues)
+  relative_tolerance_term <- control$relative_tolerance * spectral_scale
+  sign_tolerance <- control$absolute_tolerance + relative_tolerance_term
+  tolerance_values_finite <- all(is.finite(c(
+    spectral_scale,
+    relative_tolerance_term,
+    sign_tolerance
+  )))
+  if (!tolerance_values_finite) {
+    result$eigensolver_error <- "spectral scale or tolerance is nonfinite"
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+
+  positive <- eigenvalues > sign_tolerance
+  negative <- eigenvalues < -sign_tolerance
+  exact_zero <- eigenvalues == 0
+  unresolved <- !(positive | negative | exact_zero)
+  inertia_positive <- sum(positive)
+  inertia_zero <- sum(exact_zero)
+  inertia_negative <- sum(negative)
+  inertia_unresolved <- sum(unresolved)
+
+  result$eigenvalues <- paste(
+    format(eigenvalues, digits = 17, scientific = TRUE, trim = TRUE),
+    collapse = ";"
+  )
+  result$eigen_min <- min(eigenvalues)
+  result$eigen_max <- max(eigenvalues)
+  result$eigen_abs_min <- min(absolute_eigenvalues)
+  result$eigen_abs_max <- max(absolute_eigenvalues)
+  result$spectral_scale <- spectral_scale
+  result$spectral_relative_tolerance_term <- relative_tolerance_term
+  result$spectral_sign_tolerance <- sign_tolerance
+  result$inertia_positive <- inertia_positive
+  result$inertia_zero <- inertia_zero
+  result$inertia_negative <- inertia_negative
+  result$inertia_unresolved <- inertia_unresolved
+  result$has_resolved_positive_curvature <- inertia_positive > 0L
+  result$has_resolved_negative_curvature <- inertia_negative > 0L
+
+  if (inertia_zero > 0L) {
+    result$singular <- TRUE
+    result$singularity <- "exactly_singular"
+    result$spectral_condition_estimate <- Inf
+  } else if (inertia_unresolved > 0L) {
+    result$singularity <- "numerically_unresolved"
+  } else {
+    result$singular <- FALSE
+    result$singularity <- "resolved_nonsingular"
+    result$spectral_condition_estimate <-
+      result$eigen_abs_max / result$eigen_abs_min
+  }
+
+  if (inertia_unresolved > 0L) {
+    result$spectral_classification <- "numerically_unresolved"
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+  result$spectral_classification <- if (
+    inertia_positive == expected_dimension
+  ) {
+    "positive_definite"
+  } else if (inertia_negative == expected_dimension) {
+    "negative_definite"
+  } else if (inertia_zero == expected_dimension) {
+    "zero"
+  } else if (inertia_positive > 0L && inertia_negative > 0L) {
+    "indefinite"
+  } else if (inertia_positive > 0L && inertia_zero > 0L) {
+    "positive_semidefinite"
+  } else if (inertia_negative > 0L && inertia_zero > 0L) {
+    "negative_semidefinite"
+  } else {
+    stop("unreachable Hessian spectrum classification", call. = FALSE)
+  }
+
+  as.data.frame(result, stringsAsFactors = FALSE)
+}
+
+probe_hessian_spectrum <- function(
+  fg,
+  point,
+  control = hessian_spectrum_control(),
+  eigen_solver = base::eigen
+) {
+  if (!is.list(fg) || !is.function(fg$hs)) {
+    stop("fg must provide function callback fg$hs", call. = FALSE)
+  }
+  if (
+    !is.numeric(point) ||
+      !is.null(dim(point)) ||
+      length(point) == 0L ||
+      !all(is.finite(point))
+  ) {
+    stop("point must be a non-empty finite numeric vector", call. = FALSE)
+  }
+
+  hessian_result <- hessian_probe_callback(fg$hs, point)
+  spectrum <- classify_hessian_spectrum(
+    hessian = hessian_result$value,
+    expected_dimension = length(point),
+    control = control,
+    eigen_solver = eigen_solver
+  )
+  data.frame(
+    hessian_evaluation = "reevaluated_after_integrity_gate",
+    spectrum_hs_calls = 1L,
+    benchmark_callback_counted = FALSE,
+    hessian_callback_ok = hessian_result$ok,
+    hessian_callback_error = hessian_result$error,
+    spectrum,
+    stringsAsFactors = FALSE
+  )
+}
+
 hessian_probe_centered_difference <- function(plus, minus, step_size) {
   if (step_size > .Machine$double.xmax / 2) {
     return(plus / step_size / 2 - minus / step_size / 2)
@@ -655,7 +919,36 @@ hessian_probe_selected_point <- function(case, candidate) {
   )
 }
 
-hessian_probe_extended_cases <- function(cases, optimizer) {
+hessian_probe_spectrum_point <- function(case, candidate, integrity_result) {
+  integrity_pass <- nrow(integrity_result) > 0L &&
+    all(integrity_result$probe_pass)
+  if (!integrity_pass) {
+    stop(
+      "Hessian spectra require a passing directional integrity result",
+      call. = FALSE
+    )
+  }
+
+  metadata <- hessian_probe_candidate_row(case, candidate)
+  spectrum <- probe_hessian_spectrum(
+    fg = case$fg,
+    point = candidate$point
+  )
+  data.frame(
+    metadata,
+    integrity_gate = "probe_hessian_integrity",
+    integrity_direction_count = nrow(integrity_result),
+    integrity_probe_pass = TRUE,
+    spectrum,
+    stringsAsFactors = FALSE
+  )
+}
+
+hessian_probe_extended_cases <- function(
+  cases,
+  optimizer,
+  include_spectrum = FALSE
+) {
   selections <- lapply(
     cases,
     hessian_probe_select_points,
@@ -671,6 +964,40 @@ hessian_probe_extended_cases <- function(cases, optimizer) {
     cases,
     selections
   )
+  spectra <- if (include_spectrum) {
+    Map(
+      function(case, selection, case_result) {
+        point_spectra <- lapply(selection$selected, function(candidate) {
+          integrity_result <- case_result[
+            case_result$point_id == candidate$point_id,
+            ,
+            drop = FALSE
+          ]
+          if (
+            nrow(integrity_result) == 0L ||
+              !all(integrity_result$probe_pass)
+          ) {
+            return(NULL)
+          }
+          hessian_probe_spectrum_point(
+            case = case,
+            candidate = candidate,
+            integrity_result = integrity_result
+          )
+        })
+        point_spectra <- Filter(Negate(is.null), point_spectra)
+        if (length(point_spectra) == 0L) {
+          return(NULL)
+        }
+        do.call(rbind, point_spectra)
+      },
+      cases,
+      selections,
+      results
+    )
+  } else {
+    NULL
+  }
   manifests <- Map(
     function(case, selection) {
       do.call(
@@ -682,10 +1009,19 @@ hessian_probe_extended_cases <- function(cases, optimizer) {
     selections
   )
 
-  list(
+  coverage <- list(
     results = do.call(rbind, results),
     selection = do.call(rbind, manifests)
   )
+  if (include_spectrum) {
+    spectra <- Filter(Negate(is.null), spectra)
+    coverage$spectrum <- if (length(spectra) == 0L) {
+      data.frame()
+    } else {
+      do.call(rbind, spectra)
+    }
+  }
+  coverage
 }
 
 hessian_probe_case <- function(case) {
@@ -756,6 +1092,188 @@ hessian_probe_resolved_output_path <- function(path, option) {
   file.path(resolved_parent, basename(expanded))
 }
 
+hessian_probe_existing_file_identity <- function(path, option) {
+  if (!file.exists(path)) {
+    stop("existing-file identity requires an existing path", call. = FALSE)
+  }
+
+  stat_command <- Sys.which("stat")
+  system_name <- Sys.info()[["sysname"]]
+  stat_args <- if (
+    nzchar(stat_command) &&
+      system_name %in% c("Darwin", "FreeBSD", "OpenBSD", "NetBSD")
+  ) {
+    c("-f", "%d:%i", shQuote(path))
+  } else if (nzchar(stat_command) && identical(system_name, "Linux")) {
+    c("-Lc", "%d:%i", shQuote(path))
+  } else {
+    NULL
+  }
+  if (!is.null(stat_args)) {
+    stat_output <- suppressWarnings(system2(
+      stat_command,
+      args = stat_args,
+      stdout = TRUE,
+      stderr = TRUE
+    ))
+    stat_status <- attr(stat_output, "status")
+    if (is.null(stat_status)) {
+      stat_status <- 0L
+    }
+    if (
+      identical(stat_status, 0L) &&
+        length(stat_output) == 1L &&
+        grepl("^[0-9]+:[0-9]+$", stat_output)
+    ) {
+      return(stat_output)
+    }
+  }
+
+  if (requireNamespace("fs", quietly = TRUE)) {
+    info <- fs::file_info(path)
+    device <- as.character(info$device_id[[1L]])
+    inode <- as.character(info$inode[[1L]])
+    if (!is.na(device) && !is.na(inode)) {
+      return(paste(device, inode, sep = ":"))
+    }
+  }
+
+  stop(
+    "could not establish existing-file identity for ",
+    option,
+    "; install the fs package or provide unused output paths",
+    call. = FALSE
+  )
+}
+
+hessian_probe_directory_case_sensitive <- function(directory) {
+  if (!dir.exists(directory)) {
+    stop(
+      "output parent directory does not exist: ",
+      directory,
+      call. = FALSE
+    )
+  }
+
+  probe <- tempfile(
+    pattern = ".mize-case-sensitivity-",
+    tmpdir = directory
+  )
+  case_variant <- file.path(
+    directory,
+    toupper(basename(probe))
+  )
+  if (file.exists(case_variant)) {
+    stop(
+      "could not choose an unused output case-sensitivity probe",
+      call. = FALSE
+    )
+  }
+  if (!file.create(probe, showWarnings = FALSE)) {
+    stop(
+      "could not probe output-directory case sensitivity: ",
+      directory,
+      call. = FALSE
+    )
+  }
+  on.exit(unlink(probe, force = TRUE), add = TRUE)
+
+  if (!file.exists(case_variant)) {
+    return(TRUE)
+  }
+  probe_identity <- hessian_probe_existing_file_identity(
+    probe,
+    "case-sensitivity probe"
+  )
+  variant_identity <- hessian_probe_existing_file_identity(
+    case_variant,
+    "case-sensitivity probe"
+  )
+  !identical(probe_identity, variant_identity)
+}
+
+hessian_probe_case_aliased_paths <- function(resolved) {
+  case_aliased <- rep(FALSE, length(resolved))
+  parents <- dirname(resolved)
+  for (parent in unique(parents)) {
+    indices <- which(parents == parent)
+    folded <- tolower(basename(resolved[indices]))
+    candidates <- duplicated(folded) |
+      duplicated(folded, fromLast = TRUE)
+    if (
+      any(candidates) &&
+        !hessian_probe_directory_case_sensitive(parent)
+    ) {
+      case_aliased[indices[candidates]] <- TRUE
+    }
+  }
+  case_aliased
+}
+
+hessian_probe_preflight_output_paths <- function(paths) {
+  active <- !vapply(paths, is.null, logical(1))
+  paths <- paths[active]
+  if (length(paths) == 0L) {
+    return(invisible(character()))
+  }
+  if (is.null(names(paths)) || any(!nzchar(names(paths)))) {
+    stop("output paths must be named by their command-line options")
+  }
+
+  resolved <- Map(
+    hessian_probe_resolved_output_path,
+    path = paths,
+    option = names(paths)
+  )
+  resolved <- vapply(resolved, identity, character(1))
+  path_aliased <- duplicated(resolved) |
+    duplicated(resolved, fromLast = TRUE)
+  if (any(path_aliased)) {
+    stop(
+      "active output paths must resolve to different destinations: ",
+      paste(names(resolved)[path_aliased], collapse = ", "),
+      call. = FALSE
+    )
+  }
+
+  case_aliased <- hessian_probe_case_aliased_paths(resolved)
+  if (any(case_aliased)) {
+    stop(
+      "active output paths must not be case-equivalent aliases: ",
+      paste(names(resolved)[case_aliased], collapse = ", "),
+      call. = FALSE
+    )
+  }
+
+  existing <- which(file.exists(resolved))
+  if (length(existing) > 1L) {
+    identities <- vapply(
+      existing,
+      function(index) {
+        hessian_probe_existing_file_identity(
+          resolved[[index]],
+          names(resolved)[[index]]
+        )
+      },
+      character(1)
+    )
+    identity_aliased <- duplicated(identities) |
+      duplicated(identities, fromLast = TRUE)
+    if (any(identity_aliased)) {
+      stop(
+        "active output paths must identify different existing files: ",
+        paste(
+          names(resolved)[existing[identity_aliased]],
+          collapse = ", "
+        ),
+        call. = FALSE
+      )
+    }
+  }
+
+  invisible(resolved)
+}
+
 hessian_probe_usage <- function(status = 0L) {
   cat(
     paste(
@@ -768,6 +1286,7 @@ hessian_probe_usage <- function(status = 0L) {
       "  --no-funconstrain         Run only the exact SPD control.",
       "  --point-set MODE          resolved-start (default) or extended.",
       "  --selection-out PATH      Required manifest path for extended points.",
+      "  --spectrum-out PATH       Optional spectrum CSV for extended points.",
       "  --out PATH                Write CSV results to PATH instead of stdout.",
       "  --help                    Show this help.",
       sep = "\n"
@@ -783,6 +1302,7 @@ hessian_probe_parse_args <- function(args) {
     include_funconstrain = TRUE,
     point_set = "resolved-start",
     selection_out = NULL,
+    spectrum_out = NULL,
     out = NULL
   )
 
@@ -815,6 +1335,9 @@ hessian_probe_parse_args <- function(args) {
     } else if (arg == "--selection-out") {
       config$selection_out <- read_value()
       i <- i + 1L
+    } else if (arg == "--spectrum-out") {
+      config$spectrum_out <- read_value()
+      i <- i + 1L
     } else if (arg == "--out") {
       config$out <- read_value()
       i <- i + 1L
@@ -836,29 +1359,23 @@ hessian_probe_parse_args <- function(args) {
       call. = FALSE
     )
   }
-  resolved_out <- if (is.null(config$out)) {
-    NULL
-  } else {
-    hessian_probe_resolved_output_path(config$out, "--out")
-  }
-  resolved_selection_out <- if (config$point_set == "extended") {
-    hessian_probe_resolved_output_path(
-      config$selection_out,
-      "--selection-out"
-    )
-  } else {
-    NULL
-  }
   if (
-    config$point_set == "extended" &&
-      !is.null(config$out) &&
-      identical(resolved_out, resolved_selection_out)
+    config$point_set != "extended" &&
+      !is.null(config$spectrum_out)
   ) {
     stop(
-      "--out and --selection-out must resolve to different paths",
+      "--spectrum-out requires --point-set extended",
       call. = FALSE
     )
   }
+  output_paths <- list("--out" = config$out)
+  if (config$point_set == "extended") {
+    output_paths[["--selection-out"]] <- config$selection_out
+  }
+  if (!is.null(config$spectrum_out)) {
+    output_paths[["--spectrum-out"]] <- config$spectrum_out
+  }
+  hessian_probe_preflight_output_paths(output_paths)
 
   config
 }
@@ -907,6 +1424,11 @@ write_hessian_probe_selection <- function(selection, out) {
   message("Wrote Hessian point-selection manifest to ", out)
 }
 
+write_hessian_probe_spectrum <- function(spectrum, out) {
+  utils::write.csv(spectrum, file = out, row.names = FALSE, na = "")
+  message("Wrote Hessian eigenspectrum results to ", out)
+}
+
 hessian_probe_main <- function() {
   config <- hessian_probe_parse_args(commandArgs(trailingOnly = TRUE))
   cases <- hessian_probe_cases(config)
@@ -918,10 +1440,14 @@ hessian_probe_main <- function() {
 
   coverage <- hessian_probe_extended_cases(
     cases,
-    optimizer = hessian_probe_load_mize()
+    optimizer = hessian_probe_load_mize(),
+    include_spectrum = !is.null(config$spectrum_out)
   )
   write_hessian_probe_results(coverage$results, config$out)
   write_hessian_probe_selection(coverage$selection, config$selection_out)
+  if (!is.null(config$spectrum_out)) {
+    write_hessian_probe_spectrum(coverage$spectrum, config$spectrum_out)
+  }
 }
 
 if (sys.nframe() == 0L) {

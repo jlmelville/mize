@@ -155,10 +155,10 @@ the point-selection manifest records excluded and duplicate candidates, their
 basis, and the selected point to which a duplicate was mapped.
 
 Extended runs require a separate manifest path so exclusions are not mixed
-with directional probe rows. The two paths are resolved during argument parsing
-and must differ; an alias is rejected before point collection or file output.
-Explicit output paths must be non-empty. Output-file symbolic links, including
-dangling links, are also rejected rather than followed:
+with directional probe rows. Active output paths are resolved during argument
+parsing and must differ; an alias is rejected before point collection or file
+output. Explicit output paths must be non-empty. Output-file symbolic links,
+including dangling links, are also rejected rather than followed:
 
 ```sh
 R_LIBS=/private/tmp/mize-funconstrain-metadata-lib \
@@ -175,8 +175,78 @@ needed to interpret every selected point. The selection manifest has one row
 per candidate, including point values, eligibility, requested/actual iteration,
 termination, reference applicability and dimension match, selection status,
 candidate dimension, and explicit deduplication target. This point-coverage
-command does not add eigenspectrum classification, Newton/TN direction
-comparison, line-search experiments, or performance conclusions.
+command does not add eigenspectrum classification unless `--spectrum-out` is
+selected, and it never adds Newton/TN direction comparison, line-search
+experiments, or performance conclusions.
+
+### Hessian Eigenspectrum Classification
+
+Use `--spectrum-out PATH` with the extended point set to write a separate
+point-level eigenspectrum artifact. Only unique selected points whose existing
+directional rows all have `probe_pass = TRUE` are classified. The directional
+gate and both existing CSV schemas remain unchanged.
+
+The integrity gate does not retain its analytic Hessian, so spectrum
+classification reevaluates `fg$hs` exactly once at each eligible point. The
+artifact records this as `reevaluated_after_integrity_gate` and records one
+`spectrum_hs_calls`; the original callbacks are used directly, so this is not
+mixed into the benchmark harness's external callback counts.
+
+An exactly symmetric Hessian is sent to the eigensolver unchanged, preserving
+representable subnormal entries. Otherwise, each transposed pair is averaged by
+summing before halving when the sum is representable and by adding halves only
+when the sum could overflow. For spectral scale
+`s = max(abs(lambda))`, the absolute tolerance term is zero and the relative
+term is `sqrt(.Machine$double.eps) * s`. An eigenvalue is positive above the
+resulting tolerance, negative below its negative, exact zero only when it equals
+zero, and numerically unresolved when it is nonzero but remains inside the
+tolerance band. No external case changes this rule.
+
+The exhaustive point classifications are `positive_definite`,
+`positive_semidefinite`, `zero`, `negative_semidefinite`,
+`negative_definite`, `indefinite`, `numerically_unresolved`, and
+`calculation_failed`. Indefinite requires both resolved positive and negative
+curvature; negative-definite and negative-semidefinite spectra are represented
+directly. The CSV records algebraic and absolute eigenvalue extrema, all four
+inertia counts, `has_resolved_positive_curvature` and
+`has_resolved_negative_curvature`, scale and tolerance terms, and a separate
+singularity state. A false resolved-curvature flag does not claim that an
+unresolved eigenvalue has the opposite sign. Exact zero modes are singular even
+when another mode is unresolved or the sign class is semidefinite or
+indefinite.
+
+`spectral_condition_estimate` is
+`max(abs(lambda)) / min(abs(lambda))` for fully resolved nonzero spectra. It is
+`Inf` whenever an exact zero mode is present, including when another mode is
+unresolved. It is missing for unresolved spectra without an exact zero and for
+failed spectra. This is an invertibility estimate based on eigenvalue
+magnitudes, not a claim of positive definiteness.
+
+All active file destinations are preflighted together before point collection:
+`--out`, `--selection-out`, and `--spectrum-out` must be non-empty, distinct
+after path resolution, not live or dangling final symbolic links, and not
+existing hard links to the same file. Existing-file identity uses the platform
+file identity when available and otherwise requires the `fs` package; unused
+output paths remain dependency-free. When prospective basenames differ only by
+case, preflight creates and immediately removes one private temporary probe in
+their resolved parent directory. Case-equivalent destinations are rejected on
+a case-insensitive filesystem and remain distinct on a case-sensitive one; the
+probe is removed before case collection. A bounded spectrum command is:
+
+```sh
+R_LIBS=/private/tmp/mize-funconstrain-metadata-lib \
+  Rscript scripts/hessian-integrity-probe.R \
+  --dimension 5 \
+  --funconstrain-cases rosen,brown_bs,var_dim,chebyquad \
+  --point-set extended \
+  --selection-out /private/tmp/mize-hessian-point-selection.csv \
+  --spectrum-out /private/tmp/mize-hessian-spectrum.csv \
+  --out /private/tmp/mize-hessian-integrity-extended.csv
+```
+
+The spectrum artifact is diagnostic evidence only. It does not construct a
+Newton or TN direction, apply a Hessian safeguard, or support optimizer
+performance conclusions.
 
 ### Dependencies
 
