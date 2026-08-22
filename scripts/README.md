@@ -224,15 +224,15 @@ magnitudes, not a claim of positive definiteness.
 
 All active file destinations are preflighted together before point collection:
 `--out`, `--selection-out`, `--spectrum-out`, and an active `--direction-out`
-must be non-empty, distinct after path resolution, not live or dangling final
-symbolic links, and not existing hard links to the same file. Existing-file
-identity uses the platform file identity when available and otherwise requires
-the `fs` package; unused output paths remain dependency-free. When prospective
-basenames differ only by case, preflight creates and immediately removes one
-private temporary probe in their resolved parent directory. Case-equivalent
-destinations are rejected on a case-insensitive filesystem and remain distinct
-on a case-sensitive one; the probe is removed before case collection. A
-bounded spectrum command is:
+and `--public-direction-out` must be non-empty, distinct after path resolution,
+not live or dangling final symbolic links, and not existing hard links to the
+same file. Existing-file identity uses the platform file identity when
+available and otherwise requires the `fs` package; unused output paths remain
+dependency-free. When prospective basenames differ only by case, preflight
+creates and immediately removes one private temporary probe in their resolved
+parent directory. Case-equivalent destinations are rejected on a
+case-insensitive filesystem and remain distinct on a case-sensitive one; the
+probe is removed before case collection. A bounded spectrum command is:
 
 ```sh
 R_LIBS=/private/tmp/mize-funconstrain-metadata-lib \
@@ -299,6 +299,66 @@ The direction artifact is diagnostic evidence only. It does not record an
 accepted step or actual objective decrease and does not support performance or
 safeguard-policy conclusions by itself.
 
+### Current-Public Exact-Newton Direction Diagnostics
+
+Use `--public-direction-out PATH` with the extended point set, spectrum output,
+and raw `--direction-out` to write one row for mize's current public
+exact-Newton policy at every selected integrity-passing point. Raw solve
+eligibility does not gate public evaluation: singular and numerically
+unresolved spectra still retain public-direction rows.
+
+The probe loads mize, retrieves its actual internal `newton_direction()`
+constructor, constructs `newton_direction(try_safe_chol = FALSE)`, and calls
+the real direction object's `calculate()` method directly with no line search.
+It evaluates the original analytic gradient once to seed the direction cache.
+The public implementation then invokes one capturing `fg$hs` wrapper, which
+retains the Hessian value used by the direction without a reporting
+reevaluation. The artifact records these gradient and Hessian calls explicitly
+and marks them outside benchmark callback accounting. No objective callback is
+invoked.
+
+The retained `direction_reason` identifies `hessian_solve`,
+`cholesky_fallback`, or `direction_check_fallback`. A companion provenance
+field spells out ordinary Cholesky solve, Cholesky failure followed by steepest
+descent, or direction-check failure followed by steepest descent. Callback,
+validation, invocation, returned-direction, and provenance failures receive
+explicit non-success rows instead of aborting the artifact.
+
+For a finite public direction `p`, the CSV records its values, overflow-safe
+norm, `g' p`, descent status, `p' H p`, predicted decrease
+`-(g' p + 0.5 p' H p)`, exact signs, and diagnostic completeness. Model
+metrics use the Hessian captured from the real public call and the same
+overflow-safe symmetrization convention as the spectrum and raw artifacts; no
+extra Hessian callback is made.
+
+When the raw row has `solve_success = TRUE`, the artifact compares the public
+and raw vectors under one fixed rule. For
+`d = ||p_public - p_raw||` and
+`s = max(1, ||p_public||, ||p_raw||)`, a match requires
+`d <= 100 * sqrt(.Machine$double.eps) * s`. The difference norm, scale,
+tolerance terms, threshold, scaled difference, and match status are all
+recorded. When the raw solve is unavailable, the public row remains and the
+comparison is explicitly unavailable with the raw solve status as its basis.
+
+Run the bounded current-public slice with a fifth distinct destination:
+
+```sh
+R_LIBS=/private/tmp/mize-funconstrain-metadata-lib \
+  Rscript scripts/hessian-integrity-probe.R \
+  --dimension 5 \
+  --funconstrain-cases rosen,brown_bs,var_dim,chebyquad \
+  --point-set extended \
+  --selection-out /private/tmp/mize-hessian-point-selection.csv \
+  --spectrum-out /private/tmp/mize-hessian-spectrum.csv \
+  --direction-out /private/tmp/mize-raw-newton-direction.csv \
+  --public-direction-out /private/tmp/mize-public-newton-direction.csv \
+  --out /private/tmp/mize-hessian-integrity-extended.csv
+```
+
+This artifact is current-policy direction evidence only. It does not invoke a
+line search, construct `safe_chol()` or any safeguarded direction, evaluate TN,
+record accepted-step behavior, or justify a runtime/default change.
+
 ### Dependencies
 
 Built-in benchmark cases use base R plus packages that ship with R:
@@ -306,8 +366,10 @@ Built-in benchmark cases use base R plus packages that ship with R:
 - `stats`
 - `datasets`
 
-When running from a source checkout, install `pkgload` so the script benchmarks
-the local source tree:
+When running from a source checkout, install `pkgload` so the script loads the
+local source tree. This is preferred for the current-public direction artifact,
+which retrieves the loaded package's internal `newton_direction()`
+implementation:
 
 ```sh
 Rscript -e 'install.packages("pkgload")'

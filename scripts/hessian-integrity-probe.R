@@ -751,6 +751,470 @@ probe_raw_newton_direction <- function(
   as.data.frame(result, stringsAsFactors = FALSE)
 }
 
+hessian_public_newton_control <- function() {
+  list(
+    comparison_absolute_tolerance = 0,
+    comparison_relative_tolerance = 100 * sqrt(.Machine$double.eps)
+  )
+}
+
+hessian_public_newton_provenance <- function(direction_reason) {
+  provenance <- c(
+    hessian_solve = "ordinary_cholesky_solve",
+    cholesky_fallback = "cholesky_failure_steepest_descent",
+    direction_check_fallback = "direction_check_failure_steepest_descent"
+  )
+  if (
+    !is.character(direction_reason) ||
+      length(direction_reason) != 1L ||
+      is.na(direction_reason) ||
+      !direction_reason %in% names(provenance)
+  ) {
+    return("evaluation_failure")
+  }
+
+  unname(provenance[[direction_reason]])
+}
+
+hessian_public_newton_model_hessian <- function(hessian, dimension) {
+  block_shape_ok <- is.matrix(hessian) &&
+    is.numeric(hessian) &&
+    nrow(hessian) > 0L &&
+    ncol(hessian) == nrow(hessian) &&
+    dimension %% nrow(hessian) == 0L
+  finite <- block_shape_ok && all(is.finite(hessian))
+  symmetric <- finite &&
+    isTRUE(isSymmetric(
+      hessian,
+      tol = sqrt(.Machine$double.eps),
+      check.attributes = FALSE
+    ))
+  model_hessian <- NULL
+  if (symmetric) {
+    block_dimension <- nrow(hessian)
+    block_count <- dimension %/% block_dimension
+    if (block_count == 1L) {
+      model_hessian <- hessian
+    } else {
+      model_hessian <- kronecker(diag(block_count), hessian)
+    }
+  }
+
+  list(
+    shape_ok = block_shape_ok,
+    finite = finite,
+    symmetric = symmetric,
+    value = model_hessian
+  )
+}
+
+hessian_public_newton_raw_direction <- function(values, dimension) {
+  if (
+    !is.character(values) ||
+      length(values) != 1L ||
+      is.na(values) ||
+      !nzchar(values)
+  ) {
+    return(NULL)
+  }
+
+  parsed <- suppressWarnings(as.numeric(strsplit(values, ";", fixed = TRUE)[[
+    1
+  ]]))
+  if (length(parsed) != dimension || any(!is.finite(parsed))) {
+    return(NULL)
+  }
+  parsed
+}
+
+probe_public_newton_direction <- function(
+  fg,
+  point,
+  raw_newton,
+  direction_constructor,
+  control = hessian_public_newton_control()
+) {
+  if (!is.list(fg) || !is.function(fg$gr) || !is.function(fg$hs)) {
+    stop("fg must provide function callbacks fg$gr and fg$hs", call. = FALSE)
+  }
+  if (
+    !is.numeric(point) ||
+      !is.null(dim(point)) ||
+      length(point) == 0L ||
+      !all(is.finite(point))
+  ) {
+    stop("point must be a non-empty finite numeric vector", call. = FALSE)
+  }
+  if (!is.function(direction_constructor)) {
+    stop("direction_constructor must be a function", call. = FALSE)
+  }
+  required_raw_fields <- c(
+    "solve_success",
+    "solve_status",
+    "raw_direction_values"
+  )
+  if (
+    !is.data.frame(raw_newton) ||
+      nrow(raw_newton) != 1L ||
+      !all(required_raw_fields %in% names(raw_newton))
+  ) {
+    stop("raw_newton must be one raw exact-Newton direction row", call. = FALSE)
+  }
+
+  required_controls <- c(
+    "comparison_absolute_tolerance",
+    "comparison_relative_tolerance"
+  )
+  if (
+    !is.list(control) ||
+      !all(required_controls %in% names(control)) ||
+      any(!vapply(control[required_controls], is.numeric, logical(1))) ||
+      any(vapply(control[required_controls], length, integer(1)) != 1L) ||
+      any(!is.finite(unlist(control[required_controls]))) ||
+      control$comparison_absolute_tolerance < 0 ||
+      control$comparison_relative_tolerance <= 0
+  ) {
+    stop(
+      paste(
+        "public/raw comparison tolerances must be finite numeric scalars,",
+        "with absolute tolerance nonnegative and relative tolerance positive"
+      ),
+      call. = FALSE
+    )
+  }
+
+  raw_solve_success <- isTRUE(raw_newton$solve_success[[1L]])
+  raw_solve_status <- as.character(raw_newton$solve_status[[1L]])
+  raw_direction_values <- as.character(
+    raw_newton$raw_direction_values[[1L]]
+  )
+  result <- list(
+    public_direction_evaluation = paste(
+      "gradient_seed_then",
+      "mize_newton_direction_try_safe_chol_false_calculate",
+      sep = "_"
+    ),
+    public_direction_implementation = paste0(
+      "mize:::newton_direction(try_safe_chol = FALSE)$calculate"
+    ),
+    public_direction_gr_calls = 0L,
+    public_direction_hs_calls = 0L,
+    benchmark_callback_counted = FALSE,
+    public_direction_invoked = FALSE,
+    public_direction_success = FALSE,
+    public_direction_status = "not_evaluated",
+    public_direction_error = "",
+    gradient_callback_ok = NA,
+    gradient_callback_error = "",
+    gradient_shape_ok = NA,
+    gradient_finite = NA,
+    gradient_norm = NA_real_,
+    hessian_callback_ok = NA,
+    hessian_callback_error = "",
+    hessian_shape_ok = NA,
+    hessian_finite = NA,
+    hessian_symmetric = NA,
+    symmetrization = NA_character_,
+    symmetrized_hessian_finite = NA,
+    direction_reason = NA_character_,
+    public_direction_provenance = "evaluation_failure",
+    public_direction_values = "",
+    public_direction_shape_ok = NA,
+    public_direction_finite = NA,
+    public_direction_norm = NA_real_,
+    public_directional_slope = NA_real_,
+    public_directional_slope_sign = "unavailable",
+    public_direction_is_descent = NA,
+    public_quadratic_curvature = NA_real_,
+    public_quadratic_curvature_sign = "unavailable",
+    public_predicted_decrease = NA_real_,
+    public_predicted_decrease_sign = "unavailable",
+    public_predicted_decrease_positive = NA,
+    public_predicted_decrease_definition = "-(g' p + 0.5 p' H p)",
+    public_direction_diagnostics_complete = FALSE,
+    raw_solve_success = raw_solve_success,
+    raw_solve_status = raw_solve_status,
+    raw_direction_values = raw_direction_values,
+    raw_comparison_available = FALSE,
+    raw_comparison_basis = if (raw_solve_success) {
+      "public_direction_unavailable"
+    } else {
+      paste0("raw_solve_status_", raw_solve_status)
+    },
+    raw_public_difference_norm = NA_real_,
+    raw_public_comparison_scale = NA_real_,
+    raw_public_comparison_absolute_tolerance = control$comparison_absolute_tolerance,
+    raw_public_comparison_relative_tolerance = control$comparison_relative_tolerance,
+    raw_public_comparison_absolute_tolerance_term = control$comparison_absolute_tolerance,
+    raw_public_comparison_relative_tolerance_term = NA_real_,
+    raw_public_comparison_threshold = NA_real_,
+    raw_public_scaled_difference = NA_real_,
+    raw_public_match = NA,
+    raw_public_match_status = if (raw_solve_success) {
+      "unavailable_public_direction"
+    } else {
+      "unavailable_raw_solve"
+    }
+  )
+
+  gradient_result <- hessian_probe_callback(fg$gr, point)
+  result$public_direction_gr_calls <- 1L
+  result$gradient_callback_ok <- gradient_result$ok
+  result$gradient_callback_error <- gradient_result$error
+  if (!gradient_result$ok) {
+    result$public_direction_status <- "gradient_callback_failed"
+    result$public_direction_error <- gradient_result$error
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+
+  dimension <- length(point)
+  gradient <- gradient_result$value
+  result$gradient_shape_ok <- is.numeric(gradient) &&
+    is.null(dim(gradient)) &&
+    length(gradient) == dimension
+  result$gradient_finite <- result$gradient_shape_ok &&
+    all(is.finite(gradient))
+  if (!result$gradient_shape_ok || !result$gradient_finite) {
+    result$public_direction_status <- "gradient_value_invalid"
+    result$public_direction_error <- paste0(
+      "gradient must be a finite numeric vector of length ",
+      dimension
+    )
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+  gradient <- as.numeric(gradient)
+  result$gradient_norm <- hessian_probe_norm(gradient)
+
+  hessian_capture <- new.env(parent = emptyenv())
+  hessian_capture$calls <- 0L
+  hessian_capture$ok <- NA
+  hessian_capture$value <- NULL
+  hessian_capture$error <- ""
+  captured_hessian <- function(x) {
+    hessian_capture$calls <- hessian_capture$calls + 1L
+    callback_result <- hessian_probe_callback(fg$hs, x)
+    hessian_capture$ok <- callback_result$ok
+    hessian_capture$value <- callback_result$value
+    hessian_capture$error <- callback_result$error
+    if (!callback_result$ok) {
+      stop(callback_result$error, call. = FALSE)
+    }
+    callback_result$value
+  }
+
+  result$public_direction_invoked <- TRUE
+  direction_result <- tryCatch(
+    {
+      direction <- direction_constructor(try_safe_chol = FALSE)
+      if (!is.list(direction) || !is.function(direction$calculate)) {
+        stop(
+          "newton_direction() did not return a calculable direction object",
+          call. = FALSE
+        )
+      }
+      direction$calculate(
+        opt = list(cache = list(gr_curr = gradient, gr_curr_iter = 1L)),
+        stage = list(),
+        sub_stage = direction,
+        par = point,
+        fg = list(hs = captured_hessian),
+        iter = 1L
+      )
+    },
+    error = identity
+  )
+  result$public_direction_hs_calls <- hessian_capture$calls
+  result$hessian_callback_ok <- hessian_capture$ok
+  result$hessian_callback_error <- hessian_capture$error
+
+  hessian_model <- hessian_public_newton_model_hessian(
+    hessian_capture$value,
+    dimension
+  )
+  result$hessian_shape_ok <- hessian_model$shape_ok
+  result$hessian_finite <- hessian_model$finite
+  result$hessian_symmetric <- hessian_model$symmetric
+
+  if (inherits(direction_result, "error")) {
+    result$public_direction_error <- conditionMessage(direction_result)
+    result$public_direction_status <- if (
+      identical(hessian_capture$ok, FALSE)
+    ) {
+      "hessian_callback_failed"
+    } else if (
+      identical(hessian_capture$ok, TRUE) &&
+        (!hessian_model$shape_ok ||
+          !hessian_model$finite ||
+          !hessian_model$symmetric)
+    ) {
+      "hessian_value_invalid"
+    } else {
+      "direction_invocation_failed"
+    }
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+
+  valid_result <- is.list(direction_result) &&
+    is.list(direction_result$sub_stage)
+  if (!valid_result) {
+    result$public_direction_status <- "direction_return_invalid"
+    result$public_direction_error <- paste(
+      "direction calculate must return a list containing sub_stage"
+    )
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+
+  public_direction <- direction_result$sub_stage$value
+  direction_reason <- direction_result$sub_stage$direction_reason
+  result$direction_reason <- if (
+    is.character(direction_reason) &&
+      length(direction_reason) == 1L &&
+      !is.na(direction_reason)
+  ) {
+    direction_reason
+  } else {
+    NA_character_
+  }
+  result$public_direction_provenance <- hessian_public_newton_provenance(
+    result$direction_reason
+  )
+  result$public_direction_shape_ok <- is.numeric(public_direction) &&
+    is.null(dim(public_direction)) &&
+    length(public_direction) == dimension
+  result$public_direction_finite <- result$public_direction_shape_ok &&
+    all(is.finite(public_direction))
+  if (!result$public_direction_shape_ok || !result$public_direction_finite) {
+    result$public_direction_status <- "direction_return_invalid"
+    result$public_direction_error <- paste0(
+      "public direction must be a finite numeric vector of length ",
+      dimension
+    )
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+  if (identical(result$public_direction_provenance, "evaluation_failure")) {
+    result$public_direction_status <- "direction_reason_invalid"
+    result$public_direction_error <- paste(
+      "public matrix-Hessian direction returned an unexpected direction_reason"
+    )
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+
+  public_direction <- as.numeric(public_direction)
+  result$public_direction_success <- TRUE
+  result$public_direction_values <- hessian_probe_point_values(public_direction)
+  result$public_direction_norm <- hessian_probe_norm(public_direction)
+  result$public_directional_slope <- sum(gradient * public_direction)
+  result$public_directional_slope_sign <- hessian_raw_newton_sign(
+    result$public_directional_slope
+  )
+  result$public_direction_is_descent <- if (
+    is.finite(result$public_directional_slope)
+  ) {
+    result$public_directional_slope < 0
+  } else {
+    NA
+  }
+
+  if (!is.null(hessian_model$value)) {
+    symmetrized <- tryCatch(
+      hessian_spectrum_symmetrize(hessian_model$value),
+      error = identity
+    )
+    if (!inherits(symmetrized, "error")) {
+      result$symmetrization <- symmetrized$method
+      result$symmetrized_hessian_finite <- all(is.finite(symmetrized$value))
+      if (result$symmetrized_hessian_finite) {
+        system_product <- as.vector(symmetrized$value %*% public_direction)
+        result$public_quadratic_curvature <- sum(
+          public_direction * system_product
+        )
+        result$public_predicted_decrease <- -(result$public_directional_slope +
+          result$public_quadratic_curvature / 2)
+      }
+    }
+  }
+  result$public_quadratic_curvature_sign <- hessian_raw_newton_sign(
+    result$public_quadratic_curvature
+  )
+  result$public_predicted_decrease_sign <- hessian_raw_newton_sign(
+    result$public_predicted_decrease
+  )
+  result$public_predicted_decrease_positive <- if (
+    is.finite(result$public_predicted_decrease)
+  ) {
+    result$public_predicted_decrease > 0
+  } else {
+    NA
+  }
+  result$public_direction_diagnostics_complete <- all(is.finite(c(
+    result$public_direction_norm,
+    result$public_directional_slope,
+    result$public_quadratic_curvature,
+    result$public_predicted_decrease
+  )))
+  result$public_direction_status <- if (
+    result$public_direction_diagnostics_complete
+  ) {
+    "evaluated"
+  } else {
+    "evaluated_direction_metrics_nonfinite"
+  }
+
+  if (raw_solve_success) {
+    raw_direction <- hessian_public_newton_raw_direction(
+      raw_direction_values,
+      dimension
+    )
+    if (is.null(raw_direction)) {
+      result$raw_comparison_basis <- "raw_direction_values_invalid"
+      result$raw_public_match_status <- "unavailable_raw_direction"
+    } else {
+      difference <- public_direction - raw_direction
+      result$raw_public_difference_norm <- hessian_probe_norm(difference)
+      raw_norm <- hessian_probe_norm(raw_direction)
+      result$raw_public_comparison_scale <- max(
+        1,
+        result$public_direction_norm,
+        raw_norm
+      )
+      result$raw_public_comparison_relative_tolerance_term <-
+        control$comparison_relative_tolerance *
+        result$raw_public_comparison_scale
+      result$raw_public_comparison_threshold <-
+        control$comparison_absolute_tolerance +
+        result$raw_public_comparison_relative_tolerance_term
+      result$raw_public_scaled_difference <-
+        result$raw_public_difference_norm /
+        result$raw_public_comparison_scale
+      comparison_finite <- all(is.finite(c(
+        difference,
+        result$raw_public_difference_norm,
+        result$raw_public_comparison_scale,
+        result$raw_public_comparison_relative_tolerance_term,
+        result$raw_public_comparison_threshold,
+        result$raw_public_scaled_difference
+      )))
+      if (comparison_finite) {
+        result$raw_comparison_available <- TRUE
+        result$raw_comparison_basis <- "raw_and_public_directions_finite"
+        result$raw_public_match <-
+          result$raw_public_difference_norm <=
+            result$raw_public_comparison_threshold
+        result$raw_public_match_status <- if (result$raw_public_match) {
+          "match"
+        } else {
+          "different"
+        }
+      } else {
+        result$raw_comparison_basis <- "comparison_values_nonfinite"
+        result$raw_public_match_status <- "unavailable_nonfinite_comparison"
+      }
+    }
+  }
+
+  as.data.frame(result, stringsAsFactors = FALSE)
+}
+
 hessian_probe_centered_difference <- function(plus, minus, step_size) {
   if (step_size > .Machine$double.xmax / 2) {
     return(plus / step_size / 2 - minus / step_size / 2)
@@ -1410,17 +1874,102 @@ hessian_probe_raw_newton_point <- function(
   )
 }
 
+hessian_probe_public_newton_point <- function(
+  case,
+  candidate,
+  integrity_result,
+  spectrum_result,
+  raw_newton_result,
+  direction_constructor
+) {
+  integrity_pass <- nrow(integrity_result) > 0L &&
+    all(integrity_result$probe_pass)
+  if (!integrity_pass) {
+    stop(
+      "public Newton directions require a passing directional integrity result",
+      call. = FALSE
+    )
+  }
+  if (!is.data.frame(spectrum_result) || nrow(spectrum_result) != 1L) {
+    stop(
+      "public Newton directions require one Hessian spectrum row",
+      call. = FALSE
+    )
+  }
+  if (!is.data.frame(raw_newton_result) || nrow(raw_newton_result) != 1L) {
+    stop(
+      "public Newton directions require one raw exact-Newton row",
+      call. = FALSE
+    )
+  }
+
+  metadata <- hessian_probe_candidate_row(case, candidate)
+  spectrum_evidence <- spectrum_result[,
+    c(
+      "spectral_classification",
+      "singularity",
+      "spectral_condition_estimate",
+      "eigen_min",
+      "eigen_max",
+      "eigen_abs_min",
+      "eigen_abs_max",
+      "spectral_scale",
+      "spectral_absolute_tolerance",
+      "spectral_relative_tolerance",
+      "spectral_absolute_tolerance_term",
+      "spectral_relative_tolerance_term",
+      "spectral_sign_tolerance",
+      "inertia_positive",
+      "inertia_zero",
+      "inertia_negative",
+      "inertia_unresolved"
+    ),
+    drop = FALSE
+  ]
+  direction <- probe_public_newton_direction(
+    fg = case$fg,
+    point = candidate$point,
+    raw_newton = raw_newton_result,
+    direction_constructor = direction_constructor
+  )
+  data.frame(
+    metadata,
+    integrity_gate = "probe_hessian_integrity",
+    integrity_direction_count = nrow(integrity_result),
+    integrity_probe_pass = TRUE,
+    spectrum_gate = "probe_hessian_spectrum",
+    spectrum_evidence,
+    raw_direction_gate = "probe_raw_newton_direction",
+    direction,
+    stringsAsFactors = FALSE
+  )
+}
+
 hessian_probe_extended_cases <- function(
   cases,
   optimizer,
   include_spectrum = FALSE,
   include_raw_newton = FALSE,
+  include_public_newton = FALSE,
   raw_newton_solver = base::solve,
-  raw_newton_solver_name = "base_solve"
+  raw_newton_solver_name = "base_solve",
+  public_newton_direction = NULL
 ) {
   if (include_raw_newton && !include_spectrum) {
     stop(
       "raw Newton directions require Hessian spectrum evidence",
+      call. = FALSE
+    )
+  }
+  if (include_public_newton && !include_raw_newton) {
+    stop(
+      "public Newton directions require raw exact-Newton evidence",
+      call. = FALSE
+    )
+  }
+  if (include_public_newton && !is.function(public_newton_direction)) {
+    stop(
+      "public_newton_direction must be a function when public directions are selected",
       call. = FALSE
     )
   }
@@ -1521,6 +2070,61 @@ hessian_probe_extended_cases <- function(
   } else {
     NULL
   }
+  public_newton_by_case <- if (include_public_newton) {
+    Map(
+      function(
+        case,
+        selection,
+        case_result,
+        case_spectrum,
+        case_raw_newton
+      ) {
+        point_directions <- lapply(selection$selected, function(candidate) {
+          integrity_result <- case_result[
+            case_result$point_id == candidate$point_id,
+            ,
+            drop = FALSE
+          ]
+          if (
+            nrow(integrity_result) == 0L ||
+              !all(integrity_result$probe_pass)
+          ) {
+            return(NULL)
+          }
+          spectrum_result <- case_spectrum[
+            case_spectrum$point_id == candidate$point_id,
+            ,
+            drop = FALSE
+          ]
+          raw_newton_result <- case_raw_newton[
+            case_raw_newton$point_id == candidate$point_id,
+            ,
+            drop = FALSE
+          ]
+          hessian_probe_public_newton_point(
+            case = case,
+            candidate = candidate,
+            integrity_result = integrity_result,
+            spectrum_result = spectrum_result,
+            raw_newton_result = raw_newton_result,
+            direction_constructor = public_newton_direction
+          )
+        })
+        point_directions <- Filter(Negate(is.null), point_directions)
+        if (length(point_directions) == 0L) {
+          return(NULL)
+        }
+        do.call(rbind, point_directions)
+      },
+      cases,
+      selections,
+      results,
+      spectra_by_case,
+      raw_newton_by_case
+    )
+  } else {
+    NULL
+  }
   manifests <- Map(
     function(case, selection) {
       do.call(
@@ -1550,6 +2154,14 @@ hessian_probe_extended_cases <- function(
       data.frame()
     } else {
       do.call(rbind, raw_newton)
+    }
+  }
+  if (include_public_newton) {
+    public_newton <- Filter(Negate(is.null), public_newton_by_case)
+    coverage$public_newton <- if (length(public_newton) == 0L) {
+      data.frame()
+    } else {
+      do.call(rbind, public_newton)
     }
   }
   coverage
@@ -1819,6 +2431,10 @@ hessian_probe_usage <- function(status = 0L) {
       "  --selection-out PATH      Required manifest path for extended points.",
       "  --spectrum-out PATH       Optional spectrum CSV for extended points.",
       "  --direction-out PATH      Optional raw Newton CSV; requires spectrum.",
+      paste(
+        "  --public-direction-out PATH",
+        "Optional current-public Newton CSV; requires raw."
+      ),
       "  --out PATH                Write CSV results to PATH instead of stdout.",
       "  --help                    Show this help.",
       sep = "\n"
@@ -1836,6 +2452,7 @@ hessian_probe_parse_args <- function(args) {
     selection_out = NULL,
     spectrum_out = NULL,
     direction_out = NULL,
+    public_direction_out = NULL,
     out = NULL
   )
 
@@ -1874,6 +2491,9 @@ hessian_probe_parse_args <- function(args) {
     } else if (arg == "--direction-out") {
       config$direction_out <- read_value()
       i <- i + 1L
+    } else if (arg == "--public-direction-out") {
+      config$public_direction_out <- read_value()
+      i <- i + 1L
     } else if (arg == "--out") {
       config$out <- read_value()
       i <- i + 1L
@@ -1897,10 +2517,15 @@ hessian_probe_parse_args <- function(args) {
   }
   if (
     config$point_set != "extended" &&
-      (!is.null(config$spectrum_out) || !is.null(config$direction_out))
+      (!is.null(config$spectrum_out) ||
+        !is.null(config$direction_out) ||
+        !is.null(config$public_direction_out))
   ) {
     stop(
-      "--spectrum-out and --direction-out require --point-set extended",
+      paste(
+        "--spectrum-out, --direction-out, and --public-direction-out",
+        "require --point-set extended"
+      ),
       call. = FALSE
     )
   }
@@ -1913,6 +2538,15 @@ hessian_probe_parse_args <- function(args) {
       call. = FALSE
     )
   }
+  if (
+    !is.null(config$public_direction_out) &&
+      is.null(config$direction_out)
+  ) {
+    stop(
+      "--public-direction-out requires --direction-out",
+      call. = FALSE
+    )
+  }
   output_paths <- list("--out" = config$out)
   if (config$point_set == "extended") {
     output_paths[["--selection-out"]] <- config$selection_out
@@ -1922,6 +2556,9 @@ hessian_probe_parse_args <- function(args) {
   }
   if (!is.null(config$direction_out)) {
     output_paths[["--direction-out"]] <- config$direction_out
+  }
+  if (!is.null(config$public_direction_out)) {
+    output_paths[["--public-direction-out"]] <- config$public_direction_out
   }
   hessian_probe_preflight_output_paths(output_paths)
 
@@ -1967,6 +2604,28 @@ hessian_probe_load_mize <- function() {
   )
 }
 
+hessian_probe_load_public_newton_direction <- function() {
+  namespace <- asNamespace("mize")
+  if (!exists("newton_direction", envir = namespace, inherits = FALSE)) {
+    stop(
+      "The loaded mize package does not provide internal newton_direction().",
+      call. = FALSE
+    )
+  }
+  constructor <- get(
+    "newton_direction",
+    envir = namespace,
+    inherits = FALSE
+  )
+  if (!is.function(constructor)) {
+    stop(
+      "The loaded mize newton_direction object is not a function.",
+      call. = FALSE
+    )
+  }
+  constructor
+}
+
 write_hessian_probe_selection <- function(selection, out) {
   utils::write.csv(selection, file = out, row.names = FALSE, na = "")
   message("Wrote Hessian point-selection manifest to ", out)
@@ -1982,6 +2641,11 @@ write_hessian_probe_raw_newton <- function(raw_newton, out) {
   message("Wrote raw exact-Newton direction results to ", out)
 }
 
+write_hessian_probe_public_newton <- function(public_newton, out) {
+  utils::write.csv(public_newton, file = out, row.names = FALSE, na = "")
+  message("Wrote current-public exact-Newton direction results to ", out)
+}
+
 hessian_probe_main <- function() {
   config <- hessian_probe_parse_args(commandArgs(trailingOnly = TRUE))
   cases <- hessian_probe_cases(config)
@@ -1991,11 +2655,19 @@ hessian_probe_main <- function() {
     return(invisible(NULL))
   }
 
+  optimizer <- hessian_probe_load_mize()
+  public_newton_direction <- if (!is.null(config$public_direction_out)) {
+    hessian_probe_load_public_newton_direction()
+  } else {
+    NULL
+  }
   coverage <- hessian_probe_extended_cases(
     cases,
-    optimizer = hessian_probe_load_mize(),
+    optimizer = optimizer,
     include_spectrum = !is.null(config$spectrum_out),
-    include_raw_newton = !is.null(config$direction_out)
+    include_raw_newton = !is.null(config$direction_out),
+    include_public_newton = !is.null(config$public_direction_out),
+    public_newton_direction = public_newton_direction
   )
   write_hessian_probe_results(coverage$results, config$out)
   write_hessian_probe_selection(coverage$selection, config$selection_out)
@@ -2006,6 +2678,12 @@ hessian_probe_main <- function() {
     write_hessian_probe_raw_newton(
       coverage$raw_newton,
       config$direction_out
+    )
+  }
+  if (!is.null(config$public_direction_out)) {
+    write_hessian_probe_public_newton(
+      coverage$public_newton,
+      config$public_direction_out
     )
   }
 }
