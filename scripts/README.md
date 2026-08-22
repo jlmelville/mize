@@ -223,15 +223,16 @@ failed spectra. This is an invertibility estimate based on eigenvalue
 magnitudes, not a claim of positive definiteness.
 
 All active file destinations are preflighted together before point collection:
-`--out`, `--selection-out`, and `--spectrum-out` must be non-empty, distinct
-after path resolution, not live or dangling final symbolic links, and not
-existing hard links to the same file. Existing-file identity uses the platform
-file identity when available and otherwise requires the `fs` package; unused
-output paths remain dependency-free. When prospective basenames differ only by
-case, preflight creates and immediately removes one private temporary probe in
-their resolved parent directory. Case-equivalent destinations are rejected on
-a case-insensitive filesystem and remain distinct on a case-sensitive one; the
-probe is removed before case collection. A bounded spectrum command is:
+`--out`, `--selection-out`, `--spectrum-out`, and an active `--direction-out`
+must be non-empty, distinct after path resolution, not live or dangling final
+symbolic links, and not existing hard links to the same file. Existing-file
+identity uses the platform file identity when available and otherwise requires
+the `fs` package; unused output paths remain dependency-free. When prospective
+basenames differ only by case, preflight creates and immediately removes one
+private temporary probe in their resolved parent directory. Case-equivalent
+destinations are rejected on a case-insensitive filesystem and remain distinct
+on a case-sensitive one; the probe is removed before case collection. A
+bounded spectrum command is:
 
 ```sh
 R_LIBS=/private/tmp/mize-funconstrain-metadata-lib \
@@ -247,6 +248,56 @@ R_LIBS=/private/tmp/mize-funconstrain-metadata-lib \
 The spectrum artifact is diagnostic evidence only. It does not construct a
 Newton or TN direction, apply a Hessian safeguard, or support optimizer
 performance conclusions.
+
+### Raw Exact-Newton Direction Diagnostics
+
+Use `--direction-out PATH` with `--point-set extended` and
+`--spectrum-out PATH` to write one raw exact-Newton row for every unique
+integrity-passing point, including points whose spectra are singular,
+unresolved, or failed. This layer solves only the unglobalized system
+`H p = -g`; it does not invoke a line search or construct mize's public
+fallback, the internal safeguarded direction, or TN's approximate direction.
+
+A solve is eligible when the existing spectrum evidence is fully resolved and
+nonsingular, with a finite positive condition estimate no larger than
+`1 / spectral_relative_tolerance`. Under the fixed spectrum rule that limit is
+`1 / sqrt(.Machine$double.eps)`. Positive-definite, resolved indefinite, and
+negative-definite spectra can therefore be eligible. Exact-singular and
+numerically unresolved spectra retain rows with an explicit ineligibility basis
+and no callback or solver work; positive definiteness is not silently treated
+as a prerequisite for inspecting a raw Newton system.
+
+At each eligible point, the original analytic `fg$gr` and `fg$hs` callbacks are
+reevaluated once after the integrity and spectrum gates. The artifact records
+those calls separately and marks them outside the benchmark callback counts.
+The Hessian is represented with the same overflow-safe symmetrization rule used
+for the spectrum. A finite returned direction counts as a successful solve only
+when the residual satisfies
+`||H p + g|| <= 100 * sqrt(.Machine$double.eps) *
+max(1, ||H p||, ||g||)` and every residual term is finite. The CSV records the
+condition limit, solve eligibility and basis, callback and solver status,
+direction values and norm, residual scale and tolerance terms, `g' p`,
+`p' H p`, and predicted decrease `-(g' p + 0.5 p' H p)`. Slope and predicted
+decrease signs are exact floating-point sign classifications; no external case
+tunes them.
+
+Run the bounded raw-direction slice with a fourth distinct destination:
+
+```sh
+R_LIBS=/private/tmp/mize-funconstrain-metadata-lib \
+  Rscript scripts/hessian-integrity-probe.R \
+  --dimension 5 \
+  --funconstrain-cases rosen,brown_bs,var_dim,chebyquad \
+  --point-set extended \
+  --selection-out /private/tmp/mize-hessian-point-selection.csv \
+  --spectrum-out /private/tmp/mize-hessian-spectrum.csv \
+  --direction-out /private/tmp/mize-raw-newton-direction.csv \
+  --out /private/tmp/mize-hessian-integrity-extended.csv
+```
+
+The direction artifact is diagnostic evidence only. It does not record an
+accepted step or actual objective decrease and does not support performance or
+safeguard-policy conclusions by itself.
 
 ### Dependencies
 

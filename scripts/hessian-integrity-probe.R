@@ -350,6 +350,407 @@ probe_hessian_spectrum <- function(
   )
 }
 
+hessian_raw_newton_control <- function() {
+  list(
+    residual_absolute_tolerance = 0,
+    residual_relative_tolerance = 100 * sqrt(.Machine$double.eps)
+  )
+}
+
+hessian_raw_newton_sign <- function(value) {
+  if (length(value) != 1L || is.na(value)) {
+    return("unavailable")
+  }
+  if (!is.finite(value)) {
+    return("nonfinite")
+  }
+  if (value < 0) {
+    return("negative")
+  }
+  if (value > 0) {
+    return("positive")
+  }
+  "zero"
+}
+
+hessian_raw_newton_eligibility <- function(spectrum) {
+  required <- c(
+    "spectral_classification",
+    "singularity",
+    "spectral_condition_estimate",
+    "spectral_relative_tolerance",
+    "inertia_zero",
+    "inertia_unresolved"
+  )
+  if (
+    !is.data.frame(spectrum) ||
+      nrow(spectrum) != 1L ||
+      !all(required %in% names(spectrum))
+  ) {
+    stop(
+      "spectrum must be one Hessian spectrum row with solve-eligibility fields",
+      call. = FALSE
+    )
+  }
+
+  relative_tolerance <- spectrum$spectral_relative_tolerance[[1L]]
+  condition_limit <- if (
+    is.numeric(relative_tolerance) &&
+      length(relative_tolerance) == 1L &&
+      is.finite(relative_tolerance) &&
+      relative_tolerance > 0
+  ) {
+    1 / relative_tolerance
+  } else {
+    NA_real_
+  }
+  classification <- spectrum$spectral_classification[[1L]]
+  singularity <- spectrum$singularity[[1L]]
+  condition_estimate <- spectrum$spectral_condition_estimate[[1L]]
+  inertia_zero <- spectrum$inertia_zero[[1L]]
+  inertia_unresolved <- spectrum$inertia_unresolved[[1L]]
+  resolved_nonsingular_classes <- c(
+    "positive_definite",
+    "negative_definite",
+    "indefinite"
+  )
+
+  basis <- if (identical(classification, "calculation_failed")) {
+    "spectrum_calculation_failed"
+  } else if (
+    identical(singularity, "exactly_singular") ||
+      (!is.na(inertia_zero) && inertia_zero > 0L)
+  ) {
+    "exactly_singular_spectrum"
+  } else if (
+    identical(classification, "numerically_unresolved") ||
+      identical(singularity, "numerically_unresolved") ||
+      (!is.na(inertia_unresolved) && inertia_unresolved > 0L)
+  ) {
+    "numerically_unresolved_spectrum"
+  } else if (!identical(singularity, "resolved_nonsingular")) {
+    "spectrum_not_resolved_nonsingular"
+  } else if (!classification %in% resolved_nonsingular_classes) {
+    "spectrum_class_not_resolved_nonsingular"
+  } else if (!is.finite(condition_limit)) {
+    "condition_limit_unavailable"
+  } else if (
+    !is.numeric(condition_estimate) ||
+      length(condition_estimate) != 1L ||
+      !is.finite(condition_estimate) ||
+      condition_estimate <= 0
+  ) {
+    "condition_estimate_unavailable"
+  } else if (condition_estimate > condition_limit) {
+    "condition_limit_exceeded"
+  } else {
+    "resolved_nonsingular_spectrum_within_condition_limit"
+  }
+
+  list(
+    eligible = identical(
+      basis,
+      "resolved_nonsingular_spectrum_within_condition_limit"
+    ),
+    basis = basis,
+    condition_limit = condition_limit
+  )
+}
+
+probe_raw_newton_direction <- function(
+  fg,
+  point,
+  spectrum,
+  control = hessian_raw_newton_control(),
+  linear_solver = base::solve,
+  linear_solver_name = "base_solve"
+) {
+  if (!is.list(fg) || !is.function(fg$gr) || !is.function(fg$hs)) {
+    stop("fg must provide function callbacks fg$gr and fg$hs", call. = FALSE)
+  }
+  if (
+    !is.numeric(point) ||
+      !is.null(dim(point)) ||
+      length(point) == 0L ||
+      !all(is.finite(point))
+  ) {
+    stop("point must be a non-empty finite numeric vector", call. = FALSE)
+  }
+
+  required_controls <- c(
+    "residual_absolute_tolerance",
+    "residual_relative_tolerance"
+  )
+  if (
+    !is.list(control) ||
+      !all(required_controls %in% names(control)) ||
+      any(!vapply(control[required_controls], is.numeric, logical(1))) ||
+      any(vapply(control[required_controls], length, integer(1)) != 1L) ||
+      any(!is.finite(unlist(control[required_controls]))) ||
+      control$residual_absolute_tolerance < 0 ||
+      control$residual_relative_tolerance <= 0
+  ) {
+    stop(
+      paste(
+        "raw-Newton residual tolerances must be finite numeric scalars,",
+        "with absolute tolerance nonnegative and relative tolerance positive"
+      ),
+      call. = FALSE
+    )
+  }
+  if (!is.function(linear_solver)) {
+    stop("linear_solver must be a function", call. = FALSE)
+  }
+  if (
+    !is.character(linear_solver_name) ||
+      length(linear_solver_name) != 1L ||
+      is.na(linear_solver_name) ||
+      !nzchar(linear_solver_name)
+  ) {
+    stop("linear_solver_name must be a non-empty string", call. = FALSE)
+  }
+
+  eligibility <- hessian_raw_newton_eligibility(spectrum)
+  result <- list(
+    direction_evaluation = if (eligibility$eligible) {
+      "reevaluated_after_integrity_and_spectrum_gates"
+    } else {
+      "not_reevaluated_spectrum_ineligible"
+    },
+    direction_gr_calls = 0L,
+    direction_hs_calls = 0L,
+    benchmark_callback_counted = FALSE,
+    stable_solve_eligible = eligibility$eligible,
+    stable_solve_basis = eligibility$basis,
+    stable_condition_limit = eligibility$condition_limit,
+    stable_condition_limit_definition = "1 / spectral_relative_tolerance",
+    linear_solver = linear_solver_name,
+    solve_attempted = FALSE,
+    solve_success = FALSE,
+    solve_status = "spectrum_ineligible",
+    solve_error = "",
+    gradient_callback_ok = NA,
+    gradient_callback_error = "",
+    gradient_shape_ok = NA,
+    gradient_finite = NA,
+    gradient_norm = NA_real_,
+    hessian_callback_ok = NA,
+    hessian_callback_error = "",
+    hessian_shape_ok = NA,
+    hessian_finite = NA,
+    symmetrization = NA_character_,
+    symmetrized_hessian_finite = NA,
+    raw_direction_values = "",
+    raw_direction_shape_ok = NA,
+    raw_direction_finite = NA,
+    raw_direction_norm = NA_real_,
+    system_product_norm = NA_real_,
+    solve_residual_norm = NA_real_,
+    solve_residual_scale = NA_real_,
+    solve_residual_absolute_tolerance = control$residual_absolute_tolerance,
+    solve_residual_relative_tolerance = control$residual_relative_tolerance,
+    solve_residual_absolute_tolerance_term = control$residual_absolute_tolerance,
+    solve_residual_relative_tolerance_term = NA_real_,
+    solve_residual_threshold = NA_real_,
+    solve_residual_values_finite = NA,
+    solve_residual_pass = NA,
+    directional_slope = NA_real_,
+    directional_slope_sign = "unavailable",
+    raw_direction_is_descent = NA,
+    quadratic_curvature = NA_real_,
+    quadratic_curvature_sign = "unavailable",
+    predicted_decrease = NA_real_,
+    predicted_decrease_sign = "unavailable",
+    predicted_decrease_positive = NA,
+    predicted_decrease_definition = "-(g' p + 0.5 p' H p)",
+    direction_diagnostics_complete = FALSE
+  )
+
+  if (!eligibility$eligible) {
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+
+  gradient_result <- hessian_probe_callback(fg$gr, point)
+  hessian_result <- hessian_probe_callback(fg$hs, point)
+  result$direction_gr_calls <- 1L
+  result$direction_hs_calls <- 1L
+  result$gradient_callback_ok <- gradient_result$ok
+  result$gradient_callback_error <- gradient_result$error
+  result$hessian_callback_ok <- hessian_result$ok
+  result$hessian_callback_error <- hessian_result$error
+
+  dimension <- length(point)
+  gradient <- gradient_result$value
+  result$gradient_shape_ok <- gradient_result$ok &&
+    is.numeric(gradient) &&
+    is.null(dim(gradient)) &&
+    length(gradient) == dimension
+  result$gradient_finite <- result$gradient_shape_ok &&
+    all(is.finite(gradient))
+  hessian <- hessian_result$value
+  result$hessian_shape_ok <- hessian_result$ok &&
+    is.matrix(hessian) &&
+    is.numeric(hessian) &&
+    identical(dim(hessian), c(dimension, dimension))
+  result$hessian_finite <- result$hessian_shape_ok &&
+    all(is.finite(hessian))
+
+  if (!gradient_result$ok) {
+    result$solve_status <- "gradient_callback_failed"
+    result$solve_error <- gradient_result$error
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+  if (!result$gradient_shape_ok || !result$gradient_finite) {
+    result$solve_status <- "gradient_value_invalid"
+    result$solve_error <- paste0(
+      "gradient must be a finite numeric vector of length ",
+      dimension
+    )
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+  result$gradient_norm <- hessian_probe_norm(gradient)
+  if (!hessian_result$ok) {
+    result$solve_status <- "hessian_callback_failed"
+    result$solve_error <- hessian_result$error
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+  if (!result$hessian_shape_ok || !result$hessian_finite) {
+    result$solve_status <- "hessian_value_invalid"
+    result$solve_error <- paste0(
+      "Hessian must be a finite ",
+      dimension,
+      " x ",
+      dimension,
+      " numeric matrix"
+    )
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+
+  symmetrized <- tryCatch(
+    hessian_spectrum_symmetrize(hessian),
+    error = identity
+  )
+  if (inherits(symmetrized, "error")) {
+    result$solve_status <- "hessian_symmetrization_failed"
+    result$solve_error <- conditionMessage(symmetrized)
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+  system_hessian <- symmetrized$value
+  result$symmetrization <- symmetrized$method
+  result$symmetrized_hessian_finite <- all(is.finite(system_hessian))
+  if (!result$symmetrized_hessian_finite) {
+    result$solve_status <- "hessian_symmetrization_failed"
+    result$solve_error <- "symmetrized Hessian is nonfinite"
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+
+  result$solve_attempted <- TRUE
+  solve_result <- tryCatch(
+    linear_solver(system_hessian, -gradient),
+    error = identity
+  )
+  if (inherits(solve_result, "error")) {
+    result$solve_status <- "solver_error"
+    result$solve_error <- conditionMessage(solve_result)
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+
+  direction <- solve_result
+  result$raw_direction_shape_ok <- is.numeric(direction) &&
+    is.null(dim(direction)) &&
+    length(direction) == dimension
+  result$raw_direction_finite <- result$raw_direction_shape_ok &&
+    all(is.finite(direction))
+  if (!result$raw_direction_shape_ok || !result$raw_direction_finite) {
+    result$solve_status <- "solver_return_invalid"
+    result$solve_error <- paste0(
+      "linear solver must return a finite numeric vector of length ",
+      dimension
+    )
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+  direction <- as.numeric(direction)
+  result$raw_direction_values <- hessian_probe_point_values(direction)
+  result$raw_direction_norm <- hessian_probe_norm(direction)
+
+  system_product <- as.vector(system_hessian %*% direction)
+  residual <- system_product + gradient
+  result$system_product_norm <- hessian_probe_norm(system_product)
+  result$solve_residual_norm <- hessian_probe_norm(residual)
+  result$solve_residual_scale <- max(
+    1,
+    result$system_product_norm,
+    result$gradient_norm
+  )
+  result$solve_residual_relative_tolerance_term <-
+    control$residual_relative_tolerance * result$solve_residual_scale
+  result$solve_residual_threshold <-
+    control$residual_absolute_tolerance +
+    result$solve_residual_relative_tolerance_term
+  result$solve_residual_values_finite <- all(is.finite(c(
+    system_product,
+    residual,
+    result$system_product_norm,
+    result$solve_residual_norm,
+    result$solve_residual_scale,
+    result$solve_residual_relative_tolerance_term,
+    result$solve_residual_threshold
+  )))
+  result$solve_residual_pass <- result$solve_residual_values_finite &&
+    result$solve_residual_norm <= result$solve_residual_threshold
+
+  if (!result$solve_residual_values_finite) {
+    result$solve_status <- "solve_residual_nonfinite"
+    result$solve_error <- "solve residual evidence is nonfinite"
+  } else if (!result$solve_residual_pass) {
+    result$solve_status <- "solve_residual_tolerance_failed"
+    result$solve_error <- "solve residual exceeds the scale-aware threshold"
+  } else {
+    result$solve_success <- TRUE
+  }
+
+  result$directional_slope <- sum(gradient * direction)
+  result$quadratic_curvature <- sum(direction * system_product)
+  result$predicted_decrease <- -(result$directional_slope +
+    result$quadratic_curvature / 2)
+  result$directional_slope_sign <- hessian_raw_newton_sign(
+    result$directional_slope
+  )
+  result$raw_direction_is_descent <- if (is.finite(result$directional_slope)) {
+    result$directional_slope < 0
+  } else {
+    NA
+  }
+  result$quadratic_curvature_sign <- hessian_raw_newton_sign(
+    result$quadratic_curvature
+  )
+  result$predicted_decrease_sign <- hessian_raw_newton_sign(
+    result$predicted_decrease
+  )
+  result$predicted_decrease_positive <- if (
+    is.finite(result$predicted_decrease)
+  ) {
+    result$predicted_decrease > 0
+  } else {
+    NA
+  }
+  result$direction_diagnostics_complete <- all(is.finite(c(
+    result$raw_direction_norm,
+    result$directional_slope,
+    result$quadratic_curvature,
+    result$predicted_decrease
+  )))
+  if (result$solve_success) {
+    result$solve_status <- if (result$direction_diagnostics_complete) {
+      "solved"
+    } else {
+      "solved_direction_metrics_nonfinite"
+    }
+  }
+
+  as.data.frame(result, stringsAsFactors = FALSE)
+}
+
 hessian_probe_centered_difference <- function(plus, minus, step_size) {
   if (step_size > .Machine$double.xmax / 2) {
     return(plus / step_size / 2 - minus / step_size / 2)
@@ -944,11 +1345,85 @@ hessian_probe_spectrum_point <- function(case, candidate, integrity_result) {
   )
 }
 
+hessian_probe_raw_newton_point <- function(
+  case,
+  candidate,
+  integrity_result,
+  spectrum_result,
+  linear_solver = base::solve,
+  linear_solver_name = "base_solve"
+) {
+  integrity_pass <- nrow(integrity_result) > 0L &&
+    all(integrity_result$probe_pass)
+  if (!integrity_pass) {
+    stop(
+      "raw Newton directions require a passing directional integrity result",
+      call. = FALSE
+    )
+  }
+  if (!is.data.frame(spectrum_result) || nrow(spectrum_result) != 1L) {
+    stop(
+      "raw Newton directions require one Hessian spectrum row",
+      call. = FALSE
+    )
+  }
+
+  metadata <- hessian_probe_candidate_row(case, candidate)
+  spectrum_evidence <- spectrum_result[,
+    c(
+      "spectral_classification",
+      "singularity",
+      "spectral_condition_estimate",
+      "eigen_min",
+      "eigen_max",
+      "eigen_abs_min",
+      "eigen_abs_max",
+      "spectral_scale",
+      "spectral_absolute_tolerance",
+      "spectral_relative_tolerance",
+      "spectral_absolute_tolerance_term",
+      "spectral_relative_tolerance_term",
+      "spectral_sign_tolerance",
+      "inertia_positive",
+      "inertia_zero",
+      "inertia_negative",
+      "inertia_unresolved"
+    ),
+    drop = FALSE
+  ]
+  direction <- probe_raw_newton_direction(
+    fg = case$fg,
+    point = candidate$point,
+    spectrum = spectrum_result,
+    linear_solver = linear_solver,
+    linear_solver_name = linear_solver_name
+  )
+  data.frame(
+    metadata,
+    integrity_gate = "probe_hessian_integrity",
+    integrity_direction_count = nrow(integrity_result),
+    integrity_probe_pass = TRUE,
+    spectrum_gate = "probe_hessian_spectrum",
+    spectrum_evidence,
+    direction,
+    stringsAsFactors = FALSE
+  )
+}
+
 hessian_probe_extended_cases <- function(
   cases,
   optimizer,
-  include_spectrum = FALSE
+  include_spectrum = FALSE,
+  include_raw_newton = FALSE,
+  raw_newton_solver = base::solve,
+  raw_newton_solver_name = "base_solve"
 ) {
+  if (include_raw_newton && !include_spectrum) {
+    stop(
+      "raw Newton directions require Hessian spectrum evidence",
+      call. = FALSE
+    )
+  }
   selections <- lapply(
     cases,
     hessian_probe_select_points,
@@ -964,7 +1439,7 @@ hessian_probe_extended_cases <- function(
     cases,
     selections
   )
-  spectra <- if (include_spectrum) {
+  spectra_by_case <- if (include_spectrum) {
     Map(
       function(case, selection, case_result) {
         point_spectra <- lapply(selection$selected, function(candidate) {
@@ -998,6 +1473,54 @@ hessian_probe_extended_cases <- function(
   } else {
     NULL
   }
+  raw_newton_by_case <- if (include_raw_newton) {
+    Map(
+      function(
+        case,
+        selection,
+        case_result,
+        case_spectrum
+      ) {
+        point_directions <- lapply(selection$selected, function(candidate) {
+          integrity_result <- case_result[
+            case_result$point_id == candidate$point_id,
+            ,
+            drop = FALSE
+          ]
+          if (
+            nrow(integrity_result) == 0L ||
+              !all(integrity_result$probe_pass)
+          ) {
+            return(NULL)
+          }
+          spectrum_result <- case_spectrum[
+            case_spectrum$point_id == candidate$point_id,
+            ,
+            drop = FALSE
+          ]
+          hessian_probe_raw_newton_point(
+            case = case,
+            candidate = candidate,
+            integrity_result = integrity_result,
+            spectrum_result = spectrum_result,
+            linear_solver = raw_newton_solver,
+            linear_solver_name = raw_newton_solver_name
+          )
+        })
+        point_directions <- Filter(Negate(is.null), point_directions)
+        if (length(point_directions) == 0L) {
+          return(NULL)
+        }
+        do.call(rbind, point_directions)
+      },
+      cases,
+      selections,
+      results,
+      spectra_by_case
+    )
+  } else {
+    NULL
+  }
   manifests <- Map(
     function(case, selection) {
       do.call(
@@ -1014,11 +1537,19 @@ hessian_probe_extended_cases <- function(
     selection = do.call(rbind, manifests)
   )
   if (include_spectrum) {
-    spectra <- Filter(Negate(is.null), spectra)
+    spectra <- Filter(Negate(is.null), spectra_by_case)
     coverage$spectrum <- if (length(spectra) == 0L) {
       data.frame()
     } else {
       do.call(rbind, spectra)
+    }
+  }
+  if (include_raw_newton) {
+    raw_newton <- Filter(Negate(is.null), raw_newton_by_case)
+    coverage$raw_newton <- if (length(raw_newton) == 0L) {
+      data.frame()
+    } else {
+      do.call(rbind, raw_newton)
     }
   }
   coverage
@@ -1287,6 +1818,7 @@ hessian_probe_usage <- function(status = 0L) {
       "  --point-set MODE          resolved-start (default) or extended.",
       "  --selection-out PATH      Required manifest path for extended points.",
       "  --spectrum-out PATH       Optional spectrum CSV for extended points.",
+      "  --direction-out PATH      Optional raw Newton CSV; requires spectrum.",
       "  --out PATH                Write CSV results to PATH instead of stdout.",
       "  --help                    Show this help.",
       sep = "\n"
@@ -1303,6 +1835,7 @@ hessian_probe_parse_args <- function(args) {
     point_set = "resolved-start",
     selection_out = NULL,
     spectrum_out = NULL,
+    direction_out = NULL,
     out = NULL
   )
 
@@ -1338,6 +1871,9 @@ hessian_probe_parse_args <- function(args) {
     } else if (arg == "--spectrum-out") {
       config$spectrum_out <- read_value()
       i <- i + 1L
+    } else if (arg == "--direction-out") {
+      config$direction_out <- read_value()
+      i <- i + 1L
     } else if (arg == "--out") {
       config$out <- read_value()
       i <- i + 1L
@@ -1361,10 +1897,19 @@ hessian_probe_parse_args <- function(args) {
   }
   if (
     config$point_set != "extended" &&
-      !is.null(config$spectrum_out)
+      (!is.null(config$spectrum_out) || !is.null(config$direction_out))
   ) {
     stop(
-      "--spectrum-out requires --point-set extended",
+      "--spectrum-out and --direction-out require --point-set extended",
+      call. = FALSE
+    )
+  }
+  if (
+    !is.null(config$direction_out) &&
+      is.null(config$spectrum_out)
+  ) {
+    stop(
+      "--direction-out requires --spectrum-out",
       call. = FALSE
     )
   }
@@ -1374,6 +1919,9 @@ hessian_probe_parse_args <- function(args) {
   }
   if (!is.null(config$spectrum_out)) {
     output_paths[["--spectrum-out"]] <- config$spectrum_out
+  }
+  if (!is.null(config$direction_out)) {
+    output_paths[["--direction-out"]] <- config$direction_out
   }
   hessian_probe_preflight_output_paths(output_paths)
 
@@ -1429,6 +1977,11 @@ write_hessian_probe_spectrum <- function(spectrum, out) {
   message("Wrote Hessian eigenspectrum results to ", out)
 }
 
+write_hessian_probe_raw_newton <- function(raw_newton, out) {
+  utils::write.csv(raw_newton, file = out, row.names = FALSE, na = "")
+  message("Wrote raw exact-Newton direction results to ", out)
+}
+
 hessian_probe_main <- function() {
   config <- hessian_probe_parse_args(commandArgs(trailingOnly = TRUE))
   cases <- hessian_probe_cases(config)
@@ -1441,12 +1994,19 @@ hessian_probe_main <- function() {
   coverage <- hessian_probe_extended_cases(
     cases,
     optimizer = hessian_probe_load_mize(),
-    include_spectrum = !is.null(config$spectrum_out)
+    include_spectrum = !is.null(config$spectrum_out),
+    include_raw_newton = !is.null(config$direction_out)
   )
   write_hessian_probe_results(coverage$results, config$out)
   write_hessian_probe_selection(coverage$selection, config$selection_out)
   if (!is.null(config$spectrum_out)) {
     write_hessian_probe_spectrum(coverage$spectrum, config$spectrum_out)
+  }
+  if (!is.null(config$direction_out)) {
+    write_hessian_probe_raw_newton(
+      coverage$raw_newton,
+      config$direction_out
+    )
   }
 }
 
