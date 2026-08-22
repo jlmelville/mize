@@ -63,6 +63,14 @@ the derivative of the gradient or that it supplies a useful Newton direction.
 Those numerical-integrity and direction checks remain separate benchmark
 probes.
 
+Each optimizer run gets fresh wrappers around the available `fg$fn`, `fg$gr`,
+`fg$fg`, and `fg$hs` callbacks. Their `n_fn_call`, `n_gr_call`, `n_fg_call`,
+and `n_hs_call` counts cover only the optimizer invocation. Adapter validation,
+the reported initial objective, and final objective/gradient metrics use the
+original callbacks and are excluded. A call to the combined `fg$fg` callback
+increments only `n_fg_call`; it is not also recorded as separate objective and
+gradient calls.
+
 ### Dependencies
 
 Built-in benchmark cases use base R plus packages that ship with R:
@@ -131,7 +139,10 @@ The CSV columns include:
 - callback mode (`combined` or `separate`)
 - final objective
 - final gradient norm
-- function and gradient evaluation counts
+- `nf` and `ng`: mize's existing reported counts for mize rows, and the
+  existing external objective/gradient counts for `stats::optim()` rows
+- external `n_fn_call`, `n_gr_call`, `n_fg_call`, and `n_hs_call` callback
+  invocation counts for every row
 - elapsed wall time
 - iteration count where available
 - termination and failure mode

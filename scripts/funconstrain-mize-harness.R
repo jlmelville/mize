@@ -307,6 +307,44 @@ validate_funconstrain_case <- function(case) {
   invisible(case)
 }
 
+counted_fg <- function(fg) {
+  counts <- new.env(parent = emptyenv())
+  counts$n_fn_call <- 0L
+  counts$n_gr_call <- 0L
+  counts$n_fg_call <- 0L
+  counts$n_hs_call <- 0L
+
+  wrap_callback <- function(callback_name, count_name) {
+    callback <- fg[[callback_name]]
+    if (!is.function(callback)) {
+      return(callback)
+    }
+
+    function(...) {
+      counts[[count_name]] <- counts[[count_name]] + 1L
+      callback(...)
+    }
+  }
+
+  counted <- fg
+  counted$fn <- wrap_callback("fn", "n_fn_call")
+  counted$gr <- wrap_callback("gr", "n_gr_call")
+  counted$fg <- wrap_callback("fg", "n_fg_call")
+  counted$hs <- wrap_callback("hs", "n_hs_call")
+
+  list(
+    fg = counted,
+    counts = function() {
+      list(
+        n_fn_call = counts$n_fn_call,
+        n_gr_call = counts$n_gr_call,
+        n_fg_call = counts$n_fg_call,
+        n_hs_call = counts$n_hs_call
+      )
+    }
+  )
+}
+
 funconstrain_problem_case <- function(
   name,
   n,

@@ -309,26 +309,6 @@ benchmark_cases <- function(config) {
   })
 }
 
-counted_fg <- function(fg) {
-  counts <- new.env(parent = emptyenv())
-  counts$nf <- 0L
-  counts$ng <- 0L
-
-  list(
-    fn = function(par) {
-      counts$nf <- counts$nf + 1L
-      fg$fn(par)
-    },
-    gr = function(par) {
-      counts$ng <- counts$ng + 1L
-      fg$gr(par)
-    },
-    counts = function() {
-      list(nf = counts$nf, ng = counts$ng)
-    }
-  )
-}
-
 run_timed <- function(thunk) {
   warnings <- character()
   result <- NULL
@@ -382,6 +362,10 @@ row_result <- function(
   grad_norm,
   nf,
   ng,
+  n_fn_call,
+  n_gr_call,
+  n_fg_call,
+  n_hs_call,
   elapsed,
   iter,
   termination,
@@ -405,6 +389,10 @@ row_result <- function(
     grad_norm = grad_norm,
     nf = nf,
     ng = ng,
+    n_fn_call = n_fn_call,
+    n_gr_call = n_gr_call,
+    n_fg_call = n_fg_call,
+    n_hs_call = n_hs_call,
     elapsed_sec = elapsed,
     iter = iter,
     termination = termination,
@@ -430,8 +418,8 @@ run_optim_case <- function(case, rep, method, max_iter) {
   timed <- run_timed(function() {
     stats::optim(
       par = case$par,
-      fn = counted$fn,
-      gr = counted$gr,
+      fn = counted$fg$fn,
+      gr = counted$fg$gr,
       method = method,
       control = list(maxit = max_iter)
     )
@@ -458,8 +446,12 @@ run_optim_case <- function(case, rep, method, max_iter) {
     max_iter = max_iter,
     final_f = metrics$final_f,
     grad_norm = metrics$grad_norm,
-    nf = counts$nf,
-    ng = counts$ng,
+    nf = counts$n_fn_call,
+    ng = counts$n_gr_call,
+    n_fn_call = counts$n_fn_call,
+    n_gr_call = counts$n_gr_call,
+    n_fg_call = counts$n_fg_call,
+    n_hs_call = counts$n_hs_call,
     elapsed = timed$elapsed,
     iter = NA_integer_,
     termination = termination,
@@ -521,7 +513,8 @@ run_mize_case <- function(
   max_iter
 ) {
   step0_value <- mize_step0_value(step0)
-  callback_fg <- mize_fg_for_callback_mode(case$fg, callback_mode)
+  counted <- counted_fg(case$fg)
+  callback_fg <- mize_fg_for_callback_mode(counted$fg, callback_mode)
   timed <- run_timed(function() {
     mize(
       par = case$par,
@@ -533,6 +526,7 @@ run_mize_case <- function(
       max_iter = max_iter
     )
   })
+  counts <- counted$counts()
   res <- timed$result
   error <- if (inherits(res, "error")) conditionMessage(res) else ""
   par <- if (inherits(res, "error")) NULL else res$par
@@ -561,6 +555,10 @@ run_mize_case <- function(
     grad_norm = metrics$grad_norm,
     nf = if (inherits(res, "error")) NA_integer_ else res$nf,
     ng = if (inherits(res, "error")) NA_integer_ else res$ng,
+    n_fn_call = counts$n_fn_call,
+    n_gr_call = counts$n_gr_call,
+    n_fg_call = counts$n_fg_call,
+    n_hs_call = counts$n_hs_call,
     elapsed = timed$elapsed,
     iter = if (inherits(res, "error")) NA_integer_ else res$iter,
     termination = termination,
