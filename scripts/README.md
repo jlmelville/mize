@@ -196,6 +196,68 @@ case to contain the full frozen profile/search/callback grid with repetitions
 1 through 3. Run `Rscript scripts/test-derive-optimizer-benchmark.R` for the
 focused complete-grid regression check.
 
+## Packet 5A Hager-Zhang Scale Rescue
+
+`benchmark-hager-zhang-rescue.R` is a fixed-contract developer experiment, not
+a package validation command or public optimizer option. It reuses the Packet 4
+case adapter, ten method profiles, callback counters, unmeasured progress
+replay, target definitions, and artifact preflight. The only candidate is an
+internal, default-off Hager-Zhang later-step rescue. It uses the cached
+slope-ratio scale when the current HZ proposal cannot reach that scale by one
+binary contraction per remaining trial; the calculation makes no provider
+callback. Current HZ with 20 trials is the primary baseline. Existing
+quadratic and slope-ratio initialization plus current HZ with 100 trials are
+diagnostic comparators.
+
+The script accepts only `tranche` or `all35` scope and otherwise fixes seed
+20260823, requested dimension 20, `max_iter = 100`, three measured repetitions,
+one warmup, both callback modes, all ten Packet 4 mize profiles, and the five
+declared policies. Every output path is required. For example:
+
+```sh
+R_LIBS=/private/tmp/mize-packet4-lib \
+  Rscript scripts/benchmark-hager-zhang-rescue.R \
+  --scope tranche \
+  --funconstrain-commit 0cbfc11b345de01180d56e525c07e027d8d8ac6a \
+  --out /private/tmp/mize-packet5a-20260823/tranche-runs.csv \
+  --progress-out /private/tmp/mize-packet5a-20260823/tranche-progress.csv \
+  --case-out /private/tmp/mize-packet5a-20260823/tranche-cases.csv \
+  --summary-out /private/tmp/mize-packet5a-20260823/tranche-summary.csv \
+  --initializer-out \
+    /private/tmp/mize-packet5a-20260823/tranche-initializers.csv \
+  --manifest-out /private/tmp/mize-packet5a-20260823/tranche-manifest.csv
+```
+
+Measured runs do not install the observer used for initializer evidence. The
+unmeasured replay records cached slopes, proposals, available scale, remaining
+trial budget, and rescue state, then must match the measured optimizer result
+and physical callback counts exactly. The manifest records provenance and
+SHA-256 identities for the five primary artifacts.
+
+`derive-hager-zhang-rescue.R` reads those persisted primary artifacts plus the
+accepted Packet 4 summary. It requires the complete declared per-case grid,
+validates initializer keys and zero observer callbacks, derives explicitly
+sorted cell medians and primary/candidate comparisons, and applies the frozen
+Packet 5A gates. Run it twice into fresh paths and compare bytes before using
+the decision artifacts:
+
+```sh
+Rscript scripts/derive-hager-zhang-rescue.R \
+  --summary /private/tmp/mize-packet5a-20260823/tranche-summary.csv \
+  --progress /private/tmp/mize-packet5a-20260823/tranche-progress.csv \
+  --initializers \
+    /private/tmp/mize-packet5a-20260823/tranche-initializers.csv \
+  --packet4-summary /private/tmp/mize-packet4-20260823/all35-summary.csv \
+  --cell-out /private/tmp/mize-packet5a-20260823/tranche-cell-medians.csv \
+  --comparison-out \
+    /private/tmp/mize-packet5a-20260823/tranche-policy-comparisons.csv \
+  --gate-out /private/tmp/mize-packet5a-20260823/tranche-gates.csv
+```
+
+Run `Rscript scripts/test-derive-hager-zhang-rescue.R` for the focused
+complete-grid rejection check. Generated Packet 5A CSVs belong under
+`/private/tmp`; do not commit them.
+
 ## Hessian Integrity Probe
 
 `hessian-integrity-probe.R` is a deterministic developer check that is separate
