@@ -95,6 +95,17 @@ complete <- packet5a_read_inputs(config)
 stopifnot(nrow(complete$summary) == 1200L)
 stopifnot(identical(complete$scope, "tranche"))
 
+selected_progress <- packet5a_select_run_progress(
+  progress,
+  summary[137L, , drop = FALSE]
+)
+stopifnot(nrow(selected_progress) == 1L)
+stopifnot(selected_progress$case == summary$case[[137L]])
+stopifnot(selected_progress$profile == summary$profile[[137L]])
+stopifnot(selected_progress$policy == summary$policy[[137L]])
+stopifnot(selected_progress$callback_mode == summary$callback_mode[[137L]])
+stopifnot(selected_progress$rep == summary$rep[[137L]])
+
 missing_cell <- summary[
   !(summary$case == "funconstrain-brown_bs" &
     summary$profile == "mize-cg-pr+" &

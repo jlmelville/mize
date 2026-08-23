@@ -574,18 +574,22 @@ packet5a_run_grid <- function(cases) {
   )
 }
 
+packet5a_select_run_progress <- function(progress, row) {
+  progress[
+    progress$case == row$case &
+      progress$rep == row$rep &
+      progress$profile == row$profile &
+      progress$policy == row$policy &
+      progress$callback_mode == row$callback_mode,
+    ,
+    drop = FALSE
+  ]
+}
+
 packet5a_summary <- function(runs, progress, case_manifest) {
   rows <- lapply(seq_len(nrow(runs)), function(index) {
     row <- runs[index, , drop = FALSE]
-    selected <- progress[
-      progress$case == row$case &&
-        progress$rep == row$rep &&
-        progress$profile == row$profile &&
-        progress$policy == row$policy &&
-        progress$callback_mode == row$callback_mode,
-      ,
-      drop = FALSE
-    ]
+    selected <- packet5a_select_run_progress(progress, row)
     summary <- benchmark_resource_summary_row(row, selected, case_manifest)
     summary
   })
