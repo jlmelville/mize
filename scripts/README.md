@@ -29,12 +29,22 @@ Use `--methods` to select one or more explicit optimizer profiles:
 - `stats-bfgs`, `stats-cg`, and `stats-l-bfgs-b`
 - `mize-l-bfgs`, `mize-bfgs`, `mize-cg-pr+`, `mize-cg-hz+`, and `mize-tn`
 - `mize-newton` for mize's exact-Hessian Newton method
+- `mize-sr1` for the existing SR1 quasi-Newton method
+- `mize-tn-l-bfgs` for TN with the existing L-BFGS preconditioner
+- `mize-cg-pr+-l-bfgs` for the bounded existing preconditioned-CG experiment
+- `mize-newton-safeguarded` for a benchmark-only comparison with the loaded
+  internal `newton_direction(try_safe_chol = TRUE)` policy
 
 The default is the original three `stats::optim()` and five mize profiles, so
 existing commands retain their grids. Exact Newton is opt-in because it
 requires a case with an `fg$hs` callback. Each selected mize profile is crossed
 with the requested line searches, first-step settings, and callback modes;
 `stats::optim()` profiles keep their ordinary separate-callback execution.
+The safeguarded Newton profile substitutes the internal direction object before
+the ordinary optimizer loop is initialized. It is not a public method, package
+option, or proposed default. The two preconditioned profiles use the existing
+public `preconditioner = "L-BFGS"` configuration with the default memory of
+five.
 
 ### Funconstrain Adapter Schema
 
@@ -84,6 +94,75 @@ the reported initial objective, and final objective/gradient metrics use the
 original callbacks and are excluded. A call to the combined `fg$fg` callback
 increments only `n_fg_call`; it is not also recorded as separate objective and
 gradient calls.
+
+### Resource-Aware Evidence
+
+The default CSV and method grid remain unchanged. Packet-style resource
+evidence is opt-in:
+
+- `--warmup N` runs `N` unreported warmups immediately before the first
+  measured repetition of each case/profile/search/callback configuration.
+- `--progress-out PATH` writes every stored mize progress row, including its
+  profile and run keys, cumulative mize `nf`/`ng`, line-search outcome/reason,
+  and exact-Newton direction reason where the runtime provides one. The
+  benchmark records parameter, objective, and gradient values already returned
+  by the selected callback mode and aligns the selected-point gradient with the
+  stored objective and realized step within cumulative `nf`/`ng`. This adds no
+  callback and does not enable a package gradient-convergence criterion.
+- `--case-out PATH` writes resolved start/dimension and reference-applicability
+  metadata plus the frozen objective and gradient targets.
+- `--summary-out PATH` writes one row per measured run with final quality,
+  actual external callback invocations, elapsed time, first iteration and mize
+  `nf`/`ng` to each target, outcome/direction frequencies, and explicit
+  material-surprise indicators.
+- `--funconstrain-commit SHA` passes known source-commit provenance to the
+  existing adapter. It does not alter the installed package or callbacks.
+
+The reference-free targets are a 99% objective reduction from the start and a
+gradient-norm reduction to
+`max(1e-8, 1e-6 * initial_gradient_norm)`. A stricter reference-gap target is
+added only when the adapter says `fmin_applicable == TRUE`:
+`fmin + 1e-8 * max(1, abs(initial_f - fmin))`. An `NA` or false applicability
+flag never becomes a target merely because a stored reference has a compatible
+shape. `xmin` is retained as metadata and is not used as a benchmark target.
+
+Target `nf`/`ng` values are mize's produced objective/gradient-value counts at
+the first stored target-hitting iteration. They are not reconstructed external
+callback-kind counts. Final `n_fn_call`, `n_gr_call`, `n_fg_call`, and
+`n_hs_call` remain separate actual invocation resources, and elapsed time is a
+separate view. Do not combine these unlike resources into one score.
+
+Elapsed time and external invocation counts come from the measured run without
+progress tracing. When a progress or summary artifact is requested, the
+harness makes one unmeasured deterministic replay, records only values already
+returned by its callbacks, and requires exact result and invocation-count
+parity with the measured run before using that replay for target timing and
+outcome frequencies. The replay is not included in any reported resource.
+
+For example, a declared resource tranche can be run with:
+
+```sh
+R_LIBS=/private/tmp/mize-packet4-lib \
+  Rscript scripts/benchmark-optimizers.R \
+  --cases spd-quadratic \
+  --funconstrain-cases rosen,brown_bs,meyer,var_dim,chebyquad \
+  --funconstrain-commit 0cbfc11b345de01180d56e525c07e027d8d8ac6a \
+  --spd-n 20 \
+  --methods mize-newton,mize-newton-safeguarded,mize-tn,mize-tn-l-bfgs,mize-bfgs,mize-l-bfgs,mize-sr1,mize-cg-pr+,mize-cg-hz+,mize-cg-pr+-l-bfgs \
+  --max-iter 100 --reps 3 --warmup 1 --seed 20260823 \
+  --line-search More-Thuente,Rasmussen,Schmidt,Hager-Zhang \
+  --step0 default --callbacks combined,separate \
+  --out /private/tmp/mize-packet4-20260823/tranche-runs.csv \
+  --progress-out /private/tmp/mize-packet4-20260823/tranche-progress.csv \
+  --case-out /private/tmp/mize-packet4-20260823/tranche-cases.csv \
+  --summary-out /private/tmp/mize-packet4-20260823/tranche-summary.csv
+```
+
+The command keeps every requested line search on every method. It does not
+silently replace a failed search. The raw, progress, case, and summary outputs
+must use distinct non-symlink paths and may not alias through normalization,
+hard links, or case equivalence on a case-insensitive filesystem. Existing
+default commands still emit only the predecessor raw CSV schema.
 
 ## Hessian Integrity Probe
 
