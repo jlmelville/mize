@@ -490,8 +490,8 @@ packet5a_correctness_gates <- function(summary) {
     which(
       summary$callback_or_optimizer_error |
         summary$final_metric_nonfinite |
-        nzchar(summary$error) |
-        nzchar(summary$warnings)
+        (!is.na(summary$error) & nzchar(summary$error)) |
+        (!is.na(summary$warnings) & nzchar(summary$warnings))
     ),
     "callback_or_numerical_failure",
     "error, warning, or nonfinite result"
@@ -522,12 +522,17 @@ packet5a_packet4_parity_gates <- function(summary, packet4) {
   key <- c("case", "profile", "callback_mode", "rep")
   current <- current[do.call(order, current[key]), , drop = FALSE]
   accepted <- accepted[do.call(order, accepted[key]), , drop = FALSE]
-  if (!identical(current[key], accepted[key])) {
+  current_key <- do.call(paste, c(current[key], sep = "\r"))
+  accepted_key <- do.call(paste, c(accepted[key], sep = "\r"))
+  if (!setequal(current_key, accepted_key)) {
     return(packet5a_gate_row(
       "packet4_baseline_parity",
       detail = "accepted Packet 4 keys do not match"
     ))
   }
+  accepted <- accepted[match(current_key, accepted_key), , drop = FALSE]
+  rownames(current) <- NULL
+  rownames(accepted) <- NULL
   common <- setdiff(
     intersect(names(current), names(accepted)),
     c(

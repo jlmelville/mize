@@ -94,6 +94,27 @@ config <- list(
 complete <- packet5a_read_inputs(config)
 stopifnot(nrow(complete$summary) == 1200L)
 stopifnot(identical(complete$scope, "tranche"))
+stopifnot(nrow(packet5a_correctness_gates(complete$summary)) == 0L)
+
+packet4_parity <- complete$summary[
+  complete$summary$policy == "current-hz-20",
+  ,
+  drop = FALSE
+]
+packet4_parity$line_search <- "Hager-Zhang"
+packet4_parity$step0 <- "default"
+packet4_parity <- packet4_parity[
+  rev(seq_len(nrow(packet4_parity))),
+  ,
+  drop = FALSE
+]
+rownames(packet4_parity) <- seq.int(1001L, length.out = nrow(packet4_parity))
+stopifnot(
+  nrow(
+    packet5a_packet4_parity_gates(complete$summary, packet4_parity)
+  ) ==
+    0L
+)
 
 selected_progress <- packet5a_select_run_progress(
   progress,
