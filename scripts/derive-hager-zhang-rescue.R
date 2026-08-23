@@ -249,19 +249,83 @@ packet5a_read_inputs <- function(config) {
   if (anyDuplicated(summary_key) || !setequal(summary_key, expected_key)) {
     stop("summary does not contain the complete Packet 5A run grid")
   }
-  progress_key <- unique(packet5a_run_key(progress))
-  if (!setequal(progress_key, expected_key)) {
-    stop("progress does not cover the complete Packet 5A run grid")
+  summary_iterations_are_valid <- is.numeric(summary$iter) &&
+    all(
+      is.na(summary$iter) |
+        (is.finite(summary$iter) &
+          summary$iter >= 0 &
+          summary$iter == floor(summary$iter))
+    )
+  if (!summary_iterations_are_valid) {
+    stop("summary iterations must be nonnegative integers or missing")
+  }
+  progress_iterations_are_valid <- is.numeric(progress$progress_iter) &&
+    all(
+      is.finite(progress$progress_iter) &
+        progress$progress_iter >= 0 &
+        progress$progress_iter == floor(progress$progress_iter)
+    )
+  if (!progress_iterations_are_valid) {
+    stop("progress iterations must be nonnegative integers")
+  }
+  progress_key <- packet5a_run_key(progress)
+  progress_summary_index <- match(progress_key, summary_key)
+  progress_iteration_key <- paste(
+    progress_key,
+    progress$progress_iter,
+    sep = "\r"
+  )
+  expected_progress_rows <- ifelse(is.na(summary$iter), 0L, summary$iter + 1L)
+  actual_progress_rows <- tabulate(
+    progress_summary_index,
+    nbins = nrow(summary)
+  )
+  if (
+    anyNA(progress_summary_index) ||
+      anyDuplicated(progress_iteration_key) ||
+      any(
+        progress$progress_iter > summary$iter[progress_summary_index],
+        na.rm = TRUE
+      ) ||
+      !all(actual_progress_rows == expected_progress_rows)
+  ) {
+    stop("progress does not contain each complete Packet 5A run history")
   }
   initializer_key <- packet5a_run_key(initializers)
-  summary_initializer_keys <- summary_key[
-    summary$policy %in% c("current-hz-20", "rescue-hz-20", "current-hz-100")
+  initializer_iterations_are_valid <- length(initializers$iter) == 0L ||
+    (is.numeric(initializers$iter) &&
+      all(
+        is.finite(initializers$iter) &
+          initializers$iter >= 2 &
+          initializers$iter == floor(initializers$iter)
+      ))
+  if (!initializer_iterations_are_valid) {
+    stop("initializer iterations must be integers of at least two")
+  }
+  hz_policies <- names(Filter(
+    function(policy) identical(policy$initializer, "hz"),
+    packet5a_policies()
+  ))
+  expected_initializer_rows <- progress[
+    progress$policy %in% hz_policies & progress$progress_iter >= 2L,
+    c("case", "profile", "policy", "callback_mode", "rep", "progress_iter"),
+    drop = FALSE
   ]
+  expected_initializer_key <- paste(
+    packet5a_run_key(expected_initializer_rows),
+    expected_initializer_rows$progress_iter,
+    sep = "\r"
+  )
+  actual_initializer_key <- paste(
+    initializer_key,
+    initializers$iter,
+    sep = "\r"
+  )
   if (
-    any(!initializer_key %in% summary_initializer_keys) ||
-      anyDuplicated(paste(initializer_key, initializers$iter, sep = "\r"))
+    anyDuplicated(actual_initializer_key) ||
+      !setequal(actual_initializer_key, expected_initializer_key)
   ) {
-    stop("initializer evidence has invalid or duplicate run/iteration keys")
+    stop("initializer evidence does not cover every later HZ initialization")
   }
   if (any(initializers$observer_provider_callbacks != 0L)) {
     stop("initializer observer records provider callbacks")
@@ -762,6 +826,14 @@ packet5a_finalize_manifest <- function(config) {
   if (!identical(unname(actual_hashes), unname(primary$sha256))) {
     stop("Packet 5A primary artifact hash does not match the manifest")
   }
+  actual_rows <- vapply(
+    primary$path,
+    function(path) max(0L, length(readLines(path, warn = FALSE)) - 1L),
+    integer(1)
+  )
+  if (!identical(as.numeric(actual_rows), as.numeric(primary$data_rows))) {
+    stop("Packet 5A primary artifact row count does not match the manifest")
+  }
 
   if (!"benchmark_command" %in% names(primary)) {
     primary$benchmark_command <- config$benchmark_command
@@ -793,7 +865,7 @@ packet5a_finalize_manifest <- function(config) {
 }
 
 packet5a_derive <- function(config) {
-  benchmark_preflight_output_paths(c(
+  active_paths <- c(
     `--summary` = config$summary,
     `--progress` = config$progress,
     `--initializers` = config$initializers,
@@ -801,7 +873,11 @@ packet5a_derive <- function(config) {
     `--cell-out` = config$cell_out,
     `--comparison-out` = config$comparison_out,
     `--gate-out` = config$gate_out
-  ))
+  )
+  if (!is.null(config$manifest_out) && !is.na(config$manifest_out)) {
+    active_paths <- c(active_paths, `--manifest-out` = config$manifest_out)
+  }
+  benchmark_preflight_output_paths(active_paths)
   inputs <- packet5a_read_inputs(config)
   cells <- packet5a_cell_medians(inputs)
   comparisons <- packet5a_policy_comparisons(cells)

@@ -239,10 +239,13 @@ derivation checkpoint.
 
 `derive-hager-zhang-rescue.R` reads those persisted primary artifacts plus the
 accepted Packet 4 summary. It requires the complete declared per-case grid,
-validates initializer keys and zero observer callbacks, derives explicitly
-sorted cell medians and primary/candidate comparisons, and applies the frozen
-Packet 5A gates. Run it twice into fresh paths and compare bytes before using
-the decision artifacts:
+requires every non-error run's complete `0:iter` progress history and one
+initializer row for every later HZ iteration, validates zero observer
+callbacks, derives explicitly sorted cell medians and primary/candidate
+comparisons, and applies the frozen Packet 5A gates. Manifest finalization also
+checks the persisted primary row counts and hashes, and the manifest path
+participates in the collective output-alias preflight. Run the derivation twice
+into fresh paths and compare bytes before using the decision artifacts:
 
 ```sh
 Rscript scripts/derive-hager-zhang-rescue.R \

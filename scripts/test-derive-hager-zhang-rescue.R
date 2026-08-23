@@ -48,8 +48,17 @@ summary$non_descent_escape_count <- 0L
 summary$final_metric_nonfinite <- FALSE
 summary$callback_or_optimizer_error <- FALSE
 
-progress <- summary[c("case", "profile", "policy", "callback_mode", "rep")]
-progress$progress_iter <- 0L
+progress <- summary[
+  rep(seq_len(nrow(summary)), each = 2L),
+  c(
+    "case",
+    "profile",
+    "policy",
+    "callback_mode",
+    "rep"
+  )
+]
+progress$progress_iter <- rep(0:1, nrow(summary))
 progress$alpha_init <- NA_real_
 progress$slope_init <- NA_real_
 progress$ls_nf <- NA_integer_
@@ -120,12 +129,68 @@ selected_progress <- packet5a_select_run_progress(
   progress,
   summary[137L, , drop = FALSE]
 )
-stopifnot(nrow(selected_progress) == 1L)
+stopifnot(nrow(selected_progress) == 2L)
 stopifnot(selected_progress$case == summary$case[[137L]])
 stopifnot(selected_progress$profile == summary$profile[[137L]])
 stopifnot(selected_progress$policy == summary$policy[[137L]])
 stopifnot(selected_progress$callback_mode == summary$callback_mode[[137L]])
 stopifnot(selected_progress$rep == summary$rep[[137L]])
+
+missing_progress <- progress[-2L, , drop = FALSE]
+config$progress <- write_fixture("progress-missing-iteration", missing_progress)
+progress_error <- tryCatch(packet5a_read_inputs(config), error = identity)
+stopifnot(inherits(progress_error, "error"))
+stopifnot(grepl(
+  "complete Packet 5A run history",
+  conditionMessage(progress_error)
+))
+config$progress <- write_fixture("progress", progress)
+
+later_summary <- summary
+later_summary$iter[[1L]] <- 2L
+later_progress <- rbind(
+  progress,
+  transform(progress[1L, , drop = FALSE], progress_iter = 2L)
+)
+later_initializer <- data.frame(
+  case = later_summary$case[[1L]],
+  profile = later_summary$profile[[1L]],
+  policy = later_summary$policy[[1L]],
+  callback_mode = later_summary$callback_mode[[1L]],
+  rep = later_summary$rep[[1L]],
+  iter = 2L,
+  unrescued_alpha = 2,
+  scale_estimate = 1,
+  trial_evaluation_budget = 19,
+  required_contractions = 1,
+  available_contractions = 18,
+  selected_initial_alpha = 2,
+  rescue_applied = FALSE,
+  observer_provider_callbacks = 0L,
+  probe_function_evaluations = 1L,
+  stringsAsFactors = FALSE
+)
+later_config <- config
+later_config$summary <- write_fixture("summary-later", later_summary)
+later_config$progress <- write_fixture("progress-later", later_progress)
+later_config$initializers <- write_fixture(
+  "initializers-later",
+  later_initializer
+)
+stopifnot(nrow(packet5a_read_inputs(later_config)$initializers) == 1L)
+later_config$initializers <- write_fixture(
+  "initializers-later-missing",
+  initializers
+)
+initializer_error <- tryCatch(
+  packet5a_read_inputs(later_config),
+  error = identity
+)
+stopifnot(inherits(initializer_error, "error"))
+stopifnot(grepl(
+  "every later HZ initialization",
+  conditionMessage(initializer_error)
+))
 
 missing_cell <- summary[
   !(summary$case == "funconstrain-brown_bs" &
@@ -172,6 +237,15 @@ config$gate_out <- write_fixture("gates", data.frame(value = 3))
 config$manifest_out <- write_fixture("manifest", primary_manifest)
 config$benchmark_command <- "R_LIBS=/tmp/lib Rscript benchmark.R --scope tranche"
 config$derivation_command <- "Rscript derive.R --scope tranche"
+
+bad_row_manifest <- primary_manifest
+bad_row_manifest$data_rows[[1L]] <- bad_row_manifest$data_rows[[1L]] + 1L
+config$manifest_out <- write_fixture("manifest-bad-rows", bad_row_manifest)
+row_error <- tryCatch(packet5a_finalize_manifest(config), error = identity)
+stopifnot(inherits(row_error, "error"))
+stopifnot(grepl("row count", conditionMessage(row_error)))
+
+config$manifest_out <- write_fixture("manifest", primary_manifest)
 final_manifest <- packet5a_finalize_manifest(config)
 stopifnot(nrow(final_manifest) == 9L)
 stopifnot(
@@ -193,5 +267,10 @@ stopifnot(
 stopifnot(all(final_manifest$benchmark_command == config$benchmark_command))
 stopifnot(all(final_manifest$derivation_command == config$derivation_command))
 stopifnot(all(nzchar(final_manifest$derivation_head)))
+
+alias_config <- config
+alias_config$manifest_out <- alias_config$cell_out
+alias_error <- tryCatch(packet5a_derive(alias_config), error = identity)
+stopifnot(inherits(alias_error, "error"))
 
 message("derive-hager-zhang-rescue completeness checks passed")
