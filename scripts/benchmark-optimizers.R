@@ -1376,10 +1376,10 @@ run_benchmarks <- function(config) {
   )
 }
 
-benchmark_first_target <- function(progress, value_name, target) {
+benchmark_first_target <- function(progress, value_name, target, final_value) {
   unavailable <- list(
     applicable = FALSE,
-    hit = FALSE,
+    hit = NA,
     iter = NA_integer_,
     nf = NA_integer_,
     ng = NA_integer_
@@ -1392,6 +1392,13 @@ benchmark_first_target <- function(progress, value_name, target) {
     return(unavailable)
   }
   unavailable$applicable <- TRUE
+  if (
+    is.numeric(final_value) &&
+      length(final_value) == 1L &&
+      is.finite(final_value)
+  ) {
+    unavailable$hit <- final_value <= target
+  }
   if (
     !is.data.frame(progress) ||
       nrow(progress) == 0L ||
@@ -1448,17 +1455,20 @@ benchmark_resource_summary_row <- function(row, progress, case_manifest) {
   objective_target <- benchmark_first_target(
     progress,
     "f",
-    case_row$objective_reduction_target[[1L]]
+    case_row$objective_reduction_target[[1L]],
+    row$final_f[[1L]]
   )
   gradient_target <- benchmark_first_target(
     progress,
     "g2n",
-    case_row$gradient_reduction_target[[1L]]
+    case_row$gradient_reduction_target[[1L]],
+    row$grad_norm[[1L]]
   )
   reference_target <- benchmark_first_target(
     progress,
     "f",
-    case_row$reference_gap_target[[1L]]
+    case_row$reference_gap_target[[1L]],
+    row$final_f[[1L]]
   )
   nonstationary_no_step <- if (
     nrow(progress) > 0L &&

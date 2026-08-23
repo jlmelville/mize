@@ -132,6 +132,12 @@ callback-kind counts. Final `n_fn_call`, `n_gr_call`, `n_fg_call`, and
 `n_hs_call` remain separate actual invocation resources, and elapsed time is a
 separate view. Do not combine these unlike resources into one score.
 
+Target-hit flags use stored progress when it is available. For profiles such
+as `stats::optim()` that do not expose progress, a finite returned final metric
+truthfully establishes whether the final state meets the target, while its
+first-hit iteration and `nf`/`ng` remain unavailable. A nonfinite returned
+metric leaves target state unavailable instead of recording a false miss.
+
 Elapsed time and external invocation counts come from the measured run without
 progress tracing. When a progress or summary artifact is requested, the
 harness makes one unmeasured deterministic replay, records only values already
@@ -163,6 +169,29 @@ silently replace a failed search. The raw, progress, case, and summary outputs
 must use distinct non-symlink paths and may not alias through normalization,
 hard links, or case equivalence on a case-insensitive filesystem. Existing
 default commands still emit only the predecessor raw CSV schema.
+
+`derive-optimizer-benchmark.R` deterministically derives the Packet 4 cell
+medians, frozen material-cost gate, and combined-callback profile/case summary
+from a persisted resource-summary CSV. It sorts every output explicitly and
+writes quoted UTF-8 CSV with LF line endings, so decision artifacts can be
+reconstructed from the hashed primary input instead of from pre-serialization
+in-memory values:
+
+```sh
+Rscript scripts/derive-optimizer-benchmark.R \
+  --summary /private/tmp/mize-packet4-20260823/tranche-summary.csv \
+  --cell-out /private/tmp/mize-packet4-20260823/tranche-cell-medians.csv \
+  --gate-out /private/tmp/mize-packet4-20260823/tranche-material-cost-gates.csv \
+  --profile-case-out \
+    /private/tmp/mize-packet4-20260823/tranche-profile-case-summary.csv
+```
+
+The material gate compares ordered candidate/comparator pairs only within the
+same case, line search, callback mode, and nonempty target signature. For each
+callback kind it retains candidates exceeding a positive comparator by more
+than ten times and at least 50 calls; elapsed time uses the same ratio and a
+0.05-second minimum difference. A gate-row count is therefore not a count of
+independent failures.
 
 ## Hessian Integrity Probe
 
