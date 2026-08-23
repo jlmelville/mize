@@ -1544,6 +1544,992 @@ probe_safeguarded_newton_direction <- function(
   )
 }
 
+hessian_tn_direction_control <- function() {
+  list(
+    init = 0,
+    exit_criterion = "curvature",
+    preconditioner = "",
+    max_inner_iterations = 40L,
+    comparison_absolute_tolerance = 0,
+    comparison_relative_tolerance = 100 * sqrt(.Machine$double.eps)
+  )
+}
+
+hessian_tn_returned_inner_count <- function(value) {
+  if (
+    !is.numeric(value) ||
+      length(value) != 1L ||
+      !is.null(dim(value)) ||
+      !is.finite(value) ||
+      value < 0 ||
+      value != floor(value) ||
+      value > .Machine$integer.max
+  ) {
+    return(NA_integer_)
+  }
+  as.integer(value)
+}
+
+hessian_tn_capture_inner_state <- function() {
+  calls <- sys.calls()
+  bd_indices <- which(vapply(
+    calls,
+    function(call) {
+      head <- call[[1L]]
+      is.symbol(head) && identical(as.character(head), "bd_approx")
+    },
+    logical(1)
+  ))
+  if (length(bd_indices) == 0L) {
+    return(list(ok = FALSE, error = "bd_approx call frame was unavailable"))
+  }
+
+  bd_index <- tail(bd_indices, 1L)
+  if (bd_index <= 1L) {
+    return(list(ok = FALSE, error = "tn_inner_cg call frame was unavailable"))
+  }
+  bd_frame <- sys.frame(bd_index)
+  inner_frame <- sys.frame(bd_index - 1L)
+  bd_fields <- c("par", "dm", "gm", "h", "step")
+  inner_fields <- c(
+    "j",
+    "zm",
+    "rm",
+    "dot_rm_ym",
+    "eps",
+    "exit_criterion"
+  )
+  if (
+    !all(vapply(
+      bd_fields,
+      exists,
+      logical(1),
+      envir = bd_frame,
+      inherits = FALSE
+    )) ||
+      !all(vapply(
+        inner_fields,
+        exists,
+        logical(1),
+        envir = inner_frame,
+        inherits = FALSE
+      ))
+  ) {
+    return(list(
+      ok = FALSE,
+      error = "required TN callback-frame state was unavailable"
+    ))
+  }
+
+  state <- c(
+    mget(bd_fields, envir = bd_frame, inherits = FALSE),
+    mget(inner_fields, envir = inner_frame, inherits = FALSE)
+  )
+  state$ok <- TRUE
+  state$error <- ""
+  state
+}
+
+hessian_tn_inner_diagnostics <- function(
+  records,
+  gradient,
+  returned_direction,
+  direction_returned,
+  returned_inner_count,
+  control = hessian_tn_direction_control()
+) {
+  returned_inner_count <- hessian_tn_returned_inner_count(
+    returned_inner_count
+  )
+  result <- list(
+    tn_runtime_gradient_norm = sqrt(sum(gradient * gradient)),
+    tn_inner_stop_reason = "observer_unavailable_or_inconsistent",
+    tn_inner_stop_iteration = NA_integer_,
+    tn_inner_hvp_attempts = length(records),
+    tn_inner_accepted_updates = 0L,
+    tn_inner_result_kind = "unavailable",
+    tn_inner_result_values = "",
+    tn_inner_directional_slope = NA_real_,
+    tn_final_descent_fallback = NA,
+    tn_inner_provenance_complete = FALSE,
+    tn_inner_observer_error = "",
+    tn_hvp_iteration_indices = "",
+    tn_hvp_step_sizes = "",
+    tn_hvp_curvatures = "",
+    tn_hvp_step_coefficients = "",
+    tn_hvp_residual_norms = "",
+    tn_hvp_nonfinite_products_zeroed = 0L,
+    tn_inner_count_matches_callbacks = NA
+  )
+  if (length(records) == 0L) {
+    runtime_norm <- result$tn_runtime_gradient_norm
+    if (!is.finite(runtime_norm)) {
+      inner_direction <- rep(0, length(gradient))
+      result$tn_inner_stop_reason <- "gradient_norm_unusable"
+    } else if (runtime_norm == 0) {
+      inner_direction <- rep(0, length(gradient))
+      result$tn_inner_stop_reason <- "stationary_gradient"
+    } else {
+      result$tn_inner_observer_error <- paste(
+        "nonstationary finite gradient returned without a TN HVP callback"
+      )
+      return(result)
+    }
+    result$tn_inner_result_kind <- "zero_vector"
+    result$tn_inner_result_values <- hessian_probe_point_values(inner_direction)
+    result$tn_inner_directional_slope <- sum(gradient * inner_direction)
+    result$tn_final_descent_fallback <-
+      result$tn_inner_directional_slope >= 0
+    result$tn_inner_count_matches_callbacks <- if (
+      is.na(returned_inner_count)
+    ) {
+      NA
+    } else {
+      returned_inner_count == 0L
+    }
+    expected_direction <- if (result$tn_final_descent_fallback) {
+      -gradient
+    } else {
+      inner_direction
+    }
+    direction_matches <- direction_returned &&
+      identical(as.numeric(returned_direction), as.numeric(expected_direction))
+    result$tn_inner_provenance_complete <- isTRUE(direction_matches) &&
+      isTRUE(result$tn_inner_count_matches_callbacks)
+    if (!result$tn_inner_provenance_complete) {
+      result$tn_inner_observer_error <- paste(
+        "returned TN direction or inner count did not match the observed",
+        "zero-HVP branch"
+      )
+    }
+    return(result)
+  }
+
+  observer_ok <- vapply(
+    records,
+    function(record) {
+      isTRUE(record$state$ok)
+    },
+    logical(1)
+  )
+  if (!all(observer_ok)) {
+    errors <- vapply(
+      records[!observer_ok],
+      function(record) {
+        record$state$error
+      },
+      character(1)
+    )
+    result$tn_inner_observer_error <- paste(unique(errors), collapse = "; ")
+    return(result)
+  }
+
+  iterations <- vapply(
+    records,
+    function(record) {
+      as.integer(record$state$j)
+    },
+    integer(1)
+  )
+  steps <- vapply(
+    records,
+    function(record) {
+      as.numeric(record$state$h)
+    },
+    numeric(1)
+  )
+  result$tn_hvp_iteration_indices <- hessian_probe_point_values(iterations)
+  result$tn_hvp_step_sizes <- hessian_probe_point_values(steps)
+  curvatures <- rep(NA_real_, length(records))
+  coefficients <- rep(NA_real_, length(records))
+  residual_norms <- rep(NA_real_, length(records))
+  expected_inner <- NULL
+  stop_reason <- NULL
+  stop_iteration <- NA_integer_
+  accepted_updates <- 0L
+  nonfinite_products_zeroed <- 0L
+
+  for (index in seq_along(records)) {
+    record <- records[[index]]
+    state <- record$state
+    shape_ok <- isTRUE(record$callback_ok) &&
+      is.numeric(record$value) &&
+      is.null(dim(record$value)) &&
+      length(record$value) == length(gradient)
+    if (!shape_ok) {
+      stop_reason <- "callback_or_validation_failure"
+      stop_iteration <- as.integer(state$j)
+      break
+    }
+    if (
+      !is.numeric(state$h) ||
+        length(state$h) != 1L ||
+        !is.finite(state$h) ||
+        state$h <= 0 ||
+        !identical(state$exit_criterion, control$exit_criterion)
+    ) {
+      result$tn_inner_observer_error <- paste(
+        "captured TN finite-difference state was inconsistent"
+      )
+      break
+    }
+
+    product <- (as.numeric(record$value) - state$gm) / state$h
+    if (any(!is.finite(product))) {
+      product <- rep(0, length(state$dm))
+      nonfinite_products_zeroed <- nonfinite_products_zeroed + 1L
+    }
+    curvature <- sum(state$dm * product)
+    curvatures[[index]] <- curvature
+    if (!is.finite(curvature) || curvature <= 0) {
+      stop_reason <- if (is.finite(curvature)) {
+        "nonpositive_curvature"
+      } else {
+        "curvature_unusable"
+      }
+      stop_iteration <- as.integer(state$j)
+      expected_inner <- if (state$j == 0) -gradient else state$zm
+      break
+    }
+
+    coefficient <- state$dot_rm_ym / curvature
+    coefficients[[index]] <- coefficient
+    if (!is.finite(coefficient)) {
+      stop_reason <- "step_coefficient_unusable"
+      stop_iteration <- as.integer(state$j)
+      expected_inner <- if (state$j == 0) -gradient else state$zm
+      break
+    }
+    candidate <- state$zm + coefficient * state$dm
+    accepted_updates <- accepted_updates + 1L
+    residual <- state$rm + coefficient * product
+    residual_norm <- sqrt(sum(residual * residual))
+    residual_norms[[index]] <- residual_norm
+    if (!is.finite(residual_norm) || residual_norm < state$eps) {
+      stop_reason <- if (is.finite(residual_norm)) {
+        "residual_converged"
+      } else {
+        "residual_unusable"
+      }
+      stop_iteration <- as.integer(state$j)
+      expected_inner <- candidate
+      break
+    }
+    if (index == control$max_inner_iterations) {
+      stop_reason <- "inner_iteration_limit"
+      stop_iteration <- as.integer(state$j)
+      expected_inner <- candidate
+      break
+    }
+  }
+
+  result$tn_hvp_curvatures <- hessian_probe_point_values(curvatures)
+  result$tn_hvp_step_coefficients <- hessian_probe_point_values(coefficients)
+  result$tn_hvp_residual_norms <- hessian_probe_point_values(residual_norms)
+  result$tn_hvp_nonfinite_products_zeroed <- nonfinite_products_zeroed
+  result$tn_inner_accepted_updates <- accepted_updates
+  result$tn_inner_stop_iteration <- stop_iteration
+  if (is.null(stop_reason)) {
+    if (!nzchar(result$tn_inner_observer_error)) {
+      result$tn_inner_observer_error <- paste(
+        "captured TN predicates did not identify the realized stop branch"
+      )
+    }
+    return(result)
+  }
+  result$tn_inner_stop_reason <- stop_reason
+  if (identical(stop_reason, "callback_or_validation_failure")) {
+    result$tn_inner_result_kind <- "unavailable"
+    return(result)
+  }
+  if (is.null(expected_inner)) {
+    result$tn_inner_observer_error <- "observed TN stop had no inner result"
+    return(result)
+  }
+
+  initial_fallback_reasons <- c(
+    "nonpositive_curvature",
+    "curvature_unusable",
+    "step_coefficient_unusable"
+  )
+  result$tn_inner_result_kind <- if (
+    stop_reason %in% initial_fallback_reasons && stop_iteration == 0L
+  ) {
+    "steepest_descent"
+  } else {
+    "retained_cg_iterate"
+  }
+  result$tn_inner_result_values <- hessian_probe_point_values(expected_inner)
+  result$tn_inner_directional_slope <- sum(gradient * expected_inner)
+  descent_check <- result$tn_inner_directional_slope >= 0
+  if (length(descent_check) != 1L || is.na(descent_check)) {
+    result$tn_inner_observer_error <- paste(
+      "the TN final descent predicate was not a logical scalar"
+    )
+    return(result)
+  }
+  result$tn_final_descent_fallback <- descent_check
+  expected_direction <- if (descent_check) -gradient else expected_inner
+  direction_matches <- direction_returned &&
+    identical(as.numeric(returned_direction), as.numeric(expected_direction))
+  callback_count <- sum(vapply(
+    records,
+    function(record) {
+      isTRUE(record$callback_ok) &&
+        is.numeric(record$value) &&
+        is.null(dim(record$value)) &&
+        length(record$value) == length(gradient)
+    },
+    logical(1)
+  ))
+  result$tn_inner_count_matches_callbacks <- if (is.na(returned_inner_count)) {
+    NA
+  } else {
+    returned_inner_count == callback_count
+  }
+  result$tn_inner_provenance_complete <- isTRUE(direction_matches) &&
+    isTRUE(result$tn_inner_count_matches_callbacks)
+  if (!result$tn_inner_provenance_complete) {
+    result$tn_inner_observer_error <- paste(
+      "returned TN direction or inner count differed from observed predicates"
+    )
+  }
+  result
+}
+
+hessian_tn_direction_comparison <- function(
+  reference,
+  reference_success,
+  reference_status,
+  reference_values,
+  tn_success,
+  tn_values,
+  dimension,
+  control = hessian_tn_direction_control()
+) {
+  comparison_prefix <- paste0(reference, "_tn_")
+  unavailable_reference <- if (identical(reference, "raw")) {
+    "unavailable_raw_solve"
+  } else {
+    paste0("unavailable_", reference, "_direction")
+  }
+  result <- list(
+    reference_direction_success = reference_success,
+    reference_direction_status = reference_status,
+    reference_direction_values = reference_values,
+    comparison_available = FALSE,
+    comparison_basis = if (!reference_success) {
+      if (identical(reference, "raw")) {
+        paste0("raw_solve_status_", reference_status)
+      } else {
+        unavailable_reference
+      }
+    } else if (!tn_success) {
+      "tn_direction_unavailable"
+    } else {
+      "comparison_not_evaluated"
+    },
+    difference_norm = NA_real_,
+    comparison_scale = NA_real_,
+    comparison_absolute_tolerance = control$comparison_absolute_tolerance,
+    comparison_relative_tolerance = control$comparison_relative_tolerance,
+    comparison_absolute_tolerance_term = control$comparison_absolute_tolerance,
+    comparison_relative_tolerance_term = NA_real_,
+    comparison_threshold = NA_real_,
+    scaled_difference = NA_real_,
+    match = NA,
+    match_status = if (!reference_success) {
+      unavailable_reference
+    } else if (!tn_success) {
+      "unavailable_tn_direction"
+    } else {
+      "unavailable_comparison"
+    }
+  )
+  names(result)[1:3] <- if (identical(reference, "raw")) {
+    c("raw_solve_success", "raw_solve_status", "raw_direction_values")
+  } else {
+    paste0(
+      reference,
+      c(
+        "_direction_success",
+        "_direction_status",
+        "_direction_values"
+      )
+    )
+  }
+  names(result)[4:length(result)] <- paste0(
+    comparison_prefix,
+    names(result)[4:length(result)]
+  )
+  if (!reference_success || !tn_success) {
+    return(result)
+  }
+
+  reference_direction <- hessian_public_newton_raw_direction(
+    reference_values,
+    dimension
+  )
+  tn_direction <- hessian_public_newton_raw_direction(tn_values, dimension)
+  if (is.null(reference_direction)) {
+    result[[paste0(comparison_prefix, "comparison_basis")]] <-
+      paste0(reference, "_direction_values_invalid")
+    result[[paste0(comparison_prefix, "match_status")]] <-
+      unavailable_reference
+    return(result)
+  }
+  if (is.null(tn_direction)) {
+    result[[paste0(comparison_prefix, "comparison_basis")]] <-
+      "tn_direction_values_invalid"
+    result[[paste0(comparison_prefix, "match_status")]] <-
+      "unavailable_tn_direction"
+    return(result)
+  }
+
+  difference_norm <- hessian_probe_norm(tn_direction - reference_direction)
+  comparison_scale <- max(
+    1,
+    hessian_probe_norm(reference_direction),
+    hessian_probe_norm(tn_direction)
+  )
+  relative_term <- control$comparison_relative_tolerance * comparison_scale
+  threshold <- control$comparison_absolute_tolerance + relative_term
+  scaled_difference <- difference_norm / comparison_scale
+  finite <- all(is.finite(c(
+    difference_norm,
+    comparison_scale,
+    relative_term,
+    threshold,
+    scaled_difference
+  )))
+  if (!finite) {
+    result[[paste0(comparison_prefix, "comparison_basis")]] <-
+      "comparison_values_nonfinite"
+    result[[paste0(comparison_prefix, "match_status")]] <-
+      "unavailable_nonfinite_comparison"
+    return(result)
+  }
+
+  match <- difference_norm <= threshold
+  result[[paste0(comparison_prefix, "comparison_available")]] <- TRUE
+  result[[paste0(comparison_prefix, "comparison_basis")]] <- paste0(
+    reference,
+    "_and_tn_directions_finite"
+  )
+  result[[paste0(comparison_prefix, "difference_norm")]] <- difference_norm
+  result[[paste0(comparison_prefix, "comparison_scale")]] <- comparison_scale
+  result[[paste0(
+    comparison_prefix,
+    "comparison_relative_tolerance_term"
+  )]] <- relative_term
+  result[[paste0(comparison_prefix, "comparison_threshold")]] <- threshold
+  result[[paste0(comparison_prefix, "scaled_difference")]] <-
+    scaled_difference
+  result[[paste0(comparison_prefix, "match")]] <- match
+  result[[paste0(comparison_prefix, "match_status")]] <- if (match) {
+    "match"
+  } else {
+    "different"
+  }
+  result
+}
+
+probe_tn_direction <- function(
+  fg,
+  point,
+  raw_newton,
+  current_public_newton,
+  safeguarded_newton,
+  direction_constructor,
+  control = hessian_tn_direction_control()
+) {
+  if (!is.list(fg) || !is.function(fg$gr) || !is.function(fg$hs)) {
+    stop("fg must provide function callbacks fg$gr and fg$hs", call. = FALSE)
+  }
+  if (
+    !is.numeric(point) ||
+      !is.null(dim(point)) ||
+      length(point) == 0L ||
+      !all(is.finite(point))
+  ) {
+    stop("point must be a non-empty finite numeric vector", call. = FALSE)
+  }
+  if (!is.function(direction_constructor)) {
+    stop("direction_constructor must be a function", call. = FALSE)
+  }
+  input_specs <- list(
+    raw_newton = list(
+      value = raw_newton,
+      fields = c("solve_success", "solve_status", "raw_direction_values")
+    ),
+    current_public_newton = list(
+      value = current_public_newton,
+      fields = c(
+        "public_direction_success",
+        "public_direction_status",
+        "public_direction_values"
+      )
+    ),
+    safeguarded_newton = list(
+      value = safeguarded_newton,
+      fields = c(
+        "safeguarded_direction_success",
+        "safeguarded_direction_status",
+        "safeguarded_direction_values"
+      )
+    )
+  )
+  for (input_name in names(input_specs)) {
+    spec <- input_specs[[input_name]]
+    if (
+      !is.data.frame(spec$value) ||
+        nrow(spec$value) != 1L ||
+        !all(spec$fields %in% names(spec$value))
+    ) {
+      stop(input_name, " must be one compatible direction row", call. = FALSE)
+    }
+  }
+
+  dimension <- length(point)
+  result <- list(
+    tn_direction_evaluation = paste(
+      "gradient_seed_then_mize_tn_direction_default_calculate"
+    ),
+    tn_direction_implementation = paste(
+      "mize:::tn_direction(init = 0, exit_criterion = 'curvature',",
+      "preconditioner = '')$calculate"
+    ),
+    tn_init = "zero",
+    tn_exit_criterion = control$exit_criterion,
+    tn_preconditioner = "none",
+    tn_max_inner_iterations = control$max_inner_iterations,
+    tn_gradient_seed_calls = 0L,
+    tn_hvp_gradient_calls = 0L,
+    tn_total_gradient_calls = 0L,
+    tn_algorithm_hs_calls = 0L,
+    tn_reporting_hs_calls = 0L,
+    benchmark_callback_counted = FALSE,
+    tn_direction_invoked = FALSE,
+    tn_direction_success = FALSE,
+    tn_direction_status = "not_evaluated",
+    tn_direction_error = "",
+    gradient_seed_callback_ok = NA,
+    gradient_seed_callback_error = "",
+    gradient_seed_shape_ok = NA,
+    gradient_seed_finite = NA,
+    gradient_norm = NA_real_,
+    tn_hvp_callbacks_returned = 0L,
+    tn_hvp_shape_valid_results = 0L,
+    tn_hvp_finite_results = 0L,
+    tn_hvp_callback_errors = "",
+    tn_returned_inner_gradient_count = NA_integer_,
+    reporting_hessian_callback_ok = NA,
+    reporting_hessian_callback_error = "",
+    reporting_hessian_shape_ok = NA,
+    reporting_hessian_finite = NA,
+    reporting_hessian_symmetric = NA,
+    symmetrization = NA_character_,
+    symmetrized_hessian_finite = NA,
+    tn_direction_values = "",
+    tn_direction_shape_ok = NA,
+    tn_direction_finite = NA,
+    tn_direction_norm = NA_real_,
+    tn_directional_slope = NA_real_,
+    tn_directional_slope_sign = "unavailable",
+    tn_direction_is_descent = NA,
+    tn_quadratic_curvature = NA_real_,
+    tn_quadratic_curvature_sign = "unavailable",
+    tn_predicted_decrease = NA_real_,
+    tn_predicted_decrease_sign = "unavailable",
+    tn_predicted_decrease_positive = NA,
+    tn_predicted_decrease_definition = "-(g' p + 0.5 p' H p)",
+    tn_direction_metrics_complete = FALSE,
+    tn_callback_accounting_complete = FALSE,
+    tn_diagnostics_complete = FALSE,
+    tn_runtime_gradient_norm = NA_real_,
+    tn_inner_stop_reason = "not_evaluated",
+    tn_inner_stop_iteration = NA_integer_,
+    tn_inner_hvp_attempts = 0L,
+    tn_inner_accepted_updates = 0L,
+    tn_inner_result_kind = "unavailable",
+    tn_inner_result_values = "",
+    tn_inner_directional_slope = NA_real_,
+    tn_final_descent_fallback = NA,
+    tn_inner_provenance_complete = FALSE,
+    tn_inner_observer_error = "",
+    tn_hvp_iteration_indices = "",
+    tn_hvp_step_sizes = "",
+    tn_hvp_curvatures = "",
+    tn_hvp_step_coefficients = "",
+    tn_hvp_residual_norms = "",
+    tn_hvp_nonfinite_products_zeroed = 0L,
+    tn_inner_count_matches_callbacks = NA
+  )
+  comparisons <- c(
+    hessian_tn_direction_comparison(
+      reference = "raw",
+      reference_success = isTRUE(raw_newton$solve_success[[1L]]),
+      reference_status = as.character(raw_newton$solve_status[[1L]]),
+      reference_values = as.character(raw_newton$raw_direction_values[[1L]]),
+      tn_success = FALSE,
+      tn_values = "",
+      dimension = dimension,
+      control = control
+    ),
+    hessian_tn_direction_comparison(
+      reference = "current_public",
+      reference_success = isTRUE(
+        current_public_newton$public_direction_success[[1L]]
+      ),
+      reference_status = as.character(
+        current_public_newton$public_direction_status[[1L]]
+      ),
+      reference_values = as.character(
+        current_public_newton$public_direction_values[[1L]]
+      ),
+      tn_success = FALSE,
+      tn_values = "",
+      dimension = dimension,
+      control = control
+    ),
+    hessian_tn_direction_comparison(
+      reference = "safeguarded",
+      reference_success = isTRUE(
+        safeguarded_newton$safeguarded_direction_success[[1L]]
+      ),
+      reference_status = as.character(
+        safeguarded_newton$safeguarded_direction_status[[1L]]
+      ),
+      reference_values = as.character(
+        safeguarded_newton$safeguarded_direction_values[[1L]]
+      ),
+      tn_success = FALSE,
+      tn_values = "",
+      dimension = dimension,
+      control = control
+    )
+  )
+  result <- c(result, comparisons)
+
+  seed <- hessian_probe_callback(fg$gr, point)
+  result$tn_gradient_seed_calls <- 1L
+  result$tn_total_gradient_calls <- 1L
+  result$gradient_seed_callback_ok <- seed$ok
+  result$gradient_seed_callback_error <- seed$error
+  if (!seed$ok) {
+    result$tn_direction_status <- "gradient_seed_callback_failed"
+    result$tn_direction_error <- seed$error
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+  gradient <- seed$value
+  result$gradient_seed_shape_ok <- is.numeric(gradient) &&
+    is.null(dim(gradient)) &&
+    length(gradient) == dimension
+  result$gradient_seed_finite <- result$gradient_seed_shape_ok &&
+    all(is.finite(gradient))
+  if (!result$gradient_seed_shape_ok || !result$gradient_seed_finite) {
+    result$tn_direction_status <- "gradient_seed_value_invalid"
+    result$tn_direction_error <- paste0(
+      "gradient seed must be a finite numeric vector of length ",
+      dimension
+    )
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+  gradient <- as.numeric(gradient)
+  result$gradient_norm <- hessian_probe_norm(gradient)
+
+  hvp_capture <- new.env(parent = emptyenv())
+  hvp_capture$records <- list()
+  captured_gradient <- function(x) {
+    record <- list(
+      state = hessian_tn_capture_inner_state(),
+      point = x,
+      callback_ok = FALSE,
+      value = NULL,
+      error = ""
+    )
+    callback_result <- hessian_probe_callback(fg$gr, x)
+    record$callback_ok <- callback_result$ok
+    record$value <- callback_result$value
+    record$error <- callback_result$error
+    hvp_capture$records[[length(hvp_capture$records) + 1L]] <- record
+    if (!callback_result$ok) {
+      stop(callback_result$error, call. = FALSE)
+    }
+    callback_result$value
+  }
+
+  result$tn_direction_invoked <- TRUE
+  direction_result <- tryCatch(
+    {
+      direction <- direction_constructor(
+        init = control$init,
+        exit_criterion = control$exit_criterion,
+        preconditioner = control$preconditioner
+      )
+      if (!is.list(direction) || !is.function(direction$calculate)) {
+        stop(
+          "tn_direction() did not return a calculable direction object",
+          call. = FALSE
+        )
+      }
+      direction$calculate(
+        opt = list(
+          cache = list(gr_curr = gradient, gr_curr_iter = 1L),
+          counts = list(fn = 0L, gr = 0L),
+          convergence = list(max_fn = Inf, max_gr = Inf, max_fg = Inf)
+        ),
+        stage = list(),
+        sub_stage = direction,
+        par = point,
+        fg = list(gr = captured_gradient),
+        iter = 1L
+      )
+    },
+    error = identity
+  )
+  records <- hvp_capture$records
+  result$tn_hvp_gradient_calls <- length(records)
+  result$tn_total_gradient_calls <- 1L + length(records)
+  result$tn_hvp_callbacks_returned <- sum(vapply(
+    records,
+    function(record) {
+      isTRUE(record$callback_ok)
+    },
+    logical(1)
+  ))
+  result$tn_hvp_shape_valid_results <- sum(vapply(
+    records,
+    function(record) {
+      isTRUE(record$callback_ok) &&
+        is.numeric(record$value) &&
+        is.null(dim(record$value)) &&
+        length(record$value) == dimension
+    },
+    logical(1)
+  ))
+  result$tn_hvp_finite_results <- sum(vapply(
+    records,
+    function(record) {
+      isTRUE(record$callback_ok) &&
+        is.numeric(record$value) &&
+        is.null(dim(record$value)) &&
+        length(record$value) == dimension &&
+        all(is.finite(record$value))
+    },
+    logical(1)
+  ))
+  callback_errors <- vapply(
+    records,
+    function(record) {
+      if (isTRUE(record$callback_ok)) "" else record$error
+    },
+    character(1)
+  )
+  result$tn_hvp_callback_errors <- paste(
+    unique(callback_errors[nzchar(callback_errors)]),
+    collapse = "; "
+  )
+
+  valid_direction_result <- !inherits(direction_result, "error") &&
+    is.list(direction_result) &&
+    is.list(direction_result$sub_stage)
+  returned_direction <- if (valid_direction_result) {
+    direction_result$sub_stage$value
+  } else {
+    NULL
+  }
+  if (
+    valid_direction_result &&
+      is.list(direction_result$opt) &&
+      is.list(direction_result$opt$counts)
+  ) {
+    result$tn_returned_inner_gradient_count <-
+      hessian_tn_returned_inner_count(direction_result$opt$counts$gr)
+  }
+  inner <- hessian_tn_inner_diagnostics(
+    records = records,
+    gradient = gradient,
+    returned_direction = returned_direction,
+    direction_returned = valid_direction_result,
+    returned_inner_count = result$tn_returned_inner_gradient_count,
+    control = control
+  )
+  result[names(inner)] <- inner
+  result$tn_callback_accounting_complete <-
+    result$tn_gradient_seed_calls == 1L &&
+    result$tn_total_gradient_calls ==
+      result$tn_gradient_seed_calls + result$tn_hvp_gradient_calls &&
+    result$tn_hvp_callbacks_returned <= result$tn_hvp_gradient_calls &&
+    isTRUE(result$tn_inner_count_matches_callbacks)
+
+  if (inherits(direction_result, "error")) {
+    result$tn_direction_error <- conditionMessage(direction_result)
+    result$tn_direction_status <- if (
+      result$tn_hvp_callbacks_returned < result$tn_hvp_gradient_calls
+    ) {
+      "hvp_gradient_callback_failed"
+    } else if (
+      result$tn_hvp_shape_valid_results < result$tn_hvp_callbacks_returned
+    ) {
+      "hvp_gradient_value_invalid"
+    } else {
+      "direction_invocation_failed"
+    }
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+  if (!valid_direction_result) {
+    result$tn_direction_status <- "direction_return_invalid"
+    result$tn_direction_error <- paste(
+      "TN calculate must return a list containing sub_stage"
+    )
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+
+  result$tn_direction_shape_ok <- is.numeric(returned_direction) &&
+    is.null(dim(returned_direction)) &&
+    length(returned_direction) == dimension
+  result$tn_direction_finite <- result$tn_direction_shape_ok &&
+    all(is.finite(returned_direction))
+  if (!result$tn_direction_shape_ok || !result$tn_direction_finite) {
+    result$tn_direction_status <- "direction_return_invalid"
+    result$tn_direction_error <- paste0(
+      "TN direction must be a finite numeric vector of length ",
+      dimension
+    )
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+
+  tn_direction <- as.numeric(returned_direction)
+  result$tn_direction_success <- TRUE
+  result$tn_direction_values <- hessian_probe_point_values(tn_direction)
+  result$tn_direction_norm <- hessian_probe_norm(tn_direction)
+  result$tn_directional_slope <- sum(gradient * tn_direction)
+  result$tn_directional_slope_sign <- hessian_raw_newton_sign(
+    result$tn_directional_slope
+  )
+  result$tn_direction_is_descent <- if (
+    is.finite(result$tn_directional_slope)
+  ) {
+    result$tn_directional_slope < 0
+  } else {
+    NA
+  }
+
+  hessian_result <- hessian_probe_callback(fg$hs, point)
+  result$tn_reporting_hs_calls <- 1L
+  result$reporting_hessian_callback_ok <- hessian_result$ok
+  result$reporting_hessian_callback_error <- hessian_result$error
+  hessian_model <- hessian_public_newton_model_hessian(
+    hessian_result$value,
+    dimension
+  )
+  result$reporting_hessian_shape_ok <- hessian_model$shape_ok
+  result$reporting_hessian_finite <- hessian_model$finite
+  result$reporting_hessian_symmetric <- hessian_model$symmetric
+  if (!hessian_result$ok) {
+    result$tn_direction_status <- "evaluated_reporting_hessian_callback_failed"
+    result$tn_direction_error <- hessian_result$error
+  } else if (is.null(hessian_model$value)) {
+    result$tn_direction_status <- "evaluated_reporting_hessian_value_invalid"
+    result$tn_direction_error <- paste(
+      "reporting Hessian must be finite, symmetric, and dimension-compatible"
+    )
+  } else {
+    symmetrized <- tryCatch(
+      hessian_spectrum_symmetrize(hessian_model$value),
+      error = identity
+    )
+    if (!inherits(symmetrized, "error")) {
+      result$symmetrization <- symmetrized$method
+      result$symmetrized_hessian_finite <- all(is.finite(symmetrized$value))
+      if (result$symmetrized_hessian_finite) {
+        system_product <- as.vector(symmetrized$value %*% tn_direction)
+        result$tn_quadratic_curvature <- sum(tn_direction * system_product)
+        result$tn_predicted_decrease <- -(result$tn_directional_slope +
+          result$tn_quadratic_curvature / 2)
+      }
+    }
+  }
+  result$tn_quadratic_curvature_sign <- hessian_raw_newton_sign(
+    result$tn_quadratic_curvature
+  )
+  result$tn_predicted_decrease_sign <- hessian_raw_newton_sign(
+    result$tn_predicted_decrease
+  )
+  result$tn_predicted_decrease_positive <- if (
+    is.finite(result$tn_predicted_decrease)
+  ) {
+    result$tn_predicted_decrease > 0
+  } else {
+    NA
+  }
+  result$tn_direction_metrics_complete <- all(is.finite(c(
+    result$tn_direction_norm,
+    result$tn_directional_slope,
+    result$tn_quadratic_curvature,
+    result$tn_predicted_decrease
+  )))
+  result$tn_diagnostics_complete <- result$tn_direction_metrics_complete &&
+    result$tn_callback_accounting_complete &&
+    result$tn_inner_provenance_complete
+  if (identical(result$tn_direction_status, "not_evaluated")) {
+    result$tn_direction_status <- if (!result$tn_inner_provenance_complete) {
+      "evaluated_inner_provenance_incomplete"
+    } else if (!result$tn_direction_metrics_complete) {
+      "evaluated_direction_metrics_incomplete"
+    } else {
+      "evaluated"
+    }
+  }
+
+  raw_comparison <- hessian_tn_direction_comparison(
+    reference = "raw",
+    reference_success = isTRUE(raw_newton$solve_success[[1L]]),
+    reference_status = as.character(raw_newton$solve_status[[1L]]),
+    reference_values = as.character(raw_newton$raw_direction_values[[1L]]),
+    tn_success = result$tn_direction_success,
+    tn_values = result$tn_direction_values,
+    dimension = dimension,
+    control = control
+  )
+  public_comparison <- hessian_tn_direction_comparison(
+    reference = "current_public",
+    reference_success = isTRUE(
+      current_public_newton$public_direction_success[[1L]]
+    ),
+    reference_status = as.character(
+      current_public_newton$public_direction_status[[1L]]
+    ),
+    reference_values = as.character(
+      current_public_newton$public_direction_values[[1L]]
+    ),
+    tn_success = result$tn_direction_success,
+    tn_values = result$tn_direction_values,
+    dimension = dimension,
+    control = control
+  )
+  safeguarded_comparison <- hessian_tn_direction_comparison(
+    reference = "safeguarded",
+    reference_success = isTRUE(
+      safeguarded_newton$safeguarded_direction_success[[1L]]
+    ),
+    reference_status = as.character(
+      safeguarded_newton$safeguarded_direction_status[[1L]]
+    ),
+    reference_values = as.character(
+      safeguarded_newton$safeguarded_direction_values[[1L]]
+    ),
+    tn_success = result$tn_direction_success,
+    tn_values = result$tn_direction_values,
+    dimension = dimension,
+    control = control
+  )
+  comparisons <- c(raw_comparison, public_comparison, safeguarded_comparison)
+  result[names(comparisons)] <- comparisons
+  as.data.frame(result, stringsAsFactors = FALSE)
+}
+
 hessian_probe_centered_difference <- function(plus, minus, step_size) {
   if (step_size > .Machine$double.xmax / 2) {
     return(plus / step_size / 2 - minus / step_size / 2)
@@ -2357,6 +3343,89 @@ hessian_probe_safeguarded_newton_point <- function(
   )
 }
 
+hessian_probe_tn_point <- function(
+  case,
+  candidate,
+  integrity_result,
+  spectrum_result,
+  raw_newton_result,
+  current_public_newton_result,
+  safeguarded_newton_result,
+  direction_constructor
+) {
+  integrity_pass <- nrow(integrity_result) > 0L &&
+    all(integrity_result$probe_pass)
+  if (!integrity_pass) {
+    stop(
+      "TN directions require a passing directional integrity result",
+      call. = FALSE
+    )
+  }
+  inputs <- list(
+    spectrum = spectrum_result,
+    raw = raw_newton_result,
+    current_public = current_public_newton_result,
+    safeguarded = safeguarded_newton_result
+  )
+  for (input_name in names(inputs)) {
+    if (
+      !is.data.frame(inputs[[input_name]]) || nrow(inputs[[input_name]]) != 1L
+    ) {
+      stop(
+        "TN directions require one ",
+        input_name,
+        " evidence row",
+        call. = FALSE
+      )
+    }
+  }
+
+  metadata <- hessian_probe_candidate_row(case, candidate)
+  spectrum_evidence <- spectrum_result[,
+    c(
+      "spectral_classification",
+      "singularity",
+      "spectral_condition_estimate",
+      "eigen_min",
+      "eigen_max",
+      "eigen_abs_min",
+      "eigen_abs_max",
+      "spectral_scale",
+      "spectral_absolute_tolerance",
+      "spectral_relative_tolerance",
+      "spectral_absolute_tolerance_term",
+      "spectral_relative_tolerance_term",
+      "spectral_sign_tolerance",
+      "inertia_positive",
+      "inertia_zero",
+      "inertia_negative",
+      "inertia_unresolved"
+    ),
+    drop = FALSE
+  ]
+  direction <- probe_tn_direction(
+    fg = case$fg,
+    point = candidate$point,
+    raw_newton = raw_newton_result,
+    current_public_newton = current_public_newton_result,
+    safeguarded_newton = safeguarded_newton_result,
+    direction_constructor = direction_constructor
+  )
+  data.frame(
+    metadata,
+    integrity_gate = "probe_hessian_integrity",
+    integrity_direction_count = nrow(integrity_result),
+    integrity_probe_pass = TRUE,
+    spectrum_gate = "probe_hessian_spectrum",
+    spectrum_evidence,
+    raw_direction_gate = "probe_raw_newton_direction",
+    current_public_direction_gate = "probe_public_newton_direction",
+    safeguarded_direction_gate = "probe_safeguarded_newton_direction",
+    direction,
+    stringsAsFactors = FALSE
+  )
+}
+
 hessian_probe_extended_cases <- function(
   cases,
   optimizer,
@@ -2364,10 +3433,12 @@ hessian_probe_extended_cases <- function(
   include_raw_newton = FALSE,
   include_public_newton = FALSE,
   include_safeguarded_newton = FALSE,
+  include_tn = FALSE,
   raw_newton_solver = base::solve,
   raw_newton_solver_name = "base_solve",
   public_newton_direction = NULL,
-  safeguarded_newton_direction = NULL
+  safeguarded_newton_direction = NULL,
+  tn_direction = NULL
 ) {
   if (include_raw_newton && !include_spectrum) {
     stop(
@@ -2402,6 +3473,18 @@ hessian_probe_extended_cases <- function(
         "safeguarded_newton_direction must be a function when safeguarded",
         "directions are selected"
       ),
+      call. = FALSE
+    )
+  }
+  if (include_tn && !include_safeguarded_newton) {
+    stop(
+      "TN directions require safeguarded exact-Newton evidence",
+      call. = FALSE
+    )
+  }
+  if (include_tn && !is.function(tn_direction)) {
+    stop(
+      "tn_direction must be a function when TN directions are selected",
       call. = FALSE
     )
   }
@@ -2620,6 +3703,77 @@ hessian_probe_extended_cases <- function(
   } else {
     NULL
   }
+  tn_by_case <- if (include_tn) {
+    Map(
+      function(
+        case,
+        selection,
+        case_result,
+        case_spectrum,
+        case_raw_newton,
+        case_public_newton,
+        case_safeguarded_newton
+      ) {
+        point_directions <- lapply(selection$selected, function(candidate) {
+          integrity_result <- case_result[
+            case_result$point_id == candidate$point_id,
+            ,
+            drop = FALSE
+          ]
+          if (
+            nrow(integrity_result) == 0L ||
+              !all(integrity_result$probe_pass)
+          ) {
+            return(NULL)
+          }
+          spectrum_result <- case_spectrum[
+            case_spectrum$point_id == candidate$point_id,
+            ,
+            drop = FALSE
+          ]
+          raw_newton_result <- case_raw_newton[
+            case_raw_newton$point_id == candidate$point_id,
+            ,
+            drop = FALSE
+          ]
+          current_public_newton_result <- case_public_newton[
+            case_public_newton$point_id == candidate$point_id,
+            ,
+            drop = FALSE
+          ]
+          safeguarded_newton_result <- case_safeguarded_newton[
+            case_safeguarded_newton$point_id == candidate$point_id,
+            ,
+            drop = FALSE
+          ]
+          hessian_probe_tn_point(
+            case = case,
+            candidate = candidate,
+            integrity_result = integrity_result,
+            spectrum_result = spectrum_result,
+            raw_newton_result = raw_newton_result,
+            current_public_newton_result = current_public_newton_result,
+            safeguarded_newton_result = safeguarded_newton_result,
+            direction_constructor = tn_direction
+          )
+        })
+        point_directions <- Filter(Negate(is.null), point_directions)
+        if (length(point_directions) == 0L) {
+          return(NULL)
+        }
+        do.call(rbind, point_directions)
+      },
+      cases,
+      selections,
+      results,
+      spectra_by_case,
+      raw_newton_by_case,
+      public_newton_by_case,
+      safeguarded_newton_by_case
+    )
+  } else {
+    NULL
+  }
   manifests <- Map(
     function(case, selection) {
       do.call(
@@ -2668,6 +3822,14 @@ hessian_probe_extended_cases <- function(
       data.frame()
     } else {
       do.call(rbind, safeguarded_newton)
+    }
+  }
+  if (include_tn) {
+    tn <- Filter(Negate(is.null), tn_by_case)
+    coverage$tn <- if (length(tn) == 0L) {
+      data.frame()
+    } else {
+      do.call(rbind, tn)
     }
   }
   coverage
@@ -2945,6 +4107,10 @@ hessian_probe_usage <- function(status = 0L) {
         "  --safeguarded-direction-out PATH",
         "Optional safeguarded Newton CSV; requires current-public."
       ),
+      paste(
+        "  --tn-direction-out PATH",
+        "Optional TN direction CSV; requires safeguarded."
+      ),
       "  --out PATH                Write CSV results to PATH instead of stdout.",
       "  --help                    Show this help.",
       sep = "\n"
@@ -2964,6 +4130,7 @@ hessian_probe_parse_args <- function(args) {
     direction_out = NULL,
     public_direction_out = NULL,
     safeguarded_direction_out = NULL,
+    tn_direction_out = NULL,
     out = NULL
   )
 
@@ -3008,6 +4175,9 @@ hessian_probe_parse_args <- function(args) {
     } else if (arg == "--safeguarded-direction-out") {
       config$safeguarded_direction_out <- read_value()
       i <- i + 1L
+    } else if (arg == "--tn-direction-out") {
+      config$tn_direction_out <- read_value()
+      i <- i + 1L
     } else if (arg == "--out") {
       config$out <- read_value()
       i <- i + 1L
@@ -3034,13 +4204,14 @@ hessian_probe_parse_args <- function(args) {
       (!is.null(config$spectrum_out) ||
         !is.null(config$direction_out) ||
         !is.null(config$public_direction_out) ||
-        !is.null(config$safeguarded_direction_out))
+        !is.null(config$safeguarded_direction_out) ||
+        !is.null(config$tn_direction_out))
   ) {
     stop(
       paste(
         paste(
           "--spectrum-out, --direction-out, --public-direction-out, and",
-          "--safeguarded-direction-out"
+          "--safeguarded-direction-out and --tn-direction-out"
         ),
         "require --point-set extended"
       ),
@@ -3074,6 +4245,15 @@ hessian_probe_parse_args <- function(args) {
       call. = FALSE
     )
   }
+  if (
+    !is.null(config$tn_direction_out) &&
+      is.null(config$safeguarded_direction_out)
+  ) {
+    stop(
+      "--tn-direction-out requires --safeguarded-direction-out",
+      call. = FALSE
+    )
+  }
   output_paths <- list("--out" = config$out)
   if (config$point_set == "extended") {
     output_paths[["--selection-out"]] <- config$selection_out
@@ -3090,6 +4270,9 @@ hessian_probe_parse_args <- function(args) {
   if (!is.null(config$safeguarded_direction_out)) {
     output_paths[["--safeguarded-direction-out"]] <-
       config$safeguarded_direction_out
+  }
+  if (!is.null(config$tn_direction_out)) {
+    output_paths[["--tn-direction-out"]] <- config$tn_direction_out
   }
   hessian_probe_preflight_output_paths(output_paths)
 
@@ -3157,6 +4340,24 @@ hessian_probe_load_public_newton_direction <- function() {
   constructor
 }
 
+hessian_probe_load_tn_direction <- function() {
+  namespace <- asNamespace("mize")
+  if (!exists("tn_direction", envir = namespace, inherits = FALSE)) {
+    stop(
+      "The loaded mize package does not provide internal tn_direction().",
+      call. = FALSE
+    )
+  }
+  constructor <- get("tn_direction", envir = namespace, inherits = FALSE)
+  if (!is.function(constructor)) {
+    stop(
+      "The loaded mize tn_direction object is not a function.",
+      call. = FALSE
+    )
+  }
+  constructor
+}
+
 write_hessian_probe_selection <- function(selection, out) {
   utils::write.csv(selection, file = out, row.names = FALSE, na = "")
   message("Wrote Hessian point-selection manifest to ", out)
@@ -3185,6 +4386,11 @@ write_hessian_probe_safeguarded_newton <- function(
   message("Wrote safeguarded exact-Newton direction results to ", out)
 }
 
+write_hessian_probe_tn <- function(tn, out) {
+  utils::write.csv(tn, file = out, row.names = FALSE, na = "")
+  message("Wrote TN direction results to ", out)
+}
+
 hessian_probe_main <- function() {
   config <- hessian_probe_parse_args(commandArgs(trailingOnly = TRUE))
   cases <- hessian_probe_cases(config)
@@ -3200,6 +4406,11 @@ hessian_probe_main <- function() {
   } else {
     NULL
   }
+  tn_direction <- if (!is.null(config$tn_direction_out)) {
+    hessian_probe_load_tn_direction()
+  } else {
+    NULL
+  }
   coverage <- hessian_probe_extended_cases(
     cases,
     optimizer = optimizer,
@@ -3207,8 +4418,10 @@ hessian_probe_main <- function() {
     include_raw_newton = !is.null(config$direction_out),
     include_public_newton = !is.null(config$public_direction_out),
     include_safeguarded_newton = !is.null(config$safeguarded_direction_out),
+    include_tn = !is.null(config$tn_direction_out),
     public_newton_direction = public_newton_direction,
-    safeguarded_newton_direction = public_newton_direction
+    safeguarded_newton_direction = public_newton_direction,
+    tn_direction = tn_direction
   )
   write_hessian_probe_results(coverage$results, config$out)
   write_hessian_probe_selection(coverage$selection, config$selection_out)
@@ -3232,6 +4445,9 @@ hessian_probe_main <- function() {
       coverage$safeguarded_newton,
       config$safeguarded_direction_out
     )
+  }
+  if (!is.null(config$tn_direction_out)) {
+    write_hessian_probe_tn(coverage$tn, config$tn_direction_out)
   }
 }
 

@@ -432,6 +432,93 @@ This is unglobalized internal-policy evidence only. It does not invoke a line
 search or TN, record accepted steps or actual objective decrease, make
 performance claims, change defaults or runtime behavior, or add a public API.
 
+### Truncated-Newton Direction Diagnostics
+
+Use `--tn-direction-out PATH` with the extended point set and all completed
+Hessian/Newton outputs to write one row for mize's current default TN direction
+at every selected integrity-passing point. The option requires
+`--spectrum-out`, raw `--direction-out`, `--public-direction-out`, and
+`--safeguarded-direction-out`, because the TN vector is compared independently
+with all three predecessor direction artifacts. Numerically unresolved spectra
+and raw-ineligible points remain evaluated and retain TN rows.
+
+The probe loads the package's actual internal
+`tn_direction(init = 0, exit_criterion = "curvature", preconditioner = "")`
+constructor and invokes the real direction object's `calculate()` method at
+iteration one. This is the default unpreconditioned, zero-initialized TN
+direction policy. The call receives a preseeded analytic gradient and infinite
+callback budgets; no objective callback, line search, or accepted step is
+reachable.
+
+TN does not call the analytic Hessian. Its `bd_approx()` helper obtains each
+approximate Hessian-vector product from one forward analytic-gradient callback.
+The artifact records the one gradient seed separately from every attempted HVP
+gradient call, successful return, shape-valid return, finite return, and the
+inner gradient count returned by mize. TN's analytic-Hessian count is therefore
+zero. After a finite direction exists, one separately labeled analytic-Hessian
+callback supplies only the common `p' H p` and predicted-decrease reporting
+metrics. All of this work is explicitly outside benchmark callback accounting.
+The returned inner count is usable only when it is a finite, nonnegative,
+dimensionless scalar integer and exactly matches the observed shape-valid HVP
+gradient returns.
+Missing, malformed, or mismatched counts retain a finite direction but make
+callback accounting and inner provenance explicitly incomplete.
+
+The current inner solver returns its direction and gradient count but does not
+retain an iteration count or stop reason. During each real HVP callback, the
+probe observes the loaded `bd_approx()` and `tn_inner_cg()` call-frame state,
+then replays only the decisive post-callback predicates on the captured state
+and returned gradient. This classifies stationary or unusable-gradient exits,
+nonpositive or unusable curvature, unusable step coefficients, residual
+convergence or unusable residuals, and the fixed 40-iteration limit without
+generating another iterate or callback. A separate field records whether
+`tn_direction()`'s final descent check replaced the inner result with `-g`.
+If the current internal state cannot be observed consistently, the valid
+direction remains available but inner provenance is explicitly incomplete;
+the probe does not infer a stop reason from callback counts or vector equality
+alone.
+
+For each finite TN direction `p`, the CSV records its values, overflow-safe
+norm, `g' p`, descent status, analytic-model `p' H p`, predicted decrease
+`-(g' p + 0.5 p' H p)`, exact signs, callback/provenance completeness, and
+overall numerical completeness. Throwing or malformed seed/HVP callbacks,
+direction invocation and return failures, missing or malformed returned inner
+counts, observer inconsistency, and reporting-Hessian failures retain explicit
+point-level statuses rather than aborting the artifact. Shape-valid nonfinite
+HVP gradients follow and record the implementation's actual zero-product
+fallback policy.
+
+Raw/TN, current-public/TN, and safeguarded/TN comparisons are independently
+available only when both relevant vectors exist and are finite. All three use
+the same fixed rule as the earlier direction artifacts: for difference norm
+`d` and scale `s = max(1, ||p_a||, ||p_b||)`, a match requires
+`d <= 100 * sqrt(.Machine$double.eps) * s`. Each comparison reports its scale,
+tolerance terms, threshold, scaled difference, and match status. A failed raw
+solve stays `unavailable_raw_solve`; no relationship is inferred from the
+spectrum or another direction.
+
+Run the bounded TN slice with a seventh distinct destination:
+
+```sh
+R_LIBS=/private/tmp/mize-funconstrain-metadata-lib \
+  Rscript scripts/hessian-integrity-probe.R \
+  --dimension 5 \
+  --funconstrain-cases rosen,brown_bs,var_dim,chebyquad \
+  --point-set extended \
+  --selection-out /private/tmp/mize-hessian-point-selection.csv \
+  --spectrum-out /private/tmp/mize-hessian-spectrum.csv \
+  --direction-out /private/tmp/mize-raw-newton-direction.csv \
+  --public-direction-out /private/tmp/mize-public-newton-direction.csv \
+  --safeguarded-direction-out /private/tmp/mize-safe-newton-direction.csv \
+  --tn-direction-out /private/tmp/mize-tn-direction.csv \
+  --out /private/tmp/mize-hessian-integrity-extended.csv
+```
+
+This is unglobalized point-level direction evidence only. It does not invoke a
+line search, accept a step, measure actual objective decrease or performance,
+change defaults or runtime behavior, add public inner-solver diagnostics, or
+add a public API.
+
 ### Dependencies
 
 Built-in benchmark cases use base R plus packages that ship with R:
@@ -440,9 +527,9 @@ Built-in benchmark cases use base R plus packages that ship with R:
 - `datasets`
 
 When running from a source checkout, install `pkgload` so the script loads the
-local source tree. This is preferred for the current-public direction artifact,
-and required in the same way by the safeguarded artifact, because both retrieve
-the loaded package's internal `newton_direction()` implementation:
+local source tree. This is preferred for the current-public, safeguarded, and
+TN direction artifacts because they retrieve the loaded package's internal
+`newton_direction()` or `tn_direction()` implementation:
 
 ```sh
 Rscript -e 'install.packages("pkgload")'
