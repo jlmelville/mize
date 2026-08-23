@@ -191,7 +191,10 @@ same case, line search, callback mode, and nonempty target signature. For each
 callback kind it retains candidates exceeding a positive comparator by more
 than ten times and at least 50 calls; elapsed time uses the same ratio and a
 0.05-second minimum difference. A gate-row count is therefore not a count of
-independent failures.
+independent failures. Before deriving anything, the reader requires every
+case to contain the full frozen profile/search/callback grid with repetitions
+1 through 3. Run `Rscript scripts/test-derive-optimizer-benchmark.R` for the
+focused complete-grid regression check.
 
 ## Hessian Integrity Probe
 

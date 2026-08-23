@@ -156,6 +156,25 @@ benchmark_read_resource_summary <- function(path) {
     stop("resource summary has duplicate run keys", call. = FALSE)
   }
   cell_key <- do.call(paste, c(summary[grouping], sep = "\r"))
+  expected_cells <- expand.grid(
+    case = sort(unique(summary$case)),
+    profile = expected_profiles,
+    line_search = expected_searches,
+    step0 = "default",
+    callback_mode = expected_callbacks,
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  expected_cell_key <- do.call(
+    paste,
+    c(expected_cells[grouping], sep = "\r")
+  )
+  if (!setequal(unique(cell_key), expected_cell_key)) {
+    stop(
+      "resource summary does not contain the complete Packet 4 cell grid per case",
+      call. = FALSE
+    )
+  }
   repetitions <- split(summary$rep, cell_key)
   complete_repetitions <- vapply(
     repetitions,
