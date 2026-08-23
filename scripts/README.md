@@ -224,15 +224,16 @@ magnitudes, not a claim of positive definiteness.
 
 All active file destinations are preflighted together before point collection:
 `--out`, `--selection-out`, `--spectrum-out`, and an active `--direction-out`
-and `--public-direction-out` must be non-empty, distinct after path resolution,
-not live or dangling final symbolic links, and not existing hard links to the
-same file. Existing-file identity uses the platform file identity when
-available and otherwise requires the `fs` package; unused output paths remain
-dependency-free. When prospective basenames differ only by case, preflight
-creates and immediately removes one private temporary probe in their resolved
-parent directory. Case-equivalent destinations are rejected on a
-case-insensitive filesystem and remain distinct on a case-sensitive one; the
-probe is removed before case collection. A bounded spectrum command is:
+and `--public-direction-out` or `--safeguarded-direction-out` must be
+non-empty, distinct after path resolution, not live or dangling final symbolic
+links, and not existing hard links to the same file. Existing-file identity
+uses the platform file identity when available and otherwise requires the `fs`
+package; unused output paths remain dependency-free. When prospective
+basenames differ only by case, preflight creates and immediately removes one
+private temporary probe in their resolved parent directory. Case-equivalent
+destinations are rejected on a case-insensitive filesystem and remain distinct
+on a case-sensitive one; the probe is removed before case collection. A
+bounded spectrum command is:
 
 ```sh
 R_LIBS=/private/tmp/mize-funconstrain-metadata-lib \
@@ -359,6 +360,78 @@ This artifact is current-policy direction evidence only. It does not invoke a
 line search, construct `safe_chol()` or any safeguarded direction, evaluate TN,
 record accepted-step behavior, or justify a runtime/default change.
 
+### Safeguarded Exact-Newton Direction Diagnostics
+
+Use `--safeguarded-direction-out PATH` with the extended point set and all
+three predecessor outputs to write one row for the internal safeguarded
+exact-Newton direction at every selected integrity-passing point. The option
+requires `--spectrum-out`, raw `--direction-out`, and
+`--public-direction-out`, because the new artifact compares with both raw and
+current-public evidence. Numerically unresolved spectra and raw-ineligible
+points remain evaluated and retain safeguarded rows.
+
+The probe calls the same loaded package's actual
+`newton_direction(try_safe_chol = TRUE)$calculate` implementation directly.
+Its internal ordinary Cholesky attempt, fixed `1e-10` eigenvalue-floor repair,
+solve, and final direction check therefore run without copying or tuning the
+algorithm in the probe. As in the current-public layer, the original analytic
+gradient seeds the cache once and a single capturing Hessian callback supplies
+the implementation and model reporting. Both counts are explicit and outside
+benchmark accounting; no objective callback or line search is invoked.
+
+The returned `direction_reason` retains the implementation's branch. Because
+that field does not distinguish an ordinary factor from a repaired factor, the
+probe also replays only ordinary `chol()` on the captured validated Hessian,
+without another callback or a separate `safe_chol()` call. Its result and the
+actual branch distinguish ordinary solves, eigenvalue-floor repair solves,
+ordinary candidates rejected by the final direction check, and a failed repair
+whose `cholesky_fallback` reason survives. When ordinary Cholesky fails and the
+returned reason is `direction_check_fallback`, the final check may have
+overwritten either a repaired solve or a failed-repair steepest-descent
+fallback. The probe does not infer which occurred: repair success is missing,
+provenance and evaluation status are explicitly ambiguous, and the finite
+returned direction and its metrics remain available. The artifact also records
+the ordinary factorization error, whether repair was required and attempted,
+and the fixed repair floor.
+
+For each finite safeguarded direction, the CSV records values, overflow-safe
+norm, `g' p`, descent status, `p' H p`, predicted decrease
+`-(g' p + 0.5 p' H p)`, exact signs, and numerical completeness. Metrics reuse
+the captured Hessian and existing overflow-safe symmetrization convention.
+Callback, validation, invocation, direction-return, and provenance failures
+retain non-success rows rather than aborting later points. Collapsed
+post-check provenance retains its finite direction with an explicit ambiguous
+status rather than being reported as a successful repair.
+
+Raw/safeguarded comparison is available only for a successful finite raw
+direction. Current-public/safeguarded comparison is available only when both
+directions succeeded. Each applies the same fixed rule: for difference norm
+`d` and scale `s = max(1, ||p_a||, ||p_b||)`, a match requires
+`d <= 100 * sqrt(.Machine$double.eps) * s`. Both comparisons report scale,
+tolerance terms, threshold, scaled difference, and match status. Unavailable
+raw or current-public evidence retains its actual basis; safeguard behavior is
+never used to infer a missing predecessor direction.
+
+Run the bounded safeguarded slice with a sixth distinct destination:
+
+```sh
+R_LIBS=/private/tmp/mize-funconstrain-metadata-lib \
+  Rscript scripts/hessian-integrity-probe.R \
+  --dimension 5 \
+  --funconstrain-cases rosen,brown_bs,var_dim,chebyquad \
+  --point-set extended \
+  --selection-out /private/tmp/mize-hessian-point-selection.csv \
+  --spectrum-out /private/tmp/mize-hessian-spectrum.csv \
+  --direction-out /private/tmp/mize-raw-newton-direction.csv \
+  --public-direction-out /private/tmp/mize-public-newton-direction.csv \
+  --safeguarded-direction-out /private/tmp/mize-safe-newton-direction.csv \
+  --out /private/tmp/mize-hessian-integrity-extended.csv
+```
+
+This is unglobalized internal-policy evidence only. It does not invoke a line
+search or TN, record accepted steps or actual objective decrease, make
+performance claims, change defaults or runtime behavior, or add a public API.
+
 ### Dependencies
 
 Built-in benchmark cases use base R plus packages that ship with R:
@@ -368,8 +441,8 @@ Built-in benchmark cases use base R plus packages that ship with R:
 
 When running from a source checkout, install `pkgload` so the script loads the
 local source tree. This is preferred for the current-public direction artifact,
-which retrieves the loaded package's internal `newton_direction()`
-implementation:
+and required in the same way by the safeguarded artifact, because both retrieve
+the loaded package's internal `newton_direction()` implementation:
 
 ```sh
 Rscript -e 'install.packages("pkgload")'

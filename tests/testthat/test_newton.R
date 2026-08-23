@@ -122,3 +122,33 @@ test_that("Newton safe Cholesky path repairs indefinite Hessians", {
   expect_equal(safe_res$sub_stage$value, c(-1, -1e10), tolerance = 1e-12)
   expect_lt(dot(gradient, safe_res$sub_stage$value), 0)
 })
+
+test_that("Newton direction checks can overwrite failed repair provenance", {
+  local_mocked_bindings(
+    safe_chol = function(hm, eps = 1e-10) NULL,
+    .package = "mize"
+  )
+  hessian <- diag(c(1, -1))
+
+  calculate <- function(gradient) {
+    opt <- list(cache = list(gr_curr = gradient, gr_curr_iter = 1))
+    fg <- list(hs = function(x) hessian)
+    direction <- newton_direction(try_safe_chol = TRUE)
+
+    direction$calculate(
+      opt,
+      stage = list(),
+      sub_stage = direction,
+      par = c(0, 0),
+      fg = fg,
+      iter = 1
+    )$sub_stage
+  }
+
+  failed_repair <- calculate(c(1, 1))
+  final_check <- calculate(c(0, 0))
+
+  expect_identical(failed_repair$direction_reason, "cholesky_fallback")
+  expect_identical(final_check$value, c(0, 0))
+  expect_identical(final_check$direction_reason, "direction_check_fallback")
+})
