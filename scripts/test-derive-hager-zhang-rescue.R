@@ -140,4 +140,58 @@ missing_error <- tryCatch(packet5a_read_inputs(config), error = identity)
 stopifnot(inherits(missing_error, "error"))
 stopifnot(grepl("complete Packet 5A run grid", conditionMessage(missing_error)))
 
+primary_paths <- c(
+  runs = write_fixture("runs", summary[1L, , drop = FALSE]),
+  progress = write_fixture("progress-primary", progress),
+  cases = write_fixture("cases", data.frame(case = cases)),
+  summary = write_fixture("summary-primary", summary),
+  initializers = write_fixture("initializers-primary", initializers)
+)
+primary_manifest <- data.frame(
+  scope = "tranche",
+  artifact = names(primary_paths),
+  path = unname(primary_paths),
+  data_rows = vapply(
+    primary_paths,
+    function(path) max(0L, length(readLines(path)) - 1L),
+    integer(1)
+  ),
+  sha256 = vapply(primary_paths, packet5a_sha256, character(1)),
+  mize_head = "benchmark-head",
+  stringsAsFactors = FALSE
+)
+config$summary <- primary_paths[["summary"]]
+config$progress <- primary_paths[["progress"]]
+config$initializers <- primary_paths[["initializers"]]
+config$cell_out <- write_fixture("cell-medians", data.frame(value = 1))
+config$comparison_out <- write_fixture(
+  "policy-comparisons",
+  data.frame(value = 2)
+)
+config$gate_out <- write_fixture("gates", data.frame(value = 3))
+config$manifest_out <- write_fixture("manifest", primary_manifest)
+config$benchmark_command <- "R_LIBS=/tmp/lib Rscript benchmark.R --scope tranche"
+config$derivation_command <- "Rscript derive.R --scope tranche"
+final_manifest <- packet5a_finalize_manifest(config)
+stopifnot(nrow(final_manifest) == 9L)
+stopifnot(
+  identical(
+    final_manifest$artifact,
+    c(
+      "runs",
+      "progress",
+      "cases",
+      "summary",
+      "initializers",
+      "packet4-summary-input",
+      "cell-medians",
+      "policy-comparisons",
+      "gates"
+    )
+  )
+)
+stopifnot(all(final_manifest$benchmark_command == config$benchmark_command))
+stopifnot(all(final_manifest$derivation_command == config$derivation_command))
+stopifnot(all(nzchar(final_manifest$derivation_head)))
+
 message("derive-hager-zhang-rescue completeness checks passed")

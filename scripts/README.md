@@ -232,7 +232,10 @@ Measured runs do not install the observer used for initializer evidence. The
 unmeasured replay records cached slopes, proposals, available scale, remaining
 trial budget, and rescue state, then must match the measured optimizer result
 and physical callback counts exactly. The manifest records provenance and
-SHA-256 identities for the five primary artifacts.
+SHA-256 identities for the five primary artifacts. The persisted-input
+derivation finalizes it with the exact benchmark and derivation commands, the
+accepted Packet 4 input hash, all three decision-artifact hashes, and the
+derivation checkpoint.
 
 `derive-hager-zhang-rescue.R` reads those persisted primary artifacts plus the
 accepted Packet 4 summary. It requires the complete declared per-case grid,
@@ -251,7 +254,10 @@ Rscript scripts/derive-hager-zhang-rescue.R \
   --cell-out /private/tmp/mize-packet5a-20260823/tranche-cell-medians.csv \
   --comparison-out \
     /private/tmp/mize-packet5a-20260823/tranche-policy-comparisons.csv \
-  --gate-out /private/tmp/mize-packet5a-20260823/tranche-gates.csv
+  --gate-out /private/tmp/mize-packet5a-20260823/tranche-gates.csv \
+  --manifest-out /private/tmp/mize-packet5a-20260823/tranche-manifest.csv \
+  --benchmark-command \
+    'R_LIBS=/private/tmp/mize-packet4-lib Rscript scripts/benchmark-hager-zhang-rescue.R --scope tranche --funconstrain-commit 0cbfc11b345de01180d56e525c07e027d8d8ac6a --out /private/tmp/mize-packet5a-20260823/tranche-runs.csv --progress-out /private/tmp/mize-packet5a-20260823/tranche-progress.csv --case-out /private/tmp/mize-packet5a-20260823/tranche-cases.csv --summary-out /private/tmp/mize-packet5a-20260823/tranche-summary.csv --initializer-out /private/tmp/mize-packet5a-20260823/tranche-initializers.csv --manifest-out /private/tmp/mize-packet5a-20260823/tranche-manifest.csv'
 ```
 
 Run `Rscript scripts/test-derive-hager-zhang-rescue.R` for the focused

@@ -17,6 +17,8 @@ packet5a_derivation_usage <- function(status = 0L) {
       "  --cell-out PATH           Deterministic cell-median CSV.",
       "  --comparison-out PATH     Candidate/primary comparison CSV.",
       "  --gate-out PATH           Frozen-gate CSV.",
+      "  --manifest-out PATH       Final provenance/artifact manifest CSV.",
+      "  --benchmark-command TEXT  Exact benchmark command for the manifest.",
       "  --help                    Show this help.",
       sep = "\n"
     )
@@ -32,7 +34,9 @@ packet5a_parse_derivation_args <- function(args) {
     `--packet4-summary` = "packet4_summary",
     `--cell-out` = "cell_out",
     `--comparison-out` = "comparison_out",
-    `--gate-out` = "gate_out"
+    `--gate-out` = "gate_out",
+    `--manifest-out` = "manifest_out",
+    `--benchmark-command` = "benchmark_command"
   )
   config <- as.list(rep(NA_character_, length(option_names)))
   names(config) <- unname(option_names)
@@ -51,7 +55,11 @@ packet5a_parse_derivation_args <- function(args) {
     config[[option_names[[arg]]]] <- args[[i + 1L]]
     i <- i + 2L
   }
-  missing <- names(config)[is.na(unlist(config)) | !nzchar(unlist(config))]
+  optional <- c("manifest_out", "benchmark_command")
+  required <- setdiff(names(config), optional)
+  missing <- required[
+    is.na(unlist(config[required])) | !nzchar(unlist(config[required]))
+  ]
   if (length(missing) > 0L) {
     stop(
       "Missing required option(s): ",
@@ -59,7 +67,23 @@ packet5a_parse_derivation_args <- function(args) {
       call. = FALSE
     )
   }
+  supplied <- !is.na(unlist(config[optional])) &
+    nzchar(unlist(config[optional]))
+  if (any(supplied) && !all(supplied)) {
+    stop(
+      "--manifest-out and --benchmark-command must be supplied together",
+      call. = FALSE
+    )
+  }
   config
+}
+
+packet5a_derivation_command <- function(args) {
+  quoted <- vapply(args, shQuote, character(1), type = "sh")
+  paste(
+    c("Rscript", "scripts/derive-hager-zhang-rescue.R", quoted),
+    collapse = " "
+  )
 }
 
 packet5a_required_columns <- function(value, required, label) {
@@ -714,6 +738,60 @@ packet5a_comparison_gates <- function(comparisons, cells, scope) {
   if (length(gates) == 0L) packet5a_empty_gates() else do.call(rbind, gates)
 }
 
+packet5a_finalize_manifest <- function(config) {
+  if (is.null(config$manifest_out) || is.na(config$manifest_out)) {
+    return(invisible(NULL))
+  }
+  manifest <- utils::read.csv(
+    config$manifest_out,
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+  packet5a_required_columns(
+    manifest,
+    c("scope", "artifact", "path", "data_rows", "sha256", "mize_head"),
+    "Packet 5A manifest"
+  )
+  primary_names <- c("runs", "progress", "cases", "summary", "initializers")
+  primary <- manifest[manifest$artifact %in% primary_names, , drop = FALSE]
+  primary <- primary[match(primary_names, primary$artifact), , drop = FALSE]
+  if (nrow(primary) != length(primary_names) || anyNA(primary$artifact)) {
+    stop("Packet 5A manifest does not contain its five primary artifacts")
+  }
+  actual_hashes <- vapply(primary$path, packet5a_sha256, character(1))
+  if (!identical(unname(actual_hashes), unname(primary$sha256))) {
+    stop("Packet 5A primary artifact hash does not match the manifest")
+  }
+
+  if (!"benchmark_command" %in% names(primary)) {
+    primary$benchmark_command <- config$benchmark_command
+  } else {
+    primary$benchmark_command[] <- config$benchmark_command
+  }
+  primary$derivation_command <- config$derivation_command
+  primary$derivation_head <- packet5a_git_value(c("rev-parse", "HEAD"))
+
+  artifact_paths <- c(
+    `packet4-summary-input` = config$packet4_summary,
+    `cell-medians` = config$cell_out,
+    `policy-comparisons` = config$comparison_out,
+    gates = config$gate_out
+  )
+  derived <- lapply(names(artifact_paths), function(name) {
+    path <- artifact_paths[[name]]
+    row <- primary[1L, , drop = FALSE]
+    row$artifact <- name
+    row$path <- normalizePath(path, winslash = "/", mustWork = TRUE)
+    row$data_rows <- max(0L, length(readLines(path, warn = FALSE)) - 1L)
+    row$sha256 <- packet5a_sha256(path)
+    row
+  })
+  final <- do.call(rbind, c(list(primary), derived))
+  rownames(final) <- NULL
+  write_benchmark_artifact(final, config$manifest_out, "Packet 5A manifest")
+  invisible(final)
+}
+
 packet5a_derive <- function(config) {
   benchmark_preflight_output_paths(c(
     `--summary` = config$summary,
@@ -759,11 +837,14 @@ packet5a_derive <- function(config) {
     "Packet 5A policy comparisons"
   )
   write_decision_artifact(gates, config$gate_out, "Packet 5A gates")
+  packet5a_finalize_manifest(config)
   invisible(list(cells = cells, comparisons = comparisons, gates = gates))
 }
 
 packet5a_derivation_main <- function() {
-  config <- packet5a_parse_derivation_args(commandArgs(trailingOnly = TRUE))
+  args <- commandArgs(trailingOnly = TRUE)
+  config <- packet5a_parse_derivation_args(args)
+  config$derivation_command <- packet5a_derivation_command(args)
   packet5a_derive(config)
 }
 
