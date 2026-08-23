@@ -521,7 +521,7 @@ packet5a_run_one <- function(
 
 packet5a_rbind <- function(values) {
   values <- Filter(Negate(is.null), values)
-  if (length(values) == 0L) data.frame() else do.call(rbind, values)
+  benchmark_rbind_fill(values)
 }
 
 packet5a_run_grid <- function(cases) {
