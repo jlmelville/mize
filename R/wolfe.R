@@ -170,9 +170,7 @@ hager_zhang_ls <- function(
   max_gr = Inf,
   max_fg = Inf,
   strong_curvature = FALSE,
-  approx_armijo = TRUE,
-  scale_rescue = FALSE,
-  initialization_observer = NULL
+  approx_armijo = TRUE
 ) {
   max_line_evaluations <- min(max_fn, max_gr, floor(max_fg / 2))
 
@@ -192,9 +190,7 @@ hager_zhang_ls <- function(
     local_gradient_evaluation_limit = max_gr,
     local_combined_evaluation_limit = max_fg,
     try_newton_step = try_newton_step,
-    eps = eps,
-    hager_zhang_scale_rescue = scale_rescue,
-    hager_zhang_initialization_observer = initialization_observer
+    eps = eps
   )
 }
 
@@ -210,9 +206,7 @@ line_search <- function(
   local_gradient_evaluation_limit = Inf,
   local_combined_evaluation_limit = Inf,
   max_alpha_mult = Inf,
-  eps = .Machine$double.eps,
-  hager_zhang_scale_rescue = FALSE,
-  hager_zhang_initialization_observer = NULL
+  eps = .Machine$double.eps
 ) {
   if (!is.numeric(initializer)) {
     initializer <- match.arg(
@@ -372,33 +366,11 @@ line_search <- function(
           remaining_function_evaluations >= 2 &&
           remaining_gradient_evaluations >= 1 &&
           remaining_combined_evaluations >= 3
-        scale_estimate <- if (is.null(sub_stage$previous_slope)) {
-          NA_real_
-        } else {
-          propose_slope_ratio_alpha(
-            previous_alpha,
-            sub_stage$previous_slope,
-            initial_point,
-            eps
-          )
-        }
-        trial_evaluation_budget <- min(
-          remaining_function_evaluations - as.integer(probe_is_affordable),
-          remaining_gradient_evaluations,
-          floor(
-            (remaining_combined_evaluations -
-              as.integer(probe_is_affordable)) /
-              2
-          )
-        )
         initial_alpha_result <- propose_next_hager_zhang_alpha(
           evaluate_line,
           previous_alpha,
           initial_point,
-          evaluate_quadratic_probe = probe_is_affordable,
-          scale_estimate = scale_estimate,
-          trial_evaluation_budget = trial_evaluation_budget,
-          scale_rescue = hager_zhang_scale_rescue
+          evaluate_quadratic_probe = probe_is_affordable
         )
         proposed_initial_alpha <- initial_alpha_result$alpha
         probe_function_evaluations <-
@@ -408,22 +380,6 @@ line_search <- function(
           remaining_function_evaluations - probe_function_evaluations
         remaining_combined_evaluations <-
           remaining_combined_evaluations - probe_function_evaluations
-        if (is.function(hager_zhang_initialization_observer)) {
-          hager_zhang_initialization_observer(list(
-            iter = iter,
-            previous_alpha = previous_alpha,
-            previous_slope = sub_stage$previous_slope,
-            current_slope = initial_point$slope,
-            unrescued_alpha = initial_alpha_result$unrescued_alpha,
-            scale_estimate = initial_alpha_result$scale_estimate,
-            trial_evaluation_budget = initial_alpha_result$trial_evaluation_budget,
-            required_contractions = initial_alpha_result$required_contractions,
-            available_contractions = initial_alpha_result$available_contractions,
-            selected_initial_alpha = initial_alpha_result$alpha,
-            rescue_applied = initial_alpha_result$rescue_applied,
-            probe_function_evaluations = probe_function_evaluations
-          ))
-        }
       }
 
       # Prevent the next step initial guess being too large
@@ -786,21 +742,12 @@ propose_next_hager_zhang_alpha <- function(
   initial_point,
   quadratic_probe_fraction = 0.1,
   previous_alpha_multiplier = 2,
-  evaluate_quadratic_probe = TRUE,
-  scale_estimate = NA_real_,
-  trial_evaluation_budget = Inf,
-  scale_rescue = FALSE
+  evaluate_quadratic_probe = TRUE
 ) {
   if (previous_alpha < .Machine$double.eps) {
     return(list(
       alpha = .Machine$double.eps,
-      function_evaluations = 0L,
-      unrescued_alpha = .Machine$double.eps,
-      scale_estimate = scale_estimate,
-      trial_evaluation_budget = trial_evaluation_budget,
-      required_contractions = NA_real_,
-      available_contractions = NA_real_,
-      rescue_applied = FALSE
+      function_evaluations = 0L
     ))
   }
 
@@ -829,44 +776,9 @@ propose_next_hager_zhang_alpha <- function(
       }
     }
   }
-
-  unrescued_alpha <- proposed_alpha
-  required_contractions <- NA_real_
-  available_contractions <- NA_real_
-  rescue_applied <- FALSE
-  scale_is_usable <- is.numeric(scale_estimate) &&
-    length(scale_estimate) == 1L &&
-    isTRUE(is.finite(scale_estimate)) &&
-    scale_estimate > 0
-  budget_is_usable <- is.numeric(trial_evaluation_budget) &&
-    length(trial_evaluation_budget) == 1L &&
-    isTRUE(is.finite(trial_evaluation_budget)) &&
-    trial_evaluation_budget >= 1
-  if (
-    isTRUE(scale_rescue) &&
-      scale_is_usable &&
-      budget_is_usable &&
-      unrescued_alpha > scale_estimate
-  ) {
-    required_contractions <- max(
-      0,
-      ceiling(log2(unrescued_alpha) - log2(scale_estimate))
-    )
-    available_contractions <- max(0, floor(trial_evaluation_budget) - 1)
-    if (required_contractions > available_contractions) {
-      proposed_alpha <- scale_estimate
-      rescue_applied <- TRUE
-    }
-  }
   list(
     alpha = proposed_alpha,
-    function_evaluations = function_evaluations,
-    unrescued_alpha = unrescued_alpha,
-    scale_estimate = scale_estimate,
-    trial_evaluation_budget = trial_evaluation_budget,
-    required_contractions = required_contractions,
-    available_contractions = available_contractions,
-    rescue_applied = rescue_applied
+    function_evaluations = function_evaluations
   )
 }
 
