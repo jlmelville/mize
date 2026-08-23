@@ -2530,6 +2530,793 @@ probe_tn_direction <- function(
   as.data.frame(result, stringsAsFactors = FALSE)
 }
 
+hessian_globalization_control <- function() {
+  list(
+    c1 = 1e-4,
+    c2 = 0.9,
+    initializer = "quadratic",
+    initial_step_length = "rasmussen",
+    try_newton_step = TRUE,
+    max_fn = 20,
+    max_gr = Inf,
+    max_fg = Inf,
+    max_alpha = Inf,
+    max_alpha_mult = Inf,
+    strong_curvature = TRUE,
+    approx_armijo = FALSE,
+    safeguard_cubic = FALSE,
+    slope_comparison_absolute_tolerance = 0,
+    slope_comparison_relative_tolerance = 100 * sqrt(.Machine$double.eps)
+  )
+}
+
+hessian_globalization_returned_count <- function(value) {
+  if (
+    !is.numeric(value) ||
+      !is.null(dim(value)) ||
+      length(value) != 1L ||
+      !is.finite(value) ||
+      value < 0 ||
+      value != floor(value) ||
+      value > .Machine$integer.max
+  ) {
+    return(NA_integer_)
+  }
+  as.integer(value)
+}
+
+hessian_globalization_direction_fields <- function(direction_family) {
+  switch(
+    direction_family,
+    raw = c(
+      success = "solve_success",
+      status = "solve_status",
+      values = "raw_direction_values",
+      slope = "directional_slope",
+      curvature = "quadratic_curvature",
+      predicted = "predicted_decrease"
+    ),
+    current_public = c(
+      success = "public_direction_success",
+      status = "public_direction_status",
+      values = "public_direction_values",
+      slope = "public_directional_slope",
+      curvature = "public_quadratic_curvature",
+      predicted = "public_predicted_decrease"
+    ),
+    safeguarded = c(
+      success = "safeguarded_direction_success",
+      status = "safeguarded_direction_status",
+      values = "safeguarded_direction_values",
+      slope = "safeguarded_directional_slope",
+      curvature = "safeguarded_quadratic_curvature",
+      predicted = "safeguarded_predicted_decrease"
+    ),
+    tn = c(
+      success = "tn_direction_success",
+      status = "tn_direction_status",
+      values = "tn_direction_values",
+      slope = "tn_directional_slope",
+      curvature = "tn_quadratic_curvature",
+      predicted = "tn_predicted_decrease"
+    ),
+    stop("unknown globalization direction family: ", direction_family)
+  )
+}
+
+hessian_globalization_scalar <- function(row, field) {
+  value <- row[[field]]
+  if (
+    !is.numeric(value) ||
+      !is.null(dim(value)) ||
+      length(value) != 1L
+  ) {
+    return(NA_real_)
+  }
+  as.numeric(value)
+}
+
+hessian_globalization_callback_tracker <- function(fg, dimension) {
+  state <- new.env(parent = emptyenv())
+  for (name in c("fn", "gr")) {
+    state[[paste0(name, "_attempts")]] <- 0L
+    state[[paste0(name, "_returns")]] <- 0L
+    state[[paste0(name, "_shape_valid")]] <- 0L
+    state[[paste0(name, "_finite")]] <- 0L
+    state[[paste0(name, "_errors")]] <- character()
+  }
+
+  tracked_fn <- function(x) {
+    state$fn_attempts <- state$fn_attempts + 1L
+    callback <- hessian_probe_callback(fg$fn, x)
+    if (!callback$ok) {
+      state$fn_errors <- c(state$fn_errors, callback$error)
+      stop(callback$error, call. = FALSE)
+    }
+    state$fn_returns <- state$fn_returns + 1L
+    value <- callback$value
+    shape_valid <- is.numeric(value) &&
+      is.null(dim(value)) &&
+      length(value) == 1L
+    if (shape_valid) {
+      state$fn_shape_valid <- state$fn_shape_valid + 1L
+      if (is.finite(value)) {
+        state$fn_finite <- state$fn_finite + 1L
+      }
+    }
+    value
+  }
+  tracked_gr <- function(x) {
+    state$gr_attempts <- state$gr_attempts + 1L
+    callback <- hessian_probe_callback(fg$gr, x)
+    if (!callback$ok) {
+      state$gr_errors <- c(state$gr_errors, callback$error)
+      stop(callback$error, call. = FALSE)
+    }
+    state$gr_returns <- state$gr_returns + 1L
+    value <- callback$value
+    shape_valid <- is.numeric(value) &&
+      is.null(dim(value)) &&
+      length(value) == dimension
+    if (shape_valid) {
+      state$gr_shape_valid <- state$gr_shape_valid + 1L
+      if (all(is.finite(value))) {
+        state$gr_finite <- state$gr_finite + 1L
+      }
+    }
+    value
+  }
+
+  list(state = state, fn = tracked_fn, gr = tracked_gr)
+}
+
+probe_one_step_globalization <- function(
+  fg,
+  point,
+  direction_family,
+  direction_evidence,
+  line_search_constructor,
+  control = hessian_globalization_control()
+) {
+  if (!is.list(fg) || !is.function(fg$fn) || !is.function(fg$gr)) {
+    stop("fg must provide function callbacks fg$fn and fg$gr", call. = FALSE)
+  }
+  if (
+    !is.numeric(point) ||
+      !is.null(dim(point)) ||
+      length(point) == 0L ||
+      !all(is.finite(point))
+  ) {
+    stop("point must be a non-empty finite numeric vector", call. = FALSE)
+  }
+  direction_family <- match.arg(
+    direction_family,
+    c("raw", "current_public", "safeguarded", "tn")
+  )
+  if (!is.function(line_search_constructor)) {
+    stop("line_search_constructor must be a function", call. = FALSE)
+  }
+  fields <- hessian_globalization_direction_fields(direction_family)
+  if (
+    !is.data.frame(direction_evidence) ||
+      nrow(direction_evidence) != 1L ||
+      !all(fields %in% names(direction_evidence))
+  ) {
+    stop(
+      "direction_evidence must be one compatible predecessor row",
+      call. = FALSE
+    )
+  }
+
+  dimension <- length(point)
+  predecessor_success <- isTRUE(direction_evidence[[fields[["success"]]]][[1L]])
+  predecessor_status <- as.character(
+    direction_evidence[[fields[["status"]]]][[1L]]
+  )
+  predecessor_values <- as.character(
+    direction_evidence[[fields[["values"]]]][[1L]]
+  )
+  predecessor_slope <- hessian_globalization_scalar(
+    direction_evidence,
+    fields[["slope"]]
+  )
+  predecessor_curvature <- hessian_globalization_scalar(
+    direction_evidence,
+    fields[["curvature"]]
+  )
+  predecessor_predicted <- hessian_globalization_scalar(
+    direction_evidence,
+    fields[["predicted"]]
+  )
+  direction <- if (predecessor_success) {
+    hessian_public_newton_raw_direction(predecessor_values, dimension)
+  } else {
+    NULL
+  }
+  direction_available <- !is.null(direction) && all(is.finite(direction))
+  availability_basis <- if (!predecessor_success) {
+    paste0("predecessor_status_", predecessor_status)
+  } else if (is.null(direction)) {
+    "predecessor_direction_values_invalid"
+  } else {
+    "successful_finite_predecessor_direction"
+  }
+
+  result <- list(
+    direction_family = direction_family,
+    predecessor_direction_success = predecessor_success,
+    predecessor_direction_status = predecessor_status,
+    predecessor_direction_values = predecessor_values,
+    predecessor_directional_slope = predecessor_slope,
+    predecessor_quadratic_curvature = predecessor_curvature,
+    predecessor_predicted_decrease = predecessor_predicted,
+    direction_mathematically_available = direction_available,
+    direction_availability_basis = availability_basis,
+    globalization_policy = "current_exact_hessian_more_thuente_first_step",
+    globalization_implementation = "mize:::more_thuente_ls()$calculate",
+    line_search = "more-thuente",
+    line_search_c1 = control$c1,
+    line_search_c2 = control$c2,
+    line_search_exact_armijo = !control$approx_armijo,
+    line_search_strong_curvature = control$strong_curvature,
+    line_search_first_alpha_initializer = control$initial_step_length,
+    line_search_later_alpha_initializer = control$initializer,
+    line_search_try_newton_step = control$try_newton_step,
+    line_search_max_fn = control$max_fn,
+    line_search_max_gr = control$max_gr,
+    line_search_max_fg = control$max_fg,
+    line_search_max_alpha = control$max_alpha,
+    line_search_max_alpha_mult = control$max_alpha_mult,
+    line_search_safeguard_cubic = control$safeguard_cubic,
+    globalization_seed_fn_calls = 0L,
+    globalization_seed_gr_calls = 0L,
+    globalization_trial_fn_calls = 0L,
+    globalization_trial_gr_calls = 0L,
+    globalization_total_fn_calls = 0L,
+    globalization_total_gr_calls = 0L,
+    globalization_fg_calls = 0L,
+    globalization_hs_calls = 0L,
+    benchmark_callback_counted = FALSE,
+    seed_objective_callback_ok = NA,
+    seed_objective_callback_error = "",
+    seed_objective_shape_ok = NA,
+    seed_objective_finite = NA,
+    seed_objective = NA_real_,
+    seed_gradient_callback_ok = NA,
+    seed_gradient_callback_error = "",
+    seed_gradient_shape_ok = NA,
+    seed_gradient_finite = NA,
+    seed_gradient_values = "",
+    seed_directional_slope = NA_real_,
+    seed_directional_slope_sign = "unavailable",
+    predecessor_slope_difference = NA_real_,
+    predecessor_slope_comparison_scale = NA_real_,
+    predecessor_slope_comparison_absolute_tolerance = control$slope_comparison_absolute_tolerance,
+    predecessor_slope_comparison_relative_tolerance = control$slope_comparison_relative_tolerance,
+    predecessor_slope_comparison_threshold = NA_real_,
+    predecessor_slope_comparison_available = FALSE,
+    predecessor_slope_matches = NA,
+    line_search_constructed = FALSE,
+    line_search_invoked = FALSE,
+    globalization_success = FALSE,
+    globalization_status = "direction_unavailable",
+    globalization_error = "",
+    globalization_termination = "direction_unavailable",
+    line_search_reason = "",
+    line_search_outcome = "",
+    line_search_alpha_init = NA_real_,
+    line_search_initial_slope = NA_real_,
+    accepted_alpha = NA_real_,
+    line_search_step_accepted = NA,
+    line_search_returned_fn_count = NA_integer_,
+    line_search_returned_gr_count = NA_integer_,
+    optimizer_returned_fn_count = NA_integer_,
+    optimizer_returned_gr_count = NA_integer_,
+    line_search_fn_count_matches_callbacks = NA,
+    line_search_gr_count_matches_callbacks = NA,
+    optimizer_fn_count_matches_callbacks = NA,
+    optimizer_gr_count_matches_callbacks = NA,
+    trial_fn_callbacks_returned = 0L,
+    trial_fn_shape_valid_results = 0L,
+    trial_fn_finite_results = 0L,
+    trial_fn_callback_errors = "",
+    trial_gr_callbacks_returned = 0L,
+    trial_gr_shape_valid_results = 0L,
+    trial_gr_finite_results = 0L,
+    trial_gr_callback_errors = "",
+    globalization_callback_accounting_complete = FALSE,
+    selected_parameters = "",
+    selected_parameters_finite = NA,
+    selected_objective = NA_real_,
+    selected_objective_finite = NA,
+    selected_gradient_values = "",
+    selected_gradient_shape_ok = NA,
+    selected_gradient_finite = NA,
+    selected_directional_slope = NA_real_,
+    selected_directional_slope_sign = "unavailable",
+    selected_point_complete = FALSE,
+    actual_objective_decrease = NA_real_,
+    actual_objective_decrease_sign = "unavailable",
+    model_linear_change = NA_real_,
+    model_quadratic_change = NA_real_,
+    selected_step_predicted_decrease = NA_real_,
+    selected_step_predicted_decrease_sign = "unavailable",
+    selected_step_model_complete = FALSE,
+    actual_to_predicted_ratio = NA_real_,
+    actual_to_predicted_ratio_available = FALSE,
+    actual_to_predicted_ratio_basis = "direction_unavailable",
+    globalization_numerical_complete = FALSE,
+    globalization_diagnostics_complete = FALSE
+  )
+  if (!direction_available) {
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+  direction <- as.numeric(direction)
+
+  objective_seed <- hessian_probe_callback(fg$fn, point)
+  result$globalization_seed_fn_calls <- 1L
+  result$globalization_total_fn_calls <- 1L
+  result$seed_objective_callback_ok <- objective_seed$ok
+  result$seed_objective_callback_error <- objective_seed$error
+  if (!objective_seed$ok) {
+    result$globalization_status <- "seed_objective_callback_failed"
+    result$globalization_termination <- result$globalization_status
+    result$globalization_error <- objective_seed$error
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+  objective <- objective_seed$value
+  result$seed_objective_shape_ok <- is.numeric(objective) &&
+    is.null(dim(objective)) &&
+    length(objective) == 1L
+  result$seed_objective_finite <- result$seed_objective_shape_ok &&
+    is.finite(objective)
+  if (!result$seed_objective_finite) {
+    result$globalization_status <- "seed_objective_value_invalid"
+    result$globalization_termination <- result$globalization_status
+    result$globalization_error <- "seed objective must be a finite numeric scalar"
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+  objective <- as.numeric(objective)
+  result$seed_objective <- objective
+
+  gradient_seed <- hessian_probe_callback(fg$gr, point)
+  result$globalization_seed_gr_calls <- 1L
+  result$globalization_total_gr_calls <- 1L
+  result$seed_gradient_callback_ok <- gradient_seed$ok
+  result$seed_gradient_callback_error <- gradient_seed$error
+  if (!gradient_seed$ok) {
+    result$globalization_status <- "seed_gradient_callback_failed"
+    result$globalization_termination <- result$globalization_status
+    result$globalization_error <- gradient_seed$error
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+  gradient <- gradient_seed$value
+  result$seed_gradient_shape_ok <- is.numeric(gradient) &&
+    is.null(dim(gradient)) &&
+    length(gradient) == dimension
+  result$seed_gradient_finite <- result$seed_gradient_shape_ok &&
+    all(is.finite(gradient))
+  if (!result$seed_gradient_finite) {
+    result$globalization_status <- "seed_gradient_value_invalid"
+    result$globalization_termination <- result$globalization_status
+    result$globalization_error <- paste0(
+      "seed gradient must be a finite numeric vector of length ",
+      dimension
+    )
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+  gradient <- as.numeric(gradient)
+  result$seed_gradient_values <- hessian_probe_point_values(gradient)
+  result$seed_directional_slope <- sum(gradient * direction)
+  result$seed_directional_slope_sign <- hessian_raw_newton_sign(
+    result$seed_directional_slope
+  )
+  slope_values_finite <- all(is.finite(c(
+    result$seed_directional_slope,
+    predecessor_slope
+  )))
+  if (slope_values_finite) {
+    result$predecessor_slope_difference <- abs(
+      result$seed_directional_slope - predecessor_slope
+    )
+    result$predecessor_slope_comparison_scale <- max(
+      1,
+      abs(result$seed_directional_slope),
+      abs(predecessor_slope)
+    )
+    result$predecessor_slope_comparison_threshold <-
+      control$slope_comparison_absolute_tolerance +
+      control$slope_comparison_relative_tolerance *
+        result$predecessor_slope_comparison_scale
+    result$predecessor_slope_comparison_available <- all(is.finite(c(
+      result$predecessor_slope_difference,
+      result$predecessor_slope_comparison_scale,
+      result$predecessor_slope_comparison_threshold
+    )))
+    if (result$predecessor_slope_comparison_available) {
+      result$predecessor_slope_matches <-
+        result$predecessor_slope_difference <=
+          result$predecessor_slope_comparison_threshold
+    }
+  }
+
+  tracked <- hessian_globalization_callback_tracker(fg, dimension)
+  line_search <- tryCatch(
+    line_search_constructor(
+      c1 = control$c1,
+      c2 = control$c2,
+      initializer = control$initializer,
+      initial_step_length = control$initial_step_length,
+      try_newton_step = control$try_newton_step,
+      max_fn = control$max_fn,
+      max_gr = control$max_gr,
+      max_fg = control$max_fg,
+      max_alpha = control$max_alpha,
+      max_alpha_mult = control$max_alpha_mult,
+      strong_curvature = control$strong_curvature,
+      approx_armijo = control$approx_armijo,
+      safeguard_cubic = control$safeguard_cubic
+    ),
+    error = identity
+  )
+  if (inherits(line_search, "error")) {
+    result$globalization_status <- "line_search_construction_failed"
+    result$globalization_termination <- result$globalization_status
+    result$globalization_error <- conditionMessage(line_search)
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+  if (!is.list(line_search) || !is.function(line_search$calculate)) {
+    result$globalization_status <- "line_search_construction_failed"
+    result$globalization_termination <- result$globalization_status
+    result$globalization_error <- paste(
+      "more_thuente_ls() did not return a calculable step-size object"
+    )
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+  result$line_search_constructed <- TRUE
+  stage <- list(
+    type = "gradient_descent",
+    direction = list(value = direction),
+    step_size = line_search
+  )
+  opt <- list(
+    cache = list(
+      fn_curr = objective,
+      fn_curr_iter = 1L,
+      gr_curr = gradient,
+      gr_curr_iter = 1L
+    ),
+    counts = list(fn = 0L, gr = 0L),
+    convergence = list(max_fn = Inf, max_gr = Inf, max_fg = Inf),
+    stages = list(gradient_descent = stage)
+  )
+  result$line_search_invoked <- TRUE
+  line_result <- tryCatch(
+    line_search$calculate(
+      opt = opt,
+      stage = stage,
+      sub_stage = line_search,
+      par = point,
+      fg = list(fn = tracked$fn, gr = tracked$gr),
+      iter = 1L
+    ),
+    error = identity
+  )
+
+  callback_state <- tracked$state
+  result$globalization_trial_fn_calls <- callback_state$fn_attempts
+  result$globalization_trial_gr_calls <- callback_state$gr_attempts
+  result$globalization_total_fn_calls <-
+    result$globalization_seed_fn_calls + callback_state$fn_attempts
+  result$globalization_total_gr_calls <-
+    result$globalization_seed_gr_calls + callback_state$gr_attempts
+  result$trial_fn_callbacks_returned <- callback_state$fn_returns
+  result$trial_fn_shape_valid_results <- callback_state$fn_shape_valid
+  result$trial_fn_finite_results <- callback_state$fn_finite
+  result$trial_fn_callback_errors <- paste(
+    unique(callback_state$fn_errors),
+    collapse = "; "
+  )
+  result$trial_gr_callbacks_returned <- callback_state$gr_returns
+  result$trial_gr_shape_valid_results <- callback_state$gr_shape_valid
+  result$trial_gr_finite_results <- callback_state$gr_finite
+  result$trial_gr_callback_errors <- paste(
+    unique(callback_state$gr_errors),
+    collapse = "; "
+  )
+
+  if (inherits(line_result, "error")) {
+    result$globalization_status <- if (
+      callback_state$fn_returns < callback_state$fn_attempts
+    ) {
+      "trial_objective_callback_failed"
+    } else if (callback_state$fn_shape_valid < callback_state$fn_returns) {
+      "trial_objective_value_invalid"
+    } else if (callback_state$gr_returns < callback_state$gr_attempts) {
+      "trial_gradient_callback_failed"
+    } else if (callback_state$gr_shape_valid < callback_state$gr_returns) {
+      "trial_gradient_value_invalid"
+    } else {
+      "line_search_invocation_failed"
+    }
+    result$globalization_termination <- result$globalization_status
+    result$globalization_error <- conditionMessage(line_result)
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+  if (
+    !is.list(line_result) ||
+      !is.list(line_result$opt) ||
+      !is.list(line_result$sub_stage)
+  ) {
+    result$globalization_status <- "line_search_return_invalid"
+    result$globalization_termination <- result$globalization_status
+    result$globalization_error <- paste(
+      "line-search calculate must return opt and sub_stage lists"
+    )
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+  returned_opt <- line_result$opt
+  returned_step <- line_result$sub_stage
+  alpha <- returned_step$value
+  alpha_valid <- is.numeric(alpha) &&
+    is.null(dim(alpha)) &&
+    length(alpha) == 1L &&
+    is.finite(alpha) &&
+    alpha >= 0
+  if (!alpha_valid) {
+    result$globalization_status <- "line_search_return_invalid"
+    result$globalization_termination <- result$globalization_status
+    result$globalization_error <- "selected alpha must be a finite nonnegative scalar"
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+  alpha <- as.numeric(alpha)
+  result$accepted_alpha <- alpha
+  result$line_search_alpha_init <- hessian_globalization_scalar(
+    returned_step,
+    "alpha_init"
+  )
+  result$line_search_initial_slope <- hessian_globalization_scalar(
+    returned_step,
+    "slope_init"
+  )
+  reason <- returned_step$ls_reason
+  outcome <- returned_step$ls_outcome
+  reason_valid <- is.character(reason) && length(reason) == 1L && !is.na(reason)
+  outcome_valid <- is.character(outcome) &&
+    length(outcome) == 1L &&
+    !is.na(outcome) &&
+    outcome %in% c("wolfe", "improving_fallback", "no_step")
+  small_direction_short_circuit <-
+    !reason_valid &&
+    !outcome_valid &&
+    alpha == 0 &&
+    hessian_probe_norm(direction) < .Machine$double.eps &&
+    callback_state$fn_attempts == 0L &&
+    callback_state$gr_attempts == 0L
+  if (!small_direction_short_circuit && (!reason_valid || !outcome_valid)) {
+    result$globalization_status <- "line_search_return_invalid"
+    result$globalization_termination <- result$globalization_status
+    result$globalization_error <- paste(
+      "non-short-circuit line-search result must retain reason and outcome"
+    )
+    return(as.data.frame(result, stringsAsFactors = FALSE))
+  }
+  if (reason_valid) {
+    result$line_search_reason <- reason
+  }
+  if (outcome_valid) {
+    result$line_search_outcome <- outcome
+  }
+  result$globalization_termination <- if (small_direction_short_circuit) {
+    if (all(direction == 0)) {
+      "zero_direction_short_circuit"
+    } else {
+      "small_direction_short_circuit"
+    }
+  } else {
+    reason
+  }
+  result$line_search_step_accepted <- !small_direction_short_circuit &&
+    alpha > 0 &&
+    outcome %in% c("wolfe", "improving_fallback")
+
+  result$line_search_returned_fn_count <-
+    hessian_globalization_returned_count(returned_step$ls_nf)
+  result$line_search_returned_gr_count <-
+    hessian_globalization_returned_count(returned_step$ls_ng)
+  if (is.list(returned_opt$counts)) {
+    result$optimizer_returned_fn_count <-
+      hessian_globalization_returned_count(returned_opt$counts$fn)
+    result$optimizer_returned_gr_count <-
+      hessian_globalization_returned_count(returned_opt$counts$gr)
+  }
+  result$line_search_fn_count_matches_callbacks <- if (
+    is.na(result$line_search_returned_fn_count)
+  ) {
+    NA
+  } else {
+    result$line_search_returned_fn_count == callback_state$fn_attempts
+  }
+  result$line_search_gr_count_matches_callbacks <- if (
+    is.na(result$line_search_returned_gr_count)
+  ) {
+    NA
+  } else {
+    result$line_search_returned_gr_count == callback_state$gr_attempts
+  }
+  result$optimizer_fn_count_matches_callbacks <- if (
+    is.na(result$optimizer_returned_fn_count)
+  ) {
+    NA
+  } else {
+    result$optimizer_returned_fn_count == callback_state$fn_attempts
+  }
+  result$optimizer_gr_count_matches_callbacks <- if (
+    is.na(result$optimizer_returned_gr_count)
+  ) {
+    NA
+  } else {
+    result$optimizer_returned_gr_count == callback_state$gr_attempts
+  }
+  result$globalization_callback_accounting_complete <-
+    callback_state$fn_returns == callback_state$fn_attempts &&
+    callback_state$fn_shape_valid == callback_state$fn_returns &&
+    callback_state$fn_finite == callback_state$fn_returns &&
+    callback_state$gr_returns == callback_state$gr_attempts &&
+    callback_state$gr_shape_valid == callback_state$gr_returns &&
+    callback_state$gr_finite == callback_state$gr_returns &&
+    isTRUE(result$optimizer_fn_count_matches_callbacks) &&
+    isTRUE(result$optimizer_gr_count_matches_callbacks) &&
+    if (small_direction_short_circuit) {
+      is.na(result$line_search_returned_fn_count) &&
+        is.na(result$line_search_returned_gr_count)
+    } else {
+      isTRUE(result$line_search_fn_count_matches_callbacks) &&
+        isTRUE(result$line_search_gr_count_matches_callbacks)
+    }
+
+  selected_parameters <- point + alpha * direction
+  result$selected_parameters <- hessian_probe_point_values(selected_parameters)
+  result$selected_parameters_finite <- all(is.finite(selected_parameters))
+  selected_objective <- returned_opt$cache$fn_new
+  result$selected_objective_finite <- is.numeric(selected_objective) &&
+    is.null(dim(selected_objective)) &&
+    length(selected_objective) == 1L &&
+    is.finite(selected_objective)
+  if (result$selected_objective_finite) {
+    result$selected_objective <- as.numeric(selected_objective)
+  }
+  selected_gradient <- returned_step$gradient
+  if (is.null(selected_gradient) && alpha == 0) {
+    selected_gradient <- gradient
+  }
+  result$selected_gradient_shape_ok <- is.numeric(selected_gradient) &&
+    is.null(dim(selected_gradient)) &&
+    length(selected_gradient) == dimension
+  result$selected_gradient_finite <- result$selected_gradient_shape_ok &&
+    all(is.finite(selected_gradient))
+  if (result$selected_gradient_shape_ok) {
+    result$selected_gradient_values <- hessian_probe_point_values(
+      selected_gradient
+    )
+  }
+  if (result$selected_gradient_finite) {
+    result$selected_directional_slope <- sum(selected_gradient * direction)
+    result$selected_directional_slope_sign <- hessian_raw_newton_sign(
+      result$selected_directional_slope
+    )
+  }
+  result$selected_point_complete <-
+    result$selected_parameters_finite &&
+    result$selected_objective_finite &&
+    result$selected_gradient_finite &&
+    is.finite(result$selected_directional_slope)
+  if (result$selected_objective_finite) {
+    result$actual_objective_decrease <- objective - result$selected_objective
+    result$actual_objective_decrease_sign <- hessian_raw_newton_sign(
+      result$actual_objective_decrease
+    )
+  }
+
+  if (
+    is.finite(result$seed_directional_slope) &&
+      is.finite(predecessor_curvature)
+  ) {
+    result$model_linear_change <- alpha * result$seed_directional_slope
+    result$model_quadratic_change <-
+      (alpha * predecessor_curvature) * alpha / 2
+    result$selected_step_predicted_decrease <- -(result$model_linear_change +
+      result$model_quadratic_change)
+  }
+  result$selected_step_predicted_decrease_sign <- hessian_raw_newton_sign(
+    result$selected_step_predicted_decrease
+  )
+  result$selected_step_model_complete <- all(is.finite(c(
+    result$model_linear_change,
+    result$model_quadratic_change,
+    result$selected_step_predicted_decrease
+  )))
+  result$actual_to_predicted_ratio_basis <- if (
+    !result$predecessor_slope_comparison_available
+  ) {
+    "predecessor_slope_comparison_unavailable"
+  } else if (!isTRUE(result$predecessor_slope_matches)) {
+    "predecessor_slope_mismatch"
+  } else if (!result$selected_step_model_complete) {
+    "selected_step_prediction_nonfinite"
+  } else if (!is.finite(result$actual_objective_decrease)) {
+    "actual_decrease_nonfinite"
+  } else if (result$selected_step_predicted_decrease <= 0) {
+    "predicted_decrease_not_positive"
+  } else {
+    "finite_actual_and_positive_predicted_decrease"
+  }
+  if (
+    identical(
+      result$actual_to_predicted_ratio_basis,
+      "finite_actual_and_positive_predicted_decrease"
+    )
+  ) {
+    result$actual_to_predicted_ratio <-
+      result$actual_objective_decrease /
+      result$selected_step_predicted_decrease
+    result$actual_to_predicted_ratio_available <- is.finite(
+      result$actual_to_predicted_ratio
+    )
+    if (!result$actual_to_predicted_ratio_available) {
+      result$actual_to_predicted_ratio_basis <- "ratio_nonfinite"
+    }
+  }
+  result$globalization_numerical_complete <-
+    result$selected_point_complete &&
+    is.finite(result$actual_objective_decrease) &&
+    result$selected_step_model_complete &&
+    result$predecessor_slope_comparison_available &&
+    isTRUE(result$predecessor_slope_matches)
+  trial_nonfinite_status <- if (
+    callback_state$fn_finite < callback_state$fn_returns
+  ) {
+    "trial_objective_value_nonfinite"
+  } else if (callback_state$gr_finite < callback_state$gr_returns) {
+    "trial_gradient_value_nonfinite"
+  } else {
+    ""
+  }
+  result$globalization_success <- !nzchar(trial_nonfinite_status)
+  result$globalization_diagnostics_complete <-
+    result$globalization_callback_accounting_complete &&
+    result$globalization_numerical_complete
+  result$globalization_status <- if (nzchar(trial_nonfinite_status)) {
+    result$globalization_error <- paste(
+      "one or more shape-valid trial",
+      if (
+        identical(
+          trial_nonfinite_status,
+          "trial_objective_value_nonfinite"
+        )
+      ) {
+        "objective"
+      } else {
+        "gradient"
+      },
+      "callbacks returned nonfinite values"
+    )
+    trial_nonfinite_status
+  } else if (!result$globalization_callback_accounting_complete) {
+    "evaluated_callback_accounting_incomplete"
+  } else if (!result$selected_point_complete) {
+    "evaluated_selected_point_incomplete"
+  } else if (!result$globalization_numerical_complete) {
+    "evaluated_metrics_incomplete"
+  } else if (small_direction_short_circuit) {
+    paste0("evaluated_", result$globalization_termination)
+  } else {
+    paste0("evaluated_", outcome)
+  }
+
+  as.data.frame(result, stringsAsFactors = FALSE)
+}
+
 hessian_probe_centered_difference <- function(plus, minus, step_size) {
   if (step_size > .Machine$double.xmax / 2) {
     return(plus / step_size / 2 - minus / step_size / 2)
@@ -3426,6 +4213,114 @@ hessian_probe_tn_point <- function(
   )
 }
 
+hessian_probe_globalization_point <- function(
+  case,
+  candidate,
+  integrity_result,
+  spectrum_result,
+  raw_newton_result,
+  current_public_newton_result,
+  safeguarded_newton_result,
+  tn_result,
+  line_search_constructor
+) {
+  integrity_pass <- nrow(integrity_result) > 0L &&
+    all(integrity_result$probe_pass)
+  if (!integrity_pass) {
+    stop(
+      "one-step globalization requires passing directional integrity evidence",
+      call. = FALSE
+    )
+  }
+  inputs <- list(
+    spectrum = spectrum_result,
+    raw = raw_newton_result,
+    current_public = current_public_newton_result,
+    safeguarded = safeguarded_newton_result,
+    tn = tn_result
+  )
+  for (input_name in names(inputs)) {
+    if (
+      !is.data.frame(inputs[[input_name]]) || nrow(inputs[[input_name]]) != 1L
+    ) {
+      stop(
+        "one-step globalization requires one ",
+        input_name,
+        " evidence row",
+        call. = FALSE
+      )
+    }
+  }
+
+  direction_rows <- list(
+    raw = raw_newton_result,
+    current_public = current_public_newton_result,
+    safeguarded = safeguarded_newton_result,
+    tn = tn_result
+  )
+  globalization <- do.call(
+    rbind,
+    Map(
+      function(direction_family, direction_evidence) {
+        probe_one_step_globalization(
+          fg = case$fg,
+          point = candidate$point,
+          direction_family = direction_family,
+          direction_evidence = direction_evidence,
+          line_search_constructor = line_search_constructor
+        )
+      },
+      names(direction_rows),
+      direction_rows
+    )
+  )
+  metadata <- hessian_probe_candidate_row(case, candidate)
+  metadata <- metadata[rep(1L, nrow(globalization)), , drop = FALSE]
+  rownames(metadata) <- NULL
+  spectrum_evidence <- spectrum_result[,
+    c(
+      "spectral_classification",
+      "singularity",
+      "spectral_condition_estimate",
+      "eigen_min",
+      "eigen_max",
+      "eigen_abs_min",
+      "eigen_abs_max",
+      "spectral_scale",
+      "spectral_absolute_tolerance",
+      "spectral_relative_tolerance",
+      "spectral_absolute_tolerance_term",
+      "spectral_relative_tolerance_term",
+      "spectral_sign_tolerance",
+      "inertia_positive",
+      "inertia_zero",
+      "inertia_negative",
+      "inertia_unresolved"
+    ),
+    drop = FALSE
+  ]
+  spectrum_evidence <- spectrum_evidence[
+    rep(1L, nrow(globalization)),
+    ,
+    drop = FALSE
+  ]
+  rownames(spectrum_evidence) <- NULL
+  data.frame(
+    metadata,
+    integrity_gate = "probe_hessian_integrity",
+    integrity_direction_count = nrow(integrity_result),
+    integrity_probe_pass = TRUE,
+    spectrum_gate = "probe_hessian_spectrum",
+    spectrum_evidence,
+    raw_direction_gate = "probe_raw_newton_direction",
+    current_public_direction_gate = "probe_public_newton_direction",
+    safeguarded_direction_gate = "probe_safeguarded_newton_direction",
+    tn_direction_gate = "probe_tn_direction",
+    globalization,
+    stringsAsFactors = FALSE
+  )
+}
+
 hessian_probe_extended_cases <- function(
   cases,
   optimizer,
@@ -3434,11 +4329,13 @@ hessian_probe_extended_cases <- function(
   include_public_newton = FALSE,
   include_safeguarded_newton = FALSE,
   include_tn = FALSE,
+  include_globalization = FALSE,
   raw_newton_solver = base::solve,
   raw_newton_solver_name = "base_solve",
   public_newton_direction = NULL,
   safeguarded_newton_direction = NULL,
-  tn_direction = NULL
+  tn_direction = NULL,
+  line_search_constructor = NULL
 ) {
   if (include_raw_newton && !include_spectrum) {
     stop(
@@ -3485,6 +4382,21 @@ hessian_probe_extended_cases <- function(
   if (include_tn && !is.function(tn_direction)) {
     stop(
       "tn_direction must be a function when TN directions are selected",
+      call. = FALSE
+    )
+  }
+  if (include_globalization && !include_tn) {
+    stop(
+      "one-step globalization requires TN direction evidence",
+      call. = FALSE
+    )
+  }
+  if (include_globalization && !is.function(line_search_constructor)) {
+    stop(
+      paste(
+        "line_search_constructor must be a function when one-step",
+        "globalization is selected"
+      ),
       call. = FALSE
     )
   }
@@ -3774,6 +4686,88 @@ hessian_probe_extended_cases <- function(
   } else {
     NULL
   }
+  globalization_by_case <- if (include_globalization) {
+    Map(
+      function(
+        case,
+        selection,
+        case_result,
+        case_spectrum,
+        case_raw_newton,
+        case_public_newton,
+        case_safeguarded_newton,
+        case_tn
+      ) {
+        point_globalization <- lapply(selection$selected, function(candidate) {
+          integrity_result <- case_result[
+            case_result$point_id == candidate$point_id,
+            ,
+            drop = FALSE
+          ]
+          if (
+            nrow(integrity_result) == 0L ||
+              !all(integrity_result$probe_pass)
+          ) {
+            return(NULL)
+          }
+          spectrum_result <- case_spectrum[
+            case_spectrum$point_id == candidate$point_id,
+            ,
+            drop = FALSE
+          ]
+          raw_newton_result <- case_raw_newton[
+            case_raw_newton$point_id == candidate$point_id,
+            ,
+            drop = FALSE
+          ]
+          current_public_newton_result <- case_public_newton[
+            case_public_newton$point_id == candidate$point_id,
+            ,
+            drop = FALSE
+          ]
+          safeguarded_newton_result <- case_safeguarded_newton[
+            case_safeguarded_newton$point_id == candidate$point_id,
+            ,
+            drop = FALSE
+          ]
+          tn_result <- case_tn[
+            case_tn$point_id == candidate$point_id,
+            ,
+            drop = FALSE
+          ]
+          hessian_probe_globalization_point(
+            case = case,
+            candidate = candidate,
+            integrity_result = integrity_result,
+            spectrum_result = spectrum_result,
+            raw_newton_result = raw_newton_result,
+            current_public_newton_result = current_public_newton_result,
+            safeguarded_newton_result = safeguarded_newton_result,
+            tn_result = tn_result,
+            line_search_constructor = line_search_constructor
+          )
+        })
+        point_globalization <- Filter(
+          Negate(is.null),
+          point_globalization
+        )
+        if (length(point_globalization) == 0L) {
+          return(NULL)
+        }
+        do.call(rbind, point_globalization)
+      },
+      cases,
+      selections,
+      results,
+      spectra_by_case,
+      raw_newton_by_case,
+      public_newton_by_case,
+      safeguarded_newton_by_case,
+      tn_by_case
+    )
+  } else {
+    NULL
+  }
   manifests <- Map(
     function(case, selection) {
       do.call(
@@ -3830,6 +4824,14 @@ hessian_probe_extended_cases <- function(
       data.frame()
     } else {
       do.call(rbind, tn)
+    }
+  }
+  if (include_globalization) {
+    globalization <- Filter(Negate(is.null), globalization_by_case)
+    coverage$globalization <- if (length(globalization) == 0L) {
+      data.frame()
+    } else {
+      do.call(rbind, globalization)
     }
   }
   coverage
@@ -4111,6 +5113,10 @@ hessian_probe_usage <- function(status = 0L) {
         "  --tn-direction-out PATH",
         "Optional TN direction CSV; requires safeguarded."
       ),
+      paste(
+        "  --globalization-out PATH",
+        "Optional one-step globalization CSV; requires TN."
+      ),
       "  --out PATH                Write CSV results to PATH instead of stdout.",
       "  --help                    Show this help.",
       sep = "\n"
@@ -4131,6 +5137,7 @@ hessian_probe_parse_args <- function(args) {
     public_direction_out = NULL,
     safeguarded_direction_out = NULL,
     tn_direction_out = NULL,
+    globalization_out = NULL,
     out = NULL
   )
 
@@ -4178,6 +5185,9 @@ hessian_probe_parse_args <- function(args) {
     } else if (arg == "--tn-direction-out") {
       config$tn_direction_out <- read_value()
       i <- i + 1L
+    } else if (arg == "--globalization-out") {
+      config$globalization_out <- read_value()
+      i <- i + 1L
     } else if (arg == "--out") {
       config$out <- read_value()
       i <- i + 1L
@@ -4205,13 +5215,17 @@ hessian_probe_parse_args <- function(args) {
         !is.null(config$direction_out) ||
         !is.null(config$public_direction_out) ||
         !is.null(config$safeguarded_direction_out) ||
-        !is.null(config$tn_direction_out))
+        !is.null(config$tn_direction_out) ||
+        !is.null(config$globalization_out))
   ) {
     stop(
       paste(
         paste(
           "--spectrum-out, --direction-out, --public-direction-out, and",
-          "--safeguarded-direction-out and --tn-direction-out"
+          paste(
+            "--safeguarded-direction-out, --tn-direction-out, and",
+            "--globalization-out"
+          )
         ),
         "require --point-set extended"
       ),
@@ -4254,6 +5268,15 @@ hessian_probe_parse_args <- function(args) {
       call. = FALSE
     )
   }
+  if (
+    !is.null(config$globalization_out) &&
+      is.null(config$tn_direction_out)
+  ) {
+    stop(
+      "--globalization-out requires --tn-direction-out",
+      call. = FALSE
+    )
+  }
   output_paths <- list("--out" = config$out)
   if (config$point_set == "extended") {
     output_paths[["--selection-out"]] <- config$selection_out
@@ -4273,6 +5296,9 @@ hessian_probe_parse_args <- function(args) {
   }
   if (!is.null(config$tn_direction_out)) {
     output_paths[["--tn-direction-out"]] <- config$tn_direction_out
+  }
+  if (!is.null(config$globalization_out)) {
+    output_paths[["--globalization-out"]] <- config$globalization_out
   }
   hessian_probe_preflight_output_paths(output_paths)
 
@@ -4358,6 +5384,24 @@ hessian_probe_load_tn_direction <- function() {
   constructor
 }
 
+hessian_probe_load_more_thuente_line_search <- function() {
+  namespace <- asNamespace("mize")
+  if (!exists("more_thuente_ls", envir = namespace, inherits = FALSE)) {
+    stop(
+      "The loaded mize package does not provide internal more_thuente_ls().",
+      call. = FALSE
+    )
+  }
+  constructor <- get("more_thuente_ls", envir = namespace, inherits = FALSE)
+  if (!is.function(constructor)) {
+    stop(
+      "The loaded mize more_thuente_ls object is not a function.",
+      call. = FALSE
+    )
+  }
+  constructor
+}
+
 write_hessian_probe_selection <- function(selection, out) {
   utils::write.csv(selection, file = out, row.names = FALSE, na = "")
   message("Wrote Hessian point-selection manifest to ", out)
@@ -4391,6 +5435,11 @@ write_hessian_probe_tn <- function(tn, out) {
   message("Wrote TN direction results to ", out)
 }
 
+write_hessian_probe_globalization <- function(globalization, out) {
+  utils::write.csv(globalization, file = out, row.names = FALSE, na = "")
+  message("Wrote one-step globalization results to ", out)
+}
+
 hessian_probe_main <- function() {
   config <- hessian_probe_parse_args(commandArgs(trailingOnly = TRUE))
   cases <- hessian_probe_cases(config)
@@ -4411,6 +5460,11 @@ hessian_probe_main <- function() {
   } else {
     NULL
   }
+  line_search_constructor <- if (!is.null(config$globalization_out)) {
+    hessian_probe_load_more_thuente_line_search()
+  } else {
+    NULL
+  }
   coverage <- hessian_probe_extended_cases(
     cases,
     optimizer = optimizer,
@@ -4419,9 +5473,11 @@ hessian_probe_main <- function() {
     include_public_newton = !is.null(config$public_direction_out),
     include_safeguarded_newton = !is.null(config$safeguarded_direction_out),
     include_tn = !is.null(config$tn_direction_out),
+    include_globalization = !is.null(config$globalization_out),
     public_newton_direction = public_newton_direction,
     safeguarded_newton_direction = public_newton_direction,
-    tn_direction = tn_direction
+    tn_direction = tn_direction,
+    line_search_constructor = line_search_constructor
   )
   write_hessian_probe_results(coverage$results, config$out)
   write_hessian_probe_selection(coverage$selection, config$selection_out)
@@ -4448,6 +5504,12 @@ hessian_probe_main <- function() {
   }
   if (!is.null(config$tn_direction_out)) {
     write_hessian_probe_tn(coverage$tn, config$tn_direction_out)
+  }
+  if (!is.null(config$globalization_out)) {
+    write_hessian_probe_globalization(
+      coverage$globalization,
+      config$globalization_out
+    )
   }
 }
 

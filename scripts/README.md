@@ -222,18 +222,17 @@ unresolved. It is missing for unresolved spectra without an exact zero and for
 failed spectra. This is an invertibility estimate based on eigenvalue
 magnitudes, not a claim of positive definiteness.
 
-All active file destinations are preflighted together before point collection:
-`--out`, `--selection-out`, `--spectrum-out`, and an active `--direction-out`
-and `--public-direction-out` or `--safeguarded-direction-out` must be
-non-empty, distinct after path resolution, not live or dangling final symbolic
-links, and not existing hard links to the same file. Existing-file identity
-uses the platform file identity when available and otherwise requires the `fs`
-package; unused output paths remain dependency-free. When prospective
-basenames differ only by case, preflight creates and immediately removes one
-private temporary probe in their resolved parent directory. Case-equivalent
-destinations are rejected on a case-insensitive filesystem and remain distinct
-on a case-sensitive one; the probe is removed before case collection. A
-bounded spectrum command is:
+All active file destinations are preflighted together before point collection,
+including every selected spectrum, direction, globalization, manifest, and
+integrity output. Paths must be non-empty, distinct after path resolution, not
+live or dangling final symbolic links, and not existing hard links to the same
+file. Existing-file identity uses the platform file identity when available
+and otherwise requires the `fs` package; unused output paths remain
+dependency-free. When prospective basenames differ only by case, preflight
+creates and immediately removes one private temporary probe in their resolved
+parent directory. Case-equivalent destinations are rejected on a
+case-insensitive filesystem and remain distinct on a case-sensitive one; the
+probe is removed before case collection. A bounded spectrum command is:
 
 ```sh
 R_LIBS=/private/tmp/mize-funconstrain-metadata-lib \
@@ -519,6 +518,94 @@ line search, accept a step, measure actual objective decrease or performance,
 change defaults or runtime behavior, add public inner-solver diagnostics, or
 add a public API.
 
+### One-Step Globalization Diagnostics
+
+Use `--globalization-out PATH` with the extended point set and all seven
+predecessor outputs to write one row for each of the raw, current-public,
+safeguarded, and TN directions at every selected integrity-passing point. The
+artifact therefore has four rows per point. A raw direction rejected by the
+earlier stable-solve gate still retains an explicit zero-callback unavailable
+row, while the other three directions at that point are evaluated normally.
+
+Every mathematically available direction is passed independently to the real
+step-size object returned by mize's internal `more_thuente_ls()`. The fixed
+policy is the current first-step exact-Hessian configuration: `c1 = 1e-4`,
+`c2 = 0.9`, exact Armijo, strong curvature, Rasmussen first-alpha
+initialization with `try_newton_step = TRUE`, quadratic later-alpha
+initialization, 20 objective-limited trials, infinite gradient/combined and
+alpha bounds, and cubic safeguarding disabled. The same policy is used for all
+four direction families. This is a controlled comparison choice, not a new
+default or a claim that the policy is best for every family.
+
+Each available direction gets one isolated objective seed and one isolated
+gradient seed at the selected point. Trial evaluations use transparent wrappers
+around the original separate `fg$fn` and `fg$gr`; the combined callback is not
+supplied. The CSV records seed, trial, and total calls; successful returns;
+shape-valid and finite results; the step-size object's `ls_nf`/`ls_ng`; the
+returned optimizer increments; and affirmative count matches. All calls are
+outside benchmark accounting, and this slice makes no Hessian or HVP callback.
+Callback accounting is complete only when every returned trial objective and
+gradient is shape-valid and finite and every returned count matches the
+observed attempts. A shape-valid nonfinite trial return remains an explicit
+`trial_objective_value_nonfinite` or `trial_gradient_value_nonfinite`
+non-success even when More-Thuente safely returns `nonfinite_recovery` and
+selects `no_step`; the returned reason and outcome are retained separately.
+The real zero-direction short-circuit has one seed of each kind and no trial
+call. Its absent line-search reason/outcome remain absent, while the artifact
+termination identifies `zero_direction_short_circuit` explicitly.
+
+The accepted alpha is the alpha selected by the real step-size calculation. It
+can be zero when the policy selects no step or short-circuits at a stationary
+direction; `line_search_step_accepted` separately requires a positive alpha and
+a `wolfe` or `improving_fallback` outcome. The artifact retains the actual
+line-search reason and selected-point outcome, selected parameters, objective,
+gradient and slope, actual decrease `f(x) - f(x + alpha p)`, and exact signs.
+Selected objective/gradient data are reused from the returned line-search state
+or the seed at a zero step, so reporting adds no callback.
+
+The predecessor's full-step slope, curvature, and predicted decrease remain in
+the row. The line-search seed gradient recomputes `g' p`; its agreement with the
+predecessor slope uses
+`100 * sqrt(.Machine$double.eps) * max(1, abs(s_seed),
+abs(s_predecessor))`. With selected alpha `a`, the scaled model prediction is
+`-(a * g' p + 0.5 * a^2 * p' H p)`, using the new seed slope and the
+predecessor artifact's curvature without another Hessian callback. The
+actual-to-predicted ratio is available only when the slope comparison matches,
+the actual and predicted decreases are finite, and the predicted decrease is
+strictly positive. Stationary or rejected zero steps therefore retain an
+explicit `predicted_decrease_not_positive` basis instead of an invented ratio.
+A slope mismatch makes numerical and overall diagnostics incomplete even when
+the real line search returned a usable selected point.
+
+Callback/validation errors, malformed line-search returns, count mismatches,
+Wolfe acceptance, improving fallback, no-step selection, and the zero-direction
+short-circuit all retain separate statuses. Direction availability,
+line-search success, callback accounting, selected-point completeness,
+numerical completeness, and overall diagnostic completeness are independent
+fields, so one failed direction does not abort another row or point.
+
+Run the bounded globalization slice with an eighth distinct destination:
+
+```sh
+R_LIBS=/private/tmp/mize-funconstrain-metadata-lib \
+  Rscript scripts/hessian-integrity-probe.R \
+  --dimension 5 \
+  --funconstrain-cases rosen,brown_bs,var_dim,chebyquad \
+  --point-set extended \
+  --selection-out /private/tmp/mize-hessian-point-selection.csv \
+  --spectrum-out /private/tmp/mize-hessian-spectrum.csv \
+  --direction-out /private/tmp/mize-raw-newton-direction.csv \
+  --public-direction-out /private/tmp/mize-public-newton-direction.csv \
+  --safeguarded-direction-out /private/tmp/mize-safe-newton-direction.csv \
+  --tn-direction-out /private/tmp/mize-tn-direction.csv \
+  --globalization-out /private/tmp/mize-one-step-globalization.csv \
+  --out /private/tmp/mize-hessian-integrity-extended.csv
+```
+
+This artifact is bounded one-step numerical evidence. It does not run a second
+outer iteration, rank methods, compare performance, change a line-search or
+direction policy, add runtime diagnostics, or change a public API.
+
 ### Dependencies
 
 Built-in benchmark cases use base R plus packages that ship with R:
@@ -527,9 +614,10 @@ Built-in benchmark cases use base R plus packages that ship with R:
 - `datasets`
 
 When running from a source checkout, install `pkgload` so the script loads the
-local source tree. This is preferred for the current-public, safeguarded, and
-TN direction artifacts because they retrieve the loaded package's internal
-`newton_direction()` or `tn_direction()` implementation:
+local source tree. This is preferred for the current-public, safeguarded, TN,
+and globalization artifacts because they retrieve the loaded package's
+internal `newton_direction()`, `tn_direction()`, or `more_thuente_ls()`
+implementation:
 
 ```sh
 Rscript -e 'install.packages("pkgload")'
