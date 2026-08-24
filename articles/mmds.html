@@ -82,14 +82,19 @@ Melville</h4>
 
     
     
-<p>Metric multidimensional scaling (metric MDS) finds a low-dimensional
-configuration whose pairwise distances resemble supplied
-dissimilarities. It is also a useful example of an optimization problem
-where a closure keeps fixed data out of the parameter vector.</p>
-<p>We will reconstruct a two-dimensional configuration for the 21
-European cities in <code><a href="https://rdrr.io/r/datasets/eurodist.html" class="external-link">datasets::eurodist</a></code>. The input contains
-road distances in kilometres, so a two-dimensional Euclidean
-configuration can only approximate them.</p>
+<p>Can an optimizer recover a recognizable map of Europe from a table of
+road distances? We will use that problem to explore three parts of the
+<code>mize</code> callback interface: capturing fixed data in a closure,
+checking an analytic gradient, and sharing intermediate calculations
+between the objective and gradient.</p>
+<p><code><a href="https://rdrr.io/r/datasets/eurodist.html" class="external-link">datasets::eurodist</a></code> contains road distances in kilometres
+among 21 European cities. We will fit a two-dimensional configuration
+whose Euclidean distances approximate those values. Roads need not
+follow straight lines, and the cities lie on the curved surface of the
+Earth, so some disagreement is inevitable.</p>
+<p>This example minimizes raw stress directly.
+<code><a href="https://rdrr.io/r/stats/cmdscale.html" class="external-link">stats::cmdscale()</a></code> follows the classical-scaling route and
+uses a different criterion.</p>
 <div class="section level2">
 <h2 id="stress-and-its-gradient">Stress and its gradient<a class="anchor" aria-label="anchor" href="#stress-and-its-gradient"></a>
 </h2>
@@ -112,18 +117,18 @@ of object <span class="math inline">\(i\)</span> is</p>
 -2 \sum_{j \ne i} \frac{r_{ij} - d_{ij}}{d_{ij}}
 (\mathbf{y}_i - \mathbf{y}_j).
 \]</span></p>
-<p>At coincident points, <span class="math inline">\(d_{ij} = 0\)</span>
-and Euclidean distance is not differentiable. The implementation uses a
-named <code>distance_epsilon</code> in the denominator to keep the
-calculation finite. This numerical convention slightly perturbs the
-displayed derivative. The derivative remains undefined at a coincident
-configuration, so we validate the implementation at a seeded,
-nondegenerate starting point.</p>
-<p>The callback factory below captures the fixed target matrix in a
-closure. Its <code>prepare()</code> helper performs the shared
-conversion from a parameter vector to coordinates and pairwise
-distances. The counter will let us compare shared work without relying
-on a noisy timing measurement.</p>
+<blockquote>
+<p><strong>Implementation note.</strong> Euclidean distance is
+nondifferentiable when two candidate points coincide.
+<code>distance_epsilon</code> prevents division by zero in the code,
+although the mathematical derivative remains undefined at an exactly
+coincident configuration. The gradient check therefore uses a seeded,
+nondegenerate point.</p>
+</blockquote>
+<p>The callback factory captures the fixed target matrix in a closure.
+Its <code>prepare()</code> helper performs the shared conversion from a
+parameter vector to coordinates and pairwise distances. A counter
+records how often that work is performed.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">distance_epsilon</span> <span class="op">&lt;-</span> <span class="fl">1e-10</span></span>
 <span></span>
@@ -223,20 +228,49 @@ present, it also checks that <code>fg</code> agrees with the separate
 <span>  fg_gr_max_abs_error <span class="op">=</span></span>
 <span>    <span class="va">gradient_check</span><span class="op">$</span><span class="va">fg_consistency</span><span class="op">$</span><span class="va">gr</span><span class="op">$</span><span class="va">max_abs_error</span></span>
 <span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">signif</a></span><span class="op">(</span><span class="va">gradient_summary</span>, digits <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
-<span><span class="co">#&gt;   max_abs_error max_rel_error fg_fn_abs_error fg_gr_max_abs_error</span></span>
-<span><span class="co">#&gt; 1      0.008302     1.748e-06               0                   0</span></span></code></pre></div>
-<p>The relative error is the more useful scale-free summary here. The
-exact zero consistency errors show that the separate and combined paths
-implement the same objective and gradient at the checked point.</p>
+<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">signif</a></span><span class="op">(</span><span class="va">gradient_summary</span>, digits <span class="op">=</span> <span class="fl">4</span><span class="op">)</span>,</span>
+<span>  row.names <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  col.names <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>    <span class="st">"Maximum absolute error"</span>,</span>
+<span>    <span class="st">"Maximum relative error"</span>,</span>
+<span>    <span class="st">"fg/fn absolute error"</span>,</span>
+<span>    <span class="st">"fg/gr maximum absolute error"</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<table class="table">
+<colgroup>
+<col width="23%">
+<col width="23%">
+<col width="21%">
+<col width="30%">
+</colgroup>
+<thead><tr class="header">
+<th align="right">Maximum absolute error</th>
+<th align="right">Maximum relative error</th>
+<th align="right">fg/fn absolute error</th>
+<th align="right">fg/gr maximum absolute error</th>
+</tr></thead>
+<tbody><tr class="odd">
+<td align="right">0.008302</td>
+<td align="right">1.7e-06</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr></tbody>
+</table>
+<p>The analytic gradient agrees with the finite-difference approximation
+to about 1.7e-06 in relative terms. At the checked point, the combined
+callback also reproduces the separate objective and gradient to the
+displayed precision.</p>
 </div>
 <div class="section level2">
 <h2 id="optimize-with-separate-and-combined-callbacks">Optimize with separate and combined callbacks<a class="anchor" aria-label="anchor" href="#optimize-with-separate-and-combined-callbacks"></a>
 </h2>
-<p>This case study uses one explicit convergence criterion. Relative
-change in stress is natural for this scale-dependent objective, so
-unrelated tolerances are disabled. See the <a href="convergence.html">Convergence</a> article when choosing a
-criterion for another problem.</p>
+<p>For this example, we stop when the relative change in stress falls
+below <span class="math inline">\(10^{-8}\)</span>. Stress depends on
+the scale of the supplied distances, which makes a relative criterion
+convenient here. The <a href="convergence.html">Convergence</a> article
+discusses the other controls.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mmds_controls</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  method <span class="op">=</span> <span class="st">"L-BFGS"</span>,</span>
@@ -271,120 +305,225 @@ criterion for another problem.</p>
 <span><span class="op">)</span></span>
 <span><span class="va">initial_stress</span> <span class="op">&lt;-</span> <span class="va">gradient_check</span><span class="op">$</span><span class="va">fn</span></span>
 <span><span class="va">pair_count</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Special.html" class="external-link">choose</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">target_distances</span>, <span class="st">"Size"</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">termination_table</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  callbacks <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>,</span>
-<span>  status <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="va">`[[`</span>, <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, <span class="st">"status"</span><span class="op">)</span>,</span>
-<span>  termination <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span></span>
-<span>    <span class="va">results</span>,</span>
-<span>    <span class="kw">function</span><span class="op">(</span><span class="va">result</span><span class="op">)</span> <span class="va">result</span><span class="op">$</span><span class="va">terminate</span><span class="op">$</span><span class="va">what</span>,</span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
-<span>  <span class="op">)</span>,</span>
-<span>  iterations <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="va">`[[`</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, <span class="st">"iter"</span><span class="op">)</span>,</span>
-<span>  nf <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="va">`[[`</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, <span class="st">"nf"</span><span class="op">)</span>,</span>
-<span>  ng <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="va">`[[`</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, <span class="st">"ng"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">termination_table</span></span>
-<span><span class="co">#&gt;          callbacks    status termination iterations nf ng</span></span>
-<span><span class="co">#&gt; separate  separate converged     rel_tol         37 57 57</span></span>
-<span><span class="co">#&gt; combined  combined converged     rel_tol         37 57 57</span></span></code></pre></div>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit_table</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  callbacks <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>,</span>
-<span>  initial_stress <span class="op">=</span> <span class="va">initial_stress</span>,</span>
-<span>  final_stress <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="va">`[[`</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, <span class="st">"f"</span><span class="op">)</span>,</span>
-<span>  initial_rmse_km <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">initial_stress</span> <span class="op">/</span> <span class="va">pair_count</span><span class="op">)</span>,</span>
-<span>  final_rmse_km <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="va">`[[`</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, <span class="st">"f"</span><span class="op">)</span> <span class="op">/</span> <span class="va">pair_count</span></span>
-<span>  <span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">fit_display</span> <span class="op">&lt;-</span> <span class="va">fit_table</span></span>
-<span><span class="va">fit_display</span><span class="op">[</span><span class="op">-</span><span class="fl">1</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">fit_display</span><span class="op">[</span><span class="op">-</span><span class="fl">1</span><span class="op">]</span>, <span class="va">signif</span>, digits <span class="op">=</span> <span class="fl">7</span><span class="op">)</span></span>
-<span><span class="va">fit_display</span></span>
-<span><span class="co">#&gt;          callbacks initial_stress final_stress initial_rmse_km final_rmse_km</span></span>
-<span><span class="co">#&gt; separate  separate      643185300      3356497        1750.082      126.4252</span></span>
-<span><span class="co">#&gt; combined  combined      643185300      3356497        1750.082      126.4252</span></span></code></pre></div>
-<p>Here, “final stress” is stress at the returned parameters;
-<code><a href="../reference/mize.html">mize()</a></code> returns the best observed parameters. Both variants
-report status <code>converged</code> and terminate on
-<code>rel_tol</code>; they reduce the distance RMSE from about 1750 km
-to 126 km. The tables show the observed iteration and callback counts
-without turning an exact count into a lasting promise.</p>
-<p>The logical function and gradient counts are identical because both
-runs ask for the same information. The underlying preparation counts
-expose the work that <code>fg</code> shares:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">preparation_counts</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span><span class="va">preparation_counts</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
 <span>  separate <span class="op">=</span> <span class="va">separate_callbacks</span><span class="op">$</span><span class="fu">preparations</span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  combined <span class="op">=</span> <span class="va">combined_callbacks</span><span class="op">$</span><span class="fu">preparations</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  callbacks <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">preparation_counts</span><span class="op">)</span>,</span>
-<span>  shared_preparations <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/unname.html" class="external-link">unname</a></span><span class="op">(</span><span class="va">preparation_counts</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">initial_rmse_km</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">initial_stress</span> <span class="op">/</span> <span class="va">pair_count</span><span class="op">)</span></span>
+<span><span class="va">final_rmse_km</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">combined_result</span><span class="op">$</span><span class="va">f</span> <span class="op">/</span> <span class="va">pair_count</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">callback_comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  callbacks <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"separate fn/gr"</span>, <span class="st">"combined fg"</span><span class="op">)</span>,</span>
+<span>  iterations <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="va">`[[`</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, <span class="st">"iter"</span><span class="op">)</span>,</span>
+<span>  objective_calls <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="va">`[[`</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, <span class="st">"nf"</span><span class="op">)</span>,</span>
+<span>  gradient_calls <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="va">`[[`</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, <span class="st">"ng"</span><span class="op">)</span>,</span>
+<span>  distance_preparations <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/unname.html" class="external-link">unname</a></span><span class="op">(</span><span class="va">preparation_counts</span><span class="op">)</span>,</span>
+<span>  check.names <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
-<span><span class="co">#&gt;   callbacks shared_preparations</span></span>
-<span><span class="co">#&gt; 1  separate                 114</span></span>
-<span><span class="co">#&gt; 2  combined                  58</span></span></code></pre></div>
-<p>This deterministic count shows that a combined callback avoids
-repeated work when the objective and gradient share an expensive
-intermediate. The tiny example provides no useful wall-clock
-estimate.</p>
+<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span></span>
+<span>  <span class="va">callback_comparison</span>,</span>
+<span>  row.names <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  col.names <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>    <span class="st">"Callbacks"</span>,</span>
+<span>    <span class="st">"Iterations"</span>,</span>
+<span>    <span class="st">"Objective calls"</span>,</span>
+<span>    <span class="st">"Gradient calls"</span>,</span>
+<span>    <span class="st">"Distance preparations"</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<table class="table">
+<colgroup>
+<col width="18%">
+<col width="13%">
+<col width="20%">
+<col width="18%">
+<col width="27%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Callbacks</th>
+<th align="right">Iterations</th>
+<th align="right">Objective calls</th>
+<th align="right">Gradient calls</th>
+<th align="right">Distance preparations</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">separate fn/gr</td>
+<td align="right">37</td>
+<td align="right">57</td>
+<td align="right">57</td>
+<td align="right">114</td>
+</tr>
+<tr class="even">
+<td align="left">combined fg</td>
+<td align="right">37</td>
+<td align="right">57</td>
+<td align="right">57</td>
+<td align="right">58</td>
+</tr>
+</tbody>
+</table>
+<p>Both callback forms converge on <code>rel_tol</code> from the fixed
+starting point and return the same configuration. They take 37
+iterations and reduce pairwise-distance RMSE from 1,750 km to 126
+km.</p>
+<p><code>mize</code> requests the same logical information in both runs.
+The combined callback performs 58 distance-matrix preparations instead
+of 114 because a joint request can reuse one prepared configuration. On
+this small problem, that deterministic count is more informative than a
+wall-clock comparison. Exact callback totals may change with line-search
+details.</p>
+<p>Raw stress is nonconvex, so this seeded run demonstrates a
+reproducible fit without claiming that it found the global minimum.</p>
 </div>
 <div class="section level2">
-<h2 id="interpret-the-configuration">Interpret the configuration<a class="anchor" aria-label="anchor" href="#interpret-the-configuration"></a>
+<h2 id="put-the-configuration-on-the-map">Put the configuration on the map<a class="anchor" aria-label="anchor" href="#put-the-configuration-on-the-map"></a>
 </h2>
-<p>Distances leave absolute position and orientation unidentified.
-Adding one vector to every point leaves all distances unchanged, as do
-rotations and reflections. Centering removes the arbitrary translation
-for display. The plot shows distance geometry; its axes and handedness
-carry no compass meaning.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">center_coordinates</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">par</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">coordinates</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="va">par</span>, ncol <span class="op">=</span> <span class="fl">2</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/sweep.html" class="external-link">sweep</a></span><span class="op">(</span><span class="va">coordinates</span>, <span class="fl">2</span>, <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colMeans</a></span><span class="op">(</span><span class="va">coordinates</span><span class="op">)</span><span class="op">)</span></span>
+<p>The fitted configuration may initially look sideways or mirrored.
+Stress depends only on pairwise distances, so translating, rotating, or
+reflecting every point produces an equally good solution. Metric MDS
+recovers an approximate distance geometry, while its origin, compass
+direction, and handedness remain undetermined.</p>
+<p>For a familiar frame of reference, we project approximate city-centre
+locations onto a plane measured in kilometres, then find the translated,
+rotated, or reflected copy of the fitted configuration that lies closest
+to them. The alignment uses an orthogonal transformation and leaves the
+scale fixed. Consequently, it preserves every fitted distance and the
+raw stress.</p>
+<details><summary>
+Show the projection and alignment code
+</summary><div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">city_names</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/labels.html" class="external-link">labels</a></span><span class="op">(</span><span class="va">target_distances</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Approximate city-centre coordinates based on maps::world.cities (maps 3.4.3),</span></span>
+<span><span class="co"># with the historical eurodist names retained and Hook of Holland added.</span></span>
+<span><span class="va">city_locations</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  city <span class="op">=</span> <span class="va">city_names</span>,</span>
+<span>  longitude <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>    <span class="fl">23.73</span>, <span class="fl">2.17</span>, <span class="fl">4.33</span>, <span class="fl">1.86</span>, <span class="op">-</span><span class="fl">1.63</span>, <span class="fl">6.97</span>, <span class="fl">12.57</span>,</span>
+<span>    <span class="fl">6.14</span>, <span class="op">-</span><span class="fl">5.35</span>, <span class="fl">10.00</span>, <span class="fl">4.13</span>, <span class="op">-</span><span class="fl">9.14</span>, <span class="fl">4.83</span>, <span class="op">-</span><span class="fl">3.71</span>,</span>
+<span>    <span class="fl">5.37</span>, <span class="fl">9.19</span>, <span class="fl">11.58</span>, <span class="fl">2.34</span>, <span class="fl">12.50</span>, <span class="fl">18.07</span>, <span class="fl">16.37</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  latitude <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>    <span class="fl">37.98</span>, <span class="fl">41.40</span>, <span class="fl">50.83</span>, <span class="fl">50.95</span>, <span class="fl">49.64</span>, <span class="fl">50.95</span>, <span class="fl">55.68</span>,</span>
+<span>    <span class="fl">46.21</span>, <span class="fl">36.14</span>, <span class="fl">53.55</span>, <span class="fl">51.98</span>, <span class="fl">38.72</span>, <span class="fl">45.76</span>, <span class="fl">40.42</span>,</span>
+<span>    <span class="fl">43.31</span>, <span class="fl">45.48</span>, <span class="fl">48.14</span>, <span class="fl">48.86</span>, <span class="fl">41.89</span>, <span class="fl">59.33</span>, <span class="fl">48.22</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">project_azimuthal_equidistant</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span></span>
+<span>  <span class="va">longitude</span>,</span>
+<span>  <span class="va">latitude</span>,</span>
+<span>  <span class="va">center_longitude</span>,</span>
+<span>  <span class="va">center_latitude</span>,</span>
+<span>  <span class="va">radius_km</span> <span class="op">=</span> <span class="fl">6371.0088</span></span>
+<span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">to_radians</span> <span class="op">&lt;-</span> <span class="va">pi</span> <span class="op">/</span> <span class="fl">180</span></span>
+<span>  <span class="va">lambda</span> <span class="op">&lt;-</span> <span class="va">longitude</span> <span class="op">*</span> <span class="va">to_radians</span></span>
+<span>  <span class="va">phi</span> <span class="op">&lt;-</span> <span class="va">latitude</span> <span class="op">*</span> <span class="va">to_radians</span></span>
+<span>  <span class="va">lambda0</span> <span class="op">&lt;-</span> <span class="va">center_longitude</span> <span class="op">*</span> <span class="va">to_radians</span></span>
+<span>  <span class="va">phi0</span> <span class="op">&lt;-</span> <span class="va">center_latitude</span> <span class="op">*</span> <span class="va">to_radians</span></span>
+<span>  <span class="va">delta_lambda</span> <span class="op">&lt;-</span> <span class="va">lambda</span> <span class="op">-</span> <span class="va">lambda0</span></span>
+<span></span>
+<span>  <span class="va">cos_angle</span> <span class="op">&lt;-</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">sin</a></span><span class="op">(</span><span class="va">phi0</span><span class="op">)</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">sin</a></span><span class="op">(</span><span class="va">phi</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">cos</a></span><span class="op">(</span><span class="va">phi0</span><span class="op">)</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">cos</a></span><span class="op">(</span><span class="va">phi</span><span class="op">)</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">cos</a></span><span class="op">(</span><span class="va">delta_lambda</span><span class="op">)</span></span>
+<span>  <span class="va">cos_angle</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">pmax</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">pmin</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">cos_angle</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">angle</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">acos</a></span><span class="op">(</span><span class="va">cos_angle</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">projection_scale</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">angle</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">nonzero</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/is.finite.html" class="external-link">is.finite</a></span><span class="op">(</span><span class="va">angle</span><span class="op">)</span> <span class="op">&amp;</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">angle</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">.Machine</span><span class="op">$</span><span class="va">double.eps</span><span class="op">)</span></span>
+<span>  <span class="va">projection_scale</span><span class="op">[</span><span class="va">nonzero</span><span class="op">]</span> <span class="op">&lt;-</span></span>
+<span>    <span class="va">angle</span><span class="op">[</span><span class="va">nonzero</span><span class="op">]</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">sin</a></span><span class="op">(</span><span class="va">angle</span><span class="op">[</span><span class="va">nonzero</span><span class="op">]</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span></span>
+<span>    east_km <span class="op">=</span></span>
+<span>      <span class="va">radius_km</span> <span class="op">*</span></span>
+<span>      <span class="va">projection_scale</span> <span class="op">*</span></span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">cos</a></span><span class="op">(</span><span class="va">phi</span><span class="op">)</span> <span class="op">*</span></span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">sin</a></span><span class="op">(</span><span class="va">delta_lambda</span><span class="op">)</span>,</span>
+<span>    north_km <span class="op">=</span></span>
+<span>      <span class="va">radius_km</span> <span class="op">*</span></span>
+<span>      <span class="va">projection_scale</span> <span class="op">*</span></span>
+<span>      <span class="op">(</span></span>
+<span>        <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">cos</a></span><span class="op">(</span><span class="va">phi0</span><span class="op">)</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">sin</a></span><span class="op">(</span><span class="va">phi</span><span class="op">)</span> <span class="op">-</span></span>
+<span>          <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">sin</a></span><span class="op">(</span><span class="va">phi0</span><span class="op">)</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">cos</a></span><span class="op">(</span><span class="va">phi</span><span class="op">)</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">cos</a></span><span class="op">(</span><span class="va">delta_lambda</span><span class="op">)</span></span>
+<span>      <span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">plot_mmds</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">coordinates</span>, <span class="va">distances</span>, <span class="va">...</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">horizontal_cutoff</span> <span class="op">&lt;-</span> <span class="fl">0.08</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/diff.html" class="external-link">diff</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">coordinates</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="va">label_positions</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span></span>
-<span>    <span class="va">coordinates</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span> <span class="op">&lt;</span> <span class="op">-</span><span class="va">horizontal_cutoff</span>,</span>
-<span>    <span class="fl">2</span>,</span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span></span>
-<span>      <span class="va">coordinates</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span> <span class="op">&gt;</span> <span class="va">horizontal_cutoff</span>,</span>
-<span>      <span class="fl">4</span>,</span>
-<span>      <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span>, length.out <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">coordinates</span><span class="op">)</span><span class="op">)</span></span>
-<span>    <span class="op">)</span></span>
-<span>  <span class="op">)</span></span>
-<span>  <span class="va">label_positions</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/which.min.html" class="external-link">which.min</a></span><span class="op">(</span><span class="va">coordinates</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">3</span></span>
-<span>  <span class="va">label_positions</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/which.min.html" class="external-link">which.max</a></span><span class="op">(</span><span class="va">coordinates</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
-<span>  <span class="va">city_names</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/labels.html" class="external-link">labels</a></span><span class="op">(</span><span class="va">distances</span><span class="op">)</span></span>
-<span>  <span class="va">label_positions</span><span class="op">[</span><span class="va">city_names</span> <span class="op">==</span> <span class="st">"Geneva"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">2</span></span>
-<span>  <span class="va">label_positions</span><span class="op">[</span><span class="va">city_names</span> <span class="op">==</span> <span class="st">"Lyons"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">4</span></span>
-<span>  <span class="fu">graphics</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span></span>
-<span>    <span class="va">coordinates</span>,</span>
-<span>    type <span class="op">=</span> <span class="st">"n"</span>,</span>
-<span>    asp <span class="op">=</span> <span class="fl">1</span>,</span>
-<span>    xlab <span class="op">=</span> <span class="st">"Centered dimension 1"</span>,</span>
-<span>    ylab <span class="op">=</span> <span class="st">"Centered dimension 2"</span>,</span>
-<span>    main <span class="op">=</span> <span class="st">"Metric MDS configuration of European road distances"</span></span>
-<span>  <span class="op">)</span></span>
-<span>  <span class="fu">graphics</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/graphics/points.html" class="external-link">points</a></span><span class="op">(</span><span class="va">coordinates</span>, pch <span class="op">=</span> <span class="fl">19</span>, cex <span class="op">=</span> <span class="fl">0.45</span><span class="op">)</span></span>
-<span>  <span class="fu">graphics</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/graphics/text.html" class="external-link">text</a></span><span class="op">(</span></span>
-<span>    <span class="va">coordinates</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span>,</span>
-<span>    <span class="va">coordinates</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span>,</span>
-<span>    labels <span class="op">=</span> <span class="va">city_names</span>,</span>
-<span>    pos <span class="op">=</span> <span class="va">label_positions</span>,</span>
-<span>    offset <span class="op">=</span> <span class="fl">0.25</span>,</span>
-<span>    <span class="va">...</span></span>
+<span><span class="va">rigid_align</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">configuration</span>, <span class="va">reference</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">configuration_center</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colMeans</a></span><span class="op">(</span><span class="va">configuration</span><span class="op">)</span></span>
+<span>  <span class="va">reference_center</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colMeans</a></span><span class="op">(</span><span class="va">reference</span><span class="op">)</span></span>
+<span>  <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sweep.html" class="external-link">sweep</a></span><span class="op">(</span><span class="va">configuration</span>, <span class="fl">2</span>, <span class="va">configuration_center</span><span class="op">)</span></span>
+<span>  <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sweep.html" class="external-link">sweep</a></span><span class="op">(</span><span class="va">reference</span>, <span class="fl">2</span>, <span class="va">reference_center</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">decomposition</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/svd.html" class="external-link">svd</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/crossprod.html" class="external-link">crossprod</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">orthogonal</span> <span class="op">&lt;-</span> <span class="va">decomposition</span><span class="op">$</span><span class="va">u</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="va">decomposition</span><span class="op">$</span><span class="va">v</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    coordinates <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sweep.html" class="external-link">sweep</a></span><span class="op">(</span></span>
+<span>      <span class="va">x</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">orthogonal</span>,</span>
+<span>      <span class="fl">2</span>,</span>
+<span>      <span class="va">reference_center</span>,</span>
+<span>      <span class="st">"+"</span></span>
+<span>    <span class="op">)</span>,</span>
+<span>    orthogonal <span class="op">=</span> <span class="va">orthogonal</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">centered_coordinates</span> <span class="op">&lt;-</span> <span class="fu">center_coordinates</span><span class="op">(</span><span class="va">combined_result</span><span class="op">$</span><span class="va">par</span><span class="op">)</span></span>
-<span><span class="fu">plot_mmds</span><span class="op">(</span><span class="va">centered_coordinates</span>, <span class="va">target_distances</span>, cex <span class="op">=</span> <span class="fl">0.55</span><span class="op">)</span></span></code></pre></div>
-<p><img src="mmds_files/figure-html/plot-results-1.png" class="r-plt" alt="" width="528"></p>
-<p>The invariance holds at the objective level. The hidden check below
-translates, rotates, and reflects the returned configuration and
-verifies that stress is unchanged to numerical tolerance.</p>
+<span><span class="va">projection_center</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">city_locations</span><span class="op">$</span><span class="va">longitude</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">city_locations</span><span class="op">$</span><span class="va">latitude</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">geographic_coordinates</span> <span class="op">&lt;-</span> <span class="fu">project_azimuthal_equidistant</span><span class="op">(</span></span>
+<span>  <span class="va">city_locations</span><span class="op">$</span><span class="va">longitude</span>,</span>
+<span>  <span class="va">city_locations</span><span class="op">$</span><span class="va">latitude</span>,</span>
+<span>  center_longitude <span class="op">=</span> <span class="va">projection_center</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
+<span>  center_latitude <span class="op">=</span> <span class="va">projection_center</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">mmds_coordinates</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span></span>
+<span>  <span class="va">combined_result</span><span class="op">$</span><span class="va">par</span>,</span>
+<span>  ncol <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  byrow <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">alignment</span> <span class="op">&lt;-</span> <span class="fu">rigid_align</span><span class="op">(</span><span class="va">mmds_coordinates</span>, <span class="va">geographic_coordinates</span><span class="op">)</span></span>
+<span><span class="va">aligned_coordinates</span> <span class="op">&lt;-</span> <span class="va">alignment</span><span class="op">$</span><span class="va">coordinates</span></span>
+<span></span>
+<span><span class="va">europe</span> <span class="op">&lt;-</span> <span class="fu">maps</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/maps/man/map.html" class="external-link">map</a></span><span class="op">(</span></span>
+<span>  <span class="st">"world"</span>,</span>
+<span>  plot <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  xlim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">12</span>, <span class="fl">27</span><span class="op">)</span>,</span>
+<span>  ylim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">34</span>, <span class="fl">62</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">outside_europe</span> <span class="op">&lt;-</span></span>
+<span>  <span class="va">europe</span><span class="op">$</span><span class="va">x</span> <span class="op">&lt;</span> <span class="op">-</span><span class="fl">12</span> <span class="op">|</span> <span class="va">europe</span><span class="op">$</span><span class="va">x</span> <span class="op">&gt;</span> <span class="fl">27</span> <span class="op">|</span></span>
+<span>  <span class="va">europe</span><span class="op">$</span><span class="va">y</span> <span class="op">&lt;</span> <span class="fl">34</span> <span class="op">|</span> <span class="va">europe</span><span class="op">$</span><span class="va">y</span> <span class="op">&gt;</span> <span class="fl">62</span></span>
+<span><span class="va">europe</span><span class="op">$</span><span class="va">x</span><span class="op">[</span><span class="va">outside_europe</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="cn">NA_real_</span></span>
+<span><span class="va">europe</span><span class="op">$</span><span class="va">y</span><span class="op">[</span><span class="va">outside_europe</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="cn">NA_real_</span></span>
+<span><span class="va">europe_coordinates</span> <span class="op">&lt;-</span> <span class="fu">project_azimuthal_equidistant</span><span class="op">(</span></span>
+<span>  <span class="va">europe</span><span class="op">$</span><span class="va">x</span>,</span>
+<span>  <span class="va">europe</span><span class="op">$</span><span class="va">y</span>,</span>
+<span>  center_longitude <span class="op">=</span> <span class="va">projection_center</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
+<span>  center_latitude <span class="op">=</span> <span class="va">projection_center</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</details><div class="figure">
+<img src="mmds_files/figure-html/aligned-map-1.png" class="r-plt" alt="Outline map of Europe with geographic city locations shown as open circles and rigidly aligned metric MDS positions shown as filled points, joined by grey line segments." width="691.2"><p class="caption">
+Open circles mark projected geographic locations. Filled points show the
+metric-MDS configuration after translation, rotation, and possible
+reflection; grey segments join corresponding cities. No rescaling was
+applied.
+</p>
+</div>
+<p>The 126 km pairwise-distance RMSE summarizes how well the
+configuration fits the road-distance table. The segments in the map
+answer a second question: how closely does that road-distance geometry
+resemble projected geography? Their remaining lengths are expected
+because road routes, coastlines, and the compromise required to fit all
+210 city pairs affect the target distances.</p>
 <p>The same closure pattern applies whenever callbacks need fixed data
 or share an intermediate calculation. For the full callback contract,
 see <code><a href="../reference/mize.html">?mize</a></code>.</p>
