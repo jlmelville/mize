@@ -138,11 +138,11 @@ is normal and leaves the step status unchanged.
 > **Important.** `mize_step()` advances the optimizer and may stop on a hard
 > callback budget or an immediate method failure. A requested observation from
 > `mize_step_summary()` can also stop at a hard callback budget. Ordinary
-> numerical tolerances, `max_iter`, and non-finite summary observations are
-> handled by `check_mize_convergence()`. A caller-owned loop must retain the
-> optimizer returned by each operation, stop if either of the first two
-> operations terminates it, and otherwise call the convergence check after
-> every step.
+> numerical tolerances, `max_iter`, non-finite summary observations, and a
+> completed line search that selected no usable step are handled by
+> `check_mize_convergence()`. A caller-owned loop must retain the optimizer
+> returned by each operation, stop if either of the first two operations
+> terminates it, and otherwise call the convergence check after every step.
 
 The run below has disabled every ordinary numerical tolerance and demonstrates
 only `max_iter`. Its summary therefore sets `calc_fn = FALSE` and
