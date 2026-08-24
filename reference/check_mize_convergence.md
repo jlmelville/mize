@@ -42,10 +42,15 @@ contain:
   termination. This list will not be present if `is_terminated` is
   `FALSE`.
 
-Convergence criteria are only checked here. To set these criteria, use
+Convergence criteria are checked here after
+[`mize_step_summary()`](https://jlmelville.github.io/mize/reference/mize_step_summary.md)
+has gathered the observations they require. To set these criteria, use
 [`make_mize()`](https://jlmelville.github.io/mize/reference/make_mize.md)
 or
 [`mize_init()`](https://jlmelville.github.io/mize/reference/mize_init.md).
+In a stateful loop, first retain `mize_step_info$opt`; it may already be
+terminal because a requested observation exhausted a hard callback
+budget. Call this function only while that optimizer remains active.
 
 ## Examples
 
@@ -66,6 +71,8 @@ rb0 <- c(-1.2, 1)
 opt <- make_mize(method = "BFGS", par = rb0, fg = rb_fg, max_iter = 30)
 mize_res <- mize_step(opt = opt, par = rb0, fg = rb_fg)
 step_info <- mize_step_summary(mize_res$opt, mize_res$par, rb_fg, rb0)
-# check convergence by looking at opt$is_terminated
-opt <- check_mize_convergence(step_info)
+opt <- step_info$opt
+if (!opt$is_terminated) {
+  opt <- check_mize_convergence(step_info)
+}
 ```

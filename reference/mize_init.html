@@ -154,7 +154,12 @@ optimizer will already be initialized. <code><a href="mize_step.html">mize_step(
 initialized optimizer and does not carry out initialization itself.
 Reinitialization resets the iteration counter and transient algorithm state,
 but preserves accumulated function and gradient evaluation counts and
-explicitly registered custom hooks.</p>
+explicitly registered custom hooks.
+Initialization does not guarantee that the objective or gradient has been
+evaluated at <code>par</code>. If caller-owned records need a starting observation,
+request it with <code><a href="mize_step_summary.html">mize_step_summary()</a></code> using <code>calc_fn = TRUE</code> or
+<code>calc_gr = TRUE</code>, and retain the <code>opt</code> returned by that call. Any requested
+callback still honors the configured hard budgets.</p>
 <p>Optional convergence parameters may also be passed here, for use with
 <code><a href="check_mize_convergence.html">check_mize_convergence()</a></code>. They are optional if you do your own
 convergence checking.</p>
@@ -183,14 +188,25 @@ convergence checking.</p>
 <span class="r-in"><span><span class="va">rb0</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1.2</span>, <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Initialize with function and starting point before commencing optimization</span></span></span>
-<span class="r-in"><span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu">mize_init</span><span class="op">(</span><span class="va">opt</span>, <span class="va">rb0</span>, <span class="va">rosenbrock_fg</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu">mize_init</span><span class="op">(</span><span class="va">opt</span>, <span class="va">rb0</span>, <span class="va">rosenbrock_fg</span>, max_iter <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Finally, can commence the optimization loop</span></span></span>
+<span class="r-in"><span><span class="co"># Finally, commence a terminal-aware optimization loop</span></span></span>
 <span class="r-in"><span><span class="va">par</span> <span class="op">&lt;-</span> <span class="va">rb0</span></span></span>
-<span class="r-in"><span><span class="kw">for</span> <span class="op">(</span><span class="va">iter</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>  <span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="mize_step.html">mize_step</a></span><span class="op">(</span><span class="va">opt</span>, <span class="va">par</span>, <span class="va">rosenbrock_fg</span><span class="op">)</span></span></span>
-<span class="r-in"><span>  <span class="va">par</span> <span class="op">&lt;-</span> <span class="va">res</span><span class="op">$</span><span class="va">par</span></span></span>
-<span class="r-in"><span>  <span class="va">opt</span> <span class="op">&lt;-</span> <span class="va">res</span><span class="op">$</span><span class="va">opt</span></span></span>
+<span class="r-in"><span><span class="kw">while</span> <span class="op">(</span><span class="op">!</span><span class="va">opt</span><span class="op">$</span><span class="va">is_terminated</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="va">par_old</span> <span class="op">&lt;-</span> <span class="va">par</span></span></span>
+<span class="r-in"><span>  <span class="va">step_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="mize_step.html">mize_step</a></span><span class="op">(</span><span class="va">opt</span>, <span class="va">par</span>, <span class="va">rosenbrock_fg</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">opt</span> <span class="op">&lt;-</span> <span class="va">step_result</span><span class="op">$</span><span class="va">opt</span></span></span>
+<span class="r-in"><span>  <span class="va">par</span> <span class="op">&lt;-</span> <span class="va">step_result</span><span class="op">$</span><span class="va">par</span></span></span>
+<span class="r-in"><span>  <span class="kw">if</span> <span class="op">(</span><span class="va">opt</span><span class="op">$</span><span class="va">is_terminated</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>    <span class="kw">break</span></span></span>
+<span class="r-in"><span>  <span class="op">}</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span>  <span class="va">step_info</span> <span class="op">&lt;-</span> <span class="fu"><a href="mize_step_summary.html">mize_step_summary</a></span><span class="op">(</span><span class="va">opt</span>, <span class="va">par</span>, <span class="va">rosenbrock_fg</span>, <span class="va">par_old</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">opt</span> <span class="op">&lt;-</span> <span class="va">step_info</span><span class="op">$</span><span class="va">opt</span></span></span>
+<span class="r-in"><span>  <span class="kw">if</span> <span class="op">(</span><span class="va">opt</span><span class="op">$</span><span class="va">is_terminated</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>    <span class="kw">break</span></span></span>
+<span class="r-in"><span>  <span class="op">}</span></span></span>
+<span class="r-in"><span>  <span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="check_mize_convergence.html">check_mize_convergence</a></span><span class="op">(</span><span class="va">step_info</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
 </code></pre></div>
     </div>

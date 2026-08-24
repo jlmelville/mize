@@ -97,13 +97,22 @@ or relative tolerance value was asked for. A gradient norm will be
 returned only if a non-null gradient tolerance was specified, even if
 the gradient is available.
 
-Note that if a function tolerance was specified, but was not calculated
-for the relevant value of `par`, they will be calculated here and the
-calculation does contribute to the total function count (and will be
-cached for potential use in the next iteration). The same applies for
-gradient tolerances and gradient calculation. Function and gradient
-calculation can also be forced here by setting the `calc_fn` and
-`calc_gr` (respectively) parameters to `TRUE`.
+If a function value is required by a tolerance but is not cached for the
+relevant value of `par`, it will be calculated here. The calculation
+contributes to the total function count and is cached for potential use
+in the next iteration. The same rule applies when a gradient tolerance
+requires a gradient calculation. Function and gradient calculation can
+also be forced here by setting the `calc_fn` and `calc_gr` parameters,
+respectively, to `TRUE`.
+
+Requested objective and gradient calculations honor the optimizer's hard
+callback budgets. If a request would exceed a budget, the corresponding
+field is omitted and the returned `opt` records the termination. Always
+retain this updated optimizer before continuing. This summary does not
+apply ordinary numerical tolerances or `max_iter`; pass it to
+[`check_mize_convergence()`](https://jlmelville.github.io/mize/reference/check_mize_convergence.md)
+for those checks. Non-finite observations are likewise interpreted
+there.
 
 ## Examples
 
@@ -125,4 +134,8 @@ opt <- make_mize(method = "BFGS", par = rb0, fg = rb_fg, max_iter = 30)
 mize_res <- mize_step(opt = opt, par = rb0, fg = rb_fg)
 # Get info about first step, use rb0 to compare new par with initial value
 step_info <- mize_step_summary(mize_res$opt, mize_res$par, rb_fg, rb0)
+opt <- step_info$opt
+if (!opt$is_terminated) {
+  opt <- check_mize_convergence(step_info)
+}
 ```

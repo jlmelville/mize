@@ -410,9 +410,10 @@ optimization to the console.</p></dd>
 
 
 <dt id="arg-store-progress">store_progress<a class="anchor" aria-label="anchor" href="#arg-store-progress"></a></dt>
-<dd><p>If <code>TRUE</code> store information about the progress
-of the optimization in a data frame, and include it as part of the return
-value. See the 'Progress' section.</p></dd>
+<dd><p>If <code>TRUE</code>, store available information about the
+optimization in a data frame and include it in the return value. This option
+does not independently request objective or gradient calculations. See the
+'Progress' section.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -729,6 +730,10 @@ information available at each stored iteration. Common columns are <code>f</code
 realized outer <code>step</code>, the gradient-descent step length <code>alpha</code>, and the
 momentum coefficient <code>mu</code>. Columns are included only when their owning
 method or calculation supplies them.</p>
+<p><code>store_progress</code> controls retention of these observations. It does not by
+itself force objective or gradient calculations; those callbacks run only
+when the optimization method, convergence criteria, or another explicit
+calculation request needs them.</p>
 <p>Line searches may add these diagnostic columns:</p><ul><li><p><code>alpha_init</code>: Initial step length used by the line search after
 initialization and safeguards.</p></li>
 <li><p><code>slope_init</code>: Directional derivative at the start of the search.</p></li>

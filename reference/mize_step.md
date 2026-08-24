@@ -64,6 +64,18 @@ you want the next iteration of optimization, you gain the ability to do
 your own checks for convergence, logging and so on, as well as take
 other action between iterations, e.g. visualization.
 
+A stateful optimization loop divides stopping work across three calls.
+`mize_step()` can stop immediately when a hard callback budget is
+exhausted or an optimization method fails. Ordinary numerical tolerances
+and `max_iter` are applied by
+[`check_mize_convergence()`](https://jlmelville.github.io/mize/reference/check_mize_convergence.md).
+After each active step, call
+[`mize_step_summary()`](https://jlmelville.github.io/mize/reference/mize_step_summary.md),
+retain its returned `opt`, and then call
+[`check_mize_convergence()`](https://jlmelville.github.io/mize/reference/check_mize_convergence.md)
+if the summary did not terminate the optimizer. The examples below show
+this sequence.
+
 Normally calling this function should return a more optimized vector of
 parameters than the input, or at least leave the parameters unchanged if
 no improvement was found, although this is determined by how the
@@ -104,12 +116,23 @@ rb0 <- c(-1.2, 1)
 
 opt <- make_mize(
   method = "SD", line_search = "const", step0 = 0.0001,
-  par = rb0, fg = rosenbrock_fg
+  par = rb0, fg = rosenbrock_fg, max_iter = 3
 )
 par <- rb0
-for (iter in 1:3) {
-  res <- mize_step(opt, par, rosenbrock_fg)
-  par <- res$par
-  opt <- res$opt
+while (!opt$is_terminated) {
+  par_old <- par
+  step_result <- mize_step(opt, par, rosenbrock_fg)
+  opt <- step_result$opt
+  par <- step_result$par
+  if (opt$is_terminated) {
+    break
+  }
+
+  step_info <- mize_step_summary(opt, par, rosenbrock_fg, par_old)
+  opt <- step_info$opt
+  if (opt$is_terminated) {
+    break
+  }
+  opt <- check_mize_convergence(step_info)
 }
 ```

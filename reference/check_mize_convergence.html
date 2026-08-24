@@ -93,8 +93,11 @@ contains two items: <code>what</code>, a short string describing what caused the
 termination, and <code>val</code>, the value of the termination criterion that
 caused termination. This list will not be present if <code>is_terminated</code> is
 <code>FALSE</code>.</p></li>
-</ul><p>Convergence criteria are only checked here. To set these criteria, use
-<code><a href="make_mize.html">make_mize()</a></code> or <code><a href="mize_init.html">mize_init()</a></code>.</p>
+</ul><p>Convergence criteria are checked here after <code><a href="mize_step_summary.html">mize_step_summary()</a></code> has gathered
+the observations they require. To set these criteria, use <code><a href="make_mize.html">make_mize()</a></code> or
+<code><a href="mize_init.html">mize_init()</a></code>. In a stateful loop, first retain <code>mize_step_info$opt</code>; it may
+already be terminal because a requested observation exhausted a hard callback
+budget. Call this function only while that optimizer remains active.</p>
     </div>
 
     <div class="section level2">
@@ -115,8 +118,10 @@ caused termination. This list will not be present if <code>is_terminated</code> 
 <span class="r-in"><span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="make_mize.html">make_mize</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"BFGS"</span>, par <span class="op">=</span> <span class="va">rb0</span>, fg <span class="op">=</span> <span class="va">rb_fg</span>, max_iter <span class="op">=</span> <span class="fl">30</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">mize_res</span> <span class="op">&lt;-</span> <span class="fu"><a href="mize_step.html">mize_step</a></span><span class="op">(</span>opt <span class="op">=</span> <span class="va">opt</span>, par <span class="op">=</span> <span class="va">rb0</span>, fg <span class="op">=</span> <span class="va">rb_fg</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">step_info</span> <span class="op">&lt;-</span> <span class="fu"><a href="mize_step_summary.html">mize_step_summary</a></span><span class="op">(</span><span class="va">mize_res</span><span class="op">$</span><span class="va">opt</span>, <span class="va">mize_res</span><span class="op">$</span><span class="va">par</span>, <span class="va">rb_fg</span>, <span class="va">rb0</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="co"># check convergence by looking at opt$is_terminated</span></span></span>
-<span class="r-in"><span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu">check_mize_convergence</span><span class="op">(</span><span class="va">step_info</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="va">step_info</span><span class="op">$</span><span class="va">opt</span></span></span>
+<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="va">opt</span><span class="op">$</span><span class="va">is_terminated</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu">check_mize_convergence</span><span class="op">(</span><span class="va">step_info</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

@@ -119,7 +119,14 @@ already be initialized.
 requires an initialized optimizer and does not carry out initialization
 itself. Reinitialization resets the iteration counter and transient
 algorithm state, but preserves accumulated function and gradient
-evaluation counts and explicitly registered custom hooks.
+evaluation counts and explicitly registered custom hooks. Initialization
+does not guarantee that the objective or gradient has been evaluated at
+`par`. If caller-owned records need a starting observation, request it
+with
+[`mize_step_summary()`](https://jlmelville.github.io/mize/reference/mize_step_summary.md)
+using `calc_fn = TRUE` or `calc_gr = TRUE`, and retain the `opt`
+returned by that call. Any requested callback still honors the
+configured hard budgets.
 
 Optional convergence parameters may also be passed here, for use with
 [`check_mize_convergence()`](https://jlmelville.github.io/mize/reference/check_mize_convergence.md).
@@ -150,13 +157,24 @@ rosenbrock_fg <- list(
 rb0 <- c(-1.2, 1)
 
 # Initialize with function and starting point before commencing optimization
-opt <- mize_init(opt, rb0, rosenbrock_fg)
+opt <- mize_init(opt, rb0, rosenbrock_fg, max_iter = 3)
 
-# Finally, can commence the optimization loop
+# Finally, commence a terminal-aware optimization loop
 par <- rb0
-for (iter in 1:3) {
-  res <- mize_step(opt, par, rosenbrock_fg)
-  par <- res$par
-  opt <- res$opt
+while (!opt$is_terminated) {
+  par_old <- par
+  step_result <- mize_step(opt, par, rosenbrock_fg)
+  opt <- step_result$opt
+  par <- step_result$par
+  if (opt$is_terminated) {
+    break
+  }
+
+  step_info <- mize_step_summary(opt, par, rosenbrock_fg, par_old)
+  opt <- step_info$opt
+  if (opt$is_terminated) {
+    break
+  }
+  opt <- check_mize_convergence(step_info)
 }
 ```
