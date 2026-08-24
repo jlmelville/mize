@@ -10,13 +10,21 @@
 #' was asked for. A gradient norm will be returned only if a non-null gradient
 #' tolerance was specified, even if the gradient is available.
 #'
-#' Note that if a function tolerance was specified, but was not calculated for
-#' the relevant value of `par`, they will be calculated here and the
-#' calculation does contribute to the total function count (and will be cached
-#' for potential use in the next iteration). The same applies for gradient
-#' tolerances and gradient calculation. Function and gradient calculation can
-#' also be forced here by setting the `calc_fn` and `calc_gr`
-#' (respectively) parameters to `TRUE`.
+#' If a function value is required by a tolerance but is not cached for the
+#' relevant value of `par`, it will be calculated here. The calculation
+#' contributes to the total function count and is cached for potential use in
+#' the next iteration. The same rule applies when a gradient tolerance requires
+#' a gradient calculation. Function and gradient calculation can also be forced
+#' here by setting the `calc_fn` and `calc_gr` parameters, respectively, to
+#' `TRUE`.
+#'
+#' Requested objective and gradient calculations honor the optimizer's hard
+#' callback budgets. If a request would exceed a budget, the corresponding
+#' field is omitted and the returned `opt` records the termination. Always
+#' retain this updated optimizer before continuing. This summary does not apply
+#' ordinary numerical tolerances or `max_iter`; pass it to
+#' [check_mize_convergence()] for those checks. Non-finite observations are
+#' likewise interpreted there.
 #'
 #' @param opt Optimizer to generate summary for, from return value of
 #'  [mize_step()].
@@ -74,6 +82,10 @@
 #' mize_res <- mize_step(opt = opt, par = rb0, fg = rb_fg)
 #' # Get info about first step, use rb0 to compare new par with initial value
 #' step_info <- mize_step_summary(mize_res$opt, mize_res$par, rb_fg, rb0)
+#' opt <- step_info$opt
+#' if (!opt$is_terminated) {
+#'   opt <- check_mize_convergence(step_info)
+#' }
 mize_step_summary <- function(
   opt,
   par,
@@ -274,8 +286,11 @@ line_search_no_step_termination <- function(mize_step_info) {
 #' caused termination. This list will not be present if `is_terminated` is
 #' `FALSE`.
 #'
-#' Convergence criteria are only checked here. To set these criteria, use
-#' [make_mize()] or [mize_init()].
+#' Convergence criteria are checked here after [mize_step_summary()] has gathered
+#' the observations they require. To set these criteria, use [make_mize()] or
+#' [mize_init()]. In a stateful loop, first retain `mize_step_info$opt`; it may
+#' already be terminal because a requested observation exhausted a hard callback
+#' budget. Call this function only while that optimizer remains active.
 #'
 #' @param mize_step_info Step info for this iteration, created by
 #'   [mize_step_summary()]
@@ -299,8 +314,10 @@ line_search_no_step_termination <- function(mize_step_info) {
 #' opt <- make_mize(method = "BFGS", par = rb0, fg = rb_fg, max_iter = 30)
 #' mize_res <- mize_step(opt = opt, par = rb0, fg = rb_fg)
 #' step_info <- mize_step_summary(mize_res$opt, mize_res$par, rb_fg, rb0)
-#' # check convergence by looking at opt$is_terminated
-#' opt <- check_mize_convergence(step_info)
+#' opt <- step_info$opt
+#' if (!opt$is_terminated) {
+#'   opt <- check_mize_convergence(step_info)
+#' }
 check_mize_convergence <- function(mize_step_info) {
   opt <- mize_step_info$opt
 

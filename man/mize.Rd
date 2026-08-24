@@ -244,9 +244,10 @@ If not an integer multiple of \code{check_conv_every}, it will be set to
 \item{verbose}{If \code{TRUE}, log information about the progress of the
 optimization to the console.}
 
-\item{store_progress}{If \code{TRUE} store information about the progress
-of the optimization in a data frame, and include it as part of the return
-value. See the 'Progress' section.}
+\item{store_progress}{If \code{TRUE}, store available information about the
+optimization in a data frame and include it in the return value. This option
+does not independently request objective or gradient calculations. See the
+'Progress' section.}
 }
 \value{
 A list with components:
@@ -609,6 +610,11 @@ information available at each stored iteration. Common columns are \code{f},
 realized outer \code{step}, the gradient-descent step length \code{alpha}, and the
 momentum coefficient \code{mu}. Columns are included only when their owning
 method or calculation supplies them.
+
+\code{store_progress} controls retention of these observations. It does not by
+itself force objective or gradient calculations; those callbacks run only
+when the optimization method, convergence criteria, or another explicit
+calculation request needs them.
 
 Line searches may add these diagnostic columns:
 \itemize{

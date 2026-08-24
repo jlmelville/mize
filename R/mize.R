@@ -284,6 +284,11 @@
 #' momentum coefficient `mu`. Columns are included only when their owning
 #' method or calculation supplies them.
 #'
+#' `store_progress` controls retention of these observations. It does not by
+#' itself force objective or gradient calculations; those callbacks run only
+#' when the optimization method, convergence criteria, or another explicit
+#' calculation request needs them.
+#'
 #' Line searches may add these diagnostic columns:
 #'
 #' * `alpha_init`: Initial step length used by the line search after
@@ -569,9 +574,10 @@
 #' `check_conv_every`.
 #' @param verbose If `TRUE`, log information about the progress of the
 #' optimization to the console.
-#' @param store_progress If `TRUE` store information about the progress
-#' of the optimization in a data frame, and include it as part of the return
-#' value. See the 'Progress' section.
+#' @param store_progress If `TRUE`, store available information about the
+#' optimization in a data frame and include it in the return value. This option
+#' does not independently request objective or gradient calculations. See the
+#' 'Progress' section.
 #' @return A list with components:
 #'
 #' * `par`: Optimized parameters. Normally, this is the best set of
