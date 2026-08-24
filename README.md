@@ -52,17 +52,42 @@ res$par
 res$f
 ```
 
-For stateful optimization, create an optimizer and call `mize_step()` manually:
+For stateful optimization, retain the updated optimizer and stop when it
+reports a terminal state:
 
 ```r
-opt <- make_mize(method = "L-BFGS", par = c(-1.2, 1), fg = rosenbrock_fg)
 par <- c(-1.2, 1)
+opt <- make_mize(
+  method = "L-BFGS",
+  par = par,
+  fg = rosenbrock_fg,
+  max_iter = 30
+)
 
-for (i in seq_len(30)) {
+while (!opt$is_terminated) {
+  par_old <- par
   step <- mize_step(opt, par, rosenbrock_fg)
-  par <- step$par
   opt <- step$opt
+  par <- step$par
+  if (opt$is_terminated) {
+    break
+  }
+
+  step_info <- mize_step_summary(
+    opt,
+    par,
+    rosenbrock_fg,
+    par_old = par_old
+  )
+  opt <- step_info$opt
+  if (opt$is_terminated) {
+    break
+  }
+
+  opt <- check_mize_convergence(step_info)
 }
+
+opt[c("status", "converged", "terminate")]
 ```
 
 ## Documentation
