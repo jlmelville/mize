@@ -60,20 +60,43 @@ res$par
 res$f
 ```
 
-For stateful optimization, create an optimizer and call
-[`mize_step()`](https://jlmelville.github.io/mize/reference/mize_step.md)
-manually:
+For stateful optimization, retain the updated optimizer and stop when it
+reports a terminal state:
 
 ``` r
 
-opt <- make_mize(method = "L-BFGS", par = c(-1.2, 1), fg = rosenbrock_fg)
 par <- c(-1.2, 1)
+opt <- make_mize(
+  method = "L-BFGS",
+  par = par,
+  fg = rosenbrock_fg,
+  max_iter = 30
+)
 
-for (i in seq_len(30)) {
+while (!opt$is_terminated) {
+  par_old <- par
   step <- mize_step(opt, par, rosenbrock_fg)
-  par <- step$par
   opt <- step$opt
+  par <- step$par
+  if (opt$is_terminated) {
+    break
+  }
+
+  step_info <- mize_step_summary(
+    opt,
+    par,
+    rosenbrock_fg,
+    par_old = par_old
+  )
+  opt <- step_info$opt
+  if (opt$is_terminated) {
+    break
+  }
+
+  opt <- check_mize_convergence(step_info)
 }
+
+opt[c("status", "converged", "terminate")]
 ```
 
 ## Documentation
@@ -84,17 +107,18 @@ Start with:
 
 - [Getting
   started](https://jlmelville.github.io/mize/articles/mize.html)
+- [Choosing methods and
+  tuning](https://jlmelville.github.io/mize/articles/methods.html)
 - [Convergence](https://jlmelville.github.io/mize/articles/convergence.html)
 - [Stateful
   optimization](https://jlmelville.github.io/mize/articles/stateful.html)
-- [Metric MDS
-  example](https://jlmelville.github.io/mize/articles/mmds.html)
+- [Metric MDS](https://jlmelville.github.io/mize/articles/mmds.html)
 - [Function
   reference](https://jlmelville.github.io/mize/reference/index.html)
 
 The CRAN package also includes the main vignettes.
 
-## See Also
+## See also
 
 The Wolfe line searches use conversions of Mark Schmidt’s [minFunc
 routines](https://www.cs.ubc.ca/~schmidtm/Software/minFunc.html), Carl
@@ -146,10 +170,12 @@ encouragement in getting mize onto CRAN.
 
 ### Package guides
 
-- [Mize](https://jlmelville.github.io/mize/articles/mize.md):
+- [Getting started](https://jlmelville.github.io/mize/articles/mize.md):
+- [Choosing methods and
+  tuning](https://jlmelville.github.io/mize/articles/methods.md):
 - [Convergence](https://jlmelville.github.io/mize/articles/convergence.md):
 - [Stateful
-  Optimization](https://jlmelville.github.io/mize/articles/stateful.md):
+  optimization](https://jlmelville.github.io/mize/articles/stateful.md):
 - [Metric MDS](https://jlmelville.github.io/mize/articles/mmds.md):
 
 ### Background notes

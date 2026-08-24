@@ -37,13 +37,14 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
-<li class="nav-item"><a class="nav-link" href="articles/mize.html">Get started</a></li>
+<li class="nav-item"><a class="nav-link" href="articles/mize.html">Getting started</a></li>
 <li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><h6 class="dropdown-header" data-toc-skip>Package guides</h6></li>
     <li><a class="dropdown-item" href="articles/mize.html">Getting started</a></li>
+    <li><a class="dropdown-item" href="articles/methods.html">Choosing methods and tuning</a></li>
     <li><a class="dropdown-item" href="articles/convergence.html">Convergence</a></li>
     <li><a class="dropdown-item" href="articles/stateful.html">Stateful optimization</a></li>
     <li><a class="dropdown-item" href="articles/mmds.html">Metric MDS</a></li>
@@ -104,16 +105,40 @@
 <span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/mize.html">mize</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1.2</span>, <span class="fl">1</span><span class="op">)</span>, <span class="va">rosenbrock_fg</span>, method <span class="op">=</span> <span class="st">"L-BFGS"</span><span class="op">)</span></span>
 <span><span class="va">res</span><span class="op">$</span><span class="va">par</span></span>
 <span><span class="va">res</span><span class="op">$</span><span class="va">f</span></span></code></pre></div>
-<p>For stateful optimization, create an optimizer and call <code><a href="reference/mize_step.html">mize_step()</a></code> manually:</p>
+<p>For stateful optimization, retain the updated optimizer and stop when it reports a terminal state:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/make_mize.html">make_mize</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"L-BFGS"</span>, par <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1.2</span>, <span class="fl">1</span><span class="op">)</span>, fg <span class="op">=</span> <span class="va">rosenbrock_fg</span><span class="op">)</span></span>
-<span><span class="va">par</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1.2</span>, <span class="fl">1</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">par</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1.2</span>, <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/make_mize.html">make_mize</a></span><span class="op">(</span></span>
+<span>  method <span class="op">=</span> <span class="st">"L-BFGS"</span>,</span>
+<span>  par <span class="op">=</span> <span class="va">par</span>,</span>
+<span>  fg <span class="op">=</span> <span class="va">rosenbrock_fg</span>,</span>
+<span>  max_iter <span class="op">=</span> <span class="fl">30</span></span>
+<span><span class="op">)</span></span>
 <span></span>
-<span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fl">30</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span><span class="kw">while</span> <span class="op">(</span><span class="op">!</span><span class="va">opt</span><span class="op">$</span><span class="va">is_terminated</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">par_old</span> <span class="op">&lt;-</span> <span class="va">par</span></span>
 <span>  <span class="va">step</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/mize_step.html">mize_step</a></span><span class="op">(</span><span class="va">opt</span>, <span class="va">par</span>, <span class="va">rosenbrock_fg</span><span class="op">)</span></span>
-<span>  <span class="va">par</span> <span class="op">&lt;-</span> <span class="va">step</span><span class="op">$</span><span class="va">par</span></span>
 <span>  <span class="va">opt</span> <span class="op">&lt;-</span> <span class="va">step</span><span class="op">$</span><span class="va">opt</span></span>
-<span><span class="op">}</span></span></code></pre></div>
+<span>  <span class="va">par</span> <span class="op">&lt;-</span> <span class="va">step</span><span class="op">$</span><span class="va">par</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">opt</span><span class="op">$</span><span class="va">is_terminated</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="kw">break</span></span>
+<span>  <span class="op">}</span></span>
+<span></span>
+<span>  <span class="va">step_info</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/mize_step_summary.html">mize_step_summary</a></span><span class="op">(</span></span>
+<span>    <span class="va">opt</span>,</span>
+<span>    <span class="va">par</span>,</span>
+<span>    <span class="va">rosenbrock_fg</span>,</span>
+<span>    par_old <span class="op">=</span> <span class="va">par_old</span></span>
+<span>  <span class="op">)</span></span>
+<span>  <span class="va">opt</span> <span class="op">&lt;-</span> <span class="va">step_info</span><span class="op">$</span><span class="va">opt</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">opt</span><span class="op">$</span><span class="va">is_terminated</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="kw">break</span></span>
+<span>  <span class="op">}</span></span>
+<span></span>
+<span>  <span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/check_mize_convergence.html">check_mize_convergence</a></span><span class="op">(</span><span class="va">step_info</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">opt</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"status"</span>, <span class="st">"converged"</span>, <span class="st">"terminate"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a>
@@ -122,15 +147,16 @@
 <p>Start with:</p>
 <ul>
 <li><a href="https://jlmelville.github.io/mize/articles/mize.html">Getting started</a></li>
+<li><a href="https://jlmelville.github.io/mize/articles/methods.html">Choosing methods and tuning</a></li>
 <li><a href="https://jlmelville.github.io/mize/articles/convergence.html">Convergence</a></li>
 <li><a href="https://jlmelville.github.io/mize/articles/stateful.html">Stateful optimization</a></li>
-<li><a href="https://jlmelville.github.io/mize/articles/mmds.html">Metric MDS example</a></li>
+<li><a href="https://jlmelville.github.io/mize/articles/mmds.html">Metric MDS</a></li>
 <li><a href="https://jlmelville.github.io/mize/reference/index.html">Function reference</a></li>
 </ul>
 <p>The CRAN package also includes the main vignettes.</p>
 </div>
 <div class="section level2">
-<h2 id="see-also">See Also<a class="anchor" aria-label="anchor" href="#see-also"></a>
+<h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a>
 </h2>
 <p>The Wolfe line searches use conversions of Mark Schmidt’s <a href="https://www.cs.ubc.ca/~schmidtm/Software/minFunc.html" class="external-link">minFunc routines</a>, Carl Edward Rasmussen’s <a href="https://gaussianprocess.org/gpml/code/matlab/doc/" class="external-link">Matlab code</a>, and Dianne O’Leary’s Matlab translation of the <a href="https://www.cs.umd.edu/users/oleary/software/" class="external-link">More-Thuente line search</a> algorithm from <a href="https://www.netlib.org/minpack/" class="external-link">MINPACK</a>.</p>
 <p>I also maintain the <a href="https://github.com/jlmelville/funconstrain" class="external-link">funconstrain</a> package, which contains test problems for numerical optimization.</p>

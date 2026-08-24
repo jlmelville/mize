@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Stateful Optimization • mize</title>
+<title>Stateful optimization • mize</title>
 <!-- mathjax math --><script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js" integrity="sha256-MASABpB4tYktI2Oitl4t+78w/lyA+D7b/s9GEP0JOGI=" crossorigin="anonymous"></script><script>
   window.MathJax = {
     chtml: {
@@ -16,7 +16,7 @@
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Stateful Optimization">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Stateful optimization">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -35,13 +35,14 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
-<li class="nav-item"><a class="nav-link" href="../articles/mize.html">Get started</a></li>
+<li class="nav-item"><a class="nav-link" href="../articles/mize.html">Getting started</a></li>
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><h6 class="dropdown-header" data-toc-skip>Package guides</h6></li>
     <li><a class="dropdown-item" href="../articles/mize.html">Getting started</a></li>
+    <li><a class="dropdown-item" href="../articles/methods.html">Choosing methods and tuning</a></li>
     <li><a class="dropdown-item" href="../articles/convergence.html">Convergence</a></li>
     <li><a class="dropdown-item" href="../articles/stateful.html">Stateful optimization</a></li>
     <li><a class="dropdown-item" href="../articles/mmds.html">Metric MDS</a></li>
@@ -70,11 +71,10 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>Stateful Optimization</h1>
+      <h1>Stateful optimization</h1>
                         <h4 data-toc-skip class="author">James
 Melville</h4>
             
-            <h4 data-toc-skip class="date">2026-08-24</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/jlmelville/mize/blob/master/vignettes/stateful.Rmd" class="external-link"><code>vignettes/stateful.Rmd</code></a></small>
       <div class="d-none name"><code>stateful.Rmd</code></div>
@@ -82,398 +82,511 @@ Melville</h4>
 
     
     
-<p>By “Stateful” I mean what if we could create an optimizer
-independently of the function it was operating on and be able to pass it
-around, store it, and get full control over when we pass it data to
-continue the optimization.</p>
-<p>This vignette is about using <code>mize</code> to manually control an
-optimization externally. Instead of passing <code>mize</code> a function
-to be optimized from a starting point, then waiting for
-<code>mize</code> to finish and get back the finished results, you might
-want to tell <code>mize</code> to optimize for a few steps, then do
-something with the intermediate results: log the cost, update some
-parameters, test for some specific convergence criterion, checkpoint the
-current results, or plot the current state of the result in some custom
-way. Then, if there’s still more optimization to be done, pass the
-results back off to <code>mize</code> and get it to crank away for a few
-more iterations.</p>
-<p>This was in fact the inspiration for creating <code>mize</code> in
-the first place: I wanted access to the sort of optimization routines
-that the <code><a href="https://rdrr.io/r/stats/optim.html" class="external-link">stats::optim</a></code> function provided, but the lack of
-control was a deal breaker. One way to try and get around the problem is
-to only optimize for a few iterations at a time:</p>
+<p>A stateful optimizer separates configuration from iteration. You keep
+the current parameters and optimizer state, decide when to advance them,
+and can log, visualize, intervene, or checkpoint between steps.</p>
+<p>This is useful when a single blocking call to <code><a href="../reference/mize.html">mize()</a></code>
+does not leave enough room for application-specific work. The price of
+that control is that your loop owns the lifecycle: it must retain every
+updated optimizer, check terminal state, and treat function and gradient
+observations as optional.</p>
+<p>We will use the two-dimensional Rosenbrock function throughout:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">rb_fg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>   fn <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span> <span class="fl">100</span> <span class="op">*</span> <span class="op">(</span><span class="va">x</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span> <span class="op">-</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">*</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span> <span class="op">^</span> <span class="fl">2</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span> <span class="op">^</span> <span class="fl">2</span>  <span class="op">}</span>,</span>
-<span>   gr <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span> <span class="op">-</span><span class="fl">400</span> <span class="op">*</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">*</span> <span class="op">(</span><span class="va">x</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span> <span class="op">-</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">*</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span> <span class="op">-</span> <span class="fl">2</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span>,</span>
-<span>                          <span class="fl">200</span> <span class="op">*</span>        <span class="op">(</span><span class="va">x</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span> <span class="op">-</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">*</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span><span class="op">)</span> <span class="op">}</span><span class="op">)</span></span>
-<span><span class="va">rb0</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1.2</span>, <span class="fl">1</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">par</span> <span class="op">&lt;-</span> <span class="va">rb0</span></span>
-<span><span class="kw">for</span> <span class="op">(</span><span class="va">batch</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">optim_res</span> <span class="op">&lt;-</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/optim.html" class="external-link">optim</a></span><span class="op">(</span>par <span class="op">=</span> <span class="va">par</span>, fn <span class="op">=</span> <span class="va">rb_fg</span><span class="op">$</span><span class="va">fn</span>, gr <span class="op">=</span> <span class="va">rb_fg</span><span class="op">$</span><span class="va">gr</span>, </span>
-<span>                            method <span class="op">=</span> <span class="st">"BFGS"</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">10</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="va">par</span> <span class="op">&lt;-</span> <span class="va">optim_res</span><span class="op">$</span><span class="va">par</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/message.html" class="external-link">message</a></span><span class="op">(</span><span class="st">"batch "</span>, <span class="va">batch</span>, <span class="st">" f = "</span>, <span class="fu"><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC</a></span><span class="op">(</span><span class="va">optim_res</span><span class="op">$</span><span class="va">value</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span><span class="co">#&gt; batch 1 f = 1.367</span></span>
-<span><span class="co">#&gt; batch 2 f = 0.2011</span></span>
-<span><span class="co">#&gt; batch 3 f = 0.006648</span></span></code></pre></div>
-<p>but even this unsatisfactory work-around causes problems, because you
-are reinitializing the optimization for with each batch, and losing all
-the information the optimizer has. In the case of methods like BFGS and
-CG, this is important for their efficient use. The more control you
-want, the fewer iterations per batch, but that leads to behavior that
-approaches steepest descent.</p>
-<p>Instead, <code>mize</code> lets you create a stateful optimizer, that
-you pass to a function, and an updated version of which is returned as
-part of the return value of the function. This gives you complete
-control over what to do in between iterations, without sacrificing any
-of the information the optimizer is using.</p>
+<span>  fn <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fl">100</span> <span class="op">*</span> <span class="op">(</span><span class="va">x</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span> <span class="op">-</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">*</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span></span>
+<span>  <span class="op">}</span>,</span>
+<span>  gr <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>      <span class="op">-</span><span class="fl">400</span> <span class="op">*</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">*</span> <span class="op">(</span><span class="va">x</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span> <span class="op">-</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">*</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span> <span class="op">-</span> <span class="fl">2</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span>,</span>
+<span>      <span class="fl">200</span> <span class="op">*</span> <span class="op">(</span><span class="va">x</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span> <span class="op">-</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">*</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">rb0</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1.2</span>, <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
 <div class="section level2">
-<h2 id="creating-an-optimizer">Creating an Optimizer<a class="anchor" aria-label="anchor" href="#creating-an-optimizer"></a>
+<h2 id="why-retaining-state-matters">Why retaining state matters<a class="anchor" aria-label="anchor" href="#why-retaining-state-matters"></a>
 </h2>
-<p>To create an optimizer, use the <code>make_mize</code> function:</p>
+<p>A tempting workaround with <code><a href="https://rdrr.io/r/stats/optim.html" class="external-link">stats::optim()</a></code> is to run a
+small batch, take its parameters, and start another optimizer:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/make_mize.html">make_mize</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"BFGS"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">first_batch</span> <span class="op">&lt;-</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/optim.html" class="external-link">optim</a></span><span class="op">(</span></span>
+<span>  par <span class="op">=</span> <span class="va">rb0</span>,</span>
+<span>  fn <span class="op">=</span> <span class="va">rb_fg</span><span class="op">$</span><span class="va">fn</span>,</span>
+<span>  gr <span class="op">=</span> <span class="va">rb_fg</span><span class="op">$</span><span class="va">gr</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"BFGS"</span>,</span>
+<span>  control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">second_batch</span> <span class="op">&lt;-</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/optim.html" class="external-link">optim</a></span><span class="op">(</span></span>
+<span>  par <span class="op">=</span> <span class="va">first_batch</span><span class="op">$</span><span class="va">par</span>,</span>
+<span>  fn <span class="op">=</span> <span class="va">rb_fg</span><span class="op">$</span><span class="va">fn</span>,</span>
+<span>  gr <span class="op">=</span> <span class="va">rb_fg</span><span class="op">$</span><span class="va">gr</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"BFGS"</span>,</span>
+<span>  control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>first <span class="op">=</span> <span class="va">first_batch</span><span class="op">$</span><span class="va">value</span>, second <span class="op">=</span> <span class="va">second_batch</span><span class="op">$</span><span class="va">value</span><span class="op">)</span></span>
+<span><span class="co">#&gt;     first    second </span></span>
+<span><span class="co">#&gt; 1.3673831 0.2010733</span></span></code></pre></div>
+<p>The second call starts a new BFGS run. It receives the parameters and
+discards the first run’s inverse-Hessian approximation and other
+transient method state. Shorter batches provide more interruptions while
+throwing away more of the information that makes a stateful method
+effective.</p>
 </div>
 <div class="section level2">
-<h2 id="initialize-the-optimizer">Initialize the Optimizer<a class="anchor" aria-label="anchor" href="#initialize-the-optimizer"></a>
+<h2 id="the-three-lifecycle-operations">The three lifecycle operations<a class="anchor" aria-label="anchor" href="#the-three-lifecycle-operations"></a>
 </h2>
-<p>Before starting the optimization, the optimizer needs to be
-initialized using the function and starting point. Mainly this is to
-allow the various methods to preallocate whatever storage they make use
-of (matrices and vectors) according to the size of the data, as
-specified by the starting location.</p>
-<p>To continue the rosenbrock example from above:</p>
+<p>The stateful API has three main operations:</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Operation</th>
+<th align="left">Role</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left"><code><a href="../reference/make_mize.html">make_mize()</a></code></td>
+<td align="left">Configure an optimizer; optionally initialize it when
+<code>par</code> and <code>fg</code> are available.</td>
+</tr>
+<tr class="even">
+<td align="left"><code><a href="../reference/mize_init.html">mize_init()</a></code></td>
+<td align="left">Bind an optimizer to a starting point and callbacks,
+and initialize a new run.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code><a href="../reference/mize_step.html">mize_step()</a></code></td>
+<td align="left">Advance one iteration and return updated
+<code>opt</code> and <code>par</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Configuration and initialization can be separate:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_init.html">mize_init</a></span><span class="op">(</span>opt <span class="op">=</span> <span class="va">opt</span>, par <span class="op">=</span> <span class="va">rb0</span>, fg <span class="op">=</span> <span class="va">rb_fg</span><span class="op">)</span></span></code></pre></div>
-<div class="section level3">
-<h3 id="a-potential-simplification">A potential simplification<a class="anchor" aria-label="anchor" href="#a-potential-simplification"></a>
-</h3>
-<p>If you have both the starting point and the function to optimize to
-hand at the point when the optimizer is created, you can provide that to
-<code>make_mize</code> and it will do the initialization for you:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/make_mize.html">make_mize</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"BFGS"</span>, par <span class="op">=</span> <span class="va">rb0</span>, fg <span class="op">=</span> <span class="va">rb_fg</span>, max_iter <span class="op">=</span> <span class="fl">30</span><span class="op">)</span></span></code></pre></div>
-<p>And there is no need to make a separate call to
-<code>mize_init</code>. However, normally it’s more convenient to handle
-configuring the optimizer earlier than when the data shows up.</p>
-</div>
+<code class="sourceCode R"><span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/make_mize.html">make_mize</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"BFGS"</span><span class="op">)</span></span>
+<span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_init.html">mize_init</a></span><span class="op">(</span></span>
+<span>  <span class="va">opt</span>,</span>
+<span>  par <span class="op">=</span> <span class="va">rb0</span>,</span>
+<span>  fg <span class="op">=</span> <span class="va">rb_fg</span>,</span>
+<span>  max_iter <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  abs_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  rel_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  grad_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  ginf_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  step_tol <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Or pass <code>par</code> and <code>fg</code> to
+<code><a href="../reference/make_mize.html">make_mize()</a></code> to initialize immediately. In either form,
+always use the updated <code>opt</code> and <code>par</code> returned by
+each step.</p>
 </div>
 <div class="section level2">
-<h2 id="start-optimizing">Start optimizing<a class="anchor" aria-label="anchor" href="#start-optimizing"></a>
+<h2 id="optional-observations">Optional observations<a class="anchor" aria-label="anchor" href="#optional-observations"></a>
 </h2>
-<p>Using the batch of ten iteration approach we used with
-<code>optim</code> is very similar with <code>mize</code>:</p>
+<p><code><a href="../reference/mize_step.html">mize_step()</a></code> always returns <code>opt</code>,
+<code>par</code>, <code>nf</code>, and <code>ng</code>. It returns
+<code>f</code> or <code>g</code> only when that value was calculated at
+the returned parameters. For example, constant-step steepest descent
+needs a gradient at the old parameters but does not observe either value
+at the new parameters:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">observation_opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/make_mize.html">make_mize</a></span><span class="op">(</span></span>
+<span>  method <span class="op">=</span> <span class="st">"SD"</span>,</span>
+<span>  line_search <span class="op">=</span> <span class="st">"constant"</span>,</span>
+<span>  step0 <span class="op">=</span> <span class="fl">0.0001</span>,</span>
+<span>  par <span class="op">=</span> <span class="va">rb0</span>,</span>
+<span>  fg <span class="op">=</span> <span class="va">rb_fg</span>,</span>
+<span>  max_iter <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  abs_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  rel_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  grad_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  ginf_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  step_tol <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">observation_step</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step.html">mize_step</a></span><span class="op">(</span><span class="va">observation_opt</span>, <span class="va">rb0</span>, <span class="va">rb_fg</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">observation_step</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "opt" "par" "nf"  "ng"</span></span></code></pre></div>
+<p>Code such as <code>if (step$f &lt; best_f)</code> is therefore
+unsafe. An absent observation is normal and leaves the step status
+unchanged.</p>
+</div>
+<div class="section level2">
+<h2 id="a-minimal-terminal-aware-loop">A minimal terminal-aware loop<a class="anchor" aria-label="anchor" href="#a-minimal-terminal-aware-loop"></a>
+</h2>
+<p>A stateful run does not check its ordinary convergence controls until
+you summarize a step and call <code><a href="../reference/check_mize_convergence.html">check_mize_convergence()</a></code>. A
+minimal safe loop retains state and checks for termination after every
+call that can update the optimizer:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">par</span> <span class="op">&lt;-</span> <span class="va">rb0</span></span>
-<span><span class="kw">for</span> <span class="op">(</span><span class="va">batch</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="va">mize_res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step.html">mize_step</a></span><span class="op">(</span>opt <span class="op">=</span> <span class="va">opt</span>, par <span class="op">=</span> <span class="va">par</span>, fg <span class="op">=</span> <span class="va">rb_fg</span><span class="op">)</span></span>
-<span>    <span class="va">par</span> <span class="op">&lt;-</span> <span class="va">mize_res</span><span class="op">$</span><span class="va">par</span></span>
-<span>    <span class="va">opt</span> <span class="op">&lt;-</span> <span class="va">mize_res</span><span class="op">$</span><span class="va">opt</span></span>
-<span>  <span class="op">}</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/message.html" class="external-link">message</a></span><span class="op">(</span><span class="st">"batch "</span>, <span class="va">batch</span>, <span class="st">" f = "</span>, <span class="fu"><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC</a></span><span class="op">(</span><span class="va">mize_res</span><span class="op">$</span><span class="va">f</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span><span class="co">#&gt; batch 1 f = 2.604</span></span>
-<span><span class="co">#&gt; batch 2 f = 0.5568</span></span>
-<span><span class="co">#&gt; batch 3 f = 0.005003</span></span></code></pre></div>
-<p>The difference here is that you have to do the iterating in batches
-of 10 manually yourself. The optimizer needs to be updated with the
-version that was returned from the function.</p>
-<div class="section level3">
-<h3 id="return-value-of-mize_step">Return value of <code>mize_step</code><a class="anchor" aria-label="anchor" href="#return-value-of-mize_step"></a>
-</h3>
-<p>As you can see, with the greater power of <code>mize_step</code> to
-control the iteration, comes greater responsibility. You also need to
-decide when to stop iterating. Apart from <code>par</code> and
-<code>opt</code>, there are some other components to the returned result
-list which might help:</p>
-<ul>
-<li>
-<code>f</code> - The function value, if it was calculated at
-<code>par</code>. For the few methods which don’t do this, you can of
-course generate it yourself via <code>rb_fg$fn(par)</code>.</li>
-<li>
-<code>g</code> - The gradient vector, if it was calculated at
-<code>par</code>. If it’s not present, then obviously there’s nothing to
-stop you calculating <code>rb_fg$gr(par)</code> yourself.</li>
-<li>
-<code>nf</code> - The number of function evaluations carried out
-over the optimizer’s lifetime. This count persists across
-<code><a href="../reference/mize_init.html">mize_init()</a></code> calls. <code>opt</code> coordinates it with
-<code>mize_step</code>, so you don’t need to update it manually between
-steps.</li>
-<li>
-<code>ng</code> - The optimizer-lifetime number of gradient
-evaluations, which also persists across <code><a href="../reference/mize_init.html">mize_init()</a></code>
-calls.</li>
-</ul>
-<p>You should treat the optimizer, <code>opt</code>, as a black box.
-After each step, check <code>opt$is_terminated</code> before relying on
-optional function or gradient values. If it is <code>TRUE</code>,
-<code>opt$terminate$what</code> gives the termination reason and
-<code>opt$terminate$val</code> gives the observed criterion value.
-Termination can indicate convergence, budget exhaustion, or a non-finite
-function or gradient.</p>
-<p>Taking all that into account, here’s a self-contained example, that
-removes the now un-necessary batching, does some minor error checking,
-and keeps track of the best parameters seen so far (although with this
-combination of optimizer and problem, you don’t have to worry about
-it):</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Create the optimizer</span></span>
-<span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/make_mize.html">make_mize</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"BFGS"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Pretend we don't have access to the function or starting point until later</span></span>
-<span><span class="va">rb_fg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>   fn <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span> <span class="fl">100</span> <span class="op">*</span> <span class="op">(</span><span class="va">x</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span> <span class="op">-</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">*</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span> <span class="op">^</span> <span class="fl">2</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span> <span class="op">^</span> <span class="fl">2</span>  <span class="op">}</span>,</span>
-<span>   gr <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span> <span class="op">-</span><span class="fl">400</span> <span class="op">*</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">*</span> <span class="op">(</span><span class="va">x</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span> <span class="op">-</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">*</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span> <span class="op">-</span> <span class="fl">2</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span>,</span>
-<span>                          <span class="fl">200</span> <span class="op">*</span>        <span class="op">(</span><span class="va">x</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span> <span class="op">-</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">*</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span><span class="op">)</span> <span class="op">}</span><span class="op">)</span></span>
-<span><span class="va">rb0</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1.2</span>, <span class="fl">1</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Initialize</span></span>
-<span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_init.html">mize_init</a></span><span class="op">(</span>opt <span class="op">=</span> <span class="va">opt</span>, par <span class="op">=</span> <span class="va">rb0</span>, fg <span class="op">=</span> <span class="va">rb_fg</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Store the best seen parameters in case something goes wrong</span></span>
-<span><span class="va">par</span> <span class="op">&lt;-</span> <span class="va">rb0</span></span>
-<span><span class="va">par_best</span> <span class="op">&lt;-</span> <span class="va">par</span></span>
-<span><span class="va">f_best</span> <span class="op">&lt;-</span> <span class="va">rb_fg</span><span class="op">$</span><span class="fu">fn</span><span class="op">(</span><span class="va">par_best</span><span class="op">)</span></span>
-<span></span>
-<span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">30</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">mize_res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step.html">mize_step</a></span><span class="op">(</span>opt <span class="op">=</span> <span class="va">opt</span>, par <span class="op">=</span> <span class="va">par</span>, fg <span class="op">=</span> <span class="va">rb_fg</span><span class="op">)</span></span>
-<span>  <span class="va">par</span> <span class="op">&lt;-</span> <span class="va">mize_res</span><span class="op">$</span><span class="va">par</span></span>
-<span>  <span class="va">opt</span> <span class="op">&lt;-</span> <span class="va">mize_res</span><span class="op">$</span><span class="va">opt</span></span>
-<span>  </span>
-<span>  <span class="co"># Do whatever you want with the data at each iteration</span></span>
-<span>  </span>
-<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">opt</span><span class="op">$</span><span class="va">is_terminated</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="co"># Stop before using values that may be unavailable after termination</span></span>
-<span>    <span class="kw">break</span></span>
-<span>  <span class="op">}</span></span>
-<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">mize_res</span><span class="op">$</span><span class="va">f</span> <span class="op">&lt;</span> <span class="va">f_best</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="va">f_best</span> <span class="op">&lt;-</span> <span class="va">mize_res</span><span class="op">$</span><span class="va">f</span></span>
-<span>    <span class="va">par_best</span> <span class="op">&lt;-</span> <span class="va">par</span></span>
-<span>  <span class="op">}</span></span>
-<span><span class="op">}</span></span>
-<span></span>
-<span><span class="co"># optimized result is in par_best</span></span>
-<span><span class="va">par_best</span></span>
-<span><span class="co">#&gt; [1] 0.9294066 0.8642370</span></span>
-<span><span class="va">f_best</span></span>
-<span><span class="co">#&gt; [1] 0.005002828</span></span></code></pre></div>
-</div>
-</div>
-<div class="section level2">
-<h2 id="step-information">Step information<a class="anchor" aria-label="anchor" href="#step-information"></a>
-</h2>
-<p>The return value of <code>mize_step</code> provides the function and
-gradient values. If you would like access to more information, the
-<code>mize_step_summary</code> function can extract it conveniently:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Create optimizer and do one step of optimization as usual</span></span>
-<span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/make_mize.html">make_mize</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"BFGS"</span>, par <span class="op">=</span> <span class="va">rb0</span>, fg <span class="op">=</span> <span class="va">rb_fg</span><span class="op">)</span></span>
-<span><span class="va">par</span> <span class="op">&lt;-</span> <span class="va">rb0</span></span>
-<span><span class="va">par_old</span> <span class="op">&lt;-</span> <span class="va">par</span></span>
-<span><span class="va">mize_res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step.html">mize_step</a></span><span class="op">(</span>opt <span class="op">=</span> <span class="va">opt</span>, par <span class="op">=</span> <span class="va">par</span>, fg <span class="op">=</span> <span class="va">rb_fg</span><span class="op">)</span></span>
-<span><span class="va">step_info</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step_summary.html">mize_step_summary</a></span><span class="op">(</span></span>
-<span>  <span class="va">mize_res</span><span class="op">$</span><span class="va">opt</span>, <span class="va">mize_res</span><span class="op">$</span><span class="va">par</span>, <span class="va">rb_fg</span>, par_old <span class="op">=</span> <span class="va">par_old</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># info that's already available in mize_res</span></span>
-<span><span class="va">step_info</span><span class="op">$</span><span class="va">f</span></span>
-<span><span class="co">#&gt; [1] 19.49933</span></span>
-<span><span class="va">step_info</span><span class="op">$</span><span class="va">ng</span></span>
-<span><span class="co">#&gt; [1] 3</span></span>
-<span><span class="va">step_info</span><span class="op">$</span><span class="va">nf</span></span>
-<span><span class="co">#&gt; [1] 3</span></span>
-<span><span class="co"># and some extra</span></span>
-<span><span class="va">step_info</span><span class="op">$</span><span class="va">step</span></span>
-<span><span class="co">#&gt; [1] 0.02168573</span></span>
-<span><span class="va">step_info</span><span class="op">$</span><span class="va">alpha</span></span>
-<span><span class="co">#&gt; [1] 9.31247e-05</span></span></code></pre></div>
-<p><code>mize_step_summary</code> takes <code>opt</code>,
-<code>par</code> and <code>fg</code> like <code>mize_step</code> does,
-but also optionally wants a <code>par_old</code> argument. This is the
-value of <code>par</code> from the previous iteration, from which it
-calculates the size of the step taken in this iteration.</p>
-<p>Information available from the return value of
-<code>mize_step_summary</code> includes:</p>
-<ul>
-<li>
-<code>iter</code> The iteration number.</li>
-<li>
-<code>f</code> The function value, if it’s available, or if you have
-set a convergence tolerance that requires its calculation (see
-below).</li>
-<li>
-<code>g2n</code> The gradient l2 (Euclidean) norm, if
-<code>grad_tol</code> is non-<code>NULL</code> (see the Convergence
-section for more).</li>
-<li>
-<code>ginfn</code> The gradient infinity norm, if
-<code>ginf_tol</code> is non-<code>NULL</code> (also see the Convergence
-section for more).</li>
-<li>
-<code>nf</code> The number of function evaluations over the
-optimizer’s lifetime.</li>
-<li>
-<code>ng</code> The number of gradient evaluations over the
-optimizer’s lifetime.</li>
-<li>
-<code>step</code> The step size of this iteration.</li>
-<li>
-<code>alpha</code> The size of the line search value found during
-the gradient descent stage. This won’t be the same as <code>step</code>
-even for optimizers that don’t use an extra momentum stage because the
-total step size is normally the value of <code>alpha</code> multiplied
-by the magnitude of the gradient.</li>
-<li>
-<code>mu</code> If a momentum stage was used, the momentum
-coefficient.</li>
-<li>
-<code>opt</code> The optimizer with updated function and gradient
-counts, if <code>f</code>, <code>g2n</code>, <code>ginfn</code> was
-calculated.</li>
-</ul>
-<p>In many cases, <code>f</code>, <code>g2n</code> and
-<code>ginfn</code> do not require any recalculation (or aren’t
-calculated), but to be on the safe side, always reassign
-<code>opt</code> to the return value from
-<code>mize_step_summary</code>.</p>
-<p>Here’s a modified version of the previous example, where we log out
-information from <code>mize_step_summary</code>. We’re only going to go
-for 10 iterations to avoid too much output.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Create the optimizer</span></span>
-<span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/make_mize.html">make_mize</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"BFGS"</span>, par <span class="op">=</span> <span class="va">rb0</span>, fg <span class="op">=</span> <span class="va">rb_fg</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">par</span> <span class="op">&lt;-</span> <span class="va">rb0</span></span>
-<span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">par_old</span> <span class="op">&lt;-</span> <span class="va">par</span></span>
-<span>  <span class="va">mize_res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step.html">mize_step</a></span><span class="op">(</span>opt <span class="op">=</span> <span class="va">opt</span>, par <span class="op">=</span> <span class="va">par</span>, fg <span class="op">=</span> <span class="va">rb_fg</span><span class="op">)</span></span>
-<span>  <span class="va">par</span> <span class="op">&lt;-</span> <span class="va">mize_res</span><span class="op">$</span><span class="va">par</span></span>
-<span>  <span class="va">opt</span> <span class="op">&lt;-</span> <span class="va">mize_res</span><span class="op">$</span><span class="va">opt</span></span>
-<span></span>
-<span>  <span class="co"># step info</span></span>
-<span>  <span class="va">step_info</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step_summary.html">mize_step_summary</a></span><span class="op">(</span><span class="va">opt</span>, <span class="va">par</span>, <span class="va">rb_fg</span>, <span class="va">par_old</span><span class="op">)</span></span>
-<span>  <span class="va">opt</span> <span class="op">&lt;-</span> <span class="va">step_info</span><span class="op">$</span><span class="va">opt</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/message.html" class="external-link">message</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/funprog.html" class="external-link">Map</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">x</span>, <span class="st">" = "</span>, <span class="fu"><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC</a></span><span class="op">(</span><span class="va">step_info</span><span class="op">[[</span><span class="va">x</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span> <span class="op">}</span>, </span>
-<span>        <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"iter"</span>, <span class="st">"f"</span>, <span class="st">"nf"</span>, <span class="st">"ng"</span>, <span class="st">"step"</span><span class="op">)</span><span class="op">)</span>, </span>
-<span>    collapse <span class="op">=</span> <span class="st">", "</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span><span class="co">#&gt; iter = 1, f = 19.5, nf = 3, ng = 3, step = 0.02169</span></span>
-<span><span class="co">#&gt; iter = 2, f = 11.57, nf = 4, ng = 4, step = 0.04729</span></span>
-<span><span class="co">#&gt; iter = 3, f = 4.281, nf = 5, ng = 5, step = 0.09808</span></span>
-<span><span class="co">#&gt; iter = 4, f = 4.144, nf = 6, ng = 6, step = 0.01427</span></span>
-<span><span class="co">#&gt; iter = 5, f = 4.14, nf = 7, ng = 7, step = 0.002249</span></span>
-<span><span class="co">#&gt; iter = 6, f = 4.136, nf = 8, ng = 8, step = 0.002942</span></span>
-<span><span class="co">#&gt; iter = 7, f = 4.128, nf = 9, ng = 9, step = 0.00557</span></span>
-<span><span class="co">#&gt; iter = 8, f = 4.114, nf = 10, ng = 10, step = 0.01061</span></span>
-<span><span class="co">#&gt; iter = 9, f = 4.086, nf = 11, ng = 11, step = 0.02048</span></span>
-<span><span class="co">#&gt; iter = 10, f = 2.604, nf = 14, ng = 14, step = 0.8382</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="convergence">Convergence<a class="anchor" aria-label="anchor" href="#convergence"></a>
-</h2>
-<p>In the example up until now we have manually looped over 30
-iterations and then stopped. More sophisticated stopping criteria is
-available. Three changes are needed:</p>
-<ol style="list-style-type: decimal">
-<li>When initializing the optimizer, when passing <code>par</code> and
-<code>fg</code> to either <code>make_mize</code> or
-<code>mize_init</code>, also pass termination criteria:</li>
-</ol>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/make_mize.html">make_mize</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"BFGS"</span>, par <span class="op">=</span> <span class="va">rb0</span>, fg <span class="op">=</span> <span class="va">rb_fg</span>, max_iter <span class="op">=</span> <span class="fl">30</span><span class="op">)</span></span>
-<span><span class="co"># or</span></span>
-<span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/make_mize.html">make_mize</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"BFGS"</span><span class="op">)</span></span>
-<span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_init.html">mize_init</a></span><span class="op">(</span>opt <span class="op">=</span> <span class="va">opt</span>, par <span class="op">=</span> <span class="va">rb0</span>, fg <span class="op">=</span> <span class="va">rb_fg</span>, max_iter <span class="op">=</span> <span class="fl">30</span><span class="op">)</span></span></code></pre></div>
-<ol start="2" style="list-style-type: decimal">
-<li>At the end of the loop, after calling
-<code>mize_step_summary</code>, pass the return value to the function
-<code>check_mize_convergence</code>. This returns an updated version of
-<code>opt</code> which will indicate if optimization should stop by
-setting the <code>opt$is_terminated</code> boolean flag:</li>
-</ol>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">par</span> <span class="op">&lt;-</span> <span class="va">rb0</span></span>
-<span><span class="va">par_old</span> <span class="op">&lt;-</span> <span class="va">par</span></span>
-<span><span class="va">mize_res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step.html">mize_step</a></span><span class="op">(</span><span class="va">opt</span>, <span class="va">par</span>, <span class="va">rb_fg</span><span class="op">)</span></span>
-<span><span class="va">par</span> <span class="op">&lt;-</span> <span class="va">mize_res</span><span class="op">$</span><span class="va">par</span></span>
-<span><span class="va">step_info</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step_summary.html">mize_step_summary</a></span><span class="op">(</span></span>
-<span>  <span class="va">mize_res</span><span class="op">$</span><span class="va">opt</span>, <span class="va">par</span>, <span class="va">rb_fg</span>, par_old <span class="op">=</span> <span class="va">par_old</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/check_mize_convergence.html">check_mize_convergence</a></span><span class="op">(</span><span class="va">step_info</span><span class="op">)</span></span></code></pre></div>
-<p>Note that you don’t need to manually assign <code>opt</code> to the
-value that comes from <code>mize_step_summary</code>, as
-<code>check_mize_convergence</code> handles that.</p>
-<ol start="3" style="list-style-type: decimal">
-<li>Instead of manually looping with a <code>for</code> loop you can use
-<code>while (!opt$is_terminated)</code>.</li>
-</ol>
-<p>Once <code>opt$is_terminated</code> is <code>TRUE</code>,
-optimization should cease. Inspect <code>opt$terminate$what</code> for
-the reason and <code>opt$terminate$val</code> for the observed criterion
-value. Check the flag immediately after <code><a href="../reference/mize_step.html">mize_step()</a></code> before
-doing anything that assumes a finite function or gradient value.</p>
-<p>Apart from just maximum number of iterations, there are a variety of
-options that relate to convergence. There is a separate vignette which
-covers these <a href="convergence.html">convergence options</a>, and all
-the parameters mentioned there can be passed to <code>make_mize</code>
-and <code>mize_init</code>. Whatever options you use, setting
-<code>max_iter</code> is a good idea to avoid an infinite loop.</p>
-<p>Here’s the example repeated again, this time using
-<code>check_mize_convergence</code> to control the number of iterations,
-rather than a <code>for</code> loop:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Create the optimizer</span></span>
-<span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/make_mize.html">make_mize</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"BFGS"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">rb_fg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>   fn <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span> <span class="fl">100</span> <span class="op">*</span> <span class="op">(</span><span class="va">x</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span> <span class="op">-</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">*</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span> <span class="op">^</span> <span class="fl">2</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span> <span class="op">^</span> <span class="fl">2</span>  <span class="op">}</span>,</span>
-<span>   gr <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span> <span class="op">-</span><span class="fl">400</span> <span class="op">*</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">*</span> <span class="op">(</span><span class="va">x</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span> <span class="op">-</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">*</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span> <span class="op">-</span> <span class="fl">2</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span>,</span>
-<span>                          <span class="fl">200</span> <span class="op">*</span>        <span class="op">(</span><span class="va">x</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span> <span class="op">-</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">*</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span><span class="op">)</span> <span class="op">}</span><span class="op">)</span></span>
-<span><span class="va">rb0</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1.2</span>, <span class="fl">1</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Initialize and set convergence criteria</span></span>
-<span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_init.html">mize_init</a></span><span class="op">(</span>opt <span class="op">=</span> <span class="va">opt</span>, par <span class="op">=</span> <span class="va">rb0</span>, fg <span class="op">=</span> <span class="va">rb_fg</span>, max_iter <span class="op">=</span> <span class="fl">30</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Store the best seen parameters in case something goes wrong</span></span>
-<span><span class="va">par</span> <span class="op">&lt;-</span> <span class="va">rb0</span></span>
-<span><span class="va">par_best</span> <span class="op">&lt;-</span> <span class="va">par</span></span>
-<span><span class="va">f_best</span> <span class="op">&lt;-</span> <span class="va">rb_fg</span><span class="op">$</span><span class="fu">fn</span><span class="op">(</span><span class="va">par_best</span><span class="op">)</span></span>
 <span></span>
 <span><span class="kw">while</span> <span class="op">(</span><span class="op">!</span><span class="va">opt</span><span class="op">$</span><span class="va">is_terminated</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">par_old</span> <span class="op">&lt;-</span> <span class="va">par</span></span>
-<span>  <span class="va">mize_res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step.html">mize_step</a></span><span class="op">(</span>opt <span class="op">=</span> <span class="va">opt</span>, par <span class="op">=</span> <span class="va">par</span>, fg <span class="op">=</span> <span class="va">rb_fg</span><span class="op">)</span></span>
-<span>  <span class="va">par</span> <span class="op">&lt;-</span> <span class="va">mize_res</span><span class="op">$</span><span class="va">par</span></span>
-<span>  <span class="va">opt</span> <span class="op">&lt;-</span> <span class="va">mize_res</span><span class="op">$</span><span class="va">opt</span></span>
-<span>  </span>
-<span>  <span class="co"># Do whatever you want with the data at each iteration</span></span>
-<span>  </span>
+<span>  <span class="va">step</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step.html">mize_step</a></span><span class="op">(</span><span class="va">opt</span>, <span class="va">par</span>, <span class="va">rb_fg</span><span class="op">)</span></span>
+<span>  <span class="va">opt</span> <span class="op">&lt;-</span> <span class="va">step</span><span class="op">$</span><span class="va">opt</span></span>
+<span>  <span class="va">par</span> <span class="op">&lt;-</span> <span class="va">step</span><span class="op">$</span><span class="va">par</span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="va">opt</span><span class="op">$</span><span class="va">is_terminated</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="co"># Stop before using values that may be unavailable after termination</span></span>
 <span>    <span class="kw">break</span></span>
 <span>  <span class="op">}</span></span>
-<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">mize_res</span><span class="op">$</span><span class="va">f</span> <span class="op">&lt;</span> <span class="va">f_best</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="va">f_best</span> <span class="op">&lt;-</span> <span class="va">mize_res</span><span class="op">$</span><span class="va">f</span></span>
-<span>    <span class="va">par_best</span> <span class="op">&lt;-</span> <span class="va">par</span></span>
+<span></span>
+<span>  <span class="va">step_info</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step_summary.html">mize_step_summary</a></span><span class="op">(</span></span>
+<span>    <span class="va">opt</span>,</span>
+<span>    <span class="va">par</span>,</span>
+<span>    <span class="va">rb_fg</span>,</span>
+<span>    par_old <span class="op">=</span> <span class="va">par_old</span>,</span>
+<span>    calc_fn <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>    calc_gr <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  <span class="op">)</span></span>
+<span>  <span class="va">opt</span> <span class="op">&lt;-</span> <span class="va">step_info</span><span class="op">$</span><span class="va">opt</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">opt</span><span class="op">$</span><span class="va">is_terminated</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="kw">break</span></span>
 <span>  <span class="op">}</span></span>
-<span>  </span>
-<span>  <span class="va">step_info</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step_summary.html">mize_step_summary</a></span><span class="op">(</span><span class="va">opt</span>, <span class="va">par</span>, <span class="va">rb_fg</span>, <span class="va">par_old</span><span class="op">)</span></span>
-<span>  <span class="co"># Do something with the step info if you'd like</span></span>
-<span>  <span class="co"># Check convergence</span></span>
+<span></span>
 <span>  <span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/check_mize_convergence.html">check_mize_convergence</a></span><span class="op">(</span><span class="va">step_info</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="co"># optimized result is in par_best</span></span>
-<span><span class="va">par_best</span></span>
-<span><span class="co">#&gt; [1] 0.9294066 0.8642370</span></span>
-<span><span class="va">f_best</span></span>
-<span><span class="co">#&gt; [1] 0.005002828</span></span></code></pre></div>
+<span><span class="va">opt</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"status"</span>, <span class="st">"converged"</span>, <span class="st">"message"</span>, <span class="st">"terminate"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt; $status</span></span>
+<span><span class="co">#&gt; [1] "budget_exhausted"</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $converged</span></span>
+<span><span class="co">#&gt; [1] FALSE</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $message</span></span>
+<span><span class="co">#&gt; [1] "Budget exhausted: max_iter reached."</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $terminate</span></span>
+<span><span class="co">#&gt; $terminate$what</span></span>
+<span><span class="co">#&gt; [1] "max_iter"</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $terminate$val</span></span>
+<span><span class="co">#&gt; [1] 3</span></span></code></pre></div>
+<p>This run deliberately ends at <code>max_iter = 3</code>: its status
+is <code>budget_exhausted</code>, and <code>converged</code> is
+<code>FALSE</code>.</p>
+</div>
+<div class="section level2">
+<h2 id="deliberate-observations-and-diagnostics">Deliberate observations and diagnostics<a class="anchor" aria-label="anchor" href="#deliberate-observations-and-diagnostics"></a>
+</h2>
+<p><code><a href="../reference/mize_step_summary.html">mize_step_summary()</a></code> is where a loop can request
+observations. Set <code>calc_fn = TRUE</code> when logging or best-value
+tracking needs the objective, and <code>calc_gr = TRUE</code> when
+gradient norms are needed. The returned optimizer must be retained
+because a requested callback updates the lifetime counts and can itself
+terminate at a hard budget.</p>
+<p>The summary schema is dynamic. Common fields include
+<code>iter</code>, <code>f</code>, <code>nf</code>, <code>ng</code>,
+<code>step</code>, and <code>alpha</code>; line-search methods can also
+expose <code>alpha_init</code>, <code>slope_init</code>,
+<code>ls_reason</code>, <code>ls_outcome</code>, <code>ls_nf</code>, and
+<code>ls_ng</code>. Some directions add <code>direction_reason</code>,
+and momentum methods can add <code>mu</code>. See
+<code><a href="../reference/mize_step_summary.html">?mize_step_summary</a></code> for the complete current schema.</p>
+<p>Here is one canonical production loop. Its <code>state</code> list
+includes the required <code>opt</code> and <code>par</code>, plus
+caller-owned best and progress records. The best value is the best
+post-step objective this loop has actually observed; it is distinct from
+the optimizer’s current state.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">value_or_na</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span> <span class="cn">NA</span> <span class="kw">else</span> <span class="va">x</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">advance_stateful</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">state</span>, <span class="va">fg</span>, <span class="va">max_steps</span> <span class="op">=</span> <span class="cn">Inf</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">steps</span> <span class="op">&lt;-</span> <span class="fl">0L</span></span>
+<span></span>
+<span>  <span class="kw">while</span> <span class="op">(</span><span class="op">!</span><span class="va">state</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">is_terminated</span> <span class="op">&amp;&amp;</span> <span class="va">steps</span> <span class="op">&lt;</span> <span class="va">max_steps</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">par_old</span> <span class="op">&lt;-</span> <span class="va">state</span><span class="op">$</span><span class="va">par</span></span>
+<span>    <span class="va">step</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step.html">mize_step</a></span><span class="op">(</span><span class="va">state</span><span class="op">$</span><span class="va">opt</span>, <span class="va">state</span><span class="op">$</span><span class="va">par</span>, <span class="va">fg</span><span class="op">)</span></span>
+<span>    <span class="va">state</span><span class="op">$</span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="va">step</span><span class="op">$</span><span class="va">opt</span></span>
+<span>    <span class="va">state</span><span class="op">$</span><span class="va">par</span> <span class="op">&lt;-</span> <span class="va">step</span><span class="op">$</span><span class="va">par</span></span>
+<span>    <span class="kw">if</span> <span class="op">(</span><span class="va">state</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">is_terminated</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="kw">break</span></span>
+<span>    <span class="op">}</span></span>
+<span></span>
+<span>    <span class="va">step_info</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step_summary.html">mize_step_summary</a></span><span class="op">(</span></span>
+<span>      <span class="va">state</span><span class="op">$</span><span class="va">opt</span>,</span>
+<span>      <span class="va">state</span><span class="op">$</span><span class="va">par</span>,</span>
+<span>      <span class="va">fg</span>,</span>
+<span>      par_old <span class="op">=</span> <span class="va">par_old</span>,</span>
+<span>      calc_fn <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>    <span class="op">)</span></span>
+<span>    <span class="va">state</span><span class="op">$</span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="va">step_info</span><span class="op">$</span><span class="va">opt</span></span>
+<span>    <span class="kw">if</span> <span class="op">(</span><span class="va">state</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">is_terminated</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="kw">break</span></span>
+<span>    <span class="op">}</span></span>
+<span></span>
+<span>    <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">step_info</span><span class="op">$</span><span class="va">f</span><span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="fu"><a href="https://rdrr.io/r/base/is.finite.html" class="external-link">is.finite</a></span><span class="op">(</span><span class="va">step_info</span><span class="op">$</span><span class="va">f</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="kw">if</span> <span class="op">(</span><span class="va">step_info</span><span class="op">$</span><span class="va">f</span> <span class="op">&lt;</span> <span class="va">state</span><span class="op">$</span><span class="va">best_f</span><span class="op">)</span> <span class="op">{</span></span>
+<span>        <span class="va">state</span><span class="op">$</span><span class="va">best_f</span> <span class="op">&lt;-</span> <span class="va">step_info</span><span class="op">$</span><span class="va">f</span></span>
+<span>        <span class="va">state</span><span class="op">$</span><span class="va">best_par</span> <span class="op">&lt;-</span> <span class="va">state</span><span class="op">$</span><span class="va">par</span></span>
+<span>      <span class="op">}</span></span>
+<span></span>
+<span>      <span class="va">state</span><span class="op">$</span><span class="va">progress</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span></span>
+<span>        <span class="va">state</span><span class="op">$</span><span class="va">progress</span>,</span>
+<span>        <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>          iter <span class="op">=</span> <span class="va">step_info</span><span class="op">$</span><span class="va">iter</span>,</span>
+<span>          f <span class="op">=</span> <span class="va">step_info</span><span class="op">$</span><span class="va">f</span>,</span>
+<span>          nf <span class="op">=</span> <span class="va">step_info</span><span class="op">$</span><span class="va">nf</span>,</span>
+<span>          ng <span class="op">=</span> <span class="va">step_info</span><span class="op">$</span><span class="va">ng</span>,</span>
+<span>          step <span class="op">=</span> <span class="va">step_info</span><span class="op">$</span><span class="va">step</span>,</span>
+<span>          alpha <span class="op">=</span> <span class="fu">value_or_na</span><span class="op">(</span><span class="va">step_info</span><span class="op">$</span><span class="va">alpha</span><span class="op">)</span>,</span>
+<span>          ls_outcome <span class="op">=</span> <span class="fu">value_or_na</span><span class="op">(</span><span class="va">step_info</span><span class="op">$</span><span class="va">ls_outcome</span><span class="op">)</span></span>
+<span>        <span class="op">)</span></span>
+<span>      <span class="op">)</span></span>
+<span>    <span class="op">}</span></span>
+<span></span>
+<span>    <span class="va">state</span><span class="op">$</span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/check_mize_convergence.html">check_mize_convergence</a></span><span class="op">(</span><span class="va">step_info</span><span class="op">)</span></span>
+<span>    <span class="va">steps</span> <span class="op">&lt;-</span> <span class="va">steps</span> <span class="op">+</span> <span class="fl">1L</span></span>
+<span>  <span class="op">}</span></span>
+<span></span>
+<span>  <span class="va">state</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>We will use a bounded BFGS run so the terminal classification is
+unambiguous:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">controls</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  max_iter <span class="op">=</span> <span class="fl">30</span>,</span>
+<span>  abs_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  rel_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  grad_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  ginf_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  step_tol <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">new_bfgs_state</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span></span>
+<span>    <span class="va">make_mize</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"BFGS"</span>, par <span class="op">=</span> <span class="va">rb0</span>, fg <span class="op">=</span> <span class="va">rb_fg</span><span class="op">)</span>, <span class="va">controls</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    opt <span class="op">=</span> <span class="va">opt</span>,</span>
+<span>    par <span class="op">=</span> <span class="va">rb0</span>,</span>
+<span>    best_par <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>    best_f <span class="op">=</span> <span class="cn">Inf</span>,</span>
+<span>    progress <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">uninterrupted</span> <span class="op">&lt;-</span> <span class="fu">advance_stateful</span><span class="op">(</span><span class="fu">new_bfgs_state</span><span class="op">(</span><span class="op">)</span>, <span class="va">rb_fg</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">tail</a></span><span class="op">(</span><span class="va">uninterrupted</span><span class="op">$</span><span class="va">progress</span>, <span class="fl">3</span><span class="op">)</span></span>
+<span><span class="co">#&gt;    iter           f nf ng       step alpha ls_outcome</span></span>
+<span><span class="co">#&gt; 28   28 0.026689274 38 38 0.12722348     1      wolfe</span></span>
+<span><span class="co">#&gt; 29   29 0.015185570 39 39 0.13148806     1      wolfe</span></span>
+<span><span class="co">#&gt; 30   30 0.005002828 40 40 0.04709997     1      wolfe</span></span>
+<span><span class="va">uninterrupted</span><span class="op">$</span><span class="va">opt</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"status"</span>, <span class="st">"converged"</span>, <span class="st">"message"</span>, <span class="st">"terminate"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt; $status</span></span>
+<span><span class="co">#&gt; [1] "budget_exhausted"</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $converged</span></span>
+<span><span class="co">#&gt; [1] FALSE</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $message</span></span>
+<span><span class="co">#&gt; [1] "Budget exhausted: max_iter reached."</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $terminate</span></span>
+<span><span class="co">#&gt; $terminate$what</span></span>
+<span><span class="co">#&gt; [1] "max_iter"</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $terminate$val</span></span>
+<span><span class="co">#&gt; [1] 30</span></span></code></pre></div>
+<p>The selected progress columns are useful for this run. Test
+method-specific columns for presence before application code relies on
+them.</p>
+<div class="section level3">
+<h3 id="hard-budgets-can-deny-a-requested-observation">Hard budgets can deny a requested observation<a class="anchor" aria-label="anchor" href="#hard-budgets-can-deny-a-requested-observation"></a>
+</h3>
+<p><code>max_fn</code> remains hard when <code>calc_fn = TRUE</code>.
+With no function evaluations available, the summary returns no
+<code>f</code> and its updated optimizer reports the exhausted
+budget:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">budget_opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/make_mize.html">make_mize</a></span><span class="op">(</span></span>
+<span>  method <span class="op">=</span> <span class="st">"SD"</span>,</span>
+<span>  line_search <span class="op">=</span> <span class="st">"constant"</span>,</span>
+<span>  step0 <span class="op">=</span> <span class="fl">0.0001</span>,</span>
+<span>  par <span class="op">=</span> <span class="va">rb0</span>,</span>
+<span>  fg <span class="op">=</span> <span class="va">rb_fg</span>,</span>
+<span>  max_fn <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  abs_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  rel_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  grad_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  ginf_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  step_tol <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">budget_info</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step_summary.html">mize_step_summary</a></span><span class="op">(</span></span>
+<span>  <span class="va">budget_opt</span>,</span>
+<span>  <span class="va">rb0</span>,</span>
+<span>  <span class="va">rb_fg</span>,</span>
+<span>  calc_fn <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  f_available <span class="op">=</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">budget_info</span><span class="op">$</span><span class="va">f</span><span class="op">)</span>,</span>
+<span>  nf <span class="op">=</span> <span class="va">budget_info</span><span class="op">$</span><span class="va">nf</span>,</span>
+<span>  status <span class="op">=</span> <span class="va">budget_info</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">status</span>,</span>
+<span>  terminate <span class="op">=</span> <span class="va">budget_info</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">terminate</span></span>
+<span><span class="op">)</span></span>
+<span><span class="co">#&gt; $f_available</span></span>
+<span><span class="co">#&gt; [1] FALSE</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $nf</span></span>
+<span><span class="co">#&gt; [1] 0</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $status</span></span>
+<span><span class="co">#&gt; [1] "budget_exhausted"</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $terminate</span></span>
+<span><span class="co">#&gt; $terminate$what</span></span>
+<span><span class="co">#&gt; [1] "max_fn"</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $terminate$val</span></span>
+<span><span class="co">#&gt; [1] 0</span></span></code></pre></div>
+<p>This is why the production loop both retains
+<code>step_info$opt</code> and guards <code>step_info$f</code>. Calling
+<code>fg$fn()</code> directly bypasses <code>mize</code>’s counters and
+limits. Keep direct callback calls outside hard-budget workflows.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="checkpoint-and-resume">Checkpoint and resume<a class="anchor" aria-label="anchor" href="#checkpoint-and-resume"></a>
+</h2>
+<p>Checkpoint the complete caller-owned state needed to continue. Here
+that means the optimizer and parameters, plus the best observation and
+progress log. The callbacks are ordinary program code and are supplied
+again after restoration.</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">partial</span> <span class="op">&lt;-</span> <span class="fu">advance_stateful</span><span class="op">(</span></span>
+<span>  <span class="fu">new_bfgs_state</span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  <span class="va">rb_fg</span>,</span>
+<span>  max_steps <span class="op">=</span> <span class="fl">10</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">checkpoint_file</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".rds"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS</a></span><span class="op">(</span><span class="va">partial</span>, <span class="va">checkpoint_file</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/rm.html" class="external-link">rm</a></span><span class="op">(</span><span class="va">partial</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">resumed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="va">checkpoint_file</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink</a></span><span class="op">(</span><span class="va">checkpoint_file</span><span class="op">)</span></span>
+<span><span class="va">resumed</span> <span class="op">&lt;-</span> <span class="fu">advance_stateful</span><span class="op">(</span><span class="va">resumed</span>, <span class="va">rb_fg</span><span class="op">)</span></span></code></pre></div>
+<p>To show what preservation buys us, compare the resumed run with both
+an uninterrupted stateful run and a one-shot <code><a href="../reference/mize.html">mize()</a></code> call
+using the same method and termination controls:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">one_shot</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span></span>
+<span>  <span class="va">mize</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>par <span class="op">=</span> <span class="va">rb0</span>, fg <span class="op">=</span> <span class="va">rb_fg</span>, method <span class="op">=</span> <span class="st">"BFGS"</span><span class="op">)</span>, <span class="va">controls</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  run <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"one-shot"</span>, <span class="st">"stateful"</span>, <span class="st">"checkpoint/resume"</span><span class="op">)</span>,</span>
+<span>  objective <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">one_shot</span><span class="op">$</span><span class="va">f</span>, <span class="va">uninterrupted</span><span class="op">$</span><span class="va">best_f</span>, <span class="va">resumed</span><span class="op">$</span><span class="va">best_f</span><span class="op">)</span>,</span>
+<span>  nf <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">one_shot</span><span class="op">$</span><span class="va">nf</span>, <span class="va">uninterrupted</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">counts</span><span class="op">$</span><span class="va">fn</span>, <span class="va">resumed</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">counts</span><span class="op">$</span><span class="va">fn</span><span class="op">)</span>,</span>
+<span>  ng <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">one_shot</span><span class="op">$</span><span class="va">ng</span>, <span class="va">uninterrupted</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">counts</span><span class="op">$</span><span class="va">gr</span>, <span class="va">resumed</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">counts</span><span class="op">$</span><span class="va">gr</span><span class="op">)</span>,</span>
+<span>  status <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>    <span class="va">one_shot</span><span class="op">$</span><span class="va">status</span>,</span>
+<span>    <span class="va">uninterrupted</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">status</span>,</span>
+<span>    <span class="va">resumed</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">status</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  terminate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>    <span class="va">one_shot</span><span class="op">$</span><span class="va">terminate</span><span class="op">$</span><span class="va">what</span>,</span>
+<span>    <span class="va">uninterrupted</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">terminate</span><span class="op">$</span><span class="va">what</span>,</span>
+<span>    <span class="va">resumed</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">terminate</span><span class="op">$</span><span class="va">what</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">comparison</span></span>
+<span><span class="co">#&gt;                 run   objective nf ng           status terminate</span></span>
+<span><span class="co">#&gt; 1          one-shot 0.005002828 40 40 budget_exhausted  max_iter</span></span>
+<span><span class="co">#&gt; 2          stateful 0.005002828 40 40 budget_exhausted  max_iter</span></span>
+<span><span class="co">#&gt; 3 checkpoint/resume 0.005002828 40 40 budget_exhausted  max_iter</span></span>
+<span></span>
+<span><span class="va">comparison_tolerance</span> <span class="op">&lt;-</span> <span class="fl">1e-10</span></span>
+<span><span class="va">equivalent</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>  one_shot_best <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span></span>
+<span>    <span class="va">one_shot</span><span class="op">$</span><span class="va">par</span>,</span>
+<span>    <span class="va">uninterrupted</span><span class="op">$</span><span class="va">best_par</span>,</span>
+<span>    tolerance <span class="op">=</span> <span class="va">comparison_tolerance</span></span>
+<span>  <span class="op">)</span><span class="op">)</span>,</span>
+<span>  one_shot_objective <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span></span>
+<span>    <span class="va">one_shot</span><span class="op">$</span><span class="va">f</span>,</span>
+<span>    <span class="va">uninterrupted</span><span class="op">$</span><span class="va">best_f</span>,</span>
+<span>    tolerance <span class="op">=</span> <span class="va">comparison_tolerance</span></span>
+<span>  <span class="op">)</span><span class="op">)</span>,</span>
+<span>  one_shot_last <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span></span>
+<span>    <span class="va">one_shot</span><span class="op">$</span><span class="va">last_par</span>,</span>
+<span>    <span class="va">uninterrupted</span><span class="op">$</span><span class="va">par</span>,</span>
+<span>    tolerance <span class="op">=</span> <span class="va">comparison_tolerance</span></span>
+<span>  <span class="op">)</span><span class="op">)</span>,</span>
+<span>  resumed_current <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span></span>
+<span>    <span class="va">resumed</span><span class="op">$</span><span class="va">par</span>,</span>
+<span>    <span class="va">uninterrupted</span><span class="op">$</span><span class="va">par</span>,</span>
+<span>    tolerance <span class="op">=</span> <span class="va">comparison_tolerance</span></span>
+<span>  <span class="op">)</span><span class="op">)</span>,</span>
+<span>  resumed_best_par <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span></span>
+<span>    <span class="va">resumed</span><span class="op">$</span><span class="va">best_par</span>,</span>
+<span>    <span class="va">uninterrupted</span><span class="op">$</span><span class="va">best_par</span>,</span>
+<span>    tolerance <span class="op">=</span> <span class="va">comparison_tolerance</span></span>
+<span>  <span class="op">)</span><span class="op">)</span>,</span>
+<span>  resumed_best <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span></span>
+<span>    <span class="va">resumed</span><span class="op">$</span><span class="va">best_f</span>,</span>
+<span>    <span class="va">uninterrupted</span><span class="op">$</span><span class="va">best_f</span>,</span>
+<span>    tolerance <span class="op">=</span> <span class="va">comparison_tolerance</span></span>
+<span>  <span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">equivalent</span></span>
+<span><span class="co">#&gt;      one_shot_best one_shot_objective      one_shot_last    resumed_current </span></span>
+<span><span class="co">#&gt;               TRUE               TRUE               TRUE               TRUE </span></span>
+<span><span class="co">#&gt;   resumed_best_par       resumed_best </span></span>
+<span><span class="co">#&gt;               TRUE               TRUE</span></span></code></pre></div>
+<p>For this deterministic problem and implementation, all comparisons
+pass at <code>1e-10</code>. The comparison shows that serializing and
+restoring the optimizer preserves method state. Bit-for-bit identity
+across platforms remains outside the contract.</p>
+</div>
+<div class="section level2">
+<h2 id="reinitialization-starts-a-new-run">Reinitialization starts a new run<a class="anchor" aria-label="anchor" href="#reinitialization-starts-a-new-run"></a>
+</h2>
+<p>Calling <code><a href="../reference/mize_init.html">mize_init()</a></code> on an existing optimizer
+deliberately starts a new run. It resets the iteration counter, terminal
+fields, caches, and transient algorithm state. Function and gradient
+counts remain optimizer-lifetime totals:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">counts_before</span> <span class="op">&lt;-</span> <span class="va">uninterrupted</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">counts</span></span>
+<span><span class="va">reinitialized</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_init.html">mize_init</a></span><span class="op">(</span></span>
+<span>  <span class="va">uninterrupted</span><span class="op">$</span><span class="va">opt</span>,</span>
+<span>  <span class="va">rb0</span>,</span>
+<span>  <span class="va">rb_fg</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  iter_before <span class="op">=</span> <span class="va">uninterrupted</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">iter</span>,</span>
+<span>  iter_after <span class="op">=</span> <span class="va">reinitialized</span><span class="op">$</span><span class="va">iter</span>,</span>
+<span>  counts_preserved <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">counts_before</span>, <span class="va">reinitialized</span><span class="op">$</span><span class="va">counts</span><span class="op">)</span>,</span>
+<span>  terminated_after <span class="op">=</span> <span class="va">reinitialized</span><span class="op">$</span><span class="va">is_terminated</span></span>
+<span><span class="op">)</span></span>
+<span><span class="co">#&gt;   iter_before iter_after counts_preserved terminated_after</span></span>
+<span><span class="co">#&gt; 1          30          0             TRUE            FALSE</span></span></code></pre></div>
+<p>Use reinitialization when a new run is intended; use serialization
+when the same run must continue. See <code><a href="../reference/mize_init.html">?mize_init</a></code>,
+<code><a href="../reference/mize_step.html">?mize_step</a></code>, <code><a href="../reference/mize_step_summary.html">?mize_step_summary</a></code>, and
+<code><a href="../reference/check_mize_convergence.html">?check_mize_convergence</a></code> for the complete API.</p>
+</div>
+<div class="section level2">
+<h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a>
+</h2>
+<ul>
+<li>
+<a href="mize.html">Getting started</a> introduces the one-shot
+workflow and result contract.</li>
+<li>
+<a href="convergence.html">Convergence</a> explains how to choose
+and interpret termination controls.</li>
+<li>
+<a href="mmds.html">Metric MDS</a> develops a callback closure
+suitable for either one-shot or stateful use.</li>
+</ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

@@ -2,10 +2,12 @@
 
 ### Package guides
 
-- [Mize](https://jlmelville.github.io/mize/articles/mize.md):
+- [Getting started](https://jlmelville.github.io/mize/articles/mize.md):
+- [Choosing methods and
+  tuning](https://jlmelville.github.io/mize/articles/methods.md):
 - [Convergence](https://jlmelville.github.io/mize/articles/convergence.md):
 - [Stateful
-  Optimization](https://jlmelville.github.io/mize/articles/stateful.md):
+  optimization](https://jlmelville.github.io/mize/articles/stateful.md):
 - [Metric MDS](https://jlmelville.github.io/mize/articles/mmds.md):
 
 ### Background notes

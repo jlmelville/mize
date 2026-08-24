@@ -35,13 +35,14 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
-<li class="nav-item"><a class="nav-link" href="../articles/mize.html">Get started</a></li>
+<li class="nav-item"><a class="nav-link" href="../articles/mize.html">Getting started</a></li>
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><h6 class="dropdown-header" data-toc-skip>Package guides</h6></li>
     <li><a class="dropdown-item" href="../articles/mize.html">Getting started</a></li>
+    <li><a class="dropdown-item" href="../articles/methods.html">Choosing methods and tuning</a></li>
     <li><a class="dropdown-item" href="../articles/convergence.html">Convergence</a></li>
     <li><a class="dropdown-item" href="../articles/stateful.html">Stateful optimization</a></li>
     <li><a class="dropdown-item" href="../articles/mmds.html">Metric MDS</a></li>
@@ -74,7 +75,6 @@
                         <h4 data-toc-skip class="author">James
 Melville</h4>
             
-            <h4 data-toc-skip class="date">2026-08-24</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/jlmelville/mize/blob/master/vignettes/mmds.Rmd" class="external-link"><code>vignettes/mmds.Rmd</code></a></small>
       <div class="d-none name"><code>mmds.Rmd</code></div>
@@ -82,257 +82,327 @@ Melville</h4>
 
     
     
-<p>Minimizing the Rosenbrock function is all very well, but there’s
-often a more complex relationship between the parameters we’re looking
-to optimize and what would be convenient to pass to a cost function. In
-many cases there are other quantities that we need to define and store
-somewhere for the cost function to provide a value, but which aren’t
-under our direct control and hence are not suitable for optimization.
-They just need to be available for evaluation inside <code>fn</code> and
-<code>gr</code>.</p>
-<p>This vignette is less to do with the running of <code>mize</code>
-itself, and more to do with using it to solve an actual problem. It
-contains plenty of R code, but not a lot of it is
-<code>mize</code>-specific. Hopefully it will demonstrate how it can be
-used for non-trivial problems.</p>
-<div class="section level3">
-<h3 id="metric-multi-dimensional-scaling">Metric Multi-Dimensional Scaling<a class="anchor" aria-label="anchor" href="#metric-multi-dimensional-scaling"></a>
-</h3>
-<p>Metric multi-dimensional scaling (Metric MDS) is a way to provide a
-low-dimensional (usually two-dimensional) view of a high dimensional
-data set, although all it needs is a distance matrix to work off.</p>
-<p>Let’s take the <code>eurodist</code> dataset as an example, which can
-be found in the <code>datasets</code> package. The description says:</p>
-<blockquote>
-<p>The <code>eurodist</code> gives the road distances (in km) between 21
-cities in Europe.</p>
-</blockquote>
-<p>We should be able to reconstruct the relative locations of the 21
-cities on a 2D plot with this information, subject to some error because
-roads aren’t straight between the cities and the cities themselves lie
-on the non-flat surface of the Earth.</p>
-</div>
-<div class="section level3">
-<h3 id="the-metric-mds-cost-function">The Metric MDS Cost Function<a class="anchor" aria-label="anchor" href="#the-metric-mds-cost-function"></a>
-</h3>
-<p>The parameters we’re going to optimize are the 2D locations of each
-city. The cost function, however, is more naturally expressed as being
-related to the distance matrices. What we want is for the distance
-matrix of the output, which we’ll call <span class="math inline">\(D\)</span>, to resemble the input distance matrix,
-<span class="math inline">\(R\)</span>, as much as possible.</p>
-<p>One obvious way to express this as a cost function is to consider the
-square loss:</p>
-<p><span class="math display">\[C = \sum_{i&lt;j} \left(r_{ij} -
-d_{ij}\right)^2\]</span> where <span class="math inline">\(r_{ij}\)</span> is the distance between city <span class="math inline">\(i\)</span> and city <span class="math inline">\(j\)</span> in the input distance matrix, and <span class="math inline">\(d_{ij}\)</span> represents the distance in the
-output configuration. The <span class="math inline">\(i&lt;j\)</span>
-bit indicates that we only want to count each <span class="math inline">\(i,j\)</span> pair twice, because distances are
-symmetric. Normally, you’d probably want to divide this result by the
-number of pairs and then take the square root to get the units of the
-error as a distance and not dependent on the size of the data set, but
-we won’t worry about that.</p>
-<p>As R code, the cost function can be written as:</p>
+<p>Metric multidimensional scaling (metric MDS) finds a low-dimensional
+configuration whose pairwise distances resemble supplied
+dissimilarities. It is also a useful example of an optimization problem
+where a closure keeps fixed data out of the parameter vector.</p>
+<p>We will reconstruct a two-dimensional configuration for the 21
+European cities in <code><a href="https://rdrr.io/r/datasets/eurodist.html" class="external-link">datasets::eurodist</a></code>. The input contains
+road distances in kilometres, so a two-dimensional Euclidean
+configuration can only approximate them.</p>
+<div class="section level2">
+<h2 id="stress-and-its-gradient">Stress and its gradient<a class="anchor" aria-label="anchor" href="#stress-and-its-gradient"></a>
+</h2>
+<p>Let <span class="math inline">\(R = (r_{ij})\)</span> be the target
+distances and let <span class="math inline">\(D = (d_{ij})\)</span> be
+the Euclidean distances among candidate coordinates <span class="math inline">\(Y\)</span>. We minimize raw stress:</p>
+<p><span class="math display">\[
+C(Y) = \sum_{i &lt; j} (r_{ij} - d_{ij})^2.
+\]</span></p>
+<p>The condition <span class="math inline">\(i &lt; j\)</span> counts
+each unordered pair once. The matrix implementation below instead sums
+both symmetric triangles, so it multiplies that sum by one half. With
+<span class="math inline">\(n\)</span> objects, the corresponding
+distance RMSE is <span class="math inline">\(\sqrt{C / {n \choose
+2}}\)</span> and has the same units as the input distances.</p>
+<p>For distinct points, the derivative with respect to the coordinates
+of object <span class="math inline">\(i\)</span> is</p>
+<p><span class="math display">\[
+\frac{\partial C}{\partial \mathbf{y}_i} =
+-2 \sum_{j \ne i} \frac{r_{ij} - d_{ij}}{d_{ij}}
+(\mathbf{y}_i - \mathbf{y}_j).
+\]</span></p>
+<p>At coincident points, <span class="math inline">\(d_{ij} = 0\)</span>
+and Euclidean distance is not differentiable. The implementation uses a
+named <code>distance_epsilon</code> in the denominator to keep the
+calculation finite. This numerical convention slightly perturbs the
+displayed derivative. The derivative remains undefined at a coincident
+configuration, so we validate the implementation at a seeded,
+nondegenerate starting point.</p>
+<p>The callback factory below captures the fixed target matrix in a
+closure. Its <code>prepare()</code> helper performs the shared
+conversion from a parameter vector to coordinates and pairwise
+distances. The counter will let us compare shared work without relying
+on a noisy timing measurement.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># R and D are the input and output distance matrices, respectively</span></span>
-<span><span class="va">cost_fun</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">R</span>, <span class="va">D</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">diff2</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="va">R</span> <span class="op">-</span> <span class="va">D</span><span class="op">)</span> <span class="op">^</span> <span class="fl">2</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">diff2</span><span class="op">)</span> <span class="op">*</span> <span class="fl">0.5</span></span>
-<span><span class="op">}</span></span></code></pre></div>
-<p>It’s not good R style to use single character upper-case variables,
-but for matrices, we’ll get away with it just this once. I’ve also taken
-advantage of the vectorization of R code for matrices, rather than
-explicitly loop. As the calculation takes place over the entire matrix,
-I’ve halved the result to avoid the double counting of each
-distance.</p>
-<p>Both <span class="math inline">\(R\)</span> and <span class="math inline">\(D\)</span> in the R code are of class
-<code>matrix</code> rather than the <code>dist</code> type that
-<code>eurodist</code> is. The <code>matrix</code> class is more
-convenient for the computations that are needed, but not as efficient in
-terms of storage. The <code>eurodist</code> data can be converted using
-<code>as.matrix</code>:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">eurodist_mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">eurodist</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="the-metric-mds-gradient">The Metric MDS Gradient<a class="anchor" aria-label="anchor" href="#the-metric-mds-gradient"></a>
-</h3>
-<p>Writing out the cost function with respect to distances only makes it
-pretty straightforward. However, we need the gradient with respect to
-the parameters we are optimizing, which is the coordinates of each city.
-Indicating the (two-dimensional) vector that represents the coordinates
-of city <span class="math inline">\(i\)</span> as <span class="math inline">\(\mathbf{y_i}\)</span>, the gradient of the cost
-function above is:</p>
-<p><span class="math display">\[\frac{\partial C}{\partial \mathbf{y_i}}
-=
-  -2\sum_j \frac{r_{ij} - d_{ij}}{d_{ij}}
-  \left(
-   \mathbf{y_i - y_j}
-  \right)
-\]</span> where the sum <span class="math inline">\(j\)</span> is over
-all the other cities.</p>
-<p>As R code, this is:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># R is the input distance matrix</span></span>
-<span><span class="co"># D is the output distance matrix</span></span>
-<span><span class="co"># y is a n x d matrix of output coordinates</span></span>
-<span><span class="va">cost_grad</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">R</span>, <span class="va">D</span>, <span class="va">y</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">K</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="va">R</span> <span class="op">-</span> <span class="va">D</span><span class="op">)</span> <span class="op">/</span> <span class="op">(</span><span class="va">D</span> <span class="op">+</span> <span class="fl">1.e-10</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">distance_epsilon</span> <span class="op">&lt;-</span> <span class="fl">1e-10</span></span>
 <span></span>
-<span>  <span class="va">G</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span>nrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span>, ncol <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span><span class="op">)</span></span>
-<span>  </span>
-<span>  <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="va">dyij</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sweep.html" class="external-link">sweep</a></span><span class="op">(</span><span class="op">-</span><span class="va">y</span>, <span class="fl">2</span>, <span class="op">-</span><span class="va">y</span><span class="op">[</span><span class="va">i</span>, <span class="op">]</span><span class="op">)</span></span>
-<span>    <span class="va">G</span><span class="op">[</span><span class="va">i</span>, <span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="va">dyij</span> <span class="op">*</span> <span class="va">K</span><span class="op">[</span>, <span class="va">i</span><span class="op">]</span>, <span class="fl">2</span>, <span class="va">sum</span><span class="op">)</span></span>
+<span><span class="va">make_mmds_callbacks</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span></span>
+<span>  <span class="va">distances</span>,</span>
+<span>  <span class="va">combined</span> <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  <span class="va">epsilon</span> <span class="op">=</span> <span class="va">distance_epsilon</span></span>
+<span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">target</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">distances</span><span class="op">)</span></span>
+<span>  <span class="va">preparation_count</span> <span class="op">&lt;-</span> <span class="fl">0L</span></span>
+<span></span>
+<span>  <span class="va">prepare</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">par</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">preparation_count</span> <span class="op">&lt;&lt;-</span> <span class="va">preparation_count</span> <span class="op">+</span> <span class="fl">1L</span></span>
+<span>    <span class="va">coordinates</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="va">par</span>, ncol <span class="op">=</span> <span class="fl">2</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>      coordinates <span class="op">=</span> <span class="va">coordinates</span>,</span>
+<span>      distances <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/dist.html" class="external-link">dist</a></span><span class="op">(</span><span class="va">coordinates</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="op">)</span></span>
 <span>  <span class="op">}</span></span>
 <span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="va">G</span><span class="op">)</span><span class="op">)</span> <span class="op">*</span> <span class="op">-</span><span class="fl">2</span></span>
-<span><span class="op">}</span></span></code></pre></div>
-<p>That loop in the middle is a bit cryptic with its <code>sweep</code>s
-and <code>apply</code>s, but it does the job of calculating the <span class="math inline">\(\sum_j \mathbf{y_i} - \mathbf{y_j}\)</span> part
-of the gradient for each row of the gradient matrix.</p>
-</div>
-<div class="section level3">
-<h3 id="mize-function-and-gradient">
-<code>mize</code> function and gradient<a class="anchor" aria-label="anchor" href="#mize-function-and-gradient"></a>
-</h3>
-<p>We can now write the function and gradient routines that have the
-interface that <code>mize</code> is expecting:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">mmds_fn</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">par</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">R</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">eurodist</span><span class="op">)</span></span>
-<span>  <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="va">par</span>, ncol <span class="op">=</span> <span class="fl">2</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span>  <span class="va">D</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/dist.html" class="external-link">dist</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span><span class="op">)</span></span>
-<span>  </span>
-<span>  <span class="fu">cost_fun</span><span class="op">(</span><span class="va">R</span>, <span class="va">D</span><span class="op">)</span></span>
-<span><span class="op">}</span></span></code></pre></div>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">mmds_gr</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">par</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">R</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">eurodist</span><span class="op">)</span></span>
-<span>  <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="va">par</span>, ncol <span class="op">=</span> <span class="fl">2</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span>  <span class="va">D</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/dist.html" class="external-link">dist</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span>  <span class="fu">cost_grad</span><span class="op">(</span><span class="va">R</span>, <span class="va">D</span>, <span class="va">y</span><span class="op">)</span></span>
-<span><span class="op">}</span></span></code></pre></div>
-<p>These routines are not a model of efficiency. Not a problem for this
-small dataset, but we’ll have to revisit this below.</p>
-<p>For now, let’s choose a starting point and get optimizing. We may as
-well begin from a random location:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
-<span><span class="va">ed0</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">eurodist</span>, <span class="st">'Size'</span><span class="op">)</span> <span class="op">*</span> <span class="fl">2</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">res_euro</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span><span class="va">ed0</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>fn <span class="op">=</span> <span class="va">mmds_fn</span>, gr <span class="op">=</span> <span class="va">mmds_gr</span><span class="op">)</span>, </span>
-<span>                method <span class="op">=</span> <span class="st">"L-BFGS"</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span>, </span>
-<span>                grad_tol <span class="op">=</span> <span class="fl">1e-5</span>, check_conv_every <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
-<span><span class="co">#&gt; 01:53:13 iter 0 f = 6.432e+08 g2 = 1.979e+05 nf = 1 ng = 1 step = 0 alpha = 0</span></span>
-<span><span class="co">#&gt; 01:53:13 iter 10 f = 5.291e+07 g2 = 1.767e+04 nf = 26 ng = 26 step = 1291 alpha = 0.6507</span></span>
-<span><span class="co">#&gt; 01:53:13 iter 20 f = 1.087e+07 g2 = 1.223e+04 nf = 39 ng = 39 step = 920.1 alpha = 0.4846</span></span>
-<span><span class="co">#&gt; 01:53:13 iter 30 f = 3.357e+06 g2 = 129.3 nf = 49 ng = 49 step = 4.665 alpha = 0.5486</span></span>
-<span><span class="co">#&gt; 01:53:13 iter 40 f = 3.356e+06 g2 = 0.2007 nf = 60 ng = 60 step = 0.03083 alpha = 1</span></span>
-<span><span class="co">#&gt; 01:53:13 iter 50 f = 3.356e+06 g2 = 0.0003381 nf = 71 ng = 71 step = 2.863e-05 alpha = 1</span></span></code></pre></div>
-<p>It takes 90 iterations to converge, but we get there. Now for the
-moment of truth: are the cities laid out in a way we’d expect? Here’s a
-function that will plot the <code>par</code> results:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">plot_mmds</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">coords</span>, <span class="va">dist</span>, <span class="va">...</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="kw">if</span> <span class="op">(</span><span class="fu">methods</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/methods/is.html" class="external-link">is</a></span><span class="op">(</span><span class="va">coords</span>, <span class="st">"numeric"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="va">coords</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="va">coords</span>, ncol <span class="op">=</span> <span class="fl">2</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="va">stress</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">prepared</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fl">0.5</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="op">(</span><span class="va">target</span> <span class="op">-</span> <span class="va">prepared</span><span class="op">$</span><span class="va">distances</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span></span>
 <span>  <span class="op">}</span></span>
-<span>  <span class="fu">graphics</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">coords</span>, type <span class="op">=</span> <span class="st">'n'</span><span class="op">)</span></span>
-<span>  <span class="fu">graphics</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/graphics/text.html" class="external-link">text</a></span><span class="op">(</span><span class="va">coords</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span>, <span class="va">coords</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span>, labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/labels.html" class="external-link">labels</a></span><span class="op">(</span><span class="va">dist</span><span class="op">)</span>, <span class="va">...</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span><span class="fu">plot_mmds</span><span class="op">(</span><span class="va">res_euro</span><span class="op">$</span><span class="va">par</span>, <span class="va">eurodist</span>, cex <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span></code></pre></div>
-<p><img src="mmds_files/figure-html/plot%20results-1.png" class="r-plt" alt="" width="528"></p>
-<p>Ah yes, Athens up in the top-right of a map of Europe, just as we
-expect. Ahem. In fact, because we are only optimizing distances, not
-absolute positions, there’s no reason that, starting from a random
-configuration, north will be “up” in the optimized results. Just to
-prove this works, let’s rotate the coordinates by 90 degrees
-clockwise:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">rot90</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="op">-</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span>, ncol <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
-<span><span class="va">rotated</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="va">rot90</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="va">res_euro</span><span class="op">$</span><span class="va">par</span>, ncol <span class="op">=</span> <span class="fl">2</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu">plot_mmds</span><span class="op">(</span><span class="va">rotated</span>, <span class="va">eurodist</span>, cex <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span></code></pre></div>
-<p><img src="mmds_files/figure-html/rotated%20plot-1.png" class="r-plt" alt="" width="528"></p>
-<p>That’s better.</p>
-</div>
-<div class="section level3">
-<h3 id="improving-the-efficiency-of-the-function-and-gradient-routines">Improving the Efficiency of the Function and Gradient Routines<a class="anchor" aria-label="anchor" href="#improving-the-efficiency-of-the-function-and-gradient-routines"></a>
-</h3>
-<p>So the <code>mize</code>-powered MMDS routine is working. But it’s
-un-necessarily inefficient. Every time the function or gradient is
-calculated, we convert <code>eurodist</code> into a matrix. This only
-needs to be done once, as long as the resulting matrix is in scope
-inside the function. Also, if the function and gradient is calculated
-for the same value of <code>par</code>, <code>par</code> is converted to
-a distance matrix twice.</p>
-<p>The first issue can be fixed without polluting global scope with the
-converted <code>eurodist</code> matrix by making the function and
-gradient closures with access to the input distance matrix. The second
-problem can be alleviated by adding a third item in the list passed to
-<code>mize</code>. Add a function called <code>fg</code>. This should
-calculate the cost function and gradient in one call, returning the
-values in a list. Routines that need to calculate the function and
-gradient for the same value of <code>par</code> will look for
-<code>fg</code> and call that, in preference to calling <code>fn</code>
-and <code>gr</code> separately.</p>
-<p>Putting it all together, a function to create a suitable
-<code>fg</code> list to pass to <code>mize</code> is:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">make_fg</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">distmat</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">R</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">distmat</span><span class="op">)</span></span>
-<span>  <span class="va">cost_fun</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">R</span>, <span class="va">D</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="va">diff2</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="va">R</span> <span class="op">-</span> <span class="va">D</span><span class="op">)</span> <span class="op">^</span> <span class="fl">2</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">diff2</span><span class="op">)</span> <span class="op">*</span> <span class="fl">0.5</span></span>
-<span>  <span class="op">}</span></span>
-<span>  <span class="va">cost_grad</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">R</span>, <span class="va">D</span>, <span class="va">y</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="va">K</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="va">R</span> <span class="op">-</span> <span class="va">D</span><span class="op">)</span> <span class="op">/</span> <span class="op">(</span><span class="va">D</span> <span class="op">+</span> <span class="fl">1.e-10</span><span class="op">)</span></span>
 <span></span>
-<span>    <span class="va">G</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span>nrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span>, ncol <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">gradient</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">prepared</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">weights</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="va">target</span> <span class="op">-</span> <span class="va">prepared</span><span class="op">$</span><span class="va">distances</span><span class="op">)</span> <span class="op">/</span></span>
+<span>      <span class="op">(</span><span class="va">prepared</span><span class="op">$</span><span class="va">distances</span> <span class="op">+</span> <span class="va">epsilon</span><span class="op">)</span></span>
+<span>    <span class="va">coordinates</span> <span class="op">&lt;-</span> <span class="va">prepared</span><span class="op">$</span><span class="va">coordinates</span></span>
+<span>    <span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span></span>
+<span>      nrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">coordinates</span><span class="op">)</span>,</span>
+<span>      ncol <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">coordinates</span><span class="op">)</span></span>
+<span>    <span class="op">)</span></span>
 <span></span>
-<span>    <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>      <span class="va">dyij</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sweep.html" class="external-link">sweep</a></span><span class="op">(</span><span class="op">-</span><span class="va">y</span>, <span class="fl">2</span>, <span class="op">-</span><span class="va">y</span><span class="op">[</span><span class="va">i</span>, <span class="op">]</span><span class="op">)</span></span>
-<span>      <span class="va">G</span><span class="op">[</span><span class="va">i</span>, <span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="va">dyij</span> <span class="op">*</span> <span class="va">K</span><span class="op">[</span>, <span class="va">i</span><span class="op">]</span>, <span class="fl">2</span>, <span class="va">sum</span><span class="op">)</span></span>
+<span>    <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">coordinates</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="va">differences</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sweep.html" class="external-link">sweep</a></span><span class="op">(</span><span class="op">-</span><span class="va">coordinates</span>, <span class="fl">2</span>, <span class="op">-</span><span class="va">coordinates</span><span class="op">[</span><span class="va">i</span>, <span class="op">]</span><span class="op">)</span></span>
+<span>      <span class="va">result</span><span class="op">[</span><span class="va">i</span>, <span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">differences</span> <span class="op">*</span> <span class="va">weights</span><span class="op">[</span>, <span class="va">i</span><span class="op">]</span><span class="op">)</span></span>
 <span>    <span class="op">}</span></span>
 <span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="va">G</span><span class="op">)</span><span class="op">)</span> <span class="op">*</span> <span class="op">-</span><span class="fl">2</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span><span class="op">)</span> <span class="op">*</span> <span class="op">-</span><span class="fl">2</span></span>
 <span>  <span class="op">}</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>    fn <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">par</span><span class="op">)</span> <span class="op">{</span></span>
-<span>      <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="va">par</span>, ncol <span class="op">=</span> <span class="fl">2</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span>      <span class="va">D</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/dist.html" class="external-link">dist</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span><span class="op">)</span></span>
-<span>      <span class="fu">cost_fun</span><span class="op">(</span><span class="va">R</span>, <span class="va">D</span><span class="op">)</span></span>
-<span>    <span class="op">}</span>,</span>
-<span>    gr <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">par</span><span class="op">)</span> <span class="op">{</span></span>
-<span>      <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="va">par</span>, ncol <span class="op">=</span> <span class="fl">2</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span>      <span class="va">D</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/dist.html" class="external-link">dist</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span><span class="op">)</span></span>
-<span>      <span class="fu">cost_grad</span><span class="op">(</span><span class="va">R</span>, <span class="va">D</span>, <span class="va">y</span><span class="op">)</span></span>
-<span>    <span class="op">}</span>,</span>
-<span>    fg <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">par</span><span class="op">)</span> <span class="op">{</span></span>
-<span>      <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="va">par</span>, ncol <span class="op">=</span> <span class="fl">2</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span>      <span class="va">D</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/dist.html" class="external-link">dist</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">callbacks</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    fn <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">par</span><span class="op">)</span> <span class="fu">stress</span><span class="op">(</span><span class="fu">prepare</span><span class="op">(</span><span class="va">par</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    gr <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">par</span><span class="op">)</span> <span class="fu">gradient</span><span class="op">(</span><span class="fu">prepare</span><span class="op">(</span><span class="va">par</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">combined</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">callbacks</span><span class="op">$</span><span class="va">fg</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">par</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="va">prepared</span> <span class="op">&lt;-</span> <span class="fu">prepare</span><span class="op">(</span><span class="va">par</span><span class="op">)</span></span>
 <span>      <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>        fn <span class="op">=</span> <span class="fu">cost_fun</span><span class="op">(</span><span class="va">R</span>, <span class="va">D</span><span class="op">)</span>,</span>
-<span>        gr <span class="op">=</span> <span class="fu">cost_grad</span><span class="op">(</span><span class="va">R</span>, <span class="va">D</span>, <span class="va">y</span><span class="op">)</span></span>
+<span>        fn <span class="op">=</span> <span class="fu">stress</span><span class="op">(</span><span class="va">prepared</span><span class="op">)</span>,</span>
+<span>        gr <span class="op">=</span> <span class="fu">gradient</span><span class="op">(</span><span class="va">prepared</span><span class="op">)</span></span>
 <span>      <span class="op">)</span></span>
+<span>    <span class="op">}</span></span>
+<span>  <span class="op">}</span></span>
+<span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    fg <span class="op">=</span> <span class="va">callbacks</span>,</span>
+<span>    preparations <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="va">preparation_count</span>,</span>
+<span>    reset_preparations <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="va">preparation_count</span> <span class="op">&lt;&lt;-</span> <span class="fl">0L</span></span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/invisible.html" class="external-link">invisible</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span>
 <span>    <span class="op">}</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<p>We can then run the MMDS optimization as before:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">res_euro</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span><span class="va">ed0</span>, <span class="fu">make_fg</span><span class="op">(</span><span class="va">eurodist</span><span class="op">)</span>, </span>
-<span>                method <span class="op">=</span> <span class="st">"L-BFGS"</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span>, </span>
-<span>                grad_tol <span class="op">=</span> <span class="fl">1e-5</span>, check_conv_every <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
-<span><span class="co">#&gt; 01:53:13 iter 0 f = 6.432e+08 g2 = 1.979e+05 nf = 1 ng = 1 step = 0 alpha = 0</span></span>
-<span><span class="co">#&gt; 01:53:13 iter 10 f = 5.291e+07 g2 = 1.767e+04 nf = 26 ng = 26 step = 1291 alpha = 0.6507</span></span>
-<span><span class="co">#&gt; 01:53:13 iter 20 f = 1.087e+07 g2 = 1.223e+04 nf = 39 ng = 39 step = 920.1 alpha = 0.4846</span></span>
-<span><span class="co">#&gt; 01:53:13 iter 30 f = 3.357e+06 g2 = 129.3 nf = 49 ng = 49 step = 4.665 alpha = 0.5486</span></span>
-<span><span class="co">#&gt; 01:53:13 iter 40 f = 3.356e+06 g2 = 0.2007 nf = 60 ng = 60 step = 0.03083 alpha = 1</span></span>
-<span><span class="co">#&gt; 01:53:13 iter 50 f = 3.356e+06 g2 = 0.0003381 nf = 71 ng = 71 step = 2.863e-05 alpha = 1</span></span></code></pre></div>
-<p>The same results are achieved, but it runs a tiny bit faster,
-although unless you are using a very slow computer you will have to take
-my word for it. However, as the work done to create the data that will
-be used for the gradient and function calculation grows larger, you
-should consider making use of the <code>fg</code> item.</p>
+<p>The separate variant supplies <code>fn</code> and <code>gr</code>.
+The combined variant also supplies <code>fg</code>, which lets
+<code>mize</code> request an objective and gradient from one prepared
+configuration.</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">target_distances</span> <span class="op">&lt;-</span> <span class="fu">datasets</span><span class="fu">::</span><span class="va"><a href="https://rdrr.io/r/datasets/eurodist.html" class="external-link">eurodist</a></span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
+<span><span class="va">initial_par</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">target_distances</span>, <span class="st">"Size"</span><span class="op">)</span> <span class="op">*</span> <span class="fl">2</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">separate_callbacks</span> <span class="op">&lt;-</span> <span class="fu">make_mmds_callbacks</span><span class="op">(</span><span class="va">target_distances</span><span class="op">)</span></span>
+<span><span class="va">combined_callbacks</span> <span class="op">&lt;-</span> <span class="fu">make_mmds_callbacks</span><span class="op">(</span></span>
+<span>  <span class="va">target_distances</span>,</span>
+<span>  combined <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="validate-the-gradient">Validate the gradient<a class="anchor" aria-label="anchor" href="#validate-the-gradient"></a>
+</h2>
+<p><code><a href="../reference/check_mize_gradient.html">check_mize_gradient()</a></code> compares the analytic gradient
+with central finite differences. Because the combined callback is
+present, it also checks that <code>fg</code> agrees with the separate
+<code>fn</code> and <code>gr</code> callbacks.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">gradient_check</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/check_mize_gradient.html">check_mize_gradient</a></span><span class="op">(</span></span>
+<span>  <span class="va">combined_callbacks</span><span class="op">$</span><span class="va">fg</span>,</span>
+<span>  <span class="va">initial_par</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">gradient_summary</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  max_abs_error <span class="op">=</span> <span class="va">gradient_check</span><span class="op">$</span><span class="va">max_abs_error</span>,</span>
+<span>  max_rel_error <span class="op">=</span> <span class="va">gradient_check</span><span class="op">$</span><span class="va">max_rel_error</span>,</span>
+<span>  fg_fn_abs_error <span class="op">=</span> <span class="va">gradient_check</span><span class="op">$</span><span class="va">fg_consistency</span><span class="op">$</span><span class="va">fn</span><span class="op">$</span><span class="va">abs_error</span>,</span>
+<span>  fg_gr_max_abs_error <span class="op">=</span></span>
+<span>    <span class="va">gradient_check</span><span class="op">$</span><span class="va">fg_consistency</span><span class="op">$</span><span class="va">gr</span><span class="op">$</span><span class="va">max_abs_error</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">signif</a></span><span class="op">(</span><span class="va">gradient_summary</span>, digits <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   max_abs_error max_rel_error fg_fn_abs_error fg_gr_max_abs_error</span></span>
+<span><span class="co">#&gt; 1      0.008302     1.748e-06               0                   0</span></span></code></pre></div>
+<p>The relative error is the more useful scale-free summary here. The
+exact zero consistency errors show that the separate and combined paths
+implement the same objective and gradient at the checked point.</p>
+</div>
+<div class="section level2">
+<h2 id="optimize-with-separate-and-combined-callbacks">Optimize with separate and combined callbacks<a class="anchor" aria-label="anchor" href="#optimize-with-separate-and-combined-callbacks"></a>
+</h2>
+<p>This case study uses one explicit convergence criterion. Relative
+change in stress is natural for this scale-dependent objective, so
+unrelated tolerances are disabled. See the <a href="convergence.html">Convergence</a> article when choosing a
+criterion for another problem.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mmds_controls</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  method <span class="op">=</span> <span class="st">"L-BFGS"</span>,</span>
+<span>  max_iter <span class="op">=</span> <span class="fl">200</span>,</span>
+<span>  abs_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  rel_tol <span class="op">=</span> <span class="fl">1e-8</span>,</span>
+<span>  grad_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  step_tol <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">separate_callbacks</span><span class="op">$</span><span class="fu">reset_preparations</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">combined_callbacks</span><span class="op">$</span><span class="fu">reset_preparations</span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">separate_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span></span>
+<span>  <span class="va">mize</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>par <span class="op">=</span> <span class="va">initial_par</span>, fg <span class="op">=</span> <span class="va">separate_callbacks</span><span class="op">$</span><span class="va">fg</span><span class="op">)</span>,</span>
+<span>    <span class="va">mmds_controls</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">combined_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span></span>
+<span>  <span class="va">mize</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>par <span class="op">=</span> <span class="va">initial_par</span>, fg <span class="op">=</span> <span class="va">combined_callbacks</span><span class="op">$</span><span class="va">fg</span><span class="op">)</span>,</span>
+<span>    <span class="va">mmds_controls</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  separate <span class="op">=</span> <span class="va">separate_result</span>,</span>
+<span>  combined <span class="op">=</span> <span class="va">combined_result</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">initial_stress</span> <span class="op">&lt;-</span> <span class="va">gradient_check</span><span class="op">$</span><span class="va">fn</span></span>
+<span><span class="va">pair_count</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Special.html" class="external-link">choose</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">target_distances</span>, <span class="st">"Size"</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">termination_table</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  callbacks <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>,</span>
+<span>  status <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="va">`[[`</span>, <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, <span class="st">"status"</span><span class="op">)</span>,</span>
+<span>  termination <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span></span>
+<span>    <span class="va">results</span>,</span>
+<span>    <span class="kw">function</span><span class="op">(</span><span class="va">result</span><span class="op">)</span> <span class="va">result</span><span class="op">$</span><span class="va">terminate</span><span class="op">$</span><span class="va">what</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  iterations <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="va">`[[`</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, <span class="st">"iter"</span><span class="op">)</span>,</span>
+<span>  nf <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="va">`[[`</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, <span class="st">"nf"</span><span class="op">)</span>,</span>
+<span>  ng <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="va">`[[`</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, <span class="st">"ng"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">termination_table</span></span>
+<span><span class="co">#&gt;          callbacks    status termination iterations nf ng</span></span>
+<span><span class="co">#&gt; separate  separate converged     rel_tol         37 57 57</span></span>
+<span><span class="co">#&gt; combined  combined converged     rel_tol         37 57 57</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit_table</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  callbacks <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>,</span>
+<span>  initial_stress <span class="op">=</span> <span class="va">initial_stress</span>,</span>
+<span>  final_stress <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="va">`[[`</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, <span class="st">"f"</span><span class="op">)</span>,</span>
+<span>  initial_rmse_km <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">initial_stress</span> <span class="op">/</span> <span class="va">pair_count</span><span class="op">)</span>,</span>
+<span>  final_rmse_km <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">results</span>, <span class="va">`[[`</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, <span class="st">"f"</span><span class="op">)</span> <span class="op">/</span> <span class="va">pair_count</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">fit_display</span> <span class="op">&lt;-</span> <span class="va">fit_table</span></span>
+<span><span class="va">fit_display</span><span class="op">[</span><span class="op">-</span><span class="fl">1</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">fit_display</span><span class="op">[</span><span class="op">-</span><span class="fl">1</span><span class="op">]</span>, <span class="va">signif</span>, digits <span class="op">=</span> <span class="fl">7</span><span class="op">)</span></span>
+<span><span class="va">fit_display</span></span>
+<span><span class="co">#&gt;          callbacks initial_stress final_stress initial_rmse_km final_rmse_km</span></span>
+<span><span class="co">#&gt; separate  separate      643185300      3356497        1750.082      126.4252</span></span>
+<span><span class="co">#&gt; combined  combined      643185300      3356497        1750.082      126.4252</span></span></code></pre></div>
+<p>Here, “final stress” is stress at the returned parameters;
+<code><a href="../reference/mize.html">mize()</a></code> returns the best observed parameters. Both variants
+report status <code>converged</code> and terminate on
+<code>rel_tol</code>; they reduce the distance RMSE from about 1750 km
+to 126 km. The tables show the observed iteration and callback counts
+without turning an exact count into a lasting promise.</p>
+<p>The logical function and gradient counts are identical because both
+runs ask for the same information. The underlying preparation counts
+expose the work that <code>fg</code> shares:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">preparation_counts</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>  separate <span class="op">=</span> <span class="va">separate_callbacks</span><span class="op">$</span><span class="fu">preparations</span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  combined <span class="op">=</span> <span class="va">combined_callbacks</span><span class="op">$</span><span class="fu">preparations</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  callbacks <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">preparation_counts</span><span class="op">)</span>,</span>
+<span>  shared_preparations <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/unname.html" class="external-link">unname</a></span><span class="op">(</span><span class="va">preparation_counts</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="co">#&gt;   callbacks shared_preparations</span></span>
+<span><span class="co">#&gt; 1  separate                 114</span></span>
+<span><span class="co">#&gt; 2  combined                  58</span></span></code></pre></div>
+<p>This deterministic count shows that a combined callback avoids
+repeated work when the objective and gradient share an expensive
+intermediate. The tiny example provides no useful wall-clock
+estimate.</p>
+</div>
+<div class="section level2">
+<h2 id="interpret-the-configuration">Interpret the configuration<a class="anchor" aria-label="anchor" href="#interpret-the-configuration"></a>
+</h2>
+<p>Distances leave absolute position and orientation unidentified.
+Adding one vector to every point leaves all distances unchanged, as do
+rotations and reflections. Centering removes the arbitrary translation
+for display. The plot shows distance geometry; its axes and handedness
+carry no compass meaning.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">center_coordinates</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">par</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">coordinates</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="va">par</span>, ncol <span class="op">=</span> <span class="fl">2</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/sweep.html" class="external-link">sweep</a></span><span class="op">(</span><span class="va">coordinates</span>, <span class="fl">2</span>, <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colMeans</a></span><span class="op">(</span><span class="va">coordinates</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">plot_mmds</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">coordinates</span>, <span class="va">distances</span>, <span class="va">...</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">horizontal_cutoff</span> <span class="op">&lt;-</span> <span class="fl">0.08</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/diff.html" class="external-link">diff</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">coordinates</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">label_positions</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span></span>
+<span>    <span class="va">coordinates</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span> <span class="op">&lt;</span> <span class="op">-</span><span class="va">horizontal_cutoff</span>,</span>
+<span>    <span class="fl">2</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span></span>
+<span>      <span class="va">coordinates</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span> <span class="op">&gt;</span> <span class="va">horizontal_cutoff</span>,</span>
+<span>      <span class="fl">4</span>,</span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span>, length.out <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">coordinates</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span>  <span class="va">label_positions</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/which.min.html" class="external-link">which.min</a></span><span class="op">(</span><span class="va">coordinates</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">3</span></span>
+<span>  <span class="va">label_positions</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/which.min.html" class="external-link">which.max</a></span><span class="op">(</span><span class="va">coordinates</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>  <span class="va">city_names</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/labels.html" class="external-link">labels</a></span><span class="op">(</span><span class="va">distances</span><span class="op">)</span></span>
+<span>  <span class="va">label_positions</span><span class="op">[</span><span class="va">city_names</span> <span class="op">==</span> <span class="st">"Geneva"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">2</span></span>
+<span>  <span class="va">label_positions</span><span class="op">[</span><span class="va">city_names</span> <span class="op">==</span> <span class="st">"Lyons"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">4</span></span>
+<span>  <span class="fu">graphics</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span></span>
+<span>    <span class="va">coordinates</span>,</span>
+<span>    type <span class="op">=</span> <span class="st">"n"</span>,</span>
+<span>    asp <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>    xlab <span class="op">=</span> <span class="st">"Centered dimension 1"</span>,</span>
+<span>    ylab <span class="op">=</span> <span class="st">"Centered dimension 2"</span>,</span>
+<span>    main <span class="op">=</span> <span class="st">"Metric MDS configuration of European road distances"</span></span>
+<span>  <span class="op">)</span></span>
+<span>  <span class="fu">graphics</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/graphics/points.html" class="external-link">points</a></span><span class="op">(</span><span class="va">coordinates</span>, pch <span class="op">=</span> <span class="fl">19</span>, cex <span class="op">=</span> <span class="fl">0.45</span><span class="op">)</span></span>
+<span>  <span class="fu">graphics</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/graphics/text.html" class="external-link">text</a></span><span class="op">(</span></span>
+<span>    <span class="va">coordinates</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span>,</span>
+<span>    <span class="va">coordinates</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span>,</span>
+<span>    labels <span class="op">=</span> <span class="va">city_names</span>,</span>
+<span>    pos <span class="op">=</span> <span class="va">label_positions</span>,</span>
+<span>    offset <span class="op">=</span> <span class="fl">0.25</span>,</span>
+<span>    <span class="va">...</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">centered_coordinates</span> <span class="op">&lt;-</span> <span class="fu">center_coordinates</span><span class="op">(</span><span class="va">combined_result</span><span class="op">$</span><span class="va">par</span><span class="op">)</span></span>
+<span><span class="fu">plot_mmds</span><span class="op">(</span><span class="va">centered_coordinates</span>, <span class="va">target_distances</span>, cex <span class="op">=</span> <span class="fl">0.55</span><span class="op">)</span></span></code></pre></div>
+<p><img src="mmds_files/figure-html/plot-results-1.png" class="r-plt" alt="" width="528"></p>
+<p>The invariance holds at the objective level. The hidden check below
+translates, rotates, and reflects the returned configuration and
+verifies that stress is unchanged to numerical tolerance.</p>
+<p>The same closure pattern applies whenever callbacks need fixed data
+or share an intermediate calculation. For the full callback contract,
+see <code><a href="../reference/mize.html">?mize</a></code>.</p>
+</div>
+<div class="section level2">
+<h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a>
+</h2>
+<ul>
+<li>
+<a href="mize.html">Getting started</a> introduces callback lists
+and gradient checks.</li>
+<li>
+<a href="convergence.html">Convergence</a> explains the relative
+tolerance used here.</li>
+<li>
+<a href="stateful.html">Stateful optimization</a> shows step-by-step
+integration with retained optimizer state.</li>
+</ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

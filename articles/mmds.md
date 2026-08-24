@@ -1,287 +1,344 @@
 # Metric MDS
 
-Minimizing the Rosenbrock function is all very well, but there’s often a
-more complex relationship between the parameters we’re looking to
-optimize and what would be convenient to pass to a cost function. In
-many cases there are other quantities that we need to define and store
-somewhere for the cost function to provide a value, but which aren’t
-under our direct control and hence are not suitable for optimization.
-They just need to be available for evaluation inside `fn` and `gr`.
+Metric multidimensional scaling (metric MDS) finds a low-dimensional
+configuration whose pairwise distances resemble supplied
+dissimilarities. It is also a useful example of an optimization problem
+where a closure keeps fixed data out of the parameter vector.
 
-This vignette is less to do with the running of `mize` itself, and more
-to do with using it to solve an actual problem. It contains plenty of R
-code, but not a lot of it is `mize`-specific. Hopefully it will
-demonstrate how it can be used for non-trivial problems.
+We will reconstruct a two-dimensional configuration for the 21 European
+cities in
+[`datasets::eurodist`](https://rdrr.io/r/datasets/eurodist.html). The
+input contains road distances in kilometres, so a two-dimensional
+Euclidean configuration can only approximate them.
 
-### Metric Multi-Dimensional Scaling
+## Stress and its gradient
 
-Metric multi-dimensional scaling (Metric MDS) is a way to provide a
-low-dimensional (usually two-dimensional) view of a high dimensional
-data set, although all it needs is a distance matrix to work off.
+Let \\R = (r\_{ij})\\ be the target distances and let \\D = (d\_{ij})\\
+be the Euclidean distances among candidate coordinates \\Y\\. We
+minimize raw stress:
 
-Let’s take the `eurodist` dataset as an example, which can be found in
-the `datasets` package. The description says:
+\\ C(Y) = \sum\_{i \< j} (r\_{ij} - d\_{ij})^2. \\
 
-> The `eurodist` gives the road distances (in km) between 21 cities in
-> Europe.
+The condition \\i \< j\\ counts each unordered pair once. The matrix
+implementation below instead sums both symmetric triangles, so it
+multiplies that sum by one half. With \\n\\ objects, the corresponding
+distance RMSE is \\\sqrt{C / {n \choose 2}}\\ and has the same units as
+the input distances.
 
-We should be able to reconstruct the relative locations of the 21 cities
-on a 2D plot with this information, subject to some error because roads
-aren’t straight between the cities and the cities themselves lie on the
-non-flat surface of the Earth.
+For distinct points, the derivative with respect to the coordinates of
+object \\i\\ is
 
-### The Metric MDS Cost Function
+\\ \frac{\partial C}{\partial \mathbf{y}\_i} = -2 \sum\_{j \ne i}
+\frac{r\_{ij} - d\_{ij}}{d\_{ij}} (\mathbf{y}\_i - \mathbf{y}\_j). \\
 
-The parameters we’re going to optimize are the 2D locations of each
-city. The cost function, however, is more naturally expressed as being
-related to the distance matrices. What we want is for the distance
-matrix of the output, which we’ll call \\D\\, to resemble the input
-distance matrix, \\R\\, as much as possible.
+At coincident points, \\d\_{ij} = 0\\ and Euclidean distance is not
+differentiable. The implementation uses a named `distance_epsilon` in
+the denominator to keep the calculation finite. This numerical
+convention slightly perturbs the displayed derivative. The derivative
+remains undefined at a coincident configuration, so we validate the
+implementation at a seeded, nondegenerate starting point.
 
-One obvious way to express this as a cost function is to consider the
-square loss:
-
-\\C = \sum\_{i\<j} \left(r\_{ij} - d\_{ij}\right)^2\\ where \\r\_{ij}\\
-is the distance between city \\i\\ and city \\j\\ in the input distance
-matrix, and \\d\_{ij}\\ represents the distance in the output
-configuration. The \\i\<j\\ bit indicates that we only want to count
-each \\i,j\\ pair twice, because distances are symmetric. Normally,
-you’d probably want to divide this result by the number of pairs and
-then take the square root to get the units of the error as a distance
-and not dependent on the size of the data set, but we won’t worry about
-that.
-
-As R code, the cost function can be written as:
+The callback factory below captures the fixed target matrix in a
+closure. Its `prepare()` helper performs the shared conversion from a
+parameter vector to coordinates and pairwise distances. The counter will
+let us compare shared work without relying on a noisy timing
+measurement.
 
 ``` r
 
-# R and D are the input and output distance matrices, respectively
-cost_fun <- function(R, D) {
-  diff2 <- (R - D) ^ 2
-  sum(diff2) * 0.5
-}
-```
+distance_epsilon <- 1e-10
 
-It’s not good R style to use single character upper-case variables, but
-for matrices, we’ll get away with it just this once. I’ve also taken
-advantage of the vectorization of R code for matrices, rather than
-explicitly loop. As the calculation takes place over the entire matrix,
-I’ve halved the result to avoid the double counting of each distance.
+make_mmds_callbacks <- function(
+  distances,
+  combined = FALSE,
+  epsilon = distance_epsilon
+) {
+  target <- as.matrix(distances)
+  preparation_count <- 0L
 
-Both \\R\\ and \\D\\ in the R code are of class `matrix` rather than the
-`dist` type that `eurodist` is. The `matrix` class is more convenient
-for the computations that are needed, but not as efficient in terms of
-storage. The `eurodist` data can be converted using `as.matrix`:
-
-``` r
-
-eurodist_mat <- as.matrix(eurodist)
-```
-
-### The Metric MDS Gradient
-
-Writing out the cost function with respect to distances only makes it
-pretty straightforward. However, we need the gradient with respect to
-the parameters we are optimizing, which is the coordinates of each city.
-Indicating the (two-dimensional) vector that represents the coordinates
-of city \\i\\ as \\\mathbf{y_i}\\, the gradient of the cost function
-above is:
-
-\\\frac{\partial C}{\partial \mathbf{y_i}} = -2\sum_j \frac{r\_{ij} -
-d\_{ij}}{d\_{ij}} \left( \mathbf{y_i - y_j} \right) \\ where the sum
-\\j\\ is over all the other cities.
-
-As R code, this is:
-
-``` r
-
-# R is the input distance matrix
-# D is the output distance matrix
-# y is a n x d matrix of output coordinates
-cost_grad <- function(R, D, y) {
-  K <- (R - D) / (D + 1.e-10)
-
-  G <- matrix(nrow = nrow(y), ncol = ncol(y))
-  
-  for (i in 1:nrow(y)) {
-    dyij <- sweep(-y, 2, -y[i, ])
-    G[i, ] <- apply(dyij * K[, i], 2, sum)
+  prepare <- function(par) {
+    preparation_count <<- preparation_count + 1L
+    coordinates <- matrix(par, ncol = 2, byrow = TRUE)
+    list(
+      coordinates = coordinates,
+      distances = as.matrix(stats::dist(coordinates))
+    )
   }
 
-  as.vector(t(G)) * -2
-}
-```
-
-That loop in the middle is a bit cryptic with its `sweep`s and `apply`s,
-but it does the job of calculating the \\\sum_j \mathbf{y_i} -
-\mathbf{y_j}\\ part of the gradient for each row of the gradient matrix.
-
-### `mize` function and gradient
-
-We can now write the function and gradient routines that have the
-interface that `mize` is expecting:
-
-``` r
-
-mmds_fn <- function(par) {
-  R <- as.matrix(eurodist)
-  y <- matrix(par, ncol = 2, byrow = TRUE)
-  D <- as.matrix(stats::dist(y))
-  
-  cost_fun(R, D)
-}
-```
-
-``` r
-
-mmds_gr <- function(par) {
-  R <- as.matrix(eurodist)
-  y <- matrix(par, ncol = 2, byrow = TRUE)
-  D <- as.matrix(stats::dist(y))
-
-  cost_grad(R, D, y)
-}
-```
-
-These routines are not a model of efficiency. Not a problem for this
-small dataset, but we’ll have to revisit this below.
-
-For now, let’s choose a starting point and get optimizing. We may as
-well begin from a random location:
-
-``` r
-
-set.seed(42)
-ed0 <- rnorm(attr(eurodist, 'Size') * 2)
-
-res_euro <- mize(ed0, list(fn = mmds_fn, gr = mmds_gr), 
-                method = "L-BFGS", verbose = TRUE, 
-                grad_tol = 1e-5, check_conv_every = 10)
-#> 01:53:13 iter 0 f = 6.432e+08 g2 = 1.979e+05 nf = 1 ng = 1 step = 0 alpha = 0
-#> 01:53:13 iter 10 f = 5.291e+07 g2 = 1.767e+04 nf = 26 ng = 26 step = 1291 alpha = 0.6507
-#> 01:53:13 iter 20 f = 1.087e+07 g2 = 1.223e+04 nf = 39 ng = 39 step = 920.1 alpha = 0.4846
-#> 01:53:13 iter 30 f = 3.357e+06 g2 = 129.3 nf = 49 ng = 49 step = 4.665 alpha = 0.5486
-#> 01:53:13 iter 40 f = 3.356e+06 g2 = 0.2007 nf = 60 ng = 60 step = 0.03083 alpha = 1
-#> 01:53:13 iter 50 f = 3.356e+06 g2 = 0.0003381 nf = 71 ng = 71 step = 2.863e-05 alpha = 1
-```
-
-It takes 90 iterations to converge, but we get there. Now for the moment
-of truth: are the cities laid out in a way we’d expect? Here’s a
-function that will plot the `par` results:
-
-``` r
-
-plot_mmds <- function(coords, dist, ...) {
-  if (methods::is(coords, "numeric")) {
-    coords <- matrix(coords, ncol = 2, byrow = TRUE)
+  stress <- function(prepared) {
+    0.5 * sum((target - prepared$distances)^2)
   }
-  graphics::plot(coords, type = 'n')
-  graphics::text(coords[, 1], coords[, 2], labels = labels(dist), ...)
-}
-plot_mmds(res_euro$par, eurodist, cex = 0.5)
-```
 
-![](mmds_files/figure-html/plot%20results-1.png)
+  gradient <- function(prepared) {
+    weights <- (target - prepared$distances) /
+      (prepared$distances + epsilon)
+    coordinates <- prepared$coordinates
+    result <- matrix(
+      nrow = nrow(coordinates),
+      ncol = ncol(coordinates)
+    )
 
-Ah yes, Athens up in the top-right of a map of Europe, just as we
-expect. Ahem. In fact, because we are only optimizing distances, not
-absolute positions, there’s no reason that, starting from a random
-configuration, north will be “up” in the optimized results. Just to
-prove this works, let’s rotate the coordinates by 90 degrees clockwise:
-
-``` r
-
-rot90 <- matrix(c(0, -1, 1, 0), ncol = 2)
-rotated <- t(rot90 %*% t(matrix(res_euro$par, ncol = 2, byrow = TRUE)))
-plot_mmds(rotated, eurodist, cex = 0.5)
-```
-
-![](mmds_files/figure-html/rotated%20plot-1.png)
-
-That’s better.
-
-### Improving the Efficiency of the Function and Gradient Routines
-
-So the `mize`-powered MMDS routine is working. But it’s un-necessarily
-inefficient. Every time the function or gradient is calculated, we
-convert `eurodist` into a matrix. This only needs to be done once, as
-long as the resulting matrix is in scope inside the function. Also, if
-the function and gradient is calculated for the same value of `par`,
-`par` is converted to a distance matrix twice.
-
-The first issue can be fixed without polluting global scope with the
-converted `eurodist` matrix by making the function and gradient closures
-with access to the input distance matrix. The second problem can be
-alleviated by adding a third item in the list passed to `mize`. Add a
-function called `fg`. This should calculate the cost function and
-gradient in one call, returning the values in a list. Routines that need
-to calculate the function and gradient for the same value of `par` will
-look for `fg` and call that, in preference to calling `fn` and `gr`
-separately.
-
-Putting it all together, a function to create a suitable `fg` list to
-pass to `mize` is:
-
-``` r
-
-make_fg <- function(distmat) {
-  R <- as.matrix(distmat)
-  cost_fun <- function(R, D) {
-    diff2 <- (R - D) ^ 2
-    sum(diff2) * 0.5
-  }
-  cost_grad <- function(R, D, y) {
-    K <- (R - D) / (D + 1.e-10)
-
-    G <- matrix(nrow = nrow(y), ncol = ncol(y))
-
-    for (i in 1:nrow(y)) {
-      dyij <- sweep(-y, 2, -y[i, ])
-      G[i, ] <- apply(dyij * K[, i], 2, sum)
+    for (i in seq_len(nrow(coordinates))) {
+      differences <- sweep(-coordinates, 2, -coordinates[i, ])
+      result[i, ] <- colSums(differences * weights[, i])
     }
 
-    as.vector(t(G)) * -2
+    as.vector(t(result)) * -2
   }
-  list(
-    fn = function(par) {
-      y <- matrix(par, ncol = 2, byrow = TRUE)
-      D <- as.matrix(stats::dist(y))
-      cost_fun(R, D)
-    },
-    gr = function(par) {
-      y <- matrix(par, ncol = 2, byrow = TRUE)
-      D <- as.matrix(stats::dist(y))
-      cost_grad(R, D, y)
-    },
-    fg = function(par) {
-      y <- matrix(par, ncol = 2, byrow = TRUE)
-      D <- as.matrix(stats::dist(y))
+
+  callbacks <- list(
+    fn = function(par) stress(prepare(par)),
+    gr = function(par) gradient(prepare(par))
+  )
+  if (combined) {
+    callbacks$fg <- function(par) {
+      prepared <- prepare(par)
       list(
-        fn = cost_fun(R, D),
-        gr = cost_grad(R, D, y)
+        fn = stress(prepared),
+        gr = gradient(prepared)
       )
+    }
+  }
+
+  list(
+    fg = callbacks,
+    preparations = function() preparation_count,
+    reset_preparations = function() {
+      preparation_count <<- 0L
+      invisible(NULL)
     }
   )
 }
 ```
 
-We can then run the MMDS optimization as before:
+The separate variant supplies `fn` and `gr`. The combined variant also
+supplies `fg`, which lets `mize` request an objective and gradient from
+one prepared configuration.
 
 ``` r
 
-res_euro <- mize(ed0, make_fg(eurodist), 
-                method = "L-BFGS", verbose = TRUE, 
-                grad_tol = 1e-5, check_conv_every = 10)
-#> 01:53:13 iter 0 f = 6.432e+08 g2 = 1.979e+05 nf = 1 ng = 1 step = 0 alpha = 0
-#> 01:53:13 iter 10 f = 5.291e+07 g2 = 1.767e+04 nf = 26 ng = 26 step = 1291 alpha = 0.6507
-#> 01:53:13 iter 20 f = 1.087e+07 g2 = 1.223e+04 nf = 39 ng = 39 step = 920.1 alpha = 0.4846
-#> 01:53:13 iter 30 f = 3.357e+06 g2 = 129.3 nf = 49 ng = 49 step = 4.665 alpha = 0.5486
-#> 01:53:13 iter 40 f = 3.356e+06 g2 = 0.2007 nf = 60 ng = 60 step = 0.03083 alpha = 1
-#> 01:53:13 iter 50 f = 3.356e+06 g2 = 0.0003381 nf = 71 ng = 71 step = 2.863e-05 alpha = 1
+target_distances <- datasets::eurodist
+set.seed(42)
+initial_par <- rnorm(attr(target_distances, "Size") * 2)
+
+separate_callbacks <- make_mmds_callbacks(target_distances)
+combined_callbacks <- make_mmds_callbacks(
+  target_distances,
+  combined = TRUE
+)
 ```
 
-The same results are achieved, but it runs a tiny bit faster, although
-unless you are using a very slow computer you will have to take my word
-for it. However, as the work done to create the data that will be used
-for the gradient and function calculation grows larger, you should
-consider making use of the `fg` item.
+## Validate the gradient
+
+[`check_mize_gradient()`](https://jlmelville.github.io/mize/reference/check_mize_gradient.md)
+compares the analytic gradient with central finite differences. Because
+the combined callback is present, it also checks that `fg` agrees with
+the separate `fn` and `gr` callbacks.
+
+``` r
+
+gradient_check <- check_mize_gradient(
+  combined_callbacks$fg,
+  initial_par
+)
+
+gradient_summary <- data.frame(
+  max_abs_error = gradient_check$max_abs_error,
+  max_rel_error = gradient_check$max_rel_error,
+  fg_fn_abs_error = gradient_check$fg_consistency$fn$abs_error,
+  fg_gr_max_abs_error =
+    gradient_check$fg_consistency$gr$max_abs_error
+)
+signif(gradient_summary, digits = 4)
+#>   max_abs_error max_rel_error fg_fn_abs_error fg_gr_max_abs_error
+#> 1      0.008302     1.748e-06               0                   0
+```
+
+The relative error is the more useful scale-free summary here. The exact
+zero consistency errors show that the separate and combined paths
+implement the same objective and gradient at the checked point.
+
+## Optimize with separate and combined callbacks
+
+This case study uses one explicit convergence criterion. Relative change
+in stress is natural for this scale-dependent objective, so unrelated
+tolerances are disabled. See the
+[Convergence](https://jlmelville.github.io/mize/articles/convergence.md)
+article when choosing a criterion for another problem.
+
+``` r
+
+mmds_controls <- list(
+  method = "L-BFGS",
+  max_iter = 200,
+  abs_tol = NULL,
+  rel_tol = 1e-8,
+  grad_tol = NULL,
+  step_tol = NULL
+)
+
+separate_callbacks$reset_preparations()
+combined_callbacks$reset_preparations()
+
+separate_result <- do.call(
+  mize,
+  c(
+    list(par = initial_par, fg = separate_callbacks$fg),
+    mmds_controls
+  )
+)
+combined_result <- do.call(
+  mize,
+  c(
+    list(par = initial_par, fg = combined_callbacks$fg),
+    mmds_controls
+  )
+)
+
+results <- list(
+  separate = separate_result,
+  combined = combined_result
+)
+initial_stress <- gradient_check$fn
+pair_count <- choose(attr(target_distances, "Size"), 2)
+
+termination_table <- data.frame(
+  callbacks = names(results),
+  status = vapply(results, `[[`, character(1), "status"),
+  termination = vapply(
+    results,
+    function(result) result$terminate$what,
+    character(1)
+  ),
+  iterations = vapply(results, `[[`, numeric(1), "iter"),
+  nf = vapply(results, `[[`, numeric(1), "nf"),
+  ng = vapply(results, `[[`, numeric(1), "ng")
+)
+termination_table
+#>          callbacks    status termination iterations nf ng
+#> separate  separate converged     rel_tol         37 57 57
+#> combined  combined converged     rel_tol         37 57 57
+```
+
+``` r
+
+fit_table <- data.frame(
+  callbacks = names(results),
+  initial_stress = initial_stress,
+  final_stress = vapply(results, `[[`, numeric(1), "f"),
+  initial_rmse_km = sqrt(initial_stress / pair_count),
+  final_rmse_km = sqrt(
+    vapply(results, `[[`, numeric(1), "f") / pair_count
+  )
+)
+fit_display <- fit_table
+fit_display[-1] <- lapply(fit_display[-1], signif, digits = 7)
+fit_display
+#>          callbacks initial_stress final_stress initial_rmse_km final_rmse_km
+#> separate  separate      643185300      3356497        1750.082      126.4252
+#> combined  combined      643185300      3356497        1750.082      126.4252
+```
+
+Here, “final stress” is stress at the returned parameters;
+[`mize()`](https://jlmelville.github.io/mize/reference/mize.md) returns
+the best observed parameters. Both variants report status `converged`
+and terminate on `rel_tol`; they reduce the distance RMSE from about
+1750 km to 126 km. The tables show the observed iteration and callback
+counts without turning an exact count into a lasting promise.
+
+The logical function and gradient counts are identical because both runs
+ask for the same information. The underlying preparation counts expose
+the work that `fg` shares:
+
+``` r
+
+preparation_counts <- c(
+  separate = separate_callbacks$preparations(),
+  combined = combined_callbacks$preparations()
+)
+data.frame(
+  callbacks = names(preparation_counts),
+  shared_preparations = unname(preparation_counts)
+)
+#>   callbacks shared_preparations
+#> 1  separate                 114
+#> 2  combined                  58
+```
+
+This deterministic count shows that a combined callback avoids repeated
+work when the objective and gradient share an expensive intermediate.
+The tiny example provides no useful wall-clock estimate.
+
+## Interpret the configuration
+
+Distances leave absolute position and orientation unidentified. Adding
+one vector to every point leaves all distances unchanged, as do
+rotations and reflections. Centering removes the arbitrary translation
+for display. The plot shows distance geometry; its axes and handedness
+carry no compass meaning.
+
+``` r
+
+center_coordinates <- function(par) {
+  coordinates <- matrix(par, ncol = 2, byrow = TRUE)
+  sweep(coordinates, 2, colMeans(coordinates))
+}
+
+plot_mmds <- function(coordinates, distances, ...) {
+  horizontal_cutoff <- 0.08 * diff(range(coordinates[, 1]))
+  label_positions <- ifelse(
+    coordinates[, 1] < -horizontal_cutoff,
+    2,
+    ifelse(
+      coordinates[, 1] > horizontal_cutoff,
+      4,
+      rep(c(1, 3), length.out = nrow(coordinates))
+    )
+  )
+  label_positions[which.min(coordinates[, 2])] <- 3
+  label_positions[which.max(coordinates[, 2])] <- 1
+  city_names <- labels(distances)
+  label_positions[city_names == "Geneva"] <- 2
+  label_positions[city_names == "Lyons"] <- 4
+  graphics::plot(
+    coordinates,
+    type = "n",
+    asp = 1,
+    xlab = "Centered dimension 1",
+    ylab = "Centered dimension 2",
+    main = "Metric MDS configuration of European road distances"
+  )
+  graphics::points(coordinates, pch = 19, cex = 0.45)
+  graphics::text(
+    coordinates[, 1],
+    coordinates[, 2],
+    labels = city_names,
+    pos = label_positions,
+    offset = 0.25,
+    ...
+  )
+}
+
+centered_coordinates <- center_coordinates(combined_result$par)
+plot_mmds(centered_coordinates, target_distances, cex = 0.55)
+```
+
+![](mmds_files/figure-html/plot-results-1.png)
+
+The invariance holds at the objective level. The hidden check below
+translates, rotates, and reflects the returned configuration and
+verifies that stress is unchanged to numerical tolerance.
+
+The same closure pattern applies whenever callbacks need fixed data or
+share an intermediate calculation. For the full callback contract, see
+[`?mize`](https://jlmelville.github.io/mize/reference/mize.md).
+
+## See also
+
+- [Getting started](https://jlmelville.github.io/mize/articles/mize.md)
+  introduces callback lists and gradient checks.
+- [Convergence](https://jlmelville.github.io/mize/articles/convergence.md)
+  explains the relative tolerance used here.
+- [Stateful
+  optimization](https://jlmelville.github.io/mize/articles/stateful.md)
+  shows step-by-step integration with retained optimizer state.

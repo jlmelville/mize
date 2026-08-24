@@ -1,405 +1,524 @@
-# Stateful Optimization
+# Stateful optimization
 
-By “Stateful” I mean what if we could create an optimizer independently
-of the function it was operating on and be able to pass it around, store
-it, and get full control over when we pass it data to continue the
-optimization.
+A stateful optimizer separates configuration from iteration. You keep
+the current parameters and optimizer state, decide when to advance them,
+and can log, visualize, intervene, or checkpoint between steps.
 
-This vignette is about using `mize` to manually control an optimization
-externally. Instead of passing `mize` a function to be optimized from a
-starting point, then waiting for `mize` to finish and get back the
-finished results, you might want to tell `mize` to optimize for a few
-steps, then do something with the intermediate results: log the cost,
-update some parameters, test for some specific convergence criterion,
-checkpoint the current results, or plot the current state of the result
-in some custom way. Then, if there’s still more optimization to be done,
-pass the results back off to `mize` and get it to crank away for a few
-more iterations.
+This is useful when a single blocking call to
+[`mize()`](https://jlmelville.github.io/mize/reference/mize.md) does not
+leave enough room for application-specific work. The price of that
+control is that your loop owns the lifecycle: it must retain every
+updated optimizer, check terminal state, and treat function and gradient
+observations as optional.
 
-This was in fact the inspiration for creating `mize` in the first place:
-I wanted access to the sort of optimization routines that the
-[`stats::optim`](https://rdrr.io/r/stats/optim.html) function provided,
-but the lack of control was a deal breaker. One way to try and get
-around the problem is to only optimize for a few iterations at a time:
+We will use the two-dimensional Rosenbrock function throughout:
 
 ``` r
 
 rb_fg <- list(
-   fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
-   gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
-                          200 *        (x[2] - x[1] * x[1])) })
-rb0 <- c(-1.2, 1)
-
-par <- rb0
-for (batch in 1:3) {
-  optim_res <- stats::optim(par = par, fn = rb_fg$fn, gr = rb_fg$gr, 
-                            method = "BFGS", control = list(maxit = 10))
-  par <- optim_res$par
-  message("batch ", batch, " f = ", formatC(optim_res$value))
-}
-#> batch 1 f = 1.367
-#> batch 2 f = 0.2011
-#> batch 3 f = 0.006648
-```
-
-but even this unsatisfactory work-around causes problems, because you
-are reinitializing the optimization for with each batch, and losing all
-the information the optimizer has. In the case of methods like BFGS and
-CG, this is important for their efficient use. The more control you
-want, the fewer iterations per batch, but that leads to behavior that
-approaches steepest descent.
-
-Instead, `mize` lets you create a stateful optimizer, that you pass to a
-function, and an updated version of which is returned as part of the
-return value of the function. This gives you complete control over what
-to do in between iterations, without sacrificing any of the information
-the optimizer is using.
-
-## Creating an Optimizer
-
-To create an optimizer, use the `make_mize` function:
-
-``` r
-
-opt <- make_mize(method = "BFGS")
-```
-
-## Initialize the Optimizer
-
-Before starting the optimization, the optimizer needs to be initialized
-using the function and starting point. Mainly this is to allow the
-various methods to preallocate whatever storage they make use of
-(matrices and vectors) according to the size of the data, as specified
-by the starting location.
-
-To continue the rosenbrock example from above:
-
-``` r
-
-opt <- mize_init(opt = opt, par = rb0, fg = rb_fg)
-```
-
-### A potential simplification
-
-If you have both the starting point and the function to optimize to hand
-at the point when the optimizer is created, you can provide that to
-`make_mize` and it will do the initialization for you:
-
-``` r
-
-opt <- make_mize(method = "BFGS", par = rb0, fg = rb_fg, max_iter = 30)
-```
-
-And there is no need to make a separate call to `mize_init`. However,
-normally it’s more convenient to handle configuring the optimizer
-earlier than when the data shows up.
-
-## Start optimizing
-
-Using the batch of ten iteration approach we used with `optim` is very
-similar with `mize`:
-
-``` r
-
-par <- rb0
-for (batch in 1:3) {
-  for (i in 1:10) {
-    mize_res <- mize_step(opt = opt, par = par, fg = rb_fg)
-    par <- mize_res$par
-    opt <- mize_res$opt
+  fn = function(x) {
+    100 * (x[2] - x[1] * x[1])^2 + (1 - x[1])^2
+  },
+  gr = function(x) {
+    c(
+      -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+      200 * (x[2] - x[1] * x[1])
+    )
   }
-  message("batch ", batch, " f = ", formatC(mize_res$f))
-}
-#> batch 1 f = 2.604
-#> batch 2 f = 0.5568
-#> batch 3 f = 0.005003
-```
-
-The difference here is that you have to do the iterating in batches of
-10 manually yourself. The optimizer needs to be updated with the version
-that was returned from the function.
-
-### Return value of `mize_step`
-
-As you can see, with the greater power of `mize_step` to control the
-iteration, comes greater responsibility. You also need to decide when to
-stop iterating. Apart from `par` and `opt`, there are some other
-components to the returned result list which might help:
-
-- `f` - The function value, if it was calculated at `par`. For the few
-  methods which don’t do this, you can of course generate it yourself
-  via `rb_fg$fn(par)`.
-- `g` - The gradient vector, if it was calculated at `par`. If it’s not
-  present, then obviously there’s nothing to stop you calculating
-  `rb_fg$gr(par)` yourself.
-- `nf` - The number of function evaluations carried out over the
-  optimizer’s lifetime. This count persists across
-  [`mize_init()`](https://jlmelville.github.io/mize/reference/mize_init.md)
-  calls. `opt` coordinates it with `mize_step`, so you don’t need to
-  update it manually between steps.
-- `ng` - The optimizer-lifetime number of gradient evaluations, which
-  also persists across
-  [`mize_init()`](https://jlmelville.github.io/mize/reference/mize_init.md)
-  calls.
-
-You should treat the optimizer, `opt`, as a black box. After each step,
-check `opt$is_terminated` before relying on optional function or
-gradient values. If it is `TRUE`, `opt$terminate$what` gives the
-termination reason and `opt$terminate$val` gives the observed criterion
-value. Termination can indicate convergence, budget exhaustion, or a
-non-finite function or gradient.
-
-Taking all that into account, here’s a self-contained example, that
-removes the now un-necessary batching, does some minor error checking,
-and keeps track of the best parameters seen so far (although with this
-combination of optimizer and problem, you don’t have to worry about it):
-
-``` r
-
-# Create the optimizer
-opt <- make_mize(method = "BFGS")
-
-# Pretend we don't have access to the function or starting point until later
-rb_fg <- list(
-   fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
-   gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
-                          200 *        (x[2] - x[1] * x[1])) })
-rb0 <- c(-1.2, 1)
-
-# Initialize
-opt <- mize_init(opt = opt, par = rb0, fg = rb_fg)
-
-# Store the best seen parameters in case something goes wrong
-par <- rb0
-par_best <- par
-f_best <- rb_fg$fn(par_best)
-
-for (i in 1:30) {
-  mize_res <- mize_step(opt = opt, par = par, fg = rb_fg)
-  par <- mize_res$par
-  opt <- mize_res$opt
-  
-  # Do whatever you want with the data at each iteration
-  
-  if (opt$is_terminated) {
-    # Stop before using values that may be unavailable after termination
-    break
-  }
-  if (mize_res$f < f_best) {
-    f_best <- mize_res$f
-    par_best <- par
-  }
-}
-
-# optimized result is in par_best
-par_best
-#> [1] 0.9294066 0.8642370
-f_best
-#> [1] 0.005002828
-```
-
-## Step information
-
-The return value of `mize_step` provides the function and gradient
-values. If you would like access to more information, the
-`mize_step_summary` function can extract it conveniently:
-
-``` r
-
-# Create optimizer and do one step of optimization as usual
-opt <- make_mize(method = "BFGS", par = rb0, fg = rb_fg)
-par <- rb0
-par_old <- par
-mize_res <- mize_step(opt = opt, par = par, fg = rb_fg)
-step_info <- mize_step_summary(
-  mize_res$opt, mize_res$par, rb_fg, par_old = par_old
 )
-
-# info that's already available in mize_res
-step_info$f
-#> [1] 19.49933
-step_info$ng
-#> [1] 3
-step_info$nf
-#> [1] 3
-# and some extra
-step_info$step
-#> [1] 0.02168573
-step_info$alpha
-#> [1] 9.31247e-05
+rb0 <- c(-1.2, 1)
 ```
 
-`mize_step_summary` takes `opt`, `par` and `fg` like `mize_step` does,
-but also optionally wants a `par_old` argument. This is the value of
-`par` from the previous iteration, from which it calculates the size of
-the step taken in this iteration.
+## Why retaining state matters
 
-Information available from the return value of `mize_step_summary`
-includes:
-
-- `iter` The iteration number.
-- `f` The function value, if it’s available, or if you have set a
-  convergence tolerance that requires its calculation (see below).
-- `g2n` The gradient l2 (Euclidean) norm, if `grad_tol` is non-`NULL`
-  (see the Convergence section for more).
-- `ginfn` The gradient infinity norm, if `ginf_tol` is non-`NULL` (also
-  see the Convergence section for more).
-- `nf` The number of function evaluations over the optimizer’s lifetime.
-- `ng` The number of gradient evaluations over the optimizer’s lifetime.
-- `step` The step size of this iteration.
-- `alpha` The size of the line search value found during the gradient
-  descent stage. This won’t be the same as `step` even for optimizers
-  that don’t use an extra momentum stage because the total step size is
-  normally the value of `alpha` multiplied by the magnitude of the
-  gradient.
-- `mu` If a momentum stage was used, the momentum coefficient.
-- `opt` The optimizer with updated function and gradient counts, if `f`,
-  `g2n`, `ginfn` was calculated.
-
-In many cases, `f`, `g2n` and `ginfn` do not require any recalculation
-(or aren’t calculated), but to be on the safe side, always reassign
-`opt` to the return value from `mize_step_summary`.
-
-Here’s a modified version of the previous example, where we log out
-information from `mize_step_summary`. We’re only going to go for 10
-iterations to avoid too much output.
+A tempting workaround with
+[`stats::optim()`](https://rdrr.io/r/stats/optim.html) is to run a small
+batch, take its parameters, and start another optimizer:
 
 ``` r
 
-# Create the optimizer
-opt <- make_mize(method = "BFGS", par = rb0, fg = rb_fg)
-
-par <- rb0
-for (i in 1:10) {
-  par_old <- par
-  mize_res <- mize_step(opt = opt, par = par, fg = rb_fg)
-  par <- mize_res$par
-  opt <- mize_res$opt
-
-  # step info
-  step_info <- mize_step_summary(opt, par, rb_fg, par_old)
-  opt <- step_info$opt
-  message(paste(
-    Map(function(x) { paste0(x, " = ", formatC(step_info[[x]])) }, 
-        c("iter", "f", "nf", "ng", "step")), 
-    collapse = ", "))
-}
-#> iter = 1, f = 19.5, nf = 3, ng = 3, step = 0.02169
-#> iter = 2, f = 11.57, nf = 4, ng = 4, step = 0.04729
-#> iter = 3, f = 4.281, nf = 5, ng = 5, step = 0.09808
-#> iter = 4, f = 4.144, nf = 6, ng = 6, step = 0.01427
-#> iter = 5, f = 4.14, nf = 7, ng = 7, step = 0.002249
-#> iter = 6, f = 4.136, nf = 8, ng = 8, step = 0.002942
-#> iter = 7, f = 4.128, nf = 9, ng = 9, step = 0.00557
-#> iter = 8, f = 4.114, nf = 10, ng = 10, step = 0.01061
-#> iter = 9, f = 4.086, nf = 11, ng = 11, step = 0.02048
-#> iter = 10, f = 2.604, nf = 14, ng = 14, step = 0.8382
-```
-
-## Convergence
-
-In the example up until now we have manually looped over 30 iterations
-and then stopped. More sophisticated stopping criteria is available.
-Three changes are needed:
-
-1.  When initializing the optimizer, when passing `par` and `fg` to
-    either `make_mize` or `mize_init`, also pass termination criteria:
-
-``` r
-
-opt <- make_mize(method = "BFGS", par = rb0, fg = rb_fg, max_iter = 30)
-# or
-opt <- make_mize(method = "BFGS")
-opt <- mize_init(opt = opt, par = rb0, fg = rb_fg, max_iter = 30)
-```
-
-2.  At the end of the loop, after calling `mize_step_summary`, pass the
-    return value to the function `check_mize_convergence`. This returns
-    an updated version of `opt` which will indicate if optimization
-    should stop by setting the `opt$is_terminated` boolean flag:
-
-``` r
-
-par <- rb0
-par_old <- par
-mize_res <- mize_step(opt, par, rb_fg)
-par <- mize_res$par
-step_info <- mize_step_summary(
-  mize_res$opt, par, rb_fg, par_old = par_old
+first_batch <- stats::optim(
+  par = rb0,
+  fn = rb_fg$fn,
+  gr = rb_fg$gr,
+  method = "BFGS",
+  control = list(maxit = 10)
 )
-opt <- check_mize_convergence(step_info)
+second_batch <- stats::optim(
+  par = first_batch$par,
+  fn = rb_fg$fn,
+  gr = rb_fg$gr,
+  method = "BFGS",
+  control = list(maxit = 10)
+)
+c(first = first_batch$value, second = second_batch$value)
+#>     first    second 
+#> 1.3673831 0.2010733
 ```
 
-Note that you don’t need to manually assign `opt` to the value that
-comes from `mize_step_summary`, as `check_mize_convergence` handles
-that.
+The second call starts a new BFGS run. It receives the parameters and
+discards the first run’s inverse-Hessian approximation and other
+transient method state. Shorter batches provide more interruptions while
+throwing away more of the information that makes a stateful method
+effective.
 
-3.  Instead of manually looping with a `for` loop you can use
-    `while (!opt$is_terminated)`.
+## The three lifecycle operations
 
-Once `opt$is_terminated` is `TRUE`, optimization should cease. Inspect
-`opt$terminate$what` for the reason and `opt$terminate$val` for the
-observed criterion value. Check the flag immediately after
+The stateful API has three main operations:
+
+| Operation | Role |
+|:---|:---|
+| [`make_mize()`](https://jlmelville.github.io/mize/reference/make_mize.md) | Configure an optimizer; optionally initialize it when `par` and `fg` are available. |
+| [`mize_init()`](https://jlmelville.github.io/mize/reference/mize_init.md) | Bind an optimizer to a starting point and callbacks, and initialize a new run. |
+| [`mize_step()`](https://jlmelville.github.io/mize/reference/mize_step.md) | Advance one iteration and return updated `opt` and `par`. |
+
+Configuration and initialization can be separate:
+
+``` r
+
+opt <- make_mize(method = "BFGS")
+opt <- mize_init(
+  opt,
+  par = rb0,
+  fg = rb_fg,
+  max_iter = 3,
+  abs_tol = NULL,
+  rel_tol = NULL,
+  grad_tol = NULL,
+  ginf_tol = NULL,
+  step_tol = NULL
+)
+```
+
+Or pass `par` and `fg` to
+[`make_mize()`](https://jlmelville.github.io/mize/reference/make_mize.md)
+to initialize immediately. In either form, always use the updated `opt`
+and `par` returned by each step.
+
+## Optional observations
+
 [`mize_step()`](https://jlmelville.github.io/mize/reference/mize_step.md)
-before doing anything that assumes a finite function or gradient value.
-
-Apart from just maximum number of iterations, there are a variety of
-options that relate to convergence. There is a separate vignette which
-covers these [convergence
-options](https://jlmelville.github.io/mize/articles/convergence.md), and
-all the parameters mentioned there can be passed to `make_mize` and
-`mize_init`. Whatever options you use, setting `max_iter` is a good idea
-to avoid an infinite loop.
-
-Here’s the example repeated again, this time using
-`check_mize_convergence` to control the number of iterations, rather
-than a `for` loop:
+always returns `opt`, `par`, `nf`, and `ng`. It returns `f` or `g` only
+when that value was calculated at the returned parameters. For example,
+constant-step steepest descent needs a gradient at the old parameters
+but does not observe either value at the new parameters:
 
 ``` r
 
-# Create the optimizer
-opt <- make_mize(method = "BFGS")
+observation_opt <- make_mize(
+  method = "SD",
+  line_search = "constant",
+  step0 = 0.0001,
+  par = rb0,
+  fg = rb_fg,
+  max_iter = 3,
+  abs_tol = NULL,
+  rel_tol = NULL,
+  grad_tol = NULL,
+  ginf_tol = NULL,
+  step_tol = NULL
+)
+observation_step <- mize_step(observation_opt, rb0, rb_fg)
+names(observation_step)
+#> [1] "opt" "par" "nf"  "ng"
+```
 
-rb_fg <- list(
-   fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
-   gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
-                          200 *        (x[2] - x[1] * x[1])) })
-rb0 <- c(-1.2, 1)
+Code such as `if (step$f < best_f)` is therefore unsafe. An absent
+observation is normal and leaves the step status unchanged.
 
-# Initialize and set convergence criteria
-opt <- mize_init(opt = opt, par = rb0, fg = rb_fg, max_iter = 30)
+## A minimal terminal-aware loop
 
-# Store the best seen parameters in case something goes wrong
+A stateful run does not check its ordinary convergence controls until
+you summarize a step and call
+[`check_mize_convergence()`](https://jlmelville.github.io/mize/reference/check_mize_convergence.md).
+A minimal safe loop retains state and checks for termination after every
+call that can update the optimizer:
+
+``` r
+
 par <- rb0
-par_best <- par
-f_best <- rb_fg$fn(par_best)
 
 while (!opt$is_terminated) {
   par_old <- par
-  mize_res <- mize_step(opt = opt, par = par, fg = rb_fg)
-  par <- mize_res$par
-  opt <- mize_res$opt
-  
-  # Do whatever you want with the data at each iteration
-  
+  step <- mize_step(opt, par, rb_fg)
+  opt <- step$opt
+  par <- step$par
   if (opt$is_terminated) {
-    # Stop before using values that may be unavailable after termination
     break
   }
-  if (mize_res$f < f_best) {
-    f_best <- mize_res$f
-    par_best <- par
+
+  step_info <- mize_step_summary(
+    opt,
+    par,
+    rb_fg,
+    par_old = par_old,
+    calc_fn = FALSE,
+    calc_gr = FALSE
+  )
+  opt <- step_info$opt
+  if (opt$is_terminated) {
+    break
   }
-  
-  step_info <- mize_step_summary(opt, par, rb_fg, par_old)
-  # Do something with the step info if you'd like
-  # Check convergence
+
   opt <- check_mize_convergence(step_info)
 }
 
-# optimized result is in par_best
-par_best
-#> [1] 0.9294066 0.8642370
-f_best
-#> [1] 0.005002828
+opt[c("status", "converged", "message", "terminate")]
+#> $status
+#> [1] "budget_exhausted"
+#> 
+#> $converged
+#> [1] FALSE
+#> 
+#> $message
+#> [1] "Budget exhausted: max_iter reached."
+#> 
+#> $terminate
+#> $terminate$what
+#> [1] "max_iter"
+#> 
+#> $terminate$val
+#> [1] 3
 ```
+
+This run deliberately ends at `max_iter = 3`: its status is
+`budget_exhausted`, and `converged` is `FALSE`.
+
+## Deliberate observations and diagnostics
+
+[`mize_step_summary()`](https://jlmelville.github.io/mize/reference/mize_step_summary.md)
+is where a loop can request observations. Set `calc_fn = TRUE` when
+logging or best-value tracking needs the objective, and `calc_gr = TRUE`
+when gradient norms are needed. The returned optimizer must be retained
+because a requested callback updates the lifetime counts and can itself
+terminate at a hard budget.
+
+The summary schema is dynamic. Common fields include `iter`, `f`, `nf`,
+`ng`, `step`, and `alpha`; line-search methods can also expose
+`alpha_init`, `slope_init`, `ls_reason`, `ls_outcome`, `ls_nf`, and
+`ls_ng`. Some directions add `direction_reason`, and momentum methods
+can add `mu`. See
+[`?mize_step_summary`](https://jlmelville.github.io/mize/reference/mize_step_summary.md)
+for the complete current schema.
+
+Here is one canonical production loop. Its `state` list includes the
+required `opt` and `par`, plus caller-owned best and progress records.
+The best value is the best post-step objective this loop has actually
+observed; it is distinct from the optimizer’s current state.
+
+``` r
+
+value_or_na <- function(x) {
+  if (is.null(x)) NA else x
+}
+
+advance_stateful <- function(state, fg, max_steps = Inf) {
+  steps <- 0L
+
+  while (!state$opt$is_terminated && steps < max_steps) {
+    par_old <- state$par
+    step <- mize_step(state$opt, state$par, fg)
+    state$opt <- step$opt
+    state$par <- step$par
+    if (state$opt$is_terminated) {
+      break
+    }
+
+    step_info <- mize_step_summary(
+      state$opt,
+      state$par,
+      fg,
+      par_old = par_old,
+      calc_fn = TRUE
+    )
+    state$opt <- step_info$opt
+    if (state$opt$is_terminated) {
+      break
+    }
+
+    if (!is.null(step_info$f) && is.finite(step_info$f)) {
+      if (step_info$f < state$best_f) {
+        state$best_f <- step_info$f
+        state$best_par <- state$par
+      }
+
+      state$progress <- rbind(
+        state$progress,
+        data.frame(
+          iter = step_info$iter,
+          f = step_info$f,
+          nf = step_info$nf,
+          ng = step_info$ng,
+          step = step_info$step,
+          alpha = value_or_na(step_info$alpha),
+          ls_outcome = value_or_na(step_info$ls_outcome)
+        )
+      )
+    }
+
+    state$opt <- check_mize_convergence(step_info)
+    steps <- steps + 1L
+  }
+
+  state
+}
+```
+
+We will use a bounded BFGS run so the terminal classification is
+unambiguous:
+
+``` r
+
+controls <- list(
+  max_iter = 30,
+  abs_tol = NULL,
+  rel_tol = NULL,
+  grad_tol = NULL,
+  ginf_tol = NULL,
+  step_tol = NULL
+)
+
+new_bfgs_state <- function() {
+  opt <- do.call(
+    make_mize,
+    c(list(method = "BFGS", par = rb0, fg = rb_fg), controls)
+  )
+  list(
+    opt = opt,
+    par = rb0,
+    best_par = NULL,
+    best_f = Inf,
+    progress = data.frame()
+  )
+}
+
+uninterrupted <- advance_stateful(new_bfgs_state(), rb_fg)
+tail(uninterrupted$progress, 3)
+#>    iter           f nf ng       step alpha ls_outcome
+#> 28   28 0.026689274 38 38 0.12722348     1      wolfe
+#> 29   29 0.015185570 39 39 0.13148806     1      wolfe
+#> 30   30 0.005002828 40 40 0.04709997     1      wolfe
+uninterrupted$opt[c("status", "converged", "message", "terminate")]
+#> $status
+#> [1] "budget_exhausted"
+#> 
+#> $converged
+#> [1] FALSE
+#> 
+#> $message
+#> [1] "Budget exhausted: max_iter reached."
+#> 
+#> $terminate
+#> $terminate$what
+#> [1] "max_iter"
+#> 
+#> $terminate$val
+#> [1] 30
+```
+
+The selected progress columns are useful for this run. Test
+method-specific columns for presence before application code relies on
+them.
+
+### Hard budgets can deny a requested observation
+
+`max_fn` remains hard when `calc_fn = TRUE`. With no function
+evaluations available, the summary returns no `f` and its updated
+optimizer reports the exhausted budget:
+
+``` r
+
+budget_opt <- make_mize(
+  method = "SD",
+  line_search = "constant",
+  step0 = 0.0001,
+  par = rb0,
+  fg = rb_fg,
+  max_fn = 0,
+  abs_tol = NULL,
+  rel_tol = NULL,
+  grad_tol = NULL,
+  ginf_tol = NULL,
+  step_tol = NULL
+)
+budget_info <- mize_step_summary(
+  budget_opt,
+  rb0,
+  rb_fg,
+  calc_fn = TRUE
+)
+list(
+  f_available = !is.null(budget_info$f),
+  nf = budget_info$nf,
+  status = budget_info$opt$status,
+  terminate = budget_info$opt$terminate
+)
+#> $f_available
+#> [1] FALSE
+#> 
+#> $nf
+#> [1] 0
+#> 
+#> $status
+#> [1] "budget_exhausted"
+#> 
+#> $terminate
+#> $terminate$what
+#> [1] "max_fn"
+#> 
+#> $terminate$val
+#> [1] 0
+```
+
+This is why the production loop both retains `step_info$opt` and guards
+`step_info$f`. Calling `fg$fn()` directly bypasses `mize`’s counters and
+limits. Keep direct callback calls outside hard-budget workflows.
+
+## Checkpoint and resume
+
+Checkpoint the complete caller-owned state needed to continue. Here that
+means the optimizer and parameters, plus the best observation and
+progress log. The callbacks are ordinary program code and are supplied
+again after restoration.
+
+``` r
+
+partial <- advance_stateful(
+  new_bfgs_state(),
+  rb_fg,
+  max_steps = 10
+)
+
+checkpoint_file <- tempfile(fileext = ".rds")
+saveRDS(partial, checkpoint_file)
+rm(partial)
+
+resumed <- readRDS(checkpoint_file)
+unlink(checkpoint_file)
+resumed <- advance_stateful(resumed, rb_fg)
+```
+
+To show what preservation buys us, compare the resumed run with both an
+uninterrupted stateful run and a one-shot
+[`mize()`](https://jlmelville.github.io/mize/reference/mize.md) call
+using the same method and termination controls:
+
+``` r
+
+one_shot <- do.call(
+  mize,
+  c(list(par = rb0, fg = rb_fg, method = "BFGS"), controls)
+)
+
+comparison <- data.frame(
+  run = c("one-shot", "stateful", "checkpoint/resume"),
+  objective = c(one_shot$f, uninterrupted$best_f, resumed$best_f),
+  nf = c(one_shot$nf, uninterrupted$opt$counts$fn, resumed$opt$counts$fn),
+  ng = c(one_shot$ng, uninterrupted$opt$counts$gr, resumed$opt$counts$gr),
+  status = c(
+    one_shot$status,
+    uninterrupted$opt$status,
+    resumed$opt$status
+  ),
+  terminate = c(
+    one_shot$terminate$what,
+    uninterrupted$opt$terminate$what,
+    resumed$opt$terminate$what
+  )
+)
+comparison
+#>                 run   objective nf ng           status terminate
+#> 1          one-shot 0.005002828 40 40 budget_exhausted  max_iter
+#> 2          stateful 0.005002828 40 40 budget_exhausted  max_iter
+#> 3 checkpoint/resume 0.005002828 40 40 budget_exhausted  max_iter
+
+comparison_tolerance <- 1e-10
+equivalent <- c(
+  one_shot_best = isTRUE(all.equal(
+    one_shot$par,
+    uninterrupted$best_par,
+    tolerance = comparison_tolerance
+  )),
+  one_shot_objective = isTRUE(all.equal(
+    one_shot$f,
+    uninterrupted$best_f,
+    tolerance = comparison_tolerance
+  )),
+  one_shot_last = isTRUE(all.equal(
+    one_shot$last_par,
+    uninterrupted$par,
+    tolerance = comparison_tolerance
+  )),
+  resumed_current = isTRUE(all.equal(
+    resumed$par,
+    uninterrupted$par,
+    tolerance = comparison_tolerance
+  )),
+  resumed_best_par = isTRUE(all.equal(
+    resumed$best_par,
+    uninterrupted$best_par,
+    tolerance = comparison_tolerance
+  )),
+  resumed_best = isTRUE(all.equal(
+    resumed$best_f,
+    uninterrupted$best_f,
+    tolerance = comparison_tolerance
+  ))
+)
+equivalent
+#>      one_shot_best one_shot_objective      one_shot_last    resumed_current 
+#>               TRUE               TRUE               TRUE               TRUE 
+#>   resumed_best_par       resumed_best 
+#>               TRUE               TRUE
+```
+
+For this deterministic problem and implementation, all comparisons pass
+at `1e-10`. The comparison shows that serializing and restoring the
+optimizer preserves method state. Bit-for-bit identity across platforms
+remains outside the contract.
+
+## Reinitialization starts a new run
+
+Calling
+[`mize_init()`](https://jlmelville.github.io/mize/reference/mize_init.md)
+on an existing optimizer deliberately starts a new run. It resets the
+iteration counter, terminal fields, caches, and transient algorithm
+state. Function and gradient counts remain optimizer-lifetime totals:
+
+``` r
+
+counts_before <- uninterrupted$opt$counts
+reinitialized <- mize_init(
+  uninterrupted$opt,
+  rb0,
+  rb_fg
+)
+
+data.frame(
+  iter_before = uninterrupted$opt$iter,
+  iter_after = reinitialized$iter,
+  counts_preserved = identical(counts_before, reinitialized$counts),
+  terminated_after = reinitialized$is_terminated
+)
+#>   iter_before iter_after counts_preserved terminated_after
+#> 1          30          0             TRUE            FALSE
+```
+
+Use reinitialization when a new run is intended; use serialization when
+the same run must continue. See
+[`?mize_init`](https://jlmelville.github.io/mize/reference/mize_init.md),
+[`?mize_step`](https://jlmelville.github.io/mize/reference/mize_step.md),
+[`?mize_step_summary`](https://jlmelville.github.io/mize/reference/mize_step_summary.md),
+and
+[`?check_mize_convergence`](https://jlmelville.github.io/mize/reference/check_mize_convergence.md)
+for the complete API.
+
+## See also
+
+- [Getting started](https://jlmelville.github.io/mize/articles/mize.md)
+  introduces the one-shot workflow and result contract.
+- [Convergence](https://jlmelville.github.io/mize/articles/convergence.md)
+  explains how to choose and interpret termination controls.
+- [Metric MDS](https://jlmelville.github.io/mize/articles/mmds.md)
+  develops a callback closure suitable for either one-shot or stateful
+  use.
