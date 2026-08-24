@@ -13,7 +13,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">mize</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.5.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.5.9001</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -150,7 +150,10 @@ before beginning any optimization with <code><a href="mize_step.html">mize_step(
 if <code>fg</code> and <code>par</code> are available when calling
 <code><a href="make_mize.html">make_mize()</a></code>, they can be passed to that function and the returned
 optimizer will already be initialized. <code><a href="mize_step.html">mize_step()</a></code> requires an
-initialized optimizer and does not carry out initialization itself.</p>
+initialized optimizer and does not carry out initialization itself.
+Reinitialization resets the iteration counter and transient algorithm state,
+but preserves accumulated function and gradient evaluation counts and
+explicitly registered custom hooks.</p>
 <p>Optional convergence parameters may also be passed here, for use with
 <code><a href="check_mize_convergence.html">check_mize_convergence()</a></code>. They are optional if you do your own
 convergence checking.</p>

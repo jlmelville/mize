@@ -34,11 +34,15 @@ Result of the current optimization step, a list with components:
 - `par`: Updated version of the parameters passed to the `par` argument.
   Should be passed as the `par` argument in the next iteration.
 
-- `nf`: Running total number of function evaluations carried out since
-  iteration 1.
+- `nf`: Total number of function evaluations over the optimizer's
+  lifetime. This count persists across
+  [`mize_init()`](https://jlmelville.github.io/mize/reference/mize_init.md)
+  calls.
 
-- `ng`: Running total number of gradient evaluations carried out since
-  iteration 1.
+- `ng`: Total number of gradient evaluations over the optimizer's
+  lifetime. This count persists across
+  [`mize_init()`](https://jlmelville.github.io/mize/reference/mize_init.md)
+  calls.
 
 - `f`: Optional. The new value of the function, evaluated at the
   returned value of `par`. Only present if calculated as part of the

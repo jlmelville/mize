@@ -4,15 +4,39 @@
 
 ### Bug fixes and minor improvements
 
-- Fixed several optimizer edge cases found during cleanup.
+- Stateful optimization now handles lifecycle dependencies consistently,
+  and global function and gradient evaluation limits are enforced across
+  optimizer and line-search callbacks, including truncated Newton inner
+  iterations.
+- Optimizer inputs and objective, gradient, Hessian, and inverse-Hessian
+  callback results now receive consistent early validation and clearer
+  errors.
+- Quasi-Newton updates and exact-Newton directions now use safer
+  fallbacks when curvature information or Hessian factorization is
+  unsuitable.
+- Wolfe line searches now require an explicitly numeric `step0` to be a
+  positive finite scalar; string initializers are unchanged.
+- Line searches using weak Wolfe curvature now accept equality at the
+  curvature boundary. The optional Hager-Zhang initializer probe now
+  counts toward the line search’s local function and combined evaluation
+  limits. Hager-Zhang initializer arithmetic also safely handles
+  non-finite values and uses the specified Euclidean gradient norm.
 - New function:
-  [`check_mize_convergence()`](https://jlmelville.github.io/mize/reference/check_mize_convergence.md),
-  which will compare your an analytic gradient with a finite-different
+  [`check_mize_gradient()`](https://jlmelville.github.io/mize/reference/check_mize_gradient.md),
+  which compares an analytic gradient with a finite-difference
   approximation.
 - [`mize()`](https://jlmelville.github.io/mize/reference/mize.md) now
-  returns additive status fields more status fields: `converged`,
-  `status`, and `message`, plus explicit best/last result fields
-  (`best_par`, `best_f`, `last_par`, and `last_f`).
+  returns status fields: `converged`, `status`, and `message`, plus
+  explicit best/last result fields (`best_par`, `best_f`, `last_par`,
+  and `last_f`).
+- With `store_progress = TRUE`,
+  [`mize()`](https://jlmelville.github.io/mize/reference/mize.md) now
+  exposes optional line-search reason, selected-point provenance, local
+  callback counts, initial scale, and exact-Newton direction provenance.
+  A line search that selects no usable step and produces no complete
+  optimizer transition now reports `line_search_failed` instead of
+  tolerance convergence; an exact global callback budget retains
+  precedence.
 
 ## mize 0.2.5
 

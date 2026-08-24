@@ -15,7 +15,7 @@ Broyden-Fletcher-Goldfarb-Shanno (BFGS), and the limited memory BFGS."></head><b
 
     <a class="navbar-brand me-2" href="../index.html">mize</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.5.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.5.9001</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -183,11 +183,10 @@ if <code>method = "TN"</code>, ignored otherwise.</p></dd>
 
 
 <dt id="arg-nest-q">nest_q<a class="anchor" aria-label="anchor" href="#arg-nest-q"></a></dt>
-<dd><p>Strong convexity parameter for the NAG
-momentum term. Must take a value between 0 (strongly convex) and 1
-(zero momentum). Only applies using the NAG method or a momentum method with
-Nesterov momentum schedule. Also does nothing if <code>nest_convex_approx</code>
-is <code>TRUE</code>.</p></dd>
+<dd><p>NAG momentum parameter. Must take a value between 0 (largest
+momentum) and 1 (zero momentum, giving steepest descent). Only applies using
+the NAG method or a momentum method with Nesterov momentum schedule. Also
+does nothing if <code>nest_convex_approx</code> is <code>TRUE</code>.</p></dd>
 
 
 <dt id="arg-nest-convex-approx">nest_convex_approx<a class="anchor" aria-label="anchor" href="#arg-nest-convex-approx"></a></dt>
@@ -221,8 +220,9 @@ less than 1. Also optional for use with the <code>"back"</code> line search meth
 
 
 <dt id="arg-dbd-weight">dbd_weight<a class="anchor" aria-label="anchor" href="#arg-dbd-weight"></a></dt>
-<dd><p>Weighting parameter used by the <code>"DBD"</code> method only, and
-only if no momentum scheme is provided. Must be an integer between 0 and 1.</p></dd>
+<dd><p>Numeric weighting value used by the <code>"DBD"</code> method only,
+and only if no momentum scheme is provided. Must be between 0 and 1,
+inclusive.</p></dd>
 
 
 <dt id="arg-line-search">line_search<a class="anchor" aria-label="anchor" href="#arg-line-search"></a></dt>
@@ -361,8 +361,8 @@ section for details.</p></dd>
 
 
 <dt id="arg-max-fg">max_fg<a class="anchor" aria-label="anchor" href="#arg-max-fg"></a></dt>
-<dd><p>Maximum number of function or gradient evaluations. See the
-'Convergence' section for details.</p></dd>
+<dd><p>Maximum combined number of function and gradient evaluations.
+See the 'Convergence' section for details.</p></dd>
 
 
 <dt id="arg-abs-tol">abs_tol<a class="anchor" aria-label="anchor" href="#arg-abs-tol"></a></dt>
@@ -411,7 +411,7 @@ optimization to the console.</p></dd>
 <dt id="arg-store-progress">store_progress<a class="anchor" aria-label="anchor" href="#arg-store-progress"></a></dt>
 <dd><p>If <code>TRUE</code> store information about the progress
 of the optimization in a data frame, and include it as part of the return
-value.</p></dd>
+value. See the 'Progress' section.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -423,29 +423,32 @@ including function evaluation where necessary. See the 'Convergence'
 section for details.</p></li>
 <li><p><code>nf</code>: Total number of function evaluations carried out. This
 includes any extra evaluations required for convergence calculations. Also,
-a function evaluation may be required to calculate the value of <code>f</code>
-returned in this list (see below). Additionally, if the <code>verbose</code>
+a function evaluation may be attempted to calculate the value of <code>f</code>
+returned in this list (see below), subject to the budget behavior in the
+'Convergence' section. Additionally, if the <code>verbose</code>
 parameter is <code>TRUE</code>, then function and gradient information for the
-initial value of <code>par</code> will be logged to the console. These values
-are cached for subsequent use by the optimizer.</p></li>
+initial value of <code>par</code> will be logged to the console when available. Those
+values are cached for subsequent use by the optimizer.</p></li>
 <li><p><code>ng</code>: Total number of gradient evaluations carried out. This
 includes any extra evaluations required for convergence calculations using
 <code>grad_tol</code>. As with <code>nf</code>, additional gradient calculations beyond
 what you're expecting may have been needed for logging, convergence and
 calculating the value of <code>g2n</code> or <code>ginfn</code> (see below).</p></li>
-<li><p><code>f</code>: Value of the function, evaluated at the returned
-value of <code>par</code>.</p></li>
+<li><p><code>f</code>: Value of the function at the returned value of <code>par</code>. This component
+is absent when the value is unavailable under the hard-budget behavior
+described in the 'Convergence' section.</p></li>
 <li><p><code>best_par</code>: The best parameters returned by <code>mize()</code>. This is
 currently the same value as <code>par</code>, and is provided so callers can use an
 explicit best-vs-last naming convention.</p></li>
 <li><p><code>best_f</code>: Value of the function at <code>best_par</code>. This is currently
-the same value as <code>f</code>.</p></li>
+the same value as <code>f</code>, and is absent under the same budget condition.</p></li>
 <li><p><code>last_par</code>: Parameters from the last optimizer state before any final
 best-result restoration. This is the same as <code>par</code> unless <code>mize()</code> returns
 an earlier best point.</p></li>
-<li><p><code>last_f</code>: Value of the function at <code>last_par</code> when it is known without
-requiring an extra function evaluation. If <code>last_par</code> differs from <code>par</code>
-and the function value was not already available, this is <code>NA_real_</code>.</p></li>
+<li><p><code>last_f</code>: Value of the function at <code>last_par</code> when available. This
+component is absent if its value is unavailable under the hard-budget
+behavior described in the 'Convergence' section. If <code>last_par</code> differs from
+<code>par</code> and the function value was not already available, this is <code>NA_real_</code>.</p></li>
 <li><p><code>g2n</code>: Optional: the length (Euclidean or l2-norm) of the
 gradient vector, evaluated at the returned value of <code>par</code>. Calculated
 only if <code>grad_tol</code> is non-null.</p></li>
@@ -462,11 +465,10 @@ the tolerance-based convergence criteria.</p></li>
 <li><p><code>status</code>: Short string classifying the termination reason. One of
 <code>"converged"</code>, <code>"budget_exhausted"</code>, <code>"failed"</code>, or <code>"terminated"</code>.</p></li>
 <li><p><code>message</code>: Human-readable summary of the termination reason.</p></li>
-<li><p><code>progress</code>: Optional data frame containing information on the
-value of the function, gradient, momentum, and step sizes evaluated at each
-iteration where convergence is checked. Only present if
-<code>store_progress</code> is set to <code>TRUE</code>. Could get quite large if the
-optimization is long and the convergence is checked regularly.</p></li>
+<li><p><code>progress</code>: Optional data frame containing optimization progress and
+method-specific diagnostics. Only present if <code>store_progress</code> is set to
+<code>TRUE</code>. See the 'Progress' section. Could get quite large if the
+optimization is long and progress is stored regularly.</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -544,9 +546,9 @@ treated as experimental/internal and may change without the same
 compatibility guarantees as the other methods.</p></li>
 <li><p><code>"NAG"</code> is the Nesterov Accelerated Gradient method. The exact
 form of the momentum update in this method can be controlled with the
-following parameters:</p><ul><li><p><code>nest_q</code>: Strong convexity parameter. Must take a value
-between 0 (strongly convex) and 1 (zero momentum). Ignored if
-<code>nest_convex_approx</code> is <code>TRUE</code>.</p></li>
+following parameters:</p><ul><li><p><code>nest_q</code>: NAG momentum parameter. Must take a value between 0
+(largest momentum) and 1 (zero momentum, giving steepest descent). Ignored
+if <code>nest_convex_approx</code> is <code>TRUE</code>.</p></li>
 <li><p><code>nest_convex_approx</code>: If <code>TRUE</code>, then use an approximation
 due to Sutskever for calculating the momentum parameter.</p></li>
 <li><p><code>nest_burn_in</code>: Number of iterations to wait before using a
@@ -598,8 +600,8 @@ every other method, more or less in line with the recommendations given
 by Nocedal and Wright. The smaller the value of <code>c2</code>, the stricter
 the line search, but it should not be set to smaller than <code>c1</code>.</p></li>
 <li><p><code>step0</code>: Initial value for the line search on the first step.
-If a positive numeric value is passed as an argument, that value is used
-as-is. Otherwise, by passing a string as an argument, a guess is made
+If a positive finite numeric value is passed as an argument, that value is
+used as-is. Otherwise, by passing a string as an argument, a guess is made
 based on values of the gradient, function or parameters, at the starting
 point:</p><ul><li><p><code>"rasmussen"</code>: As used by Rasmussen in <code>minimize.m</code>:
 $$\frac{1}{1+\left|g\right|^2}$$</p></li>
@@ -635,7 +637,7 @@ a Wolfe line search method.</p></li>
 <li><p><code>approx_armijo</code>: If <code>TRUE</code>, then the approximate Armijo
 sufficient decrease condition (Hager and Zhang, 2005) will be used to
 check termination in Wolfe line search methods. If <code>FALSE</code>, then the
-exact curvature condition will be used. The default is <code>NULL</code> which
+exact Armijo condition will be used. The default is <code>NULL</code> which
 lets the different Wolfe line searches choose whichever is their default
 behavior. This option is ignored if not using a Wolfe line search method.</p></li>
 </ul><p>For the Wolfe line searches, the methods of <code>"Rasmussen"</code>,
@@ -716,6 +718,41 @@ for the NAG method, but can be employed with any momentum type and schedule.</p>
 the momentum scheme will default to a constant value of <code>0.9</code>.</p>
     </div>
     <div class="section level2">
+    <h2 id="progress">Progress<a class="anchor" aria-label="anchor" href="#progress"></a></h2>
+
+
+
+<p>If <code>store_progress = TRUE</code>, the returned <code>progress</code> data frame records the
+information available at each stored iteration. Common columns are <code>f</code>,
+<code>g2n</code>, <code>ginfn</code>, cumulative function and gradient counts <code>nf</code> and <code>ng</code>, the
+realized outer <code>step</code>, the gradient-descent step length <code>alpha</code>, and the
+momentum coefficient <code>mu</code>. Columns are included only when their owning
+method or calculation supplies them.</p>
+<p>Line searches may add these diagnostic columns:</p><ul><li><p><code>alpha_init</code>: Initial step length used by the line search after
+initialization and safeguards.</p></li>
+<li><p><code>slope_init</code>: Directional derivative at the start of the search.</p></li>
+<li><p><code>ls_reason</code>: Why the line search stopped, such as <code>"wolfe"</code>,
+<code>"armijo"</code>, or <code>"budget_exhausted"</code>.</p></li>
+<li><p><code>ls_outcome</code>: Kind of point ultimately selected: <code>"wolfe"</code>, <code>"armijo"</code>,
+<code>"improving_fallback"</code>, or <code>"no_step"</code>. This is independent of
+<code>ls_reason</code>; for example, an exhausted search can still return an evaluated
+improving point.</p></li>
+<li><p><code>ls_nf</code> and <code>ls_ng</code>: Function and gradient callbacks owned by that outer
+line search, excluding its cached starting point. An objective-only
+Hager-Zhang initializer probe is included in <code>ls_nf</code>.</p></li>
+</ul><p>Exact Newton (<code>method = "NEWTON"</code>) may add <code>direction_reason</code>, which records
+how its direction was produced: <code>"hessian_solve"</code>, <code>"hessian_diagonal"</code>,
+<code>"inverse_hessian_multiply"</code>, <code>"inverse_hessian_diagonal"</code>,
+<code>"cholesky_fallback"</code>, or <code>"direction_check_fallback"</code>. The two fallback
+values mean that steepest descent was used because Cholesky factorization
+failed, or because the computed direction was non-finite or not a descent
+direction, respectively.</p>
+<p>When a diagnostic column first appears after earlier progress rows, numeric
+columns use <code>NA_real_</code> in those rows and categorical columns use
+<code>NA_character_</code>. A method-specific column is absent if its owning stage never
+produced it.</p>
+    </div>
+    <div class="section level2">
     <h2 id="convergence">Convergence<a class="anchor" aria-label="anchor" href="#convergence"></a></h2>
 
 
@@ -730,22 +767,26 @@ caused termination.</p>
 based termination (<code>"abs_tol"</code>, <code>"rel_tol"</code>, <code>"grad_tol"</code>,
 <code>"ginf_tol"</code>, or <code>"step_tol"</code>). The <code>status</code> value is <code>"converged"</code> for
 those tolerance exits, <code>"budget_exhausted"</code> for <code>"max_iter"</code>, <code>"max_fn"</code>,
-<code>"max_gr"</code>, or <code>"max_fg"</code>, <code>"failed"</code> for <code>"fn_inf"</code> or <code>"gr_inf"</code>,
-and <code>"terminated"</code> for any other termination reason.</p>
+<code>"max_gr"</code>, or <code>"max_fg"</code>, <code>"failed"</code> for <code>"fn_inf"</code>, <code>"gr_inf"</code>, or
+<code>"line_search_failed"</code>, and <code>"terminated"</code> for any other termination
+reason.</p>
 <p>The following parameters control various stopping criteria:</p><ul><li><p><code>max_iter</code>: Maximum number of iterations to calculate. Reaching
 this limit is indicated by <code>terminate$what</code> being <code>"max_iter"</code>.</p></li>
-<li><p><code>max_fn</code>: Maximum number of function evaluations allowed.
+<li><p><code>max_fn</code>: Hard maximum number of function evaluations allowed.
 Indicated by <code>terminate$what</code> being <code>"max_fn"</code>.</p></li>
-<li><p><code>max_gr</code>: Maximum number of gradient evaluations allowed.
+<li><p><code>max_gr</code>: Hard maximum number of gradient evaluations allowed.
 Indicated by <code>terminate$what</code> being <code>"max_gr"</code>.</p></li>
-<li><p><code>max_fg</code>: Maximum number of gradient evaluations allowed.
+<li><p><code>max_fg</code>: Hard maximum combined number of function and gradient
+evaluations allowed.
 Indicated by <code>terminate$what</code> being <code>"max_fg"</code>.</p></li>
-<li><p><code>abs_tol</code>: Absolute tolerance of the function value. If the
-absolute value of the function falls below this threshold,
-<code>terminate$what</code> will be <code>"abs_tol"</code>. Will only be triggered if
-the objective function has a minimum value of zero.</p></li>
-<li><p><code>rel_tol</code>: Relative tolerance of the function value, comparing
-consecutive function evaluation results. Indicated by <code>terminate$what</code>
+<li><p><code>abs_tol</code>: Absolute tolerance for the change in consecutive function
+values. It is reached when <code>abs(fn_old - fn_new) &lt; abs_tol</code>, and is
+indicated by <code>terminate$what</code> being <code>"abs_tol"</code>.</p></li>
+<li><p><code>rel_tol</code>: Relative tolerance for the change in consecutive function
+values. It is reached when
+<code>abs(fn_old - fn_new) / min(abs(fn_old), abs(fn_new)) &lt; rel_tol</code>.
+If the denominator is zero, the relative change is zero when the function
+values are equal and <code>Inf</code> otherwise. It is indicated by <code>terminate$what</code>
 being <code>"rel_tol"</code>.</p></li>
 <li><p><code>grad_tol</code>: Absolute tolerance of the l2 (Euclidean) norm of
 the gradient. Indicated by <code>terminate$what</code> being <code>"grad_tol"</code>.
@@ -762,14 +803,30 @@ value. Indicated by <code>terminate$what</code> being <code>"step_tol"</code>.
 For those optimization methods which allow for abandoning the result of an
 iteration and restarting using the previous iteration's value of
 <code>par</code> an iteration, <code>step_tol</code> will not be triggered.</p></li>
-</ul><p>Convergence is checked between specific iterations. How often is determined
+</ul><p>Once <code>max_fn</code>, <code>max_gr</code>, or <code>max_fg</code> is the termination reason, no later
+function or gradient callback is made, even if another callback-specific
+limit still has capacity. If the final permitted callback instead establishes
+convergence or a non-finite failure, that observed result takes precedence.
+Normal final reporting may then evaluate the objective only if doing so
+violates neither <code>max_fn</code> nor <code>max_fg</code>.</p>
+<p>If a line search selects <code>ls_outcome = "no_step"</code> and the complete optimizer
+iteration also realizes a zero step, optimization terminates with
+<code>terminate$what = "line_search_failed"</code>, the line-search reason in
+<code>terminate$val</code>, <code>status = "failed"</code>, and <code>converged = FALSE</code>. A global
+callback budget reached by that attempt takes precedence. A nonzero
+transition from a later optimizer stage is not classified as a no-step
+failure.</p>
+<p>Convergence is checked between specific iterations. How often is determined
 by the <code>check_conv_every</code> parameter, which specifies the number of
-iterations between each check. By default, this is set for every iteration.</p>
+iterations between each check. By default, this is set for every iteration.
+Line-search no-step failures are checked immediately, independently of this
+cadence.</p>
 <p>Be aware that if <code>abs_tol</code> or <code>rel_tol</code> are non-<code>NULL</code>, this
 requires the function to have been evaluated at the current position at the
 end of each iteration. If the function at that position has not been
-calculated, it will be calculated and will contribute to the total reported
-in the <code>counts</code> list in the return value. The calculated function value
+calculated, it will be calculated only if no evaluation-budget termination
+is already active and neither <code>max_fn</code> nor <code>max_fg</code> prevents the callback.
+It will contribute to <code>nf</code> in the return value. The calculated function value
 is cached for use by the optimizer in the next iteration, so if the optimizer
 would have needed to calculate the function anyway (e.g. use of the strong
 Wolfe line search methods), there is no significant cost accrued by
@@ -778,16 +835,17 @@ that don't use the function value at that location, this could represent a
 lot of extra function evaluations. On the other hand, not checking
 convergence could result in a lot of extra unnecessary iterations.
 Similarly, if <code>grad_tol</code> or <code>ginf_tol</code> is non-<code>NULL</code>, then
-the gradient will be calculated if needed.</p>
+the gradient will be calculated if needed, no evaluation-budget termination
+is already active, and neither <code>max_gr</code> nor <code>max_fg</code> prevents the callback.</p>
 <p>If extra function or gradient evaluations is an issue, set
 <code>check_conv_every</code> to a higher value, but be aware that this can cause
 convergence limits to be exceeded by a greater amount.</p>
 <p>Note also that if the <code>verbose</code> parameter is <code>TRUE</code>, then a summary
 of the results so far will be logged to the console whenever a convergence
 check is carried out. If the <code>store_progress</code> parameter is <code>TRUE</code>,
-then the same information will be returned as a data frame in the return
-value. For a long optimization this could be a lot of data, so by default it
-is not stored.</p>
+then progress summaries and available method-specific diagnostics will be
+returned as a data frame. For a long optimization this could be a lot of
+data, so by default it is not stored.</p>
 <p>Other ways for the optimization to terminate is if an iteration generates a
 non-finite (i.e. <code>Inf</code> or <code>NaN</code>) gradient or function value.
 Some, but not all, line-searches will try to recover from the latter, by
@@ -801,10 +859,11 @@ convergence check would not be carried out for this iteration.</p>
 <p>The value of <code>par</code> in the return value should be the parameters which
 correspond to the lowest value of the function that has been calculated
 during the optimization. As discussed above however, determining which set
-of parameters requires a function evaluation at the end of each iteration,
+of parameters may require a function evaluation at the end of each iteration,
 which only happens if either the optimization method calculates it as part
 of its own operation or if a convergence check is being carried out during
-this iteration. Therefore, if your method does not carry out function
+this iteration, subject to the budget behavior described above.
+Therefore, if your method does not carry out function
 evaluations and <code>check_conv_every</code> is set to be so large that no
 convergence calculation is carried out before <code>max_iter</code> is reached,
 then the returned value of <code>par</code> is the last value encountered.</p>

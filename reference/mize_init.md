@@ -117,7 +117,9 @@ they can be passed to that function and the returned optimizer will
 already be initialized.
 [`mize_step()`](https://jlmelville.github.io/mize/reference/mize_step.md)
 requires an initialized optimizer and does not carry out initialization
-itself.
+itself. Reinitialization resets the iteration counter and transient
+algorithm state, but preserves accumulated function and gradient
+evaluation counts and explicitly registered custom hooks.
 
 Optional convergence parameters may also be passed here, for use with
 [`check_mize_convergence()`](https://jlmelville.github.io/mize/reference/check_mize_convergence.md).

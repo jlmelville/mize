@@ -46,8 +46,8 @@ than others. See the section on function and gradient tolerance below.
 ## Function tolerance
 
 There are two ways to specify a function tolerance, based on comparing
-the difference between consecutive function values. `abs_tol` measures
-absolute tolerance.
+the difference between consecutive function values. `abs_tol` is reached
+when `abs(fn_old - fn_new) < abs_tol`.
 
 ``` r
 
@@ -65,7 +65,10 @@ res$par
 ```
 
 However, relative tolerance is often preferred, because it measures the
-change in value relative to the size of the values themselves.
+change as `abs(fn_old - fn_new) / min(abs(fn_old), abs(fn_new))`. If the
+denominator is zero, the relative change is zero when the function
+values are equal and `Inf` otherwise. The `rel_tol` criterion is reached
+when this relative change is less than `rel_tol`.
 
 ``` r
 
@@ -93,10 +96,9 @@ aggressive with relative tolerance.
 
 ## Gradient tolerance
 
-Gradient tolerances measure the difference between the size of the
-gradient on consecutive step. `grad_tol` uses the 2-norm (sometimes
-referred to as the Euclidean norm) of the gradient to measure
-convergence.
+Gradient tolerances test the current gradient. `grad_tol` tests its
+2-norm (sometimes referred to as the Euclidean norm), while `ginf_tol`
+tests its infinity norm (the maximum absolute component).
 
 ``` r
 
@@ -125,7 +127,7 @@ Other workers suggest using the infinity norm (the maximum absolute
 component) of the gradient vector, particularly for larger problems. For
 example, see this [conjugate gradient paper by Hager and
 Zhang](https://doi.org/10.1137/030601880). To use the infinity norm, set
-the `ginf_norm` parameter.
+the `ginf_tol` parameter.
 
 ``` r
 
@@ -248,12 +250,10 @@ res$par
 #> [1] -1.048507  1.070341
 ```
 
-The function and gradient termination criteria are checked both between
-iterations and during line search. On the assumption that if you specify
-a maximum number of evaluations, that means these calculations are
-expensive, `mize` errs on the side of caution and will sometimes
-calculate fewer evaluations than you ask for, because it thinks that
-attempting another iteration will exceed the limit.
+The limits are hard caps. Each actual function or gradient callback
+consumes the applicable budget, while reusing a cached value does not.
+Once `max_fn`, `max_gr`, or the combined `max_fg` budget is exhausted,
+no callback covered by that cap is made.
 
 ## A minor complication with convergence checking
 
@@ -261,10 +261,10 @@ By default, convergence is checked at every iteration. For `abs_tol` and
 `rel_tol`, this means that the function needs to have been evaluated at
 the current value of `par`. A lot of optimization methods do this as
 part of their normal working, so it doesn’t cost very much to do the
-convergence check. However, not all optimization methods do. If you
-specify a non-`NULL` value for `rel_tol` and `abs_tol` and the function
-value isn’t available, it will be calculated. This could, for some
-methods, add a lot of overhead.
+convergence check. However, not all optimization methods do. If either
+`rel_tol` or `abs_tol` is non-`NULL` and the function value isn’t
+available, it will be calculated if the applicable evaluation budget
+permits. This could, for some methods, add a lot of overhead.
 
 If this is important, then using a gradient-based tolerance will be a
 better choice.
@@ -284,15 +284,15 @@ can reduce the frequency with which it is carried out with the
 ``` r
 
 res <- mize(rb0, rb_fg, grad_tol = 1e-3, check_conv_every = 5, verbose = TRUE)
-#> 19:51:20 iter 0 f = 24.2 g2 = 232.9 nf = 1 ng = 1 step = 0 alpha = 0
-#> 19:51:20 iter 5 f = 4.139 g2 = 1.773 nf = 7 ng = 7 step = 0.002565 alpha = 1
-#> 19:51:20 iter 10 f = 2.553 g2 = 11.67 nf = 18 ng = 18 step = 0.04657 alpha = 0.05068
-#> 19:51:20 iter 15 f = 1.37 g2 = 6.954 nf = 25 ng = 25 step = 0.0922 alpha = 0.405
-#> 19:51:20 iter 20 f = 0.5142 g2 = 3.001 nf = 31 ng = 31 step = 0.1319 alpha = 1
-#> 19:51:20 iter 25 f = 0.1203 g2 = 2.398 nf = 37 ng = 37 step = 0.03943 alpha = 0.9408
-#> 19:51:20 iter 30 f = 0.009862 g2 = 3.333 nf = 42 ng = 42 step = 0.03554 alpha = 0.1706
-#> 19:51:20 iter 35 f = 2.304e-06 g2 = 0.01537 nf = 47 ng = 47 step = 0.01136 alpha = 1
-#> 19:51:20 iter 40 f = 4.147e-18 g2 = 4.386e-08 nf = 52 ng = 52 step = 6.386e-07 alpha = 1
+#> 01:53:03 iter 0 f = 24.2 g2 = 232.9 nf = 1 ng = 1 step = 0 alpha = 0
+#> 01:53:03 iter 5 f = 4.139 g2 = 1.773 nf = 7 ng = 7 step = 0.002565 alpha = 1
+#> 01:53:03 iter 10 f = 2.553 g2 = 11.67 nf = 18 ng = 18 step = 0.04657 alpha = 0.05068
+#> 01:53:03 iter 15 f = 1.37 g2 = 6.954 nf = 25 ng = 25 step = 0.0922 alpha = 0.405
+#> 01:53:03 iter 20 f = 0.5142 g2 = 3.001 nf = 31 ng = 31 step = 0.1319 alpha = 1
+#> 01:53:03 iter 25 f = 0.1203 g2 = 2.398 nf = 37 ng = 37 step = 0.03943 alpha = 0.9408
+#> 01:53:03 iter 30 f = 0.009862 g2 = 3.333 nf = 42 ng = 42 step = 0.03554 alpha = 0.1706
+#> 01:53:03 iter 35 f = 2.304e-06 g2 = 0.01537 nf = 47 ng = 47 step = 0.01136 alpha = 1
+#> 01:53:03 iter 40 f = 4.147e-18 g2 = 4.386e-08 nf = 52 ng = 52 step = 6.386e-07 alpha = 1
 ```
 
 This also has the side effect of producing less output to the console

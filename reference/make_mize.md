@@ -115,10 +115,9 @@ make_mize(
 
 - nest_q:
 
-  Strong convexity parameter for the `"NAG"` method's momentum term.
-  Must take a value between 0 (strongly convex) and 1 (results in
-  steepest descent).Ignored unless the `method` is `"NAG"` and
-  `nest_convex_approx` is `FALSE`.
+  NAG momentum parameter. Must take a value between 0 (largest momentum)
+  and 1 (zero momentum, giving steepest descent). Ignored unless the
+  `method` is `"NAG"` and `nest_convex_approx` is `FALSE`.
 
 - nest_convex_approx:
 
@@ -151,8 +150,8 @@ make_mize(
 
 - dbd_weight:
 
-  Weighting parameter used by the `"DBD"` method only, and only if no
-  momentum scheme is provided. Must be an integer between 0 and 1.
+  Numeric weighting value used by the `"DBD"` method only, and only if
+  no momentum scheme is provided. Must be between 0 and 1, inclusive.
 
 - line_search:
 

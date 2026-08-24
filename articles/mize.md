@@ -160,17 +160,17 @@ If you want to keep track of the progress of the optimization, set the
 
 res <- mize(rb0, rb_fg, grad_tol = 1e-3, ginf_tol = 1e-3, max_iter = 10, 
             verbose = TRUE)
-#> 19:51:22 iter 0 f = 24.2 g2 = 232.9 ginf = 215.6 nf = 1 ng = 1 step = 0 alpha = 0
-#> 19:51:22 iter 1 f = 19.5 g2 = 200.9 ginf = 185.6 nf = 3 ng = 3 step = 0.02169 alpha = 9.312e-05
-#> 19:51:22 iter 2 f = 11.57 g2 = 135.4 ginf = 124.6 nf = 4 ng = 4 step = 0.04729 alpha = 0.3469
-#> 19:51:22 iter 3 f = 4.281 g2 = 17.28 ginf = 16.27 nf = 5 ng = 5 step = 0.09809 alpha = 1
-#> 19:51:22 iter 4 f = 4.144 g2 = 2.588 ginf = 2.469 nf = 6 ng = 6 step = 0.01426 alpha = 1
-#> 19:51:22 iter 5 f = 4.139 g2 = 1.773 ginf = 1.626 nf = 7 ng = 7 step = 0.002565 alpha = 1
-#> 19:51:22 iter 6 f = 4.132 g2 = 2.44 ginf = 2.327 nf = 8 ng = 8 step = 0.004716 alpha = 1
-#> 19:51:22 iter 7 f = 4.12 g2 = 3.727 ginf = 3.033 nf = 9 ng = 9 step = 0.009086 alpha = 0.4616
-#> 19:51:22 iter 8 f = 4.098 g2 = 5.427 ginf = 3.863 nf = 10 ng = 10 step = 0.01724 alpha = 0.2631
-#> 19:51:22 iter 9 f = 2.569 g2 = 8.248 ginf = 7.431 nf = 16 ng = 16 step = 0.8311 alpha = 4.743
-#> 19:51:22 iter 10 f = 2.553 g2 = 11.67 ginf = 9.996 nf = 18 ng = 18 step = 0.04657 alpha = 0.05068
+#> 01:53:05 iter 0 f = 24.2 g2 = 232.9 ginf = 215.6 nf = 1 ng = 1 step = 0 alpha = 0
+#> 01:53:05 iter 1 f = 19.5 g2 = 200.9 ginf = 185.6 nf = 3 ng = 3 step = 0.02169 alpha = 9.312e-05
+#> 01:53:05 iter 2 f = 11.57 g2 = 135.4 ginf = 124.6 nf = 4 ng = 4 step = 0.04729 alpha = 0.3469
+#> 01:53:05 iter 3 f = 4.281 g2 = 17.28 ginf = 16.27 nf = 5 ng = 5 step = 0.09809 alpha = 1
+#> 01:53:05 iter 4 f = 4.144 g2 = 2.588 ginf = 2.469 nf = 6 ng = 6 step = 0.01426 alpha = 1
+#> 01:53:05 iter 5 f = 4.139 g2 = 1.773 ginf = 1.626 nf = 7 ng = 7 step = 0.002565 alpha = 1
+#> 01:53:05 iter 6 f = 4.132 g2 = 2.44 ginf = 2.327 nf = 8 ng = 8 step = 0.004716 alpha = 1
+#> 01:53:05 iter 7 f = 4.12 g2 = 3.727 ginf = 3.033 nf = 9 ng = 9 step = 0.009086 alpha = 0.4616
+#> 01:53:05 iter 8 f = 4.098 g2 = 5.427 ginf = 3.863 nf = 10 ng = 10 step = 0.01724 alpha = 0.2631
+#> 01:53:05 iter 9 f = 2.569 g2 = 8.248 ginf = 7.431 nf = 16 ng = 16 step = 0.8311 alpha = 4.743
+#> 01:53:05 iter 10 f = 2.553 g2 = 11.67 ginf = 9.996 nf = 18 ng = 18 step = 0.04657 alpha = 0.05068
 ```
 
 As you can see, information about the state of the optimization is
@@ -199,11 +199,11 @@ set the `log_every` parameter to make logging slightly less noisy:
 ``` r
 
 res <- mize(rb0, rb_fg, grad_tol = 1e-3, verbose = TRUE, log_every = 10)
-#> 19:51:22 iter 0 f = 24.2 g2 = 232.9 nf = 1 ng = 1 step = 0 alpha = 0
-#> 19:51:22 iter 10 f = 2.553 g2 = 11.67 nf = 18 ng = 18 step = 0.04657 alpha = 0.05068
-#> 19:51:22 iter 20 f = 0.5142 g2 = 3.001 nf = 31 ng = 31 step = 0.1319 alpha = 1
-#> 19:51:22 iter 30 f = 0.009862 g2 = 3.333 nf = 42 ng = 42 step = 0.03554 alpha = 0.1706
-#> 19:51:22 iter 37 f = 4.522e-10 g2 = 0.0009379 nf = 49 ng = 49 step = 0.0002131 alpha = 1
+#> 01:53:05 iter 0 f = 24.2 g2 = 232.9 nf = 1 ng = 1 step = 0 alpha = 0
+#> 01:53:05 iter 10 f = 2.553 g2 = 11.67 nf = 18 ng = 18 step = 0.04657 alpha = 0.05068
+#> 01:53:05 iter 20 f = 0.5142 g2 = 3.001 nf = 31 ng = 31 step = 0.1319 alpha = 1
+#> 01:53:05 iter 30 f = 0.009862 g2 = 3.333 nf = 42 ng = 42 step = 0.03554 alpha = 0.1706
+#> 01:53:05 iter 37 f = 4.522e-10 g2 = 0.0009379 nf = 49 ng = 49 step = 0.0002131 alpha = 1
 ```
 
 On the assumption that you probably want to see information about the
@@ -222,12 +222,18 @@ the return value:
 
 res <- mize(rb0, rb_fg, store_progress = TRUE, log_every = 10)
 res$progress
-#>               f nf ng         step      alpha
-#> 0  2.420000e+01  1  0 0.0000000000 0.00000000
-#> 10 2.552598e+00 18 18 0.0465699833 0.05067737
-#> 20 5.142086e-01 31 31 0.1319347626 1.00000000
-#> 30 9.862134e-03 42 42 0.0355364981 0.17057755
-#> 37 4.521673e-10 49 49 0.0002130984 1.00000000
+#>               f nf ng         step      alpha alpha_init    slope_init ls_nf
+#> 0  2.420000e+01  1  0 0.0000000000 0.00000000         NA            NA    NA
+#> 10 2.552598e+00 18 18 0.0465699833 0.05067737  1.0000000 -6.775225e-01     2
+#> 20 5.142086e-01 31 31 0.1319347626 1.00000000  1.0000000 -2.714131e-01     1
+#> 30 9.862134e-03 42 42 0.0355364981 0.17057755  0.1705776 -4.440036e-02     1
+#> 37 4.521673e-10 49 49 0.0002130984 1.00000000  1.0000000 -2.304223e-08     1
+#>    ls_ng ls_reason ls_outcome
+#> 0     NA      <NA>       <NA>
+#> 10     2     wolfe      wolfe
+#> 20     1     wolfe      wolfe
+#> 30     1     wolfe      wolfe
+#> 37     1     wolfe      wolfe
 ```
 
 As can be seen, `store_progress` will also obey the `log_every`
@@ -380,7 +386,7 @@ plot(res$progress$nf, log(res$progress$f), type = "l")
 ``` r
 
 res$f
-#> [1] 0.04420106
+#> [1] 1.054056
 ```
 
 Yikes. If you let this optimization continue, it does eventually settle
@@ -466,7 +472,7 @@ plot(res$progress$nf, log(res$progress$f), type = "l")
 ``` r
 
 res$f
-#> [1] 2.414765
+#> [1] 3.423736
 ```
 
 To be fair, there is little reason to believe that the sort of settings
@@ -578,10 +584,10 @@ resn <- mize(rb0, rb_fg, max_iter = 100, method = "MOM", mom_schedule = 0.9,
              store_progress = TRUE)
 # Best f found for Nesterov momentum
 resn$f
-#> [1] 1.069263
+#> [1] 0.3535947
 # Best f found for classical momentum
 resc$f
-#> [1] 2.414765
+#> [1] 3.423736
 plot(resc$progress$nf, log(resc$progress$f), type = "l",
      ylim = range(log(resc$progress$f), log(resn$progress$f)))
 lines(resn$progress$nf, log(resn$progress$f), col = "red")
@@ -742,7 +748,8 @@ to the `step0` argument, e.g.:
 res <- mize(rb0, rb_fg, max_iter = 10, step0 = "scipy")
 ```
 
-You may also pass a number to `step0` and it will be used as-is:
+You may also pass a positive finite number to `step0` and it will be
+used as-is:
 
 ``` r
 

@@ -15,7 +15,7 @@ function value, gradient norm and step size may be returned."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">mize</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.5.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.5.9001</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -101,7 +101,8 @@ convergence checking.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list with the following items:</p><ul><li><p><code>opt</code>: Optimizer with updated state (e.g. function and gradient
+    <p>A list containing the available items below. Items whose owning
+method or calculation did not supply a value are omitted.</p><ul><li><p><code>opt</code>: Optimizer with updated state (e.g. function and gradient
 counts).</p></li>
 <li><p><code>iter</code>: Iteration number.</p></li>
 <li><p><code>f</code>: Function value at <code>par</code>.</p></li>
@@ -113,7 +114,14 @@ counts).</p></li>
 if <code>par_old</code> is provided.</p></li>
 <li><p><code>alpha</code>: Step length of the gradient descent part of the step.</p></li>
 <li><p><code>mu</code>: Momentum coefficient for this iteration.</p></li>
-</ul></div>
+<li><p><code>alpha_init</code>: Initial line-search step length after safeguards.</p></li>
+<li><p><code>slope_init</code>: Directional derivative at the start of the line search.</p></li>
+<li><p><code>ls_reason</code>: Reason the line search stopped.</p></li>
+<li><p><code>ls_outcome</code>: Kind of point selected by the line search.</p></li>
+<li><p><code>ls_nf</code>, <code>ls_ng</code>: Function and gradient callbacks owned by the line search.</p></li>
+<li><p><code>direction_reason</code>: Exact-Newton direction provenance.</p></li>
+</ul><p>See the 'Progress' section of <code><a href="mize.html">mize()</a></code> for diagnostic value meanings.</p>
+    </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>By default, convergence tolerance parameters will be used to determine what

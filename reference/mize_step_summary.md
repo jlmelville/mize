@@ -45,7 +45,8 @@ mize_step_summary(opt, par, fg, par_old = NULL, calc_fn = NULL, calc_gr = NULL)
 
 ## Value
 
-A list with the following items:
+A list containing the available items below. Items whose owning method
+or calculation did not supply a value are omitted.
 
 - `opt`: Optimizer with updated state (e.g. function and gradient
   counts).
@@ -68,6 +69,23 @@ A list with the following items:
 - `alpha`: Step length of the gradient descent part of the step.
 
 - `mu`: Momentum coefficient for this iteration.
+
+- `alpha_init`: Initial line-search step length after safeguards.
+
+- `slope_init`: Directional derivative at the start of the line search.
+
+- `ls_reason`: Reason the line search stopped.
+
+- `ls_outcome`: Kind of point selected by the line search.
+
+- `ls_nf`, `ls_ng`: Function and gradient callbacks owned by the line
+  search.
+
+- `direction_reason`: Exact-Newton direction provenance.
+
+See the 'Progress' section of
+[`mize()`](https://jlmelville.github.io/mize/reference/mize.md) for
+diagnostic value meanings.
 
 ## Details
 

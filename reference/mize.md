@@ -127,10 +127,10 @@ mize(
 
 - nest_q:
 
-  Strong convexity parameter for the NAG momentum term. Must take a
-  value between 0 (strongly convex) and 1 (zero momentum). Only applies
-  using the NAG method or a momentum method with Nesterov momentum
-  schedule. Also does nothing if `nest_convex_approx` is `TRUE`.
+  NAG momentum parameter. Must take a value between 0 (largest momentum)
+  and 1 (zero momentum, giving steepest descent). Only applies using the
+  NAG method or a momentum method with Nesterov momentum schedule. Also
+  does nothing if `nest_convex_approx` is `TRUE`.
 
 - nest_convex_approx:
 
@@ -163,8 +163,8 @@ mize(
 
 - dbd_weight:
 
-  Weighting parameter used by the `"DBD"` method only, and only if no
-  momentum scheme is provided. Must be an integer between 0 and 1.
+  Numeric weighting value used by the `"DBD"` method only, and only if
+  no momentum scheme is provided. Must be between 0 and 1, inclusive.
 
 - line_search:
 
@@ -297,7 +297,7 @@ mize(
 
 - max_fg:
 
-  Maximum number of function or gradient evaluations. See the
+  Maximum combined number of function and gradient evaluations. See the
   'Convergence' section for details.
 
 - abs_tol:
@@ -344,7 +344,8 @@ mize(
 - store_progress:
 
   If `TRUE` store information about the progress of the optimization in
-  a data frame, and include it as part of the return value.
+  a data frame, and include it as part of the return value. See the
+  'Progress' section.
 
 ## Value
 
@@ -358,11 +359,12 @@ A list with components:
 
 - `nf`: Total number of function evaluations carried out. This includes
   any extra evaluations required for convergence calculations. Also, a
-  function evaluation may be required to calculate the value of `f`
-  returned in this list (see below). Additionally, if the `verbose`
-  parameter is `TRUE`, then function and gradient information for the
-  initial value of `par` will be logged to the console. These values are
-  cached for subsequent use by the optimizer.
+  function evaluation may be attempted to calculate the value of `f`
+  returned in this list (see below), subject to the budget behavior in
+  the 'Convergence' section. Additionally, if the `verbose` parameter is
+  `TRUE`, then function and gradient information for the initial value
+  of `par` will be logged to the console when available. Those values
+  are cached for subsequent use by the optimizer.
 
 - `ng`: Total number of gradient evaluations carried out. This includes
   any extra evaluations required for convergence calculations using
@@ -370,22 +372,25 @@ A list with components:
   you're expecting may have been needed for logging, convergence and
   calculating the value of `g2n` or `ginfn` (see below).
 
-- `f`: Value of the function, evaluated at the returned value of `par`.
+- `f`: Value of the function at the returned value of `par`. This
+  component is absent when the value is unavailable under the
+  hard-budget behavior described in the 'Convergence' section.
 
 - `best_par`: The best parameters returned by `mize()`. This is
   currently the same value as `par`, and is provided so callers can use
   an explicit best-vs-last naming convention.
 
 - `best_f`: Value of the function at `best_par`. This is currently the
-  same value as `f`.
+  same value as `f`, and is absent under the same budget condition.
 
 - `last_par`: Parameters from the last optimizer state before any final
   best-result restoration. This is the same as `par` unless `mize()`
   returns an earlier best point.
 
-- `last_f`: Value of the function at `last_par` when it is known without
-  requiring an extra function evaluation. If `last_par` differs from
-  `par` and the function value was not already available, this is
+- `last_f`: Value of the function at `last_par` when available. This
+  component is absent if its value is unavailable under the hard-budget
+  behavior described in the 'Convergence' section. If `last_par` differs
+  from `par` and the function value was not already available, this is
   `NA_real_`.
 
 - `g2n`: Optional: the length (Euclidean or l2-norm) of the gradient
@@ -410,11 +415,10 @@ A list with components:
 
 - `message`: Human-readable summary of the termination reason.
 
-- `progress`: Optional data frame containing information on the value of
-  the function, gradient, momentum, and step sizes evaluated at each
-  iteration where convergence is checked. Only present if
-  `store_progress` is set to `TRUE`. Could get quite large if the
-  optimization is long and the convergence is checked regularly.
+- `progress`: Optional data frame containing optimization progress and
+  method-specific diagnostics. Only present if `store_progress` is set
+  to `TRUE`. See the 'Progress' section. Could get quite large if the
+  optimization is long and progress is stored regularly.
 
 ## Details
 
@@ -520,9 +524,9 @@ The `method` specifies the optimization method:
   the momentum update in this method can be controlled with the
   following parameters:
 
-  - `nest_q`: Strong convexity parameter. Must take a value between 0
-    (strongly convex) and 1 (zero momentum). Ignored if
-    `nest_convex_approx` is `TRUE`.
+  - `nest_q`: NAG momentum parameter. Must take a value between 0
+    (largest momentum) and 1 (zero momentum, giving steepest descent).
+    Ignored if `nest_convex_approx` is `TRUE`.
 
   - `nest_convex_approx`: If `TRUE`, then use an approximation due to
     Sutskever for calculating the momentum parameter.
@@ -588,9 +592,9 @@ used to control the line search:
   but it should not be set to smaller than `c1`.
 
 - `step0`: Initial value for the line search on the first step. If a
-  positive numeric value is passed as an argument, that value is used
-  as-is. Otherwise, by passing a string as an argument, a guess is made
-  based on values of the gradient, function or parameters, at the
+  positive finite numeric value is passed as an argument, that value is
+  used as-is. Otherwise, by passing a string as an argument, a guess is
+  made based on values of the gradient, function or parameters, at the
   starting point:
 
   - `"rasmussen"`: As used by Rasmussen in `minimize.m`:
@@ -638,7 +642,7 @@ used to control the line search:
 - `approx_armijo`: If `TRUE`, then the approximate Armijo sufficient
   decrease condition (Hager and Zhang, 2005) will be used to check
   termination in Wolfe line search methods. If `FALSE`, then the exact
-  curvature condition will be used. The default is `NULL` which lets the
+  Armijo condition will be used. The default is `NULL` which lets the
   different Wolfe line searches choose whichever is their default
   behavior. This option is ignored if not using a Wolfe line search
   method.
@@ -743,6 +747,48 @@ type and schedule.
 If `method` type `"momentum"` is specified with no other values, the
 momentum scheme will default to a constant value of `0.9`.
 
+## Progress
+
+If `store_progress = TRUE`, the returned `progress` data frame records
+the information available at each stored iteration. Common columns are
+`f`, `g2n`, `ginfn`, cumulative function and gradient counts `nf` and
+`ng`, the realized outer `step`, the gradient-descent step length
+`alpha`, and the momentum coefficient `mu`. Columns are included only
+when their owning method or calculation supplies them.
+
+Line searches may add these diagnostic columns:
+
+- `alpha_init`: Initial step length used by the line search after
+  initialization and safeguards.
+
+- `slope_init`: Directional derivative at the start of the search.
+
+- `ls_reason`: Why the line search stopped, such as `"wolfe"`,
+  `"armijo"`, or `"budget_exhausted"`.
+
+- `ls_outcome`: Kind of point ultimately selected: `"wolfe"`,
+  `"armijo"`, `"improving_fallback"`, or `"no_step"`. This is
+  independent of `ls_reason`; for example, an exhausted search can still
+  return an evaluated improving point.
+
+- `ls_nf` and `ls_ng`: Function and gradient callbacks owned by that
+  outer line search, excluding its cached starting point. An
+  objective-only Hager-Zhang initializer probe is included in `ls_nf`.
+
+Exact Newton (`method = "NEWTON"`) may add `direction_reason`, which
+records how its direction was produced: `"hessian_solve"`,
+`"hessian_diagonal"`, `"inverse_hessian_multiply"`,
+`"inverse_hessian_diagonal"`, `"cholesky_fallback"`, or
+`"direction_check_fallback"`. The two fallback values mean that steepest
+descent was used because Cholesky factorization failed, or because the
+computed direction was non-finite or not a descent direction,
+respectively.
+
+When a diagnostic column first appears after earlier progress rows,
+numeric columns use `NA_real_` in those rows and categorical columns use
+`NA_character_`. A method-specific column is absent if its owning stage
+never produced it.
+
 ## Convergence
 
 There are several ways for the optimization to terminate. The type of
@@ -756,31 +802,34 @@ The `converged`, `status`, and `message` return values summarize
 tolerance based termination (`"abs_tol"`, `"rel_tol"`, `"grad_tol"`,
 `"ginf_tol"`, or `"step_tol"`). The `status` value is `"converged"` for
 those tolerance exits, `"budget_exhausted"` for `"max_iter"`,
-`"max_fn"`, `"max_gr"`, or `"max_fg"`, `"failed"` for `"fn_inf"` or
-`"gr_inf"`, and `"terminated"` for any other termination reason.
+`"max_fn"`, `"max_gr"`, or `"max_fg"`, `"failed"` for `"fn_inf"`,
+`"gr_inf"`, or `"line_search_failed"`, and `"terminated"` for any other
+termination reason.
 
 The following parameters control various stopping criteria:
 
 - `max_iter`: Maximum number of iterations to calculate. Reaching this
   limit is indicated by `terminate$what` being `"max_iter"`.
 
-- `max_fn`: Maximum number of function evaluations allowed. Indicated by
-  `terminate$what` being `"max_fn"`.
+- `max_fn`: Hard maximum number of function evaluations allowed.
+  Indicated by `terminate$what` being `"max_fn"`.
 
-- `max_gr`: Maximum number of gradient evaluations allowed. Indicated by
-  `terminate$what` being `"max_gr"`.
+- `max_gr`: Hard maximum number of gradient evaluations allowed.
+  Indicated by `terminate$what` being `"max_gr"`.
 
-- `max_fg`: Maximum number of gradient evaluations allowed. Indicated by
-  `terminate$what` being `"max_fg"`.
+- `max_fg`: Hard maximum combined number of function and gradient
+  evaluations allowed. Indicated by `terminate$what` being `"max_fg"`.
 
-- `abs_tol`: Absolute tolerance of the function value. If the absolute
-  value of the function falls below this threshold, `terminate$what`
-  will be `"abs_tol"`. Will only be triggered if the objective function
-  has a minimum value of zero.
+- `abs_tol`: Absolute tolerance for the change in consecutive function
+  values. It is reached when `abs(fn_old - fn_new) < abs_tol`, and is
+  indicated by `terminate$what` being `"abs_tol"`.
 
-- `rel_tol`: Relative tolerance of the function value, comparing
-  consecutive function evaluation results. Indicated by `terminate$what`
-  being `"rel_tol"`.
+- `rel_tol`: Relative tolerance for the change in consecutive function
+  values. It is reached when
+  `abs(fn_old - fn_new) / min(abs(fn_old), abs(fn_new)) < rel_tol`. If
+  the denominator is zero, the relative change is zero when the function
+  values are equal and `Inf` otherwise. It is indicated by
+  `terminate$what` being `"rel_tol"`.
 
 - `grad_tol`: Absolute tolerance of the l2 (Euclidean) norm of the
   gradient. Indicated by `terminate$what` being `"grad_tol"`. Note that
@@ -800,25 +849,44 @@ The following parameters control various stopping criteria:
   iteration and restarting using the previous iteration's value of `par`
   an iteration, `step_tol` will not be triggered.
 
+Once `max_fn`, `max_gr`, or `max_fg` is the termination reason, no later
+function or gradient callback is made, even if another callback-specific
+limit still has capacity. If the final permitted callback instead
+establishes convergence or a non-finite failure, that observed result
+takes precedence. Normal final reporting may then evaluate the objective
+only if doing so violates neither `max_fn` nor `max_fg`.
+
+If a line search selects `ls_outcome = "no_step"` and the complete
+optimizer iteration also realizes a zero step, optimization terminates
+with `terminate$what = "line_search_failed"`, the line-search reason in
+`terminate$val`, `status = "failed"`, and `converged = FALSE`. A global
+callback budget reached by that attempt takes precedence. A nonzero
+transition from a later optimizer stage is not classified as a no-step
+failure.
+
 Convergence is checked between specific iterations. How often is
 determined by the `check_conv_every` parameter, which specifies the
 number of iterations between each check. By default, this is set for
-every iteration.
+every iteration. Line-search no-step failures are checked immediately,
+independently of this cadence.
 
 Be aware that if `abs_tol` or `rel_tol` are non-`NULL`, this requires
 the function to have been evaluated at the current position at the end
 of each iteration. If the function at that position has not been
-calculated, it will be calculated and will contribute to the total
-reported in the `counts` list in the return value. The calculated
-function value is cached for use by the optimizer in the next iteration,
-so if the optimizer would have needed to calculate the function anyway
-(e.g. use of the strong Wolfe line search methods), there is no
-significant cost accrued by calculating it earlier for convergence
-calculations. However, for methods that don't use the function value at
-that location, this could represent a lot of extra function evaluations.
-On the other hand, not checking convergence could result in a lot of
-extra unnecessary iterations. Similarly, if `grad_tol` or `ginf_tol` is
-non-`NULL`, then the gradient will be calculated if needed.
+calculated, it will be calculated only if no evaluation-budget
+termination is already active and neither `max_fn` nor `max_fg` prevents
+the callback. It will contribute to `nf` in the return value. The
+calculated function value is cached for use by the optimizer in the next
+iteration, so if the optimizer would have needed to calculate the
+function anyway (e.g. use of the strong Wolfe line search methods),
+there is no significant cost accrued by calculating it earlier for
+convergence calculations. However, for methods that don't use the
+function value at that location, this could represent a lot of extra
+function evaluations. On the other hand, not checking convergence could
+result in a lot of extra unnecessary iterations. Similarly, if
+`grad_tol` or `ginf_tol` is non-`NULL`, then the gradient will be
+calculated if needed, no evaluation-budget termination is already
+active, and neither `max_gr` nor `max_fg` prevents the callback.
 
 If extra function or gradient evaluations is an issue, set
 `check_conv_every` to a higher value, but be aware that this can cause
@@ -827,9 +895,9 @@ convergence limits to be exceeded by a greater amount.
 Note also that if the `verbose` parameter is `TRUE`, then a summary of
 the results so far will be logged to the console whenever a convergence
 check is carried out. If the `store_progress` parameter is `TRUE`, then
-the same information will be returned as a data frame in the return
-value. For a long optimization this could be a lot of data, so by
-default it is not stored.
+progress summaries and available method-specific diagnostics will be
+returned as a data frame. For a long optimization this could be a lot of
+data, so by default it is not stored.
 
 Other ways for the optimization to terminate is if an iteration
 generates a non-finite (i.e. `Inf` or `NaN`) gradient or function value.
@@ -845,14 +913,14 @@ convergence check would not be carried out for this iteration.
 The value of `par` in the return value should be the parameters which
 correspond to the lowest value of the function that has been calculated
 during the optimization. As discussed above however, determining which
-set of parameters requires a function evaluation at the end of each
+set of parameters may require a function evaluation at the end of each
 iteration, which only happens if either the optimization method
 calculates it as part of its own operation or if a convergence check is
-being carried out during this iteration. Therefore, if your method does
-not carry out function evaluations and `check_conv_every` is set to be
-so large that no convergence calculation is carried out before
-`max_iter` is reached, then the returned value of `par` is the last
-value encountered.
+being carried out during this iteration, subject to the budget behavior
+described above. Therefore, if your method does not carry out function
+evaluations and `check_conv_every` is set to be so large that no
+convergence calculation is carried out before `max_iter` is reached,
+then the returned value of `par` is the last value encountered.
 
 ## References
 

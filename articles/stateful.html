@@ -26,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">mize</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.5.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.5.9001</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -74,7 +74,7 @@
                         <h4 data-toc-skip class="author">James
 Melville</h4>
             
-            <h4 data-toc-skip class="date">2026-08-23</h4>
+            <h4 data-toc-skip class="date">2026-08-24</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/jlmelville/mize/blob/master/vignettes/stateful.Rmd" class="external-link"><code>vignettes/stateful.Rmd</code></a></small>
       <div class="d-none name"><code>stateful.Rmd</code></div>
@@ -168,7 +168,6 @@ configuring the optimizer earlier than when the data shows up.</p>
 <code>optim</code> is very similar with <code>mize</code>:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">par</span> <span class="op">&lt;-</span> <span class="va">rb0</span></span>
-<span><span class="va">iter</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
 <span><span class="kw">for</span> <span class="op">(</span><span class="va">batch</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="va">mize_res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step.html">mize_step</a></span><span class="op">(</span>opt <span class="op">=</span> <span class="va">opt</span>, par <span class="op">=</span> <span class="va">par</span>, fg <span class="op">=</span> <span class="va">rb_fg</span><span class="op">)</span></span>
@@ -181,9 +180,8 @@ configuring the optimizer earlier than when the data shows up.</p>
 <span><span class="co">#&gt; batch 2 f = 0.5568</span></span>
 <span><span class="co">#&gt; batch 3 f = 0.005003</span></span></code></pre></div>
 <p>The difference here is that you have to do the iterating in batches
-of 10 manually yourself, remembering to increment the iteration counter
-and pass it to <code>mize_step</code>. Plus, the optimizer needs to be
-updated with the version that was returned from the function.</p>
+of 10 manually yourself. The optimizer needs to be updated with the
+version that was returned from the function.</p>
 <div class="section level3">
 <h3 id="return-value-of-mize_step">Return value of <code>mize_step</code><a class="anchor" aria-label="anchor" href="#return-value-of-mize_step"></a>
 </h3>
@@ -202,26 +200,23 @@ course generate it yourself via <code>rb_fg$fn(par)</code>.</li>
 <code>par</code>. If it’s not present, then obviously there’s nothing to
 stop you calculating <code>rb_fg$gr(par)</code> yourself.</li>
 <li>
-<code>nf</code> - The number of function evaluations carried out so
-far (i.e. since initialization). <code>opt</code> is also keeping track
-of this, and coordinates with <code>mize_step</code>, so you don’t need
-to manually update this yourself between steps.</li>
+<code>nf</code> - The number of function evaluations carried out
+over the optimizer’s lifetime. This count persists across
+<code><a href="../reference/mize_init.html">mize_init()</a></code> calls. <code>opt</code> coordinates it with
+<code>mize_step</code>, so you don’t need to update it manually between
+steps.</li>
 <li>
-<code>ng</code> - The number of gradient evaluations carried out so
-far.</li>
+<code>ng</code> - The optimizer-lifetime number of gradient
+evaluations, which also persists across <code><a href="../reference/mize_init.html">mize_init()</a></code>
+calls.</li>
 </ul>
-<p>You should treat the optimizer, <code>opt</code>, as a black box and
-not examine its horrific innards, except to check whether
-<code>opt$error</code> is non-<code>NULL</code>. If it’s anything other
-than <code>NULL</code>, then this means something really bad has
-happened during the optimization, most likely a <code>NaN</code> or
-<code>Inf</code> was calculated in the gradient. This can happen with a
-very poorly chosen starting point, and a combination of descent method
-and line search which doesn’t guarantee descent, such as a very
-aggressive momentum scheme or more likely an adaptive learning rate
-technique like delta-bar-delta. Monitoring the function value or the
-size of the change in <code>par</code> between iterations can help spot
-an imminent divergence.</p>
+<p>You should treat the optimizer, <code>opt</code>, as a black box.
+After each step, check <code>opt$is_terminated</code> before relying on
+optional function or gradient values. If it is <code>TRUE</code>,
+<code>opt$terminate$what</code> gives the termination reason and
+<code>opt$terminate$val</code> gives the observed criterion value.
+Termination can indicate convergence, budget exhaustion, or a non-finite
+function or gradient.</p>
 <p>Taking all that into account, here’s a self-contained example, that
 removes the now un-necessary batching, does some minor error checking,
 and keeps track of the best parameters seen so far (although with this
@@ -254,7 +249,7 @@ it):</p>
 <span>  <span class="co"># Do whatever you want with the data at each iteration</span></span>
 <span>  </span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="va">opt</span><span class="op">$</span><span class="va">is_terminated</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="co"># Something bad happened</span></span>
+<span>    <span class="co"># Stop before using values that may be unavailable after termination</span></span>
 <span>    <span class="kw">break</span></span>
 <span>  <span class="op">}</span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="va">mize_res</span><span class="op">$</span><span class="va">f</span> <span class="op">&lt;</span> <span class="va">f_best</span><span class="op">)</span> <span class="op">{</span></span>
@@ -280,8 +275,11 @@ gradient values. If you would like access to more information, the
 <code class="sourceCode R"><span><span class="co"># Create optimizer and do one step of optimization as usual</span></span>
 <span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/make_mize.html">make_mize</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"BFGS"</span>, par <span class="op">=</span> <span class="va">rb0</span>, fg <span class="op">=</span> <span class="va">rb_fg</span><span class="op">)</span></span>
 <span><span class="va">par</span> <span class="op">&lt;-</span> <span class="va">rb0</span></span>
+<span><span class="va">par_old</span> <span class="op">&lt;-</span> <span class="va">par</span></span>
 <span><span class="va">mize_res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step.html">mize_step</a></span><span class="op">(</span>opt <span class="op">=</span> <span class="va">opt</span>, par <span class="op">=</span> <span class="va">par</span>, fg <span class="op">=</span> <span class="va">rb_fg</span><span class="op">)</span></span>
-<span><span class="va">step_info</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step_summary.html">mize_step_summary</a></span><span class="op">(</span><span class="va">mize_res</span><span class="op">$</span><span class="va">opt</span>, <span class="va">mize_res</span><span class="op">$</span><span class="va">par</span>, <span class="va">rb_fg</span>, par_old <span class="op">=</span> <span class="va">par</span><span class="op">)</span></span>
+<span><span class="va">step_info</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step_summary.html">mize_step_summary</a></span><span class="op">(</span></span>
+<span>  <span class="va">mize_res</span><span class="op">$</span><span class="va">opt</span>, <span class="va">mize_res</span><span class="op">$</span><span class="va">par</span>, <span class="va">rb_fg</span>, par_old <span class="op">=</span> <span class="va">par_old</span></span>
+<span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># info that's already available in mize_res</span></span>
 <span><span class="va">step_info</span><span class="op">$</span><span class="va">f</span></span>
@@ -318,11 +316,11 @@ section for more).</li>
 <code>ginf_tol</code> is non-<code>NULL</code> (also see the Convergence
 section for more).</li>
 <li>
-<code>nf</code> The number of function evaluations so far over the
-course of the optimization.</li>
+<code>nf</code> The number of function evaluations over the
+optimizer’s lifetime.</li>
 <li>
-<code>ng</code> The number of gradient evaluations so far over the
-course of the optimization.</li>
+<code>ng</code> The number of gradient evaluations over the
+optimizer’s lifetime.</li>
 <li>
 <code>step</code> The step size of this iteration.</li>
 <li>
@@ -396,12 +394,18 @@ available. Three changes are needed:</p>
 <ol start="2" style="list-style-type: decimal">
 <li>At the end of the loop, after calling
 <code>mize_step_summary</code>, pass the return value to the function
-<code>mize_check_convergence</code>. This returns an updated version of
+<code>check_mize_convergence</code>. This returns an updated version of
 <code>opt</code> which will indicate if optimization should stop by
 setting the <code>opt$is_terminated</code> boolean flag:</li>
 </ol>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">step_info</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step_summary.html">mize_step_summary</a></span><span class="op">(</span><span class="va">opt</span>, <span class="va">par</span>, <span class="va">rb_fg</span>, <span class="va">par_old</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">par</span> <span class="op">&lt;-</span> <span class="va">rb0</span></span>
+<span><span class="va">par_old</span> <span class="op">&lt;-</span> <span class="va">par</span></span>
+<span><span class="va">mize_res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step.html">mize_step</a></span><span class="op">(</span><span class="va">opt</span>, <span class="va">par</span>, <span class="va">rb_fg</span><span class="op">)</span></span>
+<span><span class="va">par</span> <span class="op">&lt;-</span> <span class="va">mize_res</span><span class="op">$</span><span class="va">par</span></span>
+<span><span class="va">step_info</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step_summary.html">mize_step_summary</a></span><span class="op">(</span></span>
+<span>  <span class="va">mize_res</span><span class="op">$</span><span class="va">opt</span>, <span class="va">par</span>, <span class="va">rb_fg</span>, par_old <span class="op">=</span> <span class="va">par_old</span></span>
+<span><span class="op">)</span></span>
 <span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/check_mize_convergence.html">check_mize_convergence</a></span><span class="op">(</span><span class="va">step_info</span><span class="op">)</span></span></code></pre></div>
 <p>Note that you don’t need to manually assign <code>opt</code> to the
 value that comes from <code>mize_step_summary</code>, as
@@ -410,18 +414,11 @@ value that comes from <code>mize_step_summary</code>, as
 <li>Instead of manually looping with a <code>for</code> loop you can use
 <code>while (!opt$is_terminated)</code>.</li>
 </ol>
-<p>Once <code>opt$is_terminated</code> is <code>TRUE</code>, you can
-find out what caused the optimization by looking at
-<code>opt$terminate$what</code>. We were using
-<code>opt$is_terminated</code> before now, where if it was set to
-<code>TRUE</code> it meant that something awful had occurred, like
-infinity or NaN in a gradient. <code>check_mize_convergence</code> also
-uses this flag, but now with an expanded meaning that just indicates
-optimization should cease, but not necessarily because a catastrophe
-occurred. It’s still worth checking if <code>opt$is_terminated</code>
-was set by <code>mize_step</code> if anything that you do in the rest of
-the loop assumes that the gradient or function value is finite
-(e.g. comparing it to a real number in a boolean condition).</p>
+<p>Once <code>opt$is_terminated</code> is <code>TRUE</code>,
+optimization should cease. Inspect <code>opt$terminate$what</code> for
+the reason and <code>opt$terminate$val</code> for the observed criterion
+value. Check the flag immediately after <code><a href="../reference/mize_step.html">mize_step()</a></code> before
+doing anything that assumes a finite function or gradient value.</p>
 <p>Apart from just maximum number of iterations, there are a variety of
 options that relate to convergence. There is a separate vignette which
 covers these <a href="convergence.html">convergence options</a>, and all
@@ -450,6 +447,7 @@ rather than a <code>for</code> loop:</p>
 <span><span class="va">f_best</span> <span class="op">&lt;-</span> <span class="va">rb_fg</span><span class="op">$</span><span class="fu">fn</span><span class="op">(</span><span class="va">par_best</span><span class="op">)</span></span>
 <span></span>
 <span><span class="kw">while</span> <span class="op">(</span><span class="op">!</span><span class="va">opt</span><span class="op">$</span><span class="va">is_terminated</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">par_old</span> <span class="op">&lt;-</span> <span class="va">par</span></span>
 <span>  <span class="va">mize_res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step.html">mize_step</a></span><span class="op">(</span>opt <span class="op">=</span> <span class="va">opt</span>, par <span class="op">=</span> <span class="va">par</span>, fg <span class="op">=</span> <span class="va">rb_fg</span><span class="op">)</span></span>
 <span>  <span class="va">par</span> <span class="op">&lt;-</span> <span class="va">mize_res</span><span class="op">$</span><span class="va">par</span></span>
 <span>  <span class="va">opt</span> <span class="op">&lt;-</span> <span class="va">mize_res</span><span class="op">$</span><span class="va">opt</span></span>
@@ -457,7 +455,7 @@ rather than a <code>for</code> loop:</p>
 <span>  <span class="co"># Do whatever you want with the data at each iteration</span></span>
 <span>  </span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="va">opt</span><span class="op">$</span><span class="va">is_terminated</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="co"># Something bad happened</span></span>
+<span>    <span class="co"># Stop before using values that may be unavailable after termination</span></span>
 <span>    <span class="kw">break</span></span>
 <span>  <span class="op">}</span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="va">mize_res</span><span class="op">$</span><span class="va">f</span> <span class="op">&lt;</span> <span class="va">f_best</span><span class="op">)</span> <span class="op">{</span></span>
@@ -473,9 +471,9 @@ rather than a <code>for</code> loop:</p>
 <span></span>
 <span><span class="co"># optimized result is in par_best</span></span>
 <span><span class="va">par_best</span></span>
-<span><span class="co">#&gt; [1] 1 1</span></span>
+<span><span class="co">#&gt; [1] 0.9294066 0.8642370</span></span>
 <span><span class="va">f_best</span></span>
-<span><span class="co">#&gt; [1] 0</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 0.005002828</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

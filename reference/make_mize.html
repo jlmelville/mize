@@ -13,7 +13,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">mize</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.5.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.5.9001</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -168,10 +168,9 @@ if <code>method = "TN"</code>, ignored otherwise.</p></dd>
 
 
 <dt id="arg-nest-q">nest_q<a class="anchor" aria-label="anchor" href="#arg-nest-q"></a></dt>
-<dd><p>Strong convexity parameter for the <code>"NAG"</code> method's
-momentum term. Must take a value between 0 (strongly convex) and 1 (results
-in steepest descent).Ignored unless the <code>method</code> is <code>"NAG"</code> and
-<code>nest_convex_approx</code> is <code>FALSE</code>.</p></dd>
+<dd><p>NAG momentum parameter. Must take a value between 0 (largest
+momentum) and 1 (zero momentum, giving steepest descent). Ignored unless
+the <code>method</code> is <code>"NAG"</code> and <code>nest_convex_approx</code> is <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-nest-convex-approx">nest_convex_approx<a class="anchor" aria-label="anchor" href="#arg-nest-convex-approx"></a></dt>
@@ -205,9 +204,9 @@ value less than 1.</p></dd>
 
 
 <dt id="arg-dbd-weight">dbd_weight<a class="anchor" aria-label="anchor" href="#arg-dbd-weight"></a></dt>
-<dd><p>Weighting parameter used by the <code>"DBD"</code> method only,
-and only if no momentum scheme is provided. Must be an integer between 0
-and 1.</p></dd>
+<dd><p>Numeric weighting value used by the <code>"DBD"</code> method only,
+and only if no momentum scheme is provided. Must be between 0 and 1,
+inclusive.</p></dd>
 
 
 <dt id="arg-line-search">line_search<a class="anchor" aria-label="anchor" href="#arg-line-search"></a></dt>
