@@ -222,11 +222,12 @@ unchanged.</p>
 optimizer and may stop on a hard callback budget or an immediate method
 failure. A requested observation from <code><a href="../reference/mize_step_summary.html">mize_step_summary()</a></code>
 can also stop at a hard callback budget. Ordinary numerical tolerances,
-<code>max_iter</code>, and non-finite summary observations are handled
-by <code><a href="../reference/check_mize_convergence.html">check_mize_convergence()</a></code>. A caller-owned loop must
-retain the optimizer returned by each operation, stop if either of the
-first two operations terminates it, and otherwise call the convergence
-check after every step.</p>
+<code>max_iter</code>, non-finite summary observations, and a completed
+line search that selected no usable step are handled by
+<code><a href="../reference/check_mize_convergence.html">check_mize_convergence()</a></code>. A caller-owned loop must retain
+the optimizer returned by each operation, stop if either of the first
+two operations terminates it, and otherwise call the convergence check
+after every step.</p>
 </blockquote>
 <p>The run below has disabled every ordinary numerical tolerance and
 demonstrates only <code>max_iter</code>. Its summary therefore sets

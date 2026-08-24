@@ -21,7 +21,7 @@ interpret tolerance, budget, and failure outcomes.
 
 Each control answers a different question:
 
-| Control | What it detects | Main limitation | Additional observation |
+| Control | What it detects | Main limitation | Quantity required |
 |:---|:---|:---|:---|
 | `abs_tol` / `rel_tol` | Little change in the objective | Stagnation need not mean stationarity | Objective |
 | `grad_tol` / `ginf_tol` | A small gradient | Stationary points include saddles and maxima; absolute thresholds depend on scaling | Gradient |

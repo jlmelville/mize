@@ -77,6 +77,10 @@ changing a control.
 | A stable learning rate is already known | Whether a search supplies useful adaptation | Use a constant step in a controlled run |
 | Callback cost must be capped per search | `ls_nf`, `ls_ng`, and the global callback totals | Set local search budgets while retaining global hard budgets |
 
+Once the diagnostics indicate that the search policy itself is worth
+changing, the available choices differ in the acceptance conditions and
+adaptation they provide:
+
 | Choice | What it accepts | Useful starting context |
 |----|----|----|
 | `"More-Thuente"` | Strong Wolfe conditions by default | Default for direction methods, including quasi-Newton and CG |

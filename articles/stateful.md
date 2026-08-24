@@ -135,8 +135,8 @@ observation is normal and leaves the step status unchanged.
 > immediate method failure. A requested observation from
 > [`mize_step_summary()`](https://jlmelville.github.io/mize/reference/mize_step_summary.md)
 > can also stop at a hard callback budget. Ordinary numerical
-> tolerances, `max_iter`, and non-finite summary observations are
-> handled by
+> tolerances, `max_iter`, non-finite summary observations, and a
+> completed line search that selected no usable step are handled by
 > [`check_mize_convergence()`](https://jlmelville.github.io/mize/reference/check_mize_convergence.md).
 > A caller-owned loop must retain the optimizer returned by each
 > operation, stop if either of the first two operations terminates it,
