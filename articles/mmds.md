@@ -10,8 +10,8 @@ objective and gradient.
 contains road distances in kilometres among 21 European cities. We will
 fit a two-dimensional configuration whose Euclidean distances
 approximate those values. Roads need not follow straight lines, and the
-cities lie on the curved surface of the Earth, so some disagreement is
-inevitable.
+cities lie on the curved surface of the Earth, so an exact
+two-dimensional Euclidean fit should not be expected.
 
 This example minimizes raw stress directly.
 [`stats::cmdscale()`](https://rdrr.io/r/stats/cmdscale.html) follows the
@@ -417,9 +417,13 @@ projected geography? Their remaining lengths are expected because road
 routes, coastlines, and the compromise required to fit all 210 city
 pairs affect the target distances.
 
-The same closure pattern applies whenever callbacks need fixed data or
-share an intermediate calculation. For the full callback contract, see
-[`?mize`](https://jlmelville.github.io/mize/reference/mize.md).
+Starting from road distances alone, the optimizer recovers a
+recognizable geometry even though its coordinate frame is arbitrary. The
+closure and combined-callback pattern used here also applies whenever an
+objective and gradient share fixed data or an expensive intermediate
+calculation;
+[`?mize`](https://jlmelville.github.io/mize/reference/mize.md) describes
+the full callback contract.
 
 ## See also
 

@@ -123,19 +123,36 @@ analytic gradient at a representative, non-special starting point:</p>
 <span><span class="va">gradient_check</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/check_mize_gradient.html">check_mize_gradient</a></span><span class="op">(</span><span class="va">rb_fg</span>, <span class="va">rb0</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">gradient_summary</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  max_abs_error <span class="op">=</span> <span class="va">gradient_check</span><span class="op">$</span><span class="va">max_abs_error</span>,</span>
-<span>  max_rel_error <span class="op">=</span> <span class="va">gradient_check</span><span class="op">$</span><span class="va">max_rel_error</span></span>
+<span>  <span class="st">"Maximum absolute error"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC</a></span><span class="op">(</span></span>
+<span>    <span class="va">gradient_check</span><span class="op">$</span><span class="va">max_abs_error</span>,</span>
+<span>    format <span class="op">=</span> <span class="st">"e"</span>,</span>
+<span>    digits <span class="op">=</span> <span class="fl">2</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  <span class="st">"Maximum relative error"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC</a></span><span class="op">(</span></span>
+<span>    <span class="va">gradient_check</span><span class="op">$</span><span class="va">max_rel_error</span>,</span>
+<span>    format <span class="op">=</span> <span class="st">"e"</span>,</span>
+<span>    digits <span class="op">=</span> <span class="fl">2</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  check.names <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
-<span><span class="va">gradient_summary</span></span>
-<span><span class="co">#&gt;   max_abs_error max_rel_error</span></span>
-<span><span class="co">#&gt; 1  2.208253e-08  1.024236e-10</span></span></code></pre></div>
+<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="va">gradient_summary</span>, align <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"r"</span>, <span class="st">"r"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<table class="table">
+<thead><tr class="header">
+<th align="right">Maximum absolute error</th>
+<th align="right">Maximum relative error</th>
+</tr></thead>
+<tbody><tr class="odd">
+<td align="right">2.21e-08</td>
+<td align="right">1.02e-10</td>
+</tr></tbody>
+</table>
 <p><code><a href="../reference/check_mize_gradient.html">check_mize_gradient()</a></code> compares <code>gr</code> with a
 finite-difference approximation of <code>fn</code>. Large errors are a
-strong reason to fix the gradient before trusting an optimization. Small
-errors establish local agreement at the checked point. The full result
-also identifies the worst coordinate and, when an optional combined
-<code>fg</code> function is present, checks it against the separate
-callbacks.</p>
+strong reason to fix the gradient before trusting an optimization. At
+this point, the analytic and finite-difference gradients agree to
+approximately 1.0e-10 in relative terms. The full result also identifies
+the worst coordinate and, when an optional combined <code>fg</code>
+function is present, checks it against the separate callbacks.</p>
 </div>
 <div class="section level2">
 <h2 id="run-the-optimization">Run the optimization<a class="anchor" aria-label="anchor" href="#run-the-optimization"></a>
@@ -146,26 +163,30 @@ useful general starting point for a smooth problem. Set
 trajectory later:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span><span class="va">rb0</span>, <span class="va">rb_fg</span>, store_progress <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p>Start by reading the high-level outcome and the detailed termination
-record:</p>
+<p>Start with the fitted parameters, objective, and high-level
+outcome:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">res</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"status"</span>, <span class="st">"converged"</span>, <span class="st">"message"</span>, <span class="st">"terminate"</span><span class="op">)</span><span class="op">]</span></span>
+<code class="sourceCode R"><span><span class="va">res</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"par"</span>, <span class="st">"f"</span>, <span class="st">"status"</span>, <span class="st">"message"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt; $par</span></span>
+<span><span class="co">#&gt; [1] 0.9999972 0.9999923</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $f</span></span>
+<span><span class="co">#&gt; [1] 4.521673e-10</span></span>
+<span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $status</span></span>
 <span><span class="co">#&gt; [1] "converged"</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $converged</span></span>
-<span><span class="co">#&gt; [1] TRUE</span></span>
-<span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $message</span></span>
-<span><span class="co">#&gt; [1] "Converged: abs_tol reached."</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $terminate</span></span>
-<span><span class="co">#&gt; $terminate$what</span></span>
-<span><span class="co">#&gt; [1] "abs_tol"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $terminate$val</span></span>
-<span><span class="co">#&gt; [1] 1.06609e-08</span></span></code></pre></div>
-<p><code>status</code> is the quickest classification:</p>
+<span><span class="co">#&gt; [1] "Converged: abs_tol reached."</span></span></code></pre></div>
+<p>The Rosenbrock function has a known minimum at <code>c(1, 1)</code>,
+where its objective is zero. The returned parameters are close to that
+point, the objective is close to zero, and
+<code>status = "converged"</code> says that a configured numerical
+tolerance was reached.</p>
+<div class="section level3">
+<h3 id="read-the-termination-record">Read the termination record<a class="anchor" aria-label="anchor" href="#read-the-termination-record"></a>
+</h3>
+<p><code>status</code> gives the quickest classification of any run:</p>
 <ul>
 <li>
 <code>"converged"</code> means a configured tolerance was
@@ -182,96 +203,116 @@ reason.</li>
 </ul>
 <p><code>converged</code> is <code>TRUE</code> only for the
 tolerance-based class, while <code>message</code> is a human-readable
-summary. Use <code>terminate$what</code> when code needs the precise
-reason. Its companion <code>terminate$val</code> is the value associated
-with that stopping criterion. For example, after an
-absolute-function-tolerance exit it is the observed change between
-consecutive objective values. <code>res$f</code> (or, more explicitly,
-<code>res$best_f</code>) holds the objective value.</p>
-<div class="section level3">
-<h3 id="best-result-and-last-iterate">Best result and last iterate<a class="anchor" aria-label="anchor" href="#best-result-and-last-iterate"></a>
-</h3>
-<p>By default, <code><a href="../reference/mize.html">mize()</a></code> tracks the best evaluated point.
-<code>par</code> and <code>f</code> are the usual concise names for that
-result; <code>best_par</code> and <code>best_f</code> make the same
-choice explicit. <code>last_par</code> and <code>last_f</code> describe
-the final optimizer state before any earlier best point is restored.
-They can differ when a method’s trajectory is nonmonotone.</p>
+summary. Use the detailed record when code needs the precise reason:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">result_points</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  result <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"best"</span>, <span class="st">"last"</span><span class="op">)</span>,</span>
-<span>  x1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">best_par</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, <span class="va">res</span><span class="op">$</span><span class="va">last_par</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span>,</span>
-<span>  x2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">best_par</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span>, <span class="va">res</span><span class="op">$</span><span class="va">last_par</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span><span class="op">)</span>,</span>
-<span>  objective <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">best_f</span>, <span class="va">res</span><span class="op">$</span><span class="va">last_f</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">result_points</span></span>
-<span><span class="co">#&gt;   result        x1        x2    objective</span></span>
-<span><span class="co">#&gt; 1   best 0.9999972 0.9999923 4.521673e-10</span></span>
-<span><span class="co">#&gt; 2   last 0.9999972 0.9999923 4.521673e-10</span></span>
-<span></span>
-<span><span class="va">res</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"iter"</span>, <span class="st">"nf"</span>, <span class="st">"ng"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt; $iter</span></span>
-<span><span class="co">#&gt; [1] 37</span></span>
+<code class="sourceCode R"><span><span class="va">res</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"converged"</span>, <span class="st">"terminate"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt; $converged</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $nf</span></span>
-<span><span class="co">#&gt; [1] 49</span></span>
+<span><span class="co">#&gt; $terminate</span></span>
+<span><span class="co">#&gt; $terminate$what</span></span>
+<span><span class="co">#&gt; [1] "abs_tol"</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $ng</span></span>
-<span><span class="co">#&gt; [1] 49</span></span></code></pre></div>
-<p>Function values are conditional result components. At an exact hard
-callback cap, <code><a href="../reference/mize.html">mize()</a></code> will not exceed the budget merely to
-evaluate the returned point, so <code>f</code>, <code>best_f</code>, or
-<code>last_f</code> can be absent. Check with
-<code>is.null(res[["f"]])</code> before using a value in
-budget-sensitive code. The <a href="convergence.html">Convergence</a>
-article explains the status classes, stopping criteria, hard budgets,
-and best-versus-last behavior in detail.</p>
-<p>The assertions below protect only the stable lessons of this example:
-the objective is finite and improved, and a tolerance exit has a
-coherent summary.</p>
+<span><span class="co">#&gt; $terminate$val</span></span>
+<span><span class="co">#&gt; [1] 1.06609e-08</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
-<h2 id="inspect-progress-without-printing-everything">Inspect progress without printing everything<a class="anchor" aria-label="anchor" href="#inspect-progress-without-printing-everything"></a>
+<h2 id="inspect-progress">Inspect progress<a class="anchor" aria-label="anchor" href="#inspect-progress"></a>
 </h2>
 <p>With <code>store_progress = TRUE</code>, <code>res$progress</code>
 contains the observations and diagnostics available at stored
-iterations. Select the columns useful for the question at hand and
-inspect only the beginning and end:</p>
+iterations. Plotting the objective against the cumulative number of
+function evaluations gives a quick view of the run:</p>
+<div class="figure">
+<img src="mize_files/figure-html/progress-plot-1.png" class="r-plt" alt="Line plot of the Rosenbrock objective decreasing from about 24 to near zero as cumulative function evaluations increase. The objective axis is logarithmic." width="624"><p class="caption">
+Rosenbrock objective values over cumulative function evaluations. The
+vertical axis uses a logarithmic scale.
+</p>
+</div>
+<p>The stored objective falls by several orders of magnitude during this
+run. For exact values, select the fields useful for the question and
+inspect a few rows from the beginning and end:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">progress_columns</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sets.html" class="external-link">intersect</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"f"</span>, <span class="st">"step"</span>, <span class="st">"nf"</span>, <span class="st">"ng"</span>, <span class="st">"alpha"</span>, <span class="st">"ls_outcome"</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">progress</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">progress_view</span> <span class="op">&lt;-</span> <span class="va">res</span><span class="op">$</span><span class="va">progress</span><span class="op">[</span>, <span class="va">progress_columns</span>, drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">progress_view</span>, <span class="fl">3</span><span class="op">)</span></span>
-<span><span class="co">#&gt;          f       step nf ng        alpha ls_outcome</span></span>
-<span><span class="co">#&gt; 0 24.20000 0.00000000  1  0 0.0000000000       &lt;NA&gt;</span></span>
-<span><span class="co">#&gt; 1 19.49933 0.02168573  3  3 0.0000931247      wolfe</span></span>
-<span><span class="co">#&gt; 2 11.57248 0.04729285  4  4 0.3468504466      wolfe</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">tail</a></span><span class="op">(</span><span class="va">progress_view</span>, <span class="fl">3</span><span class="op">)</span></span>
-<span><span class="co">#&gt;               f         step nf ng alpha ls_outcome</span></span>
-<span><span class="co">#&gt; 35 2.303515e-06 0.0113612989 47 47     1      wolfe</span></span>
-<span><span class="co">#&gt; 36 1.111307e-08 0.0030856819 48 48     1      wolfe</span></span>
-<span><span class="co">#&gt; 37 4.521673e-10 0.0002130984 49 49     1      wolfe</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">progress_view</span> <span class="op">&lt;-</span> <span class="va">res</span><span class="op">$</span><span class="va">progress</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"f"</span>, <span class="st">"step"</span>, <span class="st">"nf"</span>, <span class="st">"ng"</span><span class="op">)</span>, drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span></span></code></pre></div>
+<table class="table">
+<thead><tr class="header">
+<th align="right">Iteration</th>
+<th align="right">Objective</th>
+<th align="right">Step</th>
+<th align="right">Function calls</th>
+<th align="right">Gradient calls</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="right">0</td>
+<td align="right">24.2</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="right">1</td>
+<td align="right">19.5</td>
+<td align="right">0.02169</td>
+<td align="right">3</td>
+<td align="right">3</td>
+</tr>
+<tr class="odd">
+<td align="right">2</td>
+<td align="right">11.57</td>
+<td align="right">0.04729</td>
+<td align="right">4</td>
+<td align="right">4</td>
+</tr>
+<tr class="even">
+<td align="right">35</td>
+<td align="right">2.304e-06</td>
+<td align="right">0.01136</td>
+<td align="right">47</td>
+<td align="right">47</td>
+</tr>
+<tr class="odd">
+<td align="right">36</td>
+<td align="right">1.111e-08</td>
+<td align="right">0.003086</td>
+<td align="right">48</td>
+<td align="right">48</td>
+</tr>
+<tr class="even">
+<td align="right">37</td>
+<td align="right">4.522e-10</td>
+<td align="right">0.0002131</td>
+<td align="right">49</td>
+<td align="right">49</td>
+</tr>
+</tbody>
+</table>
 <p>The initial row represents the starting point. Here <code>f</code> is
 the current objective, <code>step</code> is the size of the outer
 parameter update, and <code>nf</code> and <code>ng</code> are cumulative
-callback counts. Columns such as <code>alpha</code> and
-<code>ls_outcome</code> come from a line search. Other methods and
-settings add different columns, and a column is omitted when its owning
-calculation did not produce it. See the <a href="../reference/mize.html#progress">Progress section of the
+callback counts. Other methods and settings can add fields such as
+<code>alpha</code> and <code>ls_outcome</code>; a field is omitted when
+its owning calculation did not produce it. See the <a href="../reference/mize.html#progress">Progress section of the
 <code>mize()</code> reference</a> for the complete dynamic schema.</p>
 <p>For live console output, use <code>verbose = TRUE</code>;
 <code>log_every</code> controls how often progress is printed or stored.
 Keeping every iteration can produce a large result on a long run.</p>
+<blockquote>
+<p><strong>Returned points and hard budgets.</strong>
+<code><a href="../reference/mize.html">mize()</a></code> normally returns the best evaluated point. For
+nonmonotone runs, <code>best_*</code> and <code>last_*</code>
+distinguish that point from the final iterate. Under an exact callback
+budget, some objective fields may be unavailable. The <a href="convergence.html">Convergence</a> article explains these cases,
+the status classes, and the stopping controls in detail.</p>
+</blockquote>
 </div>
 <div class="section level2">
-<h2 id="choose-a-method">Choose a method<a class="anchor" aria-label="anchor" href="#choose-a-method"></a>
+<h2 id="where-to-go-next">Where to go next<a class="anchor" aria-label="anchor" href="#where-to-go-next"></a>
 </h2>
-<p>The default is a sensible baseline. Problem size and available
-derivative information may suggest another starting point:</p>
+<p>The default L-BFGS method is a useful baseline for a smooth problem.
+Problem size and available derivative information may suggest another
+method:</p>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -313,13 +354,8 @@ function list</td>
 </tbody>
 </table>
 <p>Treat these as starting points and benchmark promising methods on the
-problem at hand. The <a href="methods.html">Choosing methods and
-tuning</a> guide covers the full method set, compatibility, line
-searches, step sizes, and momentum.</p>
-</div>
-<div class="section level2">
-<h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a>
-</h2>
+problem at hand. Continue with the guide that matches your next
+task:</p>
 <ul>
 <li>
 <a href="convergence.html">Convergence</a> explains tolerances,
@@ -332,7 +368,8 @@ monitor, checkpoint, and resume an optimizer.</li>
 closures, a checked gradient, and combined callbacks.</li>
 <li>
 <a href="methods.html">Choosing methods and tuning</a> covers
-algorithm selection and advanced controls.</li>
+algorithm selection and advanced controls, including line searches, step
+sizes, and momentum.</li>
 </ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

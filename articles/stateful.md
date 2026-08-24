@@ -2,7 +2,8 @@
 
 A stateful optimizer separates configuration from iteration. You keep
 the current parameters and optimizer state, decide when to advance them,
-and can log, visualize, intervene, or checkpoint between steps.
+and can log, visualize, apply a caller-owned stopping policy, or
+checkpoint between steps.
 
 This is useful when a single blocking call to
 [`mize()`](https://jlmelville.github.io/mize/reference/mize.md) does not
@@ -128,11 +129,26 @@ observation is normal and leaves the step status unchanged.
 
 ## A minimal terminal-aware loop
 
-A stateful run does not check its ordinary convergence controls until
-you summarize a step and call
-[`check_mize_convergence()`](https://jlmelville.github.io/mize/reference/check_mize_convergence.md).
-A minimal safe loop retains state and checks for termination after every
-call that can update the optimizer:
+> **Important.**
+> [`mize_step()`](https://jlmelville.github.io/mize/reference/mize_step.md)
+> advances the optimizer and may stop on a hard callback budget or an
+> immediate method failure. A requested observation from
+> [`mize_step_summary()`](https://jlmelville.github.io/mize/reference/mize_step_summary.md)
+> can also stop at a hard callback budget. Ordinary numerical
+> tolerances, `max_iter`, and non-finite summary observations are
+> handled by
+> [`check_mize_convergence()`](https://jlmelville.github.io/mize/reference/check_mize_convergence.md).
+> A caller-owned loop must retain the optimizer returned by each
+> operation, stop if either of the first two operations terminates it,
+> and otherwise call the convergence check after every step.
+
+The run below has disabled every ordinary numerical tolerance and
+demonstrates only `max_iter`. Its summary therefore sets
+`calc_fn = FALSE` and `calc_gr = FALSE` to avoid requesting observations
+that the convergence check does not need. A loop that enables function-
+or gradient-based tolerances should let
+[`mize_step_summary()`](https://jlmelville.github.io/mize/reference/mize_step_summary.md)
+request the corresponding observations.
 
 ``` r
 
@@ -184,6 +200,31 @@ opt[c("status", "converged", "message", "terminate")]
 This run deliberately ends at `max_iter = 3`: its status is
 `budget_exhausted`, and `converged` is `FALSE`.
 
+## Work safely between steps
+
+The optimizer’s stored state describes the current problem and
+trajectory. Reading that state and deciding whether to continue leaves
+it coherent. Changing the problem, the current parameters, or controls
+that shape stored algorithm history begins a new run and should go
+through
+[`mize_init()`](https://jlmelville.github.io/mize/reference/mize_init.md).
+
+| Action | Examples | Treatment |
+|:---|:---|:---|
+| Observe or decide | Log or plot state, inspect diagnostics, save a checkpoint, update caller-owned records, apply an external stopping rule | Continue with the returned `opt` and `par`. |
+| Change the problem | Replace callbacks or captured data, change dimension | Reinitialize. |
+| Change the parameter state | Replace `par` independently, or change parameter meaning or scale | Reinitialize. |
+| Change trajectory-owning controls | Change method; momentum or restart settings; L-BFGS memory; CG or TN preconditioning; line-search strategy or history-dependent step initialization | Reinitialize. |
+
+Curvature pairs, cached values, momentum, and line-search history all
+refer to the trajectory that produced them. Replacing part of that
+trajectory while retaining the rest can make the state internally
+inconsistent. Supply stopping controls through
+[`make_mize()`](https://jlmelville.github.io/mize/reference/make_mize.md)
+or
+[`mize_init()`](https://jlmelville.github.io/mize/reference/mize_init.md);
+this guide does not rely on direct mutation of `opt$convergence`.
+
 ## Deliberate observations and diagnostics
 
 [`mize_step_summary()`](https://jlmelville.github.io/mize/reference/mize_step_summary.md)
@@ -193,23 +234,103 @@ when gradient norms are needed. The returned optimizer must be retained
 because a requested callback updates the lifetime counts and can itself
 terminate at a hard budget.
 
-The summary schema is dynamic. Common fields include `iter`, `f`, `nf`,
-`ng`, `step`, and `alpha`; line-search methods can also expose
-`alpha_init`, `slope_init`, `ls_reason`, `ls_outcome`, `ls_nf`, and
-`ls_ng`. Some directions add `direction_reason`, and momentum methods
-can add `mu`. See
-[`?mize_step_summary`](https://jlmelville.github.io/mize/reference/mize_step_summary.md)
-for the complete current schema.
+The summary schema is dynamic. A field is absent when its calculation
+was not requested or its method did not produce it:
 
-Here is one canonical production loop. Its `state` list includes the
-required `opt` and `par`, plus caller-owned best and progress records.
-The best value is the best post-step objective this loop has actually
-observed; it is distinct from the optimizer’s current state.
+| Field group | Examples | Availability |
+|:---|:---|:---|
+| Core | `iter`, `nf`, `ng`, `step` | Generally available |
+| Requested observations | `f`, `g2n`, `ginfn` | When calculated, cached, or requested |
+| Line search | `alpha`, `ls_reason`, `ls_outcome`, `ls_nf`, `ls_ng` | Searches that report these diagnostics |
+| Direction diagnostics | `direction_reason` | Methods that report direction provenance |
+| Momentum | `mu` | Methods with a momentum stage |
+
+Line searches may also report initialization diagnostics such as
+`alpha_init` and `slope_init`. See
+[`?mize_step_summary`](https://jlmelville.github.io/mize/reference/mize_step_summary.md)
+for the complete field definitions, and test optional names before
+application code relies on them.
+
+The monitored loop follows the same lifecycle on every pass:
+
+1.  Advance one step and retain its optimizer and parameters.
+2.  Stop immediately if the step terminated.
+3.  Request the observations needed by caller-owned records, and retain
+    that optimizer too.
+4.  Update the best value and append one typed progress record.
+5.  Apply the ordinary convergence checks.
+
+The starting objective is requested through the same budget-aware
+summary API before the first step. The complete helper is available
+below for copying.
+
+Complete executable state helpers
 
 ``` r
 
-value_or_na <- function(x) {
-  if (is.null(x)) NA else x
+numeric_or_na <- function(x) {
+  if (is.null(x)) NA_real_ else as.numeric(x)
+}
+
+character_or_na <- function(x) {
+  if (is.null(x)) NA_character_ else as.character(x)
+}
+
+progress_record <- function(step_info) {
+  data.frame(
+    iter = as.integer(step_info$iter),
+    f = as.numeric(step_info$f),
+    nf = as.integer(step_info$nf),
+    ng = as.integer(step_info$ng),
+    step = as.numeric(step_info$step),
+    alpha = numeric_or_na(step_info$alpha),
+    ls_outcome = character_or_na(step_info$ls_outcome)
+  )
+}
+
+bind_progress <- function(records) {
+  if (length(records) == 0L) {
+    return(data.frame(
+      iter = integer(),
+      f = double(),
+      nf = integer(),
+      ng = integer(),
+      step = double(),
+      alpha = double(),
+      ls_outcome = character()
+    ))
+  }
+  do.call(rbind, records)
+}
+
+initialize_stateful <- function(opt, par, fg) {
+  initial_info <- mize_step_summary(
+    opt,
+    par,
+    fg,
+    calc_fn = TRUE,
+    calc_gr = FALSE
+  )
+  state <- list(
+    opt = initial_info$opt,
+    par = par,
+    best_par = NULL,
+    best_f = Inf,
+    progress = list()
+  )
+
+  if (state$opt$is_terminated || is.null(initial_info$f)) {
+    return(state)
+  }
+  if (!is.finite(initial_info$f)) {
+    state$opt <- check_mize_convergence(initial_info)
+    return(state)
+  }
+
+  state$best_par <- par
+  state$best_f <- initial_info$f
+  state$progress[[1L]] <- progress_record(initial_info)
+  state
 }
 
 advance_stateful <- function(state, fg, max_steps = Inf) {
@@ -242,18 +363,8 @@ advance_stateful <- function(state, fg, max_steps = Inf) {
         state$best_par <- state$par
       }
 
-      state$progress <- rbind(
-        state$progress,
-        data.frame(
-          iter = step_info$iter,
-          f = step_info$f,
-          nf = step_info$nf,
-          ng = step_info$ng,
-          step = step_info$step,
-          alpha = value_or_na(step_info$alpha),
-          ls_outcome = value_or_na(step_info$ls_outcome)
-        )
-      )
+      next_record <- length(state$progress) + 1L
+      state$progress[[next_record]] <- progress_record(step_info)
     }
 
     state$opt <- check_mize_convergence(step_info)
@@ -283,21 +394,43 @@ new_bfgs_state <- function() {
     make_mize,
     c(list(method = "BFGS", par = rb0, fg = rb_fg), controls)
   )
-  list(
-    opt = opt,
-    par = rb0,
-    best_par = NULL,
-    best_f = Inf,
-    progress = data.frame()
-  )
+  initialize_stateful(opt, rb0, rb_fg)
 }
 
-uninterrupted <- advance_stateful(new_bfgs_state(), rb_fg)
-tail(uninterrupted$progress, 3)
-#>    iter           f nf ng       step alpha ls_outcome
-#> 28   28 0.026689274 38 38 0.12722348     1      wolfe
-#> 29   29 0.015185570 39 39 0.13148806     1      wolfe
-#> 30   30 0.005002828 40 40 0.04709997     1      wolfe
+initial_state <- new_bfgs_state()
+initial_observation <- data.frame(
+  `Starting objective` = initial_state$best_f,
+  `Function calls` = initial_state$opt$counts$fn,
+  `Progress records` = length(initial_state$progress),
+  check.names = FALSE
+)
+knitr::kable(initial_observation)
+```
+
+| Starting objective | Function calls | Progress records |
+|-------------------:|---------------:|-----------------:|
+|               24.2 |              1 |                1 |
+
+``` r
+
+
+uninterrupted <- advance_stateful(initial_state, rb_fg)
+uninterrupted_progress <- bind_progress(uninterrupted$progress)
+knitr::kable(
+  tail(uninterrupted_progress, 3),
+  digits = 6,
+  row.names = FALSE
+)
+```
+
+| iter |        f |  nf |  ng |     step | alpha | ls_outcome |
+|-----:|---------:|----:|----:|---------:|------:|:-----------|
+|   28 | 0.026689 |  38 |  38 | 0.127223 |     1 | wolfe      |
+|   29 | 0.015186 |  39 |  39 | 0.131488 |     1 | wolfe      |
+|   30 | 0.005003 |  40 |  40 | 0.047100 |     1 | wolfe      |
+
+``` r
+
 uninterrupted$opt[c("status", "converged", "message", "terminate")]
 #> $status
 #> [1] "budget_exhausted"
@@ -316,15 +449,19 @@ uninterrupted$opt[c("status", "converged", "message", "terminate")]
 #> [1] 30
 ```
 
-The selected progress columns are useful for this run. Test
-method-specific columns for presence before application code relies on
-them.
+For this BFGS configuration, initialization has not evaluated the
+objective. The first summary therefore consumes one function call and
+records the starting point as the caller-owned best. A repeated request
+at the same point reuses the cached value. Progress remains a list of
+typed one-row data frames until `bind_progress()` prepares it for
+display; method-specific columns should still be tested for presence
+before application code relies on them.
 
 ### Hard budgets can deny a requested observation
 
 `max_fn` remains hard when `calc_fn = TRUE`. With no function
-evaluations available, the summary returns no `f` and its updated
-optimizer reports the exhausted budget:
+evaluations available, initialization records neither a best value nor a
+progress row, and its updated optimizer reports the exhausted budget:
 
 ``` r
 
@@ -341,38 +478,29 @@ budget_opt <- make_mize(
   ginf_tol = NULL,
   step_tol = NULL
 )
-budget_info <- mize_step_summary(
+budget_state <- initialize_stateful(
   budget_opt,
   rb0,
-  rb_fg,
-  calc_fn = TRUE
+  rb_fg
 )
-list(
-  f_available = !is.null(budget_info$f),
-  nf = budget_info$nf,
-  status = budget_info$opt$status,
-  terminate = budget_info$opt$terminate
+budget_result <- data.frame(
+  `Best recorded` = !is.null(budget_state$best_par),
+  `Function calls` = budget_state$opt$counts$fn,
+  Status = budget_state$opt$status,
+  Reason = budget_state$opt$terminate$what,
+  check.names = FALSE
 )
-#> $f_available
-#> [1] FALSE
-#> 
-#> $nf
-#> [1] 0
-#> 
-#> $status
-#> [1] "budget_exhausted"
-#> 
-#> $terminate
-#> $terminate$what
-#> [1] "max_fn"
-#> 
-#> $terminate$val
-#> [1] 0
+knitr::kable(budget_result)
 ```
 
-This is why the production loop both retains `step_info$opt` and guards
-`step_info$f`. Calling `fg$fn()` directly bypasses `mize`’s counters and
-limits. Keep direct callback calls outside hard-budget workflows.
+| Best recorded | Function calls | Status           | Reason |
+|:--------------|---------------:|:-----------------|:-------|
+| FALSE         |              0 | budget_exhausted | max_fn |
+
+This is why both initialization and the production loop retain the
+optimizer returned by a summary and guard the requested value. Calling
+`fg$fn()` directly bypasses `mize`’s counters and limits. Keep direct
+callback calls outside hard-budget workflows.
 
 ## Checkpoint and resume
 
@@ -395,6 +523,12 @@ rm(partial)
 
 resumed <- readRDS(checkpoint_file)
 unlink(checkpoint_file)
+checkpoint_progress_is_list <- is.list(resumed$progress)
+checkpoint_records_are_typed <- all(vapply(
+  resumed$progress,
+  is.data.frame,
+  logical(1)
+))
 resumed <- advance_stateful(resumed, rb_fg)
 ```
 
@@ -426,11 +560,28 @@ comparison <- data.frame(
     resumed$opt$terminate$what
   )
 )
-comparison
-#>                 run   objective nf ng           status terminate
-#> 1          one-shot 0.005002828 40 40 budget_exhausted  max_iter
-#> 2          stateful 0.005002828 40 40 budget_exhausted  max_iter
-#> 3 checkpoint/resume 0.005002828 40 40 budget_exhausted  max_iter
+knitr::kable(
+  comparison,
+  digits = 8,
+  col.names = c(
+    "Run",
+    "Objective",
+    "Function calls",
+    "Gradient calls",
+    "Status",
+    "Reason"
+  )
+)
+```
+
+| Run | Objective | Function calls | Gradient calls | Status | Reason |
+|:---|---:|---:|---:|:---|:---|
+| one-shot | 0.00500283 | 40 | 40 | budget_exhausted | max_iter |
+| stateful | 0.00500283 | 40 | 40 | budget_exhausted | max_iter |
+| checkpoint/resume | 0.00500283 | 40 | 40 | budget_exhausted | max_iter |
+
+``` r
+
 
 comparison_tolerance <- 1e-10
 equivalent <- c(
@@ -465,17 +616,13 @@ equivalent <- c(
     tolerance = comparison_tolerance
   ))
 )
-equivalent
-#>      one_shot_best one_shot_objective      one_shot_last    resumed_current 
-#>               TRUE               TRUE               TRUE               TRUE 
-#>   resumed_best_par       resumed_best 
-#>               TRUE               TRUE
 ```
 
-For this deterministic problem and implementation, all comparisons pass
-at `1e-10`. The comparison shows that serializing and restoring the
-optimizer preserves method state. Bit-for-bit identity across platforms
-remains outside the contract.
+The resumed run reaches the same current and best parameters as the
+uninterrupted run to numerical tolerance, and both agree with the
+one-shot run. This is the practical guarantee supplied by checkpointing
+the complete optimizer state; exact byte-for-byte identity across
+different R or platform builds is not required.
 
 ## Reinitialization starts a new run
 

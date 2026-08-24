@@ -82,19 +82,42 @@ Melville</h4>
 
     
     
-<p>This guide collects the advanced method, line-search, step-size,
-momentum, and restart options available in <code>mize</code>. Start with
-<a href="mize.html">Getting started</a> for the basic optimization
-workflow, then use this guide when choosing or tuning an optimization
-strategy.</p>
+<p>This guide helps you decide whether a concrete problem or diagnostic
+justifies changing the default optimizer. Start with <a href="mize.html">Getting started</a> for a first optimization, then
+return here to choose a direction method, investigate a line search, or
+run a controlled experiment with a specialized update.</p>
 <div class="section level2">
-<h2 id="choosing-a-method">Choosing a method<a class="anchor" aria-label="anchor" href="#choosing-a-method"></a>
+<h2 id="start-here">Start here<a class="anchor" aria-label="anchor" href="#start-here"></a>
 </h2>
-<p><code><a href="../reference/mize.html">mize()</a></code> defaults to <code>"L-BFGS"</code>, a good
-starting point for many smooth problems when an analytic gradient is
-available. Change methods for a reason: because the problem size changes
-the storage budget, Hessian information is available, or the experiment
-is specifically about another update rule.</p>
+<p>For a smooth objective with an analytic gradient, begin with the
+default <code>"L-BFGS"</code> method and line search. It builds a
+limited-memory curvature model, so it is a useful baseline across a wide
+range of problem sizes. Record the metric that matters for your
+application—such as callback count, elapsed time, or objective value at
+a fixed budget—before comparing alternatives.</p>
+</div>
+<div class="section level2">
+<h2 id="before-changing-the-method">Before changing the method<a class="anchor" aria-label="anchor" href="#before-changing-the-method"></a>
+</h2>
+<p>Check the problem setup and the evidence first:</p>
+<ul>
+<li>Validate the analytic gradient at representative points.</li>
+<li>Examine parameter and objective scaling.</li>
+<li>Distinguish an expensive line search from a failed search by
+inspecting its diagnostic fields.</li>
+<li>Confirm that memory or derivative availability is the actual
+constraint.</li>
+<li>Decide whether the comparison concerns iterations, callbacks,
+elapsed time, best objective, or the final iterate.</li>
+</ul>
+<p>These checks often identify a local tuning problem without changing
+the direction method. The <a href="convergence.html">Convergence
+guide</a> explains how stopping rules and budgets affect the result
+being compared.</p>
+</div>
+<div class="section level2">
+<h2 id="change-the-direction-method-when">Change the direction method when<a class="anchor" aria-label="anchor" href="#change-the-direction-method-when"></a>
+</h2>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -102,115 +125,70 @@ is specifically about another update rule.</p>
 <col width="33%">
 </colgroup>
 <thead><tr class="header">
-<th>Need</th>
-<th>Suggested starting point</th>
-<th>Main trade-off</th>
+<th>Method</th>
+<th>Consider it when</th>
+<th>Main trade-off or diagnostic</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td>General smooth problem</td>
 <td><code>"L-BFGS"</code></td>
-<td>Limited-memory curvature model; usually the first method to try</td>
-</tr>
-<tr class="even">
-<td>Small or medium smooth problem</td>
+<td>You need a general smooth-problem baseline</td>
 <td>
-<code>"BFGS"</code>; consider <code>"SR1"</code> for comparison</td>
-<td>Dense inverse-Hessian state uses quadratic storage</td>
+<code>memory</code> trades curvature history for storage</td>
+</tr>
+<tr class="even">
+<td><code>"BFGS"</code></td>
+<td>Dense state is affordable</td>
+<td>Inverse-Hessian storage is quadratic in the parameter count</td>
 </tr>
 <tr class="odd">
-<td>Reliable Hessian or inverse Hessian available</td>
+<td><code>"SR1"</code></td>
+<td>You want a dense alternative to BFGS</td>
+<td>Safeguards may fall back to BFGS or steepest descent</td>
+</tr>
+<tr class="even">
 <td><code>"NEWTON"</code></td>
-<td>Strong local model; Hessian construction and factorization can
-dominate</td>
-</tr>
-<tr class="even">
-<td>Large Hessian-free problem</td>
-<td><code>"TN"</code></td>
-<td>Approximates a Newton direction with an inner solve and extra
-gradient work</td>
+<td>A reliable Hessian or inverse Hessian is available</td>
+<td>Construction and factorization can dominate; inspect
+<code>direction_reason</code> after a fallback</td>
 </tr>
 <tr class="odd">
-<td>Specialized nonlinear conjugate-gradient study</td>
-<td><code>"CG"</code></td>
-<td>Low storage; update choice, scaling, and line search matter</td>
+<td><code>"TN"</code></td>
+<td>The problem is large and Hessian-free inner work is acceptable</td>
+<td>Gradient differences drive an iterative inner solve</td>
 </tr>
 <tr class="even">
-<td>Momentum experiment</td>
+<td><code>"CG"</code></td>
+<td>Low storage matters and you can tune a nonlinear-CG
+configuration</td>
+<td>Update choice, scaling, and line-search behavior all matter</td>
+</tr>
+<tr class="odd">
+<td><code>"SD"</code></td>
+<td>You need a baseline or know a suitable learning rate</td>
+<td>Progress depends strongly on the step-size strategy</td>
+</tr>
+<tr class="even">
 <td>
 <code>"NAG"</code> or <code>"Momentum"</code>
 </td>
-<td>Requires a defined schedule and careful comparison of nonmonotone
-trajectories</td>
+<td>Momentum behavior is the subject of the experiment</td>
+<td>Define a schedule and compare nonmonotone trajectories
+explicitly</td>
 </tr>
 <tr class="odd">
-<td>Known or deliberately controlled learning rate</td>
-<td><code>"SD"</code></td>
-<td>Simple baseline; performance depends heavily on the step-size
-strategy</td>
-</tr>
-<tr class="even">
-<td>Per-coordinate adaptive learning rate</td>
 <td><code>"DBD"</code></td>
-<td>Heuristic update controls both direction scaling and step size</td>
+<td>You want a per-coordinate adaptive learning-rate experiment</td>
+<td>Its update controls both direction scaling and step size</td>
 </tr>
 </tbody>
 </table>
-<p>For algorithmic background, see <a href="https://doi.org/10.1007/978-0-387-40065-5" class="external-link">Nocedal and Wright</a>.
-The choices above are starting points. Benchmark promising methods on
-the objective at hand.</p>
-<div class="section level3">
-<h3 id="current-method-surface">Current method surface<a class="anchor" aria-label="anchor" href="#current-method-surface"></a>
-</h3>
-<ul>
-<li>
-<code>"L-BFGS"</code> maintains its limited-memory approximation
-from the most recent <code>memory</code> curvature pairs. Increasing
-<code>memory</code> retains more history and costs more storage.</li>
-<li>
-<code>"BFGS"</code> maintains a dense inverse-Hessian approximation,
-so its storage is quadratic in the number of parameters.</li>
-<li>
-<code>"SR1"</code> is a dense symmetric-rank-one alternative. Its
-update is safeguarded, and <code>mize</code> falls back to a BFGS or
-steepest-descent direction when necessary to obtain descent.</li>
-<li>
-<code>"NEWTON"</code> uses <code>fg$hs</code> or <code>fg$hi</code>.
-A Hessian or inverse Hessian may be a full matrix or a diagonal vector;
-unsuccessful or non-descent directions fall back to steepest descent and
-can be inspected through <code>direction_reason</code>.</li>
-<li>
-<code>"TN"</code> (truncated Newton) approximately solves for a
-Newton direction using gradient differences. <code>tn_init</code>,
-<code>tn_exit</code>, and the optional L-BFGS
-<code>preconditioner</code> control its inner solve.</li>
-<li>
-<code>"CG"</code> is nonlinear conjugate gradient.
-<code>cg_update = "PR+"</code> is the default; <code>"HZ+"</code> is
-another restart-enabled choice. The reference topic lists the complete
-update vocabulary.</li>
-<li>
-<code>"SD"</code> is steepest descent. It is useful as a baseline
-and with a deliberately chosen constant or adaptive step size. An
-arbitrary step can increase the objective.</li>
-<li>
-<code>"NAG"</code> is Nesterov accelerated gradient. Its momentum
-depends on <code>nest_q</code> and related controls. Compare bounded
-runs with explicit metrics.</li>
-<li>
-<code>"Momentum"</code> (which may be abbreviated to
-<code>"MOM"</code>) combines steepest descent with a classical or
-Nesterov-style momentum stage and a chosen schedule.</li>
-<li>
-<code>"DBD"</code> is Delta-Bar-Delta. It owns a per-coordinate
-learning rate, so its step controls replace the requested
-<code>line_search</code>.</li>
-<li>
-<code>"PHESS"</code> reuses a partial-Hessian factorization. The
-factory accepts this experimental/internal method when
-<code>fg$hs</code> is available. For ordinary work, choose a starting
-method from the table above.</li>
-</ul>
+<p><code>"PHESS"</code> reuses a partial-Hessian factorization when
+<code>fg$hs</code> is available. It remains experimental/internal, so it
+is documented for completeness rather than recommended as a normal
+starting point. For algorithmic background on the general direction
+methods, see <a href="https://doi.org/10.1007/978-0-387-40065-5" class="external-link">Nocedal
+and Wright</a>.</p>
 <p>Each method-specific control has a fixed scope. For example,
 <code>memory</code> applies to L-BFGS and to the optional L-BFGS
 preconditioner for CG or TN; <code>cg_update</code> applies only to CG;
@@ -220,230 +198,62 @@ controls: DBD ignores <code>line_search</code>, and Wolfe-only controls
 are ignored by constant and bold-driver steps. See <a href="../reference/mize.html"><code>?mize</code></a> for the complete
 accepted values and control scopes.</p>
 </div>
-<div class="section level3">
-<h3 id="nesterov-accelerated-gradient-nag">Nesterov Accelerated Gradient (<code>"NAG"</code>)<a class="anchor" aria-label="anchor" href="#nesterov-accelerated-gradient-nag"></a>
-</h3>
-<p>NAG takes a steepest-descent step and then applies a momentum update.
-Its current objective can increase on an iteration. Inspect the full
-bounded trajectory and the returned best result.</p>
-<p><code>nest_q</code> controls the built-in NAG schedule. The endpoints
-are important: <code>nest_q = 0</code> is the non-strongly-convex limit
-and gives the largest momentum, whereas <code>nest_q = 1</code> gives
-zero momentum and reduces the parameter updates to steepest descent. The
-default is zero. Treat a value between the endpoints as a tuning choice.
-A known strong-convexity ratio requires corresponding information about
-the objective.</p>
-<p>Each comparison reports best and last objectives, callback counts,
-status, and termination reason, then plots the same result objects
-against cumulative function callbacks.</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">nag_runs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  `q = 0` <span class="op">=</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span></span>
-<span>    <span class="va">rb0</span>, <span class="va">rb_fg</span>, method <span class="op">=</span> <span class="st">"NAG"</span>, nest_q <span class="op">=</span> <span class="fl">0</span>,</span>
-<span>    max_iter <span class="op">=</span> <span class="fl">100</span>, store_progress <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span>  <span class="op">)</span>,</span>
-<span>  `q = 0.001` <span class="op">=</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span></span>
-<span>    <span class="va">rb0</span>, <span class="va">rb_fg</span>, method <span class="op">=</span> <span class="st">"NAG"</span>, nest_q <span class="op">=</span> <span class="fl">0.001</span>,</span>
-<span>    max_iter <span class="op">=</span> <span class="fl">100</span>, store_progress <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span>  <span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu">assert_bounded_runs</span><span class="op">(</span><span class="va">nag_runs</span><span class="op">)</span></span>
-<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="fu">summarize_runs</span><span class="op">(</span><span class="va">nag_runs</span><span class="op">)</span>, digits <span class="op">=</span> <span class="fl">6</span><span class="op">)</span></span></code></pre></div>
-<table class="table">
-<colgroup>
-<col width="9%">
-<col width="14%">
-<col width="14%">
-<col width="17%">
-<col width="17%">
-<col width="15%">
-<col width="11%">
-</colgroup>
-<thead><tr class="header">
-<th align="left">Run</th>
-<th align="right">Best objective</th>
-<th align="right">Last objective</th>
-<th align="right">Function callbacks</th>
-<th align="right">Gradient callbacks</th>
-<th align="left">Status</th>
-<th align="left">Termination</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td align="left">q = 0</td>
-<td align="right">1.054056</td>
-<td align="right">6.055306</td>
-<td align="right">1030</td>
-<td align="right">1029</td>
-<td align="left">budget_exhausted</td>
-<td align="left">max_iter</td>
-</tr>
-<tr class="even">
-<td align="left">q = 0.001</td>
-<td align="right">1.147505</td>
-<td align="right">2.765938</td>
-<td align="right">835</td>
-<td align="right">834</td>
-<td align="left">budget_exhausted</td>
-<td align="left">max_iter</td>
-</tr>
-</tbody>
-</table>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">plot_current_objective</span><span class="op">(</span><span class="va">nag_runs</span>, <span class="st">"NAG and nest_q"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="methods_files/figure-html/nag-q-comparison-1.png" class="r-plt" alt="" width="672"></p>
-<p>Both rows stop at <code>max_iter</code> and demonstrate progress
-within a fixed outer iteration budget. Convergence remains
-unestablished. Here <code>q = 0.001</code> has the lower last objective,
-while <code>q = 0</code> has the lower returned best objective. The plot
-shows current iterates; the table reports both best and last objectives.
-The conflicting order is the lesson: define the metric before calling
-one bounded trajectory “better.”</p>
-<p>The theoretical step size and momentum guarantees require assumptions
-and problem constants that this Rosenbrock example does not supply. For
-derivations and historical context, see the <a href="nesterov.html">Nesterov background note</a>.</p>
-</div>
-<div class="section level3">
-<h3 id="classical-momentum-momentum">Classical Momentum (<code>"Momentum"</code>)<a class="anchor" aria-label="anchor" href="#classical-momentum-momentum"></a>
-</h3>
-<p>Classical momentum adds a fraction of the previous update to a
-steepest-descent update. <code>mom_schedule</code> defines that
-fraction:</p>
-<table class="table">
-<colgroup>
-<col width="50%">
-<col width="50%">
-</colgroup>
-<thead><tr class="header">
-<th>Value</th>
-<th>Schedule</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td>A number such as <code>0.9</code>
-</td>
-<td>Constant momentum</td>
-</tr>
-<tr class="even">
-<td><code>"switch"</code></td>
-<td>Change from <code>mom_init</code> to <code>mom_final</code> at
-<code>mom_switch_iter</code>
-</td>
-</tr>
-<tr class="odd">
-<td><code>"ramp"</code></td>
-<td>Increase linearly from <code>mom_init</code> to
-<code>mom_final</code>
-</td>
-</tr>
-<tr class="even">
-<td><code>"nsconvex"</code></td>
-<td>Use the NAG schedule, controlled by the <code>nest_*</code>
-arguments</td>
-</tr>
-<tr class="odd">
-<td>A function</td>
-<td>Compute a scalar from the iteration, optionally also
-<code>max_iter</code>
-</td>
-</tr>
-</tbody>
-</table>
-<p>A custom schedule can be deterministic when randomness adds no
-lesson:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">cosine_schedule</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">iter</span>, <span class="va">max_iter</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">phase</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">iter</span> <span class="op">/</span> <span class="va">max_iter</span>, <span class="fl">1</span><span class="op">)</span></span>
-<span>  <span class="fl">0.4</span> <span class="op">+</span> <span class="fl">0.2</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">cos</a></span><span class="op">(</span><span class="va">pi</span> <span class="op">*</span> <span class="va">phase</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span><span class="va">custom_momentum</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span></span>
-<span>  <span class="va">rb0</span>, <span class="va">rb_fg</span>, method <span class="op">=</span> <span class="st">"Momentum"</span>, mom_schedule <span class="op">=</span> <span class="va">cosine_schedule</span>,</span>
-<span>  max_iter <span class="op">=</span> <span class="fl">10</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>The schedule is clamped to the supported momentum range. Built-in
-schedules are preferable when they express the intended experiment
-directly.</p>
-</div>
-<div class="section level3">
-<h3 id="classical-and-nesterov-style-momentum">Classical and Nesterov-style momentum<a class="anchor" aria-label="anchor" href="#classical-and-nesterov-style-momentum"></a>
-</h3>
-<p>With <code>method = "Momentum"</code>,
-<code>mom_type = "classical"</code> applies momentum after the gradient
-step; <code>mom_type = "nesterov"</code> applies it before that step.
-The schedule remains an independent choice. The next comparison holds
-the schedule, start, objective, and iteration budget fixed.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">momentum_runs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  Classical <span class="op">=</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span></span>
-<span>    <span class="va">rb0</span>, <span class="va">rb_fg</span>, method <span class="op">=</span> <span class="st">"Momentum"</span>, mom_schedule <span class="op">=</span> <span class="fl">0.9</span>,</span>
-<span>    max_iter <span class="op">=</span> <span class="fl">100</span>, store_progress <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span>  <span class="op">)</span>,</span>
-<span>  Nesterov <span class="op">=</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span></span>
-<span>    <span class="va">rb0</span>, <span class="va">rb_fg</span>, method <span class="op">=</span> <span class="st">"Momentum"</span>, mom_schedule <span class="op">=</span> <span class="fl">0.9</span>,</span>
-<span>    mom_type <span class="op">=</span> <span class="st">"nesterov"</span>, max_iter <span class="op">=</span> <span class="fl">100</span>, store_progress <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span>  <span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu">assert_bounded_runs</span><span class="op">(</span><span class="va">momentum_runs</span><span class="op">)</span></span>
-<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="fu">summarize_runs</span><span class="op">(</span><span class="va">momentum_runs</span><span class="op">)</span>, digits <span class="op">=</span> <span class="fl">6</span><span class="op">)</span></span></code></pre></div>
-<table class="table">
-<colgroup>
-<col width="9%">
-<col width="14%">
-<col width="14%">
-<col width="17%">
-<col width="17%">
-<col width="15%">
-<col width="11%">
-</colgroup>
-<thead><tr class="header">
-<th align="left">Run</th>
-<th align="right">Best objective</th>
-<th align="right">Last objective</th>
-<th align="right">Function callbacks</th>
-<th align="right">Gradient callbacks</th>
-<th align="left">Status</th>
-<th align="left">Termination</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td align="left">Classical</td>
-<td align="right">3.423736</td>
-<td align="right">20.331401</td>
-<td align="right">1272</td>
-<td align="right">1271</td>
-<td align="left">budget_exhausted</td>
-<td align="left">max_iter</td>
-</tr>
-<tr class="even">
-<td align="left">Nesterov</td>
-<td align="right">0.353595</td>
-<td align="right">0.584473</td>
-<td align="right">1088</td>
-<td align="right">1087</td>
-<td align="left">budget_exhausted</td>
-<td align="left">max_iter</td>
-</tr>
-</tbody>
-</table>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">plot_current_objective</span><span class="op">(</span><span class="va">momentum_runs</span>, <span class="st">"Momentum update order"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="methods_files/figure-html/momentum-type-comparison-1.png" class="r-plt" alt="" width="672"></p>
-<p>These runs also exhaust <code>max_iter</code>. Their table records
-what happened under this configuration. Treat the two update orders as
-choices to test on the problem at hand. Use
-<code>mom_schedule = "nsconvex"</code> to combine either order with the
-NAG schedule. With that schedule, <code>nest_convex_approx = TRUE</code>
-selects Sutskever’s approximation for the <code>nest_q = 0</code> case
-and causes <code>nest_q</code> to be ignored.</p>
-</div>
-</div>
 <div class="section level2">
-<h2 id="line-searches-and-step-sizes">Line searches and step sizes<a class="anchor" aria-label="anchor" href="#line-searches-and-step-sizes"></a>
+<h2 id="tune-the-line-search-when">Tune the line search when<a class="anchor" aria-label="anchor" href="#tune-the-line-search-when"></a>
 </h2>
-<p>Most methods first choose a direction and then use
-<code>line_search</code> to choose how far to move. DBD is the main
-exception: it chooses per-coordinate learning rates itself and ignores
-<code>line_search</code>.</p>
+<p>Most methods choose a direction and then use <code>line_search</code>
+to choose how far to move. Inspect the diagnostic associated with the
+symptom before changing a control.</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>Symptom</th>
+<th>First evidence to inspect</th>
+<th>Possible next action</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>Many evaluations inside each search</td>
+<td>
+<code>ls_nf</code>, <code>ls_ng</code>, <code>alpha_init</code>, and
+<code>ls_reason</code>
+</td>
+<td>Revisit scaling, the initial-step rule, or the curvature
+tolerance</td>
+</tr>
+<tr class="even">
+<td>Repeated searches find no usable step</td>
+<td>Gradient accuracy, <code>ls_outcome</code>, and
+<code>direction_reason</code>
+</td>
+<td>Correct the gradient or scaling; then reconsider method/search
+compatibility</td>
+</tr>
+<tr class="odd">
+<td>Quasi-Newton steps are repeatedly shortened</td>
+<td>Accepted <code>alpha</code>, local model quality, and parameter
+scaling</td>
+<td>Compare <code>try_newton_step</code> policies or rescale the
+problem</td>
+</tr>
+<tr class="even">
+<td>A stable learning rate is already known</td>
+<td>Whether a search supplies useful adaptation</td>
+<td>Use a constant step in a controlled run</td>
+</tr>
+<tr class="odd">
+<td>Callback cost must be capped per search</td>
+<td>
+<code>ls_nf</code>, <code>ls_ng</code>, and the global callback
+totals</td>
+<td>Set local search budgets while retaining global hard budgets</td>
+</tr>
+</tbody>
+</table>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -492,12 +302,11 @@ troubleshooting</td>
 </tr>
 </tbody>
 </table>
-<p>Each line-search control has a fixed scope. <code>c2</code>,
-<code>strong_curvature</code>, and <code>approx_armijo</code> apply only
-to Wolfe searches. <code>c1</code> also applies to Armijo backtracking.
-Bold driver and constant steps ignore it. <code>ls_max_alpha</code> and
-<code>ls_safe_cubic</code> are More-Thuente-specific. The DBD controls
-are described separately below.</p>
+<p><code>c2</code>, <code>strong_curvature</code>, and
+<code>approx_armijo</code> apply only to Wolfe searches. <code>c1</code>
+also applies to Armijo backtracking. Bold driver and constant steps
+ignore those controls, and <code>ls_max_alpha</code> and
+<code>ls_safe_cubic</code> are More-Thuente-specific.</p>
 <div class="section level3">
 <h3 id="wolfe-conditions-and-c2">Wolfe conditions and <code>c2</code><a class="anchor" aria-label="anchor" href="#wolfe-conditions-and-c2"></a>
 </h3>
@@ -509,72 +318,174 @@ Under the strong curvature condition,</p>
 <p><span class="math display">\[
 |\phi'(\alpha)| \leq c_2 |\phi'(0)|.
 \]</span></p>
-<p>A smaller <code>c2</code> makes the right-hand side smaller, so it is
-<strong>stricter</strong>; a larger <code>c2</code> is looser. The same
-direction holds for the standard curvature condition because the initial
-slope is negative. <code>c2</code> must lie strictly between
+<p>A smaller <code>c2</code> makes the right-hand side smaller and the
+condition stricter; a larger <code>c2</code> makes it looser. The same
+relationship holds for the standard curvature condition because the
+initial slope is negative. <code>c2</code> must lie strictly between
 <code>c1</code> and 1.</p>
-<p>The CG default is <code>c2 = 0.1</code>. The next bounded example
-sets <code>c2 = 0.5</code>, making the curvature test looser. It also
-selects the Hager-Zhang next-step initializer. The table displays the
-resulting initial proposals, slopes, line-search outcomes, and callback
-counts.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">looser_c2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span></span>
-<span>  <span class="va">rb0</span>,</span>
-<span>  <span class="va">rb_fg</span>,</span>
-<span>  method <span class="op">=</span> <span class="st">"CG"</span>,</span>
-<span>  cg_update <span class="op">=</span> <span class="st">"HZ+"</span>,</span>
-<span>  line_search <span class="op">=</span> <span class="st">"More-Thuente"</span>,</span>
-<span>  c2 <span class="op">=</span> <span class="fl">0.5</span>,</span>
-<span>  step_next_init <span class="op">=</span> <span class="st">"hz"</span>,</span>
-<span>  max_iter <span class="op">=</span> <span class="fl">4</span>,</span>
-<span>  abs_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  rel_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  grad_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  ginf_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  step_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  store_progress <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span>
+<p>The CG default is <code>c2 = 0.1</code>. The next comparison changes
+only <code>c2</code>, holding the start, direction update, line search,
+initializer, and four-iteration budget fixed. Proposed and selected step
+lengths show how the search responded; local work reports function and
+gradient callbacks owned by that outer search.</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">c2_runs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>`0.1` <span class="op">=</span> <span class="fl">0.1</span>, `0.5` <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">c2_value</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span></span>
+<span>    <span class="va">rb0</span>,</span>
+<span>    <span class="va">rb_fg</span>,</span>
+<span>    method <span class="op">=</span> <span class="st">"CG"</span>,</span>
+<span>    cg_update <span class="op">=</span> <span class="st">"HZ+"</span>,</span>
+<span>    line_search <span class="op">=</span> <span class="st">"More-Thuente"</span>,</span>
+<span>    c2 <span class="op">=</span> <span class="va">c2_value</span>,</span>
+<span>    step_next_init <span class="op">=</span> <span class="st">"hz"</span>,</span>
+<span>    max_iter <span class="op">=</span> <span class="fl">4</span>,</span>
+<span>    abs_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>    rel_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>    grad_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>    ginf_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>    step_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>    store_progress <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">line_search_columns</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>  <span class="st">"alpha_init"</span>, <span class="st">"slope_init"</span>, <span class="st">"ls_reason"</span>, <span class="st">"ls_outcome"</span>, <span class="st">"ls_nf"</span>, <span class="st">"ls_ng"</span></span>
+<span><span class="va">c2_diagnostics</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">c2_runs</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">progress</span> <span class="op">&lt;-</span> <span class="va">c2_runs</span><span class="op">[[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">progress</span></span>
+<span>  <span class="va">progress</span> <span class="op">&lt;-</span> <span class="va">progress</span><span class="op">[</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">progress</span><span class="op">$</span><span class="va">ls_reason</span><span class="op">)</span>, , drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>    `c2` <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">c2_runs</span><span class="op">)</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>,</span>
+<span>    Iteration <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">progress</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    `Proposed alpha` <span class="op">=</span> <span class="va">progress</span><span class="op">$</span><span class="va">alpha_init</span>,</span>
+<span>    `Selected alpha` <span class="op">=</span> <span class="va">progress</span><span class="op">$</span><span class="va">alpha</span>,</span>
+<span>    `Reason / outcome` <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="va">progress</span><span class="op">$</span><span class="va">ls_reason</span>, <span class="va">progress</span><span class="op">$</span><span class="va">ls_outcome</span>, sep <span class="op">=</span> <span class="st">" / "</span><span class="op">)</span>,</span>
+<span>    `Local work (fn / gr)` <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="va">progress</span><span class="op">$</span><span class="va">ls_nf</span>, <span class="va">progress</span><span class="op">$</span><span class="va">ls_ng</span>, sep <span class="op">=</span> <span class="st">" / "</span><span class="op">)</span>,</span>
+<span>    check.names <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">c2_diagnostics</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="cn">NULL</span></span>
+<span><span class="va">c2_display</span> <span class="op">&lt;-</span> <span class="va">c2_diagnostics</span></span>
+<span><span class="va">c2_display</span><span class="op">[[</span><span class="st">"Proposed alpha"</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC</a></span><span class="op">(</span></span>
+<span>  <span class="va">c2_display</span><span class="op">[[</span><span class="st">"Proposed alpha"</span><span class="op">]</span><span class="op">]</span>,</span>
+<span>  format <span class="op">=</span> <span class="st">"g"</span>,</span>
+<span>  digits <span class="op">=</span> <span class="fl">4</span></span>
 <span><span class="op">)</span></span>
-<span><span class="va">line_search_diagnostics</span> <span class="op">&lt;-</span> <span class="va">looser_c2</span><span class="op">$</span><span class="va">progress</span><span class="op">[</span></span>
-<span>  <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">looser_c2</span><span class="op">$</span><span class="va">progress</span><span class="op">$</span><span class="va">ls_reason</span><span class="op">)</span>,</span>
-<span>  <span class="va">line_search_columns</span>,</span>
-<span>  drop <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span><span class="op">]</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">line_search_diagnostics</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="cn">NULL</span></span>
-<span><span class="va">line_search_diagnostics</span></span>
-<span><span class="co">#&gt;     alpha_init    slope_init ls_reason ls_outcome ls_nf ls_ng</span></span>
-<span><span class="co">#&gt; 1 1.844054e-05 -54227.360000     wolfe      wolfe     3     3</span></span>
-<span><span class="co">#&gt; 2 3.955723e-04 -23276.127877     wolfe      wolfe     2     1</span></span>
-<span><span class="co">#&gt; 3 4.790426e-04   -140.780891     wolfe      wolfe     2     1</span></span>
-<span><span class="co">#&gt; 4 1.480070e-01     -3.194382     wolfe      wolfe     5     4</span></span></code></pre></div>
-<p><code>alpha_init</code> is the safeguarded starting proposal and
-<code>slope_init</code> is <span class="math inline">\(\phi'(0)\)</span>. <code>ls_reason</code> says
-why the search stopped, while <code>ls_outcome</code> says what kind of
-point was ultimately selected; the two need not be identical.
-<code>ls_nf</code> and <code>ls_ng</code> count callbacks owned by that
-outer line search, excluding its cached starting point. These columns
-are method-specific and appear only when their owning stage supplies
-them.</p>
+<span><span class="va">c2_display</span><span class="op">[[</span><span class="st">"Selected alpha"</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC</a></span><span class="op">(</span></span>
+<span>  <span class="va">c2_display</span><span class="op">[[</span><span class="st">"Selected alpha"</span><span class="op">]</span><span class="op">]</span>,</span>
+<span>  format <span class="op">=</span> <span class="st">"g"</span>,</span>
+<span>  digits <span class="op">=</span> <span class="fl">4</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="va">c2_display</span><span class="op">)</span></span></code></pre></div>
+<table class="table">
+<colgroup>
+<col width="4%">
+<col width="12%">
+<col width="18%">
+<col width="18%">
+<col width="20%">
+<col width="25%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">c2</th>
+<th align="right">Iteration</th>
+<th align="left">Proposed alpha</th>
+<th align="left">Selected alpha</th>
+<th align="left">Reason / outcome</th>
+<th align="left">Local work (fn / gr)</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">0.1</td>
+<td align="right">1</td>
+<td align="left">1.844e-05</td>
+<td align="left">0.0007904</td>
+<td align="left">wolfe / wolfe</td>
+<td align="left">4 / 4</td>
+</tr>
+<tr class="even">
+<td align="left">0.1</td>
+<td align="right">2</td>
+<td align="left">0.002945</td>
+<td align="left">0.002945</td>
+<td align="left">wolfe / wolfe</td>
+<td align="left">2 / 1</td>
+</tr>
+<tr class="odd">
+<td align="left">0.1</td>
+<td align="right">3</td>
+<td align="left">1.245</td>
+<td align="left">0.07751</td>
+<td align="left">wolfe / wolfe</td>
+<td align="left">6 / 5</td>
+</tr>
+<tr class="even">
+<td align="left">0.1</td>
+<td align="right">4</td>
+<td align="left">0.155</td>
+<td align="left">0.001196</td>
+<td align="left">wolfe / wolfe</td>
+<td align="left">6 / 5</td>
+</tr>
+<tr class="odd">
+<td align="left">0.5</td>
+<td align="right">1</td>
+<td align="left">1.844e-05</td>
+<td align="left">0.0003873</td>
+<td align="left">wolfe / wolfe</td>
+<td align="left">3 / 3</td>
+</tr>
+<tr class="even">
+<td align="left">0.5</td>
+<td align="right">2</td>
+<td align="left">0.0003956</td>
+<td align="left">0.0003956</td>
+<td align="left">wolfe / wolfe</td>
+<td align="left">2 / 1</td>
+</tr>
+<tr class="odd">
+<td align="left">0.5</td>
+<td align="right">3</td>
+<td align="left">0.000479</td>
+<td align="left">0.000479</td>
+<td align="left">wolfe / wolfe</td>
+<td align="left">2 / 1</td>
+</tr>
+<tr class="even">
+<td align="left">0.5</td>
+<td align="right">4</td>
+<td align="left">0.148</td>
+<td align="left">0.494</td>
+<td align="left">wolfe / wolfe</td>
+<td align="left">5 / 4</td>
+</tr>
+</tbody>
+</table>
+<p>For this run, changing the curvature tolerance changes accepted step
+lengths and callback work. <code>ls_reason</code> records why a search
+stopped, while <code>ls_outcome</code> classifies the point it selected;
+the two fields answer different diagnostic questions. The callback
+counts exclude the cached starting point and belong only to the current
+outer line search.</p>
 <p>More-Thuente, Rasmussen, and Schmidt use strong curvature with the
 exact Armijo condition by default. Hager-Zhang uses the standard
 curvature condition with the approximate Armijo condition by default.
 <code>strong_curvature</code> and <code>approx_armijo</code> can
-override those choices. An override changes the conditions whose theory
-applies; treat it as an explicit experiment.</p>
+override those choices. Such an override changes the conditions whose
+theory applies, so make it an explicit part of the experiment.</p>
 </div>
 <div class="section level3">
 <h3 id="initial-step-estimates">Initial step estimates<a class="anchor" aria-label="anchor" href="#initial-step-estimates"></a>
 </h3>
-<p>On the first outer iteration, the named <code>step0</code> choices
+<p>Leave the initializer defaults in place unless diagnostics show
+repeated poor proposals or you need to reproduce another implementation.
+Hager-Zhang uses its own first-step estimator by default; the other
+gradient searches default to Rasmussen. A positive finite numeric
+<code>step0</code> bypasses the named formulas.</p>
+<details><summary>
+Exact initial-step formulas
+</summary><p>On the first outer iteration, the named <code>step0</code> choices
 use the starting gradient <span class="math inline">\(g\)</span> and
-direction <span class="math inline">\(p\)</span>. Writing the
-directional derivative as <span class="math inline">\(\phi'(0) = g^T
-p\)</span>, the current formulas are:</p>
+direction <span class="math inline">\(p\)</span>. Write the directional
+derivative as <span class="math inline">\(\phi'(0) = g^T
+p\)</span>.</p>
 <ul>
 <li>
 <code>"rasmussen"</code>: <span class="math inline">\(1 / (1 -
@@ -589,39 +500,31 @@ p\)</span>, the current formulas are:</p>
 <code>"hz"</code>: Hager-Zhang scaling based first on the relative
 infinity norms of the parameters and gradient, then on the objective and
 squared gradient norm, with a safeguarded fallback.</li>
-</ul>
-<p>A positive finite numeric <code>step0</code> bypasses these formulas.
-Hager-Zhang uses its own first-step estimator by default; the other
-gradient searches default to Rasmussen.</p>
-<p>After the first iteration, <code>step_next_init</code> can use a
+</ul></details><p>After the first iteration, <code>step_next_init</code> can use a
 slope ratio, quadratic interpolation, the Hager-Zhang <code>"hz"</code>
-rule, or a fixed positive number. Hager-Zhang’s next-step rule may make
-one objective-only probe to fit a quadratic. The probe is attempted only
-when there is a previous step and both the local line-search budgets and
-the optimizer’s remaining hard budgets leave enough callbacks for the
-probe and a subsequent search. Otherwise the rule falls back to an
-enlarged, safeguarded version of the previous step. When the probe
-occurs, it is included in <code>ls_nf</code>, as in the diagnostic
-vocabulary above.</p>
-<p><code>try_newton_step</code> gives the calculated proposal a small
-upward adjustment, up to the natural unit step of 1. Its current default
-is <code>TRUE</code> for <code>"NEWTON"</code>, <code>"PHESS"</code>,
+rule, or a fixed positive number. The Hager-Zhang rule may make one
+objective-only probe to fit a quadratic. It does so only when a previous
+step exists and both the local line-search budgets and the remaining
+hard budgets leave room for the probe and a subsequent search. Otherwise
+it falls back to an enlarged, safeguarded version of the previous step.
+A probe is included in <code>ls_nf</code>.</p>
+<p><code>try_newton_step</code> adjusts a calculated proposal upward, at
+most to the natural unit step of 1. Its current default is
+<code>TRUE</code> for <code>"NEWTON"</code>, <code>"PHESS"</code>,
 <code>"BFGS"</code>, <code>"SR1"</code>, <code>"L-BFGS"</code>, and
-<code>"TN"</code>, and <code>FALSE</code> otherwise.
-<code>"PHESS"</code> remains experimental/internal despite sharing this
-default. Set <code>try_newton_step</code> explicitly when comparing
-initialization policies.</p>
+<code>"TN"</code>, and <code>FALSE</code> otherwise. Set it explicitly
+when comparing initialization policies.</p>
 </div>
 <div class="section level3">
 <h3 id="backtracking-constant-and-bold-driver-steps">Backtracking, constant, and bold-driver steps<a class="anchor" aria-label="anchor" href="#backtracking-constant-and-bold-driver-steps"></a>
 </h3>
 <p>Armijo backtracking repeatedly reduces the candidate until it
 provides the decrease controlled by <code>c1</code>. With
-<code>step_down = NULL</code>, the current implementation uses cubic
+<code>step_down = NULL</code>, the implementation uses cubic
 interpolation and evaluates function and gradient at candidate points. A
 numeric <code>step_down</code> instead multiplies the candidate by that
-fixed factor and uses function-only candidate evaluations.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+factor and uses function-only candidate evaluations.</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">backtracking_res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span></span>
 <span>  <span class="va">rb0</span>,</span>
 <span>  <span class="va">rb_fg</span>,</span>
@@ -658,30 +561,270 @@ parameter-update length directly.</p>
 <p>Bold driver accepts the first tested point with a lower objective,
 reduces failed proposals by <code>step_down</code>, and initializes the
 next iteration by multiplying the last accepted step by
-<code>step_up</code>. In the current implementation the first
-bold-driver proposal is 1; <code>step0</code>, <code>c1</code>,
-<code>c2</code>, and <code>step_up_fun</code> do not configure it.
-<code>ls_max_fn</code> is its local callback limit.</p>
+<code>step_up</code>. Its first proposal is 1; <code>step0</code>,
+<code>c1</code>, <code>c2</code>, and <code>step_up_fun</code> do not
+configure that proposal. <code>ls_max_fn</code> is its local callback
+limit.</p>
 <p>For Wolfe and backtracking searches, <code>ls_max_fn</code>,
 <code>ls_max_gr</code>, and <code>ls_max_fg</code> limit callbacks
 within one outer line search. The optimizer budgets <code>max_fn</code>,
 <code>max_gr</code>, and <code>max_fg</code> remain hard limits for the
-entire run. The default local function limit is 20. See the <a href="../reference/mize.html#line-search">line-search reference</a> for
-the remaining specialized safeguards.</p>
+entire run. See the <a href="../reference/mize.html#line-search">line-search reference</a> for
+specialized safeguards and defaults.</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="delta-bar-delta-learning-rates">Delta-Bar-Delta learning rates<a class="anchor" aria-label="anchor" href="#delta-bar-delta-learning-rates"></a>
+<h2 id="specialized-methods">Specialized methods<a class="anchor" aria-label="anchor" href="#specialized-methods"></a>
 </h2>
+<p>The comparisons below use a fixed outer-iteration budget.
+<code>abs_tol = 0</code> asks the high-level loop to observe the
+objective at every iteration so the tables and plots describe the
+accepted trajectory; the other ordinary tolerances are disabled. They
+illustrate one problem and do not establish convergence or a generally
+superior configuration. Each table reports both best and last objectives
+because momentum trajectories may be nonmonotone.</p>
+<div class="section level3">
+<h3 id="nesterov-accelerated-gradient-nag">Nesterov Accelerated Gradient (<code>"NAG"</code>)<a class="anchor" aria-label="anchor" href="#nesterov-accelerated-gradient-nag"></a>
+</h3>
+<p>NAG takes a steepest-descent step and then applies a momentum update.
+Its current objective can increase on an iteration, so inspect the full
+trajectory and the returned best result.</p>
+<p><code>nest_q</code> controls the built-in NAG schedule. At
+<code>nest_q = 0</code>, the non-strongly-convex limit gives the largest
+momentum; at <code>nest_q = 1</code>, momentum is zero and the parameter
+updates reduce to steepest descent. The default is zero. A value between
+the endpoints is a tuning choice unless the objective supplies the
+strong-convexity information needed to motivate it.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">nag_runs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  `q = 0` <span class="op">=</span> <span class="fu">run_bounded</span><span class="op">(</span><span class="st">"NAG"</span>, nest_q <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
+<span>  `q = 0.001` <span class="op">=</span> <span class="fu">run_bounded</span><span class="op">(</span><span class="st">"NAG"</span>, nest_q <span class="op">=</span> <span class="fl">0.001</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu">assert_bounded_runs</span><span class="op">(</span><span class="va">nag_runs</span><span class="op">)</span></span>
+<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="fu">summarize_runs</span><span class="op">(</span><span class="va">nag_runs</span><span class="op">)</span>, digits <span class="op">=</span> <span class="fl">6</span><span class="op">)</span></span></code></pre></div>
+<table class="table">
+<colgroup>
+<col width="9%">
+<col width="14%">
+<col width="14%">
+<col width="17%">
+<col width="17%">
+<col width="15%">
+<col width="11%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Run</th>
+<th align="right">Best objective</th>
+<th align="right">Last objective</th>
+<th align="right">Function callbacks</th>
+<th align="right">Gradient callbacks</th>
+<th align="left">Status</th>
+<th align="left">Termination</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">q = 0</td>
+<td align="right">1.054056</td>
+<td align="right">6.055306</td>
+<td align="right">1030</td>
+<td align="right">1029</td>
+<td align="left">budget_exhausted</td>
+<td align="left">max_iter</td>
+</tr>
+<tr class="even">
+<td align="left">q = 0.001</td>
+<td align="right">1.147505</td>
+<td align="right">2.765938</td>
+<td align="right">835</td>
+<td align="right">834</td>
+<td align="left">budget_exhausted</td>
+<td align="left">max_iter</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">plot_current_objective</span><span class="op">(</span><span class="va">nag_runs</span><span class="op">)</span></span></code></pre></div>
+<div class="figure">
+<img src="methods_files/figure-html/nag-q-comparison-1.png" class="r-plt" alt="Log-scale line plot comparing current objective over function callbacks for NAG with q equal to zero and q equal to 0.001." width="672"><p class="caption">
+Current objective against cumulative function callbacks for two NAG
+schedules. Both runs use the same start and fixed 100-iteration budget.
+</p>
+</div>
+<p>The objective paths are nonmonotone, so the final value does not
+summarize every iterate a run visited. Choose either the best or last
+objective before the comparison and use that metric consistently.</p>
+<p>The theoretical step-size and momentum guarantees require assumptions
+and problem constants that this Rosenbrock example does not supply. For
+derivations and historical context, see the <a href="nesterov.html">Nesterov background note</a>.</p>
+</div>
+<div class="section level3">
+<h3 id="momentum-schedules-and-update-order">Momentum schedules and update order<a class="anchor" aria-label="anchor" href="#momentum-schedules-and-update-order"></a>
+</h3>
+<p>With <code>method = "Momentum"</code>, <code>mom_schedule</code>
+defines the momentum fraction:</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Value</th>
+<th>Schedule</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>A number such as <code>0.9</code>
+</td>
+<td>Constant momentum</td>
+</tr>
+<tr class="even">
+<td><code>"switch"</code></td>
+<td>Change from <code>mom_init</code> to <code>mom_final</code> at
+<code>mom_switch_iter</code>
+</td>
+</tr>
+<tr class="odd">
+<td><code>"ramp"</code></td>
+<td>Increase linearly from <code>mom_init</code> to
+<code>mom_final</code>
+</td>
+</tr>
+<tr class="even">
+<td><code>"nsconvex"</code></td>
+<td>Use the NAG schedule, controlled by the <code>nest_*</code>
+arguments</td>
+</tr>
+<tr class="odd">
+<td>A function</td>
+<td>Compute a scalar from the iteration, optionally also
+<code>max_iter</code>
+</td>
+</tr>
+</tbody>
+</table>
+<p>A deterministic custom schedule is easiest to inspect independently
+of an optimizer trajectory:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">cosine_schedule</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">iter</span>, <span class="va">max_iter</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">phase</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">iter</span> <span class="op">/</span> <span class="va">max_iter</span>, <span class="fl">1</span><span class="op">)</span></span>
+<span>  <span class="fl">0.4</span> <span class="op">+</span> <span class="fl">0.2</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">cos</a></span><span class="op">(</span><span class="va">pi</span> <span class="op">*</span> <span class="va">phase</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">schedule_values</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  Iteration <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">5</span>, <span class="fl">10</span><span class="op">)</span>,</span>
+<span>  Momentum <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">5</span>, <span class="fl">10</span><span class="op">)</span>,</span>
+<span>    <span class="va">cosine_schedule</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>,</span>
+<span>    max_iter <span class="op">=</span> <span class="fl">10</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="va">schedule_values</span>, digits <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div>
+<table class="table">
+<thead><tr class="header">
+<th align="right">Iteration</th>
+<th align="right">Momentum</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="right">1</td>
+<td align="right">0.41</td>
+</tr>
+<tr class="even">
+<td align="right">5</td>
+<td align="right">0.60</td>
+</tr>
+<tr class="odd">
+<td align="right">10</td>
+<td align="right">0.80</td>
+</tr>
+</tbody>
+</table>
+<p>The values show the intended smooth increase over the ten-iteration
+schedule. <code>mize</code> clamps custom schedules to the supported
+momentum range. Prefer a built-in schedule when it already expresses the
+intended experiment.</p>
+<p><code>mom_type = "classical"</code> applies momentum after the
+gradient step; <code>mom_type = "nesterov"</code> applies it before that
+step. The next comparison holds the schedule, start, objective, and
+budget fixed.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">momentum_runs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  Classical <span class="op">=</span> <span class="fu">run_bounded</span><span class="op">(</span><span class="st">"Momentum"</span>, mom_schedule <span class="op">=</span> <span class="fl">0.9</span><span class="op">)</span>,</span>
+<span>  Nesterov <span class="op">=</span> <span class="fu">run_bounded</span><span class="op">(</span></span>
+<span>    <span class="st">"Momentum"</span>,</span>
+<span>    mom_schedule <span class="op">=</span> <span class="fl">0.9</span>,</span>
+<span>    mom_type <span class="op">=</span> <span class="st">"nesterov"</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu">assert_bounded_runs</span><span class="op">(</span><span class="va">momentum_runs</span><span class="op">)</span></span>
+<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="fu">summarize_runs</span><span class="op">(</span><span class="va">momentum_runs</span><span class="op">)</span>, digits <span class="op">=</span> <span class="fl">6</span><span class="op">)</span></span></code></pre></div>
+<table class="table">
+<colgroup>
+<col width="9%">
+<col width="14%">
+<col width="14%">
+<col width="17%">
+<col width="17%">
+<col width="15%">
+<col width="11%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Run</th>
+<th align="right">Best objective</th>
+<th align="right">Last objective</th>
+<th align="right">Function callbacks</th>
+<th align="right">Gradient callbacks</th>
+<th align="left">Status</th>
+<th align="left">Termination</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Classical</td>
+<td align="right">3.423736</td>
+<td align="right">20.331401</td>
+<td align="right">1272</td>
+<td align="right">1271</td>
+<td align="left">budget_exhausted</td>
+<td align="left">max_iter</td>
+</tr>
+<tr class="even">
+<td align="left">Nesterov</td>
+<td align="right">0.353595</td>
+<td align="right">0.584473</td>
+<td align="right">1088</td>
+<td align="right">1087</td>
+<td align="left">budget_exhausted</td>
+<td align="left">max_iter</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">plot_current_objective</span><span class="op">(</span><span class="va">momentum_runs</span><span class="op">)</span></span></code></pre></div>
+<div class="figure">
+<img src="methods_files/figure-html/momentum-type-comparison-1.png" class="r-plt" alt="Log-scale line plot comparing current objective over function callbacks for classical and Nesterov-style momentum." width="672"><p class="caption">
+Current objective for classical and Nesterov-style momentum under one
+fixed schedule and 100-iteration budget.
+</p>
+</div>
+<p>The table and trajectories show how update order changes this bounded
+run. Treat both orders as choices to test on the problem at hand. With
+<code>mom_schedule = "nsconvex"</code>,
+<code>nest_convex_approx = TRUE</code> selects Sutskever’s approximation
+for the <code>nest_q = 0</code> case and causes <code>nest_q</code> to
+be ignored.</p>
+</div>
+<div class="section level3">
+<h3 id="delta-bar-delta-learning-rates">Delta-Bar-Delta learning rates<a class="anchor" aria-label="anchor" href="#delta-bar-delta-learning-rates"></a>
+</h3>
 <p><code>method = "DBD"</code> changes a per-coordinate learning rate
-from the agreement in sign between the current gradient and a weighted
-history. Because DBD chooses both the direction scaling and the step,
-<code>line_search</code> is ignored.</p>
+according to agreement in sign between the current gradient and a
+weighted history. Because DBD chooses both direction scaling and step
+size, it ignores <code>line_search</code>.</p>
 <p>The main controls are:</p>
 <ul>
 <li>
-<code>step0</code>, the initial per-coordinate learning rate (a
-positive number or a named first-step estimator);</li>
+<code>step0</code>, the initial per-coordinate learning rate;</li>
 <li>
 <code>step_down</code>, the multiplicative decrease when signs
 disagree;</li>
@@ -689,16 +832,15 @@ disagree;</li>
 <code>step_up</code>, the increase when signs agree;</li>
 <li>
 <code>step_up_fun</code>, either <code>"*"</code> for a proportional
-increase (the default) or <code>"+"</code> for an additive increase;
-and</li>
+increase or <code>"+"</code> for an additive increase; and</li>
 <li>
 <code>dbd_weight</code>, the gradient-history weight when no
 momentum schedule is used.</li>
 </ul>
-<p>The following uses the additive update associated with the
-t-SNE-style variant. It demonstrates the control semantics. Use
-problem-specific evidence before adopting it for smooth
-optimization.</p>
+<p>The following configuration uses the additive update associated with
+the t-SNE-style variant. It demonstrates control semantics; adopting it
+for a smooth optimization problem requires problem-specific
+evidence.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">dbd_res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span></span>
 <span>  <span class="va">rb0</span>,</span>
@@ -713,15 +855,14 @@ optimization.</p>
 <span><span class="op">)</span></span></code></pre></div>
 <p>If a momentum schedule is supplied with DBD, <code>dbd_weight</code>
 is ignored and the momentum update supplies the history. DBD’s step
-calculation itself is gradient-based. Function-based convergence
-criteria still request objective evaluations, and <code><a href="../reference/mize.html">mize()</a></code>
-may need an objective observation to report a best result. Choose
-convergence controls according to the observations the run can afford,
-and budget for those observations explicitly.</p>
+calculation is gradient-based, although function-based convergence
+criteria and best-result reporting may still request objective
+evaluations. Budget explicitly for the observations selected by the
+convergence controls.</p>
 </div>
-<div class="section level2">
-<h2 id="adaptive-restart">Adaptive restart<a class="anchor" aria-label="anchor" href="#adaptive-restart"></a>
-</h2>
+<div class="section level3">
+<h3 id="adaptive-restart">Adaptive restart<a class="anchor" aria-label="anchor" href="#adaptive-restart"></a>
+</h3>
 <p><a href="https://arxiv.org/abs/1204.3982" class="external-link">O’Donoghue and Candes</a>
 proposed restarting accelerated schemes when momentum appears unhelpful.
 A restart discards the stored momentum update and resets
@@ -749,36 +890,38 @@ applied to any optimizer configuration that uses momentum.</p>
 </table>
 <p>Gradient restart is unavailable with
 <code>mom_type = "nesterov"</code> because its gradient is evaluated at
-a different location. <code>restart_wait</code> is the number of
-iterations to wait after a restart before another restart is allowed;
-its default is 10. <code>restart_wait</code> governs restart policy;
-termination controls govern convergence.</p>
-<p>The following comparison uses classical momentum so these restart
-configurations are valid. It holds the start, schedule, and
-100-iteration budget fixed, then varies restart type and wait. The
-no-restart result is reused from the preceding comparison.</p>
+a different location. <code>restart_wait</code> specifies the number of
+iterations after a restart before another restart is allowed; its
+default is 10.</p>
+<p>The comparison below uses classical momentum and varies only restart
+type and waiting period. The no-restart result is reused from the
+preceding comparison.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">restart_runs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  None <span class="op">=</span> <span class="va">momentum_runs</span><span class="op">[[</span><span class="st">"Classical"</span><span class="op">]</span><span class="op">]</span>,</span>
-<span>  `fn, wait = 10` <span class="op">=</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span></span>
-<span>    <span class="va">rb0</span>, <span class="va">rb_fg</span>, method <span class="op">=</span> <span class="st">"Momentum"</span>, mom_schedule <span class="op">=</span> <span class="fl">0.9</span>,</span>
-<span>    restart <span class="op">=</span> <span class="st">"fn"</span>, restart_wait <span class="op">=</span> <span class="fl">10</span>,</span>
-<span>    max_iter <span class="op">=</span> <span class="fl">100</span>, store_progress <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  `fn, wait = 10` <span class="op">=</span> <span class="fu">run_bounded</span><span class="op">(</span></span>
+<span>    <span class="st">"Momentum"</span>,</span>
+<span>    mom_schedule <span class="op">=</span> <span class="fl">0.9</span>,</span>
+<span>    restart <span class="op">=</span> <span class="st">"fn"</span>,</span>
+<span>    restart_wait <span class="op">=</span> <span class="fl">10</span></span>
 <span>  <span class="op">)</span>,</span>
-<span>  `gr, wait = 10` <span class="op">=</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span></span>
-<span>    <span class="va">rb0</span>, <span class="va">rb_fg</span>, method <span class="op">=</span> <span class="st">"Momentum"</span>, mom_schedule <span class="op">=</span> <span class="fl">0.9</span>,</span>
-<span>    restart <span class="op">=</span> <span class="st">"gr"</span>, restart_wait <span class="op">=</span> <span class="fl">10</span>,</span>
-<span>    max_iter <span class="op">=</span> <span class="fl">100</span>, store_progress <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  `gr, wait = 10` <span class="op">=</span> <span class="fu">run_bounded</span><span class="op">(</span></span>
+<span>    <span class="st">"Momentum"</span>,</span>
+<span>    mom_schedule <span class="op">=</span> <span class="fl">0.9</span>,</span>
+<span>    restart <span class="op">=</span> <span class="st">"gr"</span>,</span>
+<span>    restart_wait <span class="op">=</span> <span class="fl">10</span></span>
 <span>  <span class="op">)</span>,</span>
-<span>  `fn, wait = 1` <span class="op">=</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span></span>
-<span>    <span class="va">rb0</span>, <span class="va">rb_fg</span>, method <span class="op">=</span> <span class="st">"Momentum"</span>, mom_schedule <span class="op">=</span> <span class="fl">0.9</span>,</span>
-<span>    restart <span class="op">=</span> <span class="st">"fn"</span>, restart_wait <span class="op">=</span> <span class="fl">1</span>,</span>
-<span>    max_iter <span class="op">=</span> <span class="fl">100</span>, store_progress <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  `fn, wait = 1` <span class="op">=</span> <span class="fu">run_bounded</span><span class="op">(</span></span>
+<span>    <span class="st">"Momentum"</span>,</span>
+<span>    mom_schedule <span class="op">=</span> <span class="fl">0.9</span>,</span>
+<span>    restart <span class="op">=</span> <span class="st">"fn"</span>,</span>
+<span>    restart_wait <span class="op">=</span> <span class="fl">1</span></span>
 <span>  <span class="op">)</span>,</span>
-<span>  `gr, wait = 1` <span class="op">=</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span></span>
-<span>    <span class="va">rb0</span>, <span class="va">rb_fg</span>, method <span class="op">=</span> <span class="st">"Momentum"</span>, mom_schedule <span class="op">=</span> <span class="fl">0.9</span>,</span>
-<span>    restart <span class="op">=</span> <span class="st">"gr"</span>, restart_wait <span class="op">=</span> <span class="fl">1</span>,</span>
-<span>    max_iter <span class="op">=</span> <span class="fl">100</span>, store_progress <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  `gr, wait = 1` <span class="op">=</span> <span class="fu">run_bounded</span><span class="op">(</span></span>
+<span>    <span class="st">"Momentum"</span>,</span>
+<span>    mom_schedule <span class="op">=</span> <span class="fl">0.9</span>,</span>
+<span>    restart <span class="op">=</span> <span class="st">"gr"</span>,</span>
+<span>    restart_wait <span class="op">=</span> <span class="fl">1</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span><span class="fu">assert_bounded_runs</span><span class="op">(</span><span class="va">restart_runs</span><span class="op">)</span></span>
@@ -851,22 +994,19 @@ no-restart result is reused from the preceding comparison.</p>
 </tbody>
 </table>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">plot_current_objective</span><span class="op">(</span><span class="va">restart_runs</span>, <span class="st">"Adaptive restart"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="methods_files/figure-html/adaptive-restart-comparison-1.png" class="r-plt" alt="" width="672"></p>
-<p>Every row again reports <code>budget_exhausted</code> /
-<code>max_iter</code>. These runs demonstrate bounded progress and leave
-convergence unestablished. Both wait-1 rows reach smaller best and last
-objectives than their wait-10 counterparts. The gradient/wait-1 row has
-slightly smaller objective values than the function/wait-1 row and uses
-more function and gradient callbacks. These conclusions apply to the
-displayed bounded run.</p>
-<p>Function-based validation can add an objective callback when the
-needed value is not cached; gradient validation likewise depends on
-where gradients are already available. Compare both callback columns;
-cached observations determine the cost of each trigger. A shorter
-<code>restart_wait</code> permits more frequent restarts and can change
-both progress and callback demand, so tune it under the budget and
-metric that matter for the application.</p>
+<code class="sourceCode R"><span><span class="fu">plot_current_objective</span><span class="op">(</span><span class="va">restart_runs</span><span class="op">)</span></span></code></pre></div>
+<div class="figure">
+<img src="methods_files/figure-html/adaptive-restart-comparison-1.png" class="r-plt" alt="Log-scale line plot comparing current objective over function callbacks for momentum without restart and with function- or gradient-based restart at waiting periods of ten or one iterations." width="672"><p class="caption">
+Current objective for classical momentum with no restart and four
+adaptive-restart configurations under the same 100-iteration budget.
+</p>
+</div>
+<p>The table places trajectory summaries beside callback demand.
+Function-based validation may add an objective callback when the value
+is not cached; gradient validation has the same relationship to
+available gradients. Compare both callback columns and tune restart
+policy under the budget and metric that matter for the application.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a>

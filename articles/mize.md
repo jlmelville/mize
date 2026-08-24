@@ -47,21 +47,33 @@ rb0 <- c(-1.2, 1)
 gradient_check <- check_mize_gradient(rb_fg, rb0)
 
 gradient_summary <- data.frame(
-  max_abs_error = gradient_check$max_abs_error,
-  max_rel_error = gradient_check$max_rel_error
+  "Maximum absolute error" = formatC(
+    gradient_check$max_abs_error,
+    format = "e",
+    digits = 2
+  ),
+  "Maximum relative error" = formatC(
+    gradient_check$max_rel_error,
+    format = "e",
+    digits = 2
+  ),
+  check.names = FALSE
 )
-gradient_summary
-#>   max_abs_error max_rel_error
-#> 1  2.208253e-08  1.024236e-10
+knitr::kable(gradient_summary, align = c("r", "r"))
 ```
+
+| Maximum absolute error | Maximum relative error |
+|-----------------------:|-----------------------:|
+|               2.21e-08 |               1.02e-10 |
 
 [`check_mize_gradient()`](https://jlmelville.github.io/mize/reference/check_mize_gradient.md)
 compares `gr` with a finite-difference approximation of `fn`. Large
 errors are a strong reason to fix the gradient before trusting an
-optimization. Small errors establish local agreement at the checked
-point. The full result also identifies the worst coordinate and, when an
-optional combined `fg` function is present, checks it against the
-separate callbacks.
+optimization. At this point, the analytic and finite-difference
+gradients agree to approximately 1.0e-10 in relative terms. The full
+result also identifies the worst coordinate and, when an optional
+combined `fg` function is present, checks it against the separate
+callbacks.
 
 ## Run the optimization
 
@@ -74,20 +86,48 @@ that we can inspect the trajectory later:
 res <- mize(rb0, rb_fg, store_progress = TRUE)
 ```
 
-Start by reading the high-level outcome and the detailed termination
-record:
+Start with the fitted parameters, objective, and high-level outcome:
 
 ``` r
 
-res[c("status", "converged", "message", "terminate")]
+res[c("par", "f", "status", "message")]
+#> $par
+#> [1] 0.9999972 0.9999923
+#> 
+#> $f
+#> [1] 4.521673e-10
+#> 
 #> $status
 #> [1] "converged"
 #> 
-#> $converged
-#> [1] TRUE
-#> 
 #> $message
 #> [1] "Converged: abs_tol reached."
+```
+
+The Rosenbrock function has a known minimum at `c(1, 1)`, where its
+objective is zero. The returned parameters are close to that point, the
+objective is close to zero, and `status = "converged"` says that a
+configured numerical tolerance was reached.
+
+### Read the termination record
+
+`status` gives the quickest classification of any run:
+
+- `"converged"` means a configured tolerance was reached;
+- `"budget_exhausted"` means an iteration or callback limit was reached;
+- `"failed"` identifies failures such as a non-finite callback or
+  line-search failure; and
+- `"terminated"` covers another recognized stopping reason.
+
+`converged` is `TRUE` only for the tolerance-based class, while
+`message` is a human-readable summary. Use the detailed record when code
+needs the precise reason:
+
+``` r
+
+res[c("converged", "terminate")]
+#> $converged
+#> [1] TRUE
 #> 
 #> $terminate
 #> $terminate$what
@@ -97,102 +137,44 @@ res[c("status", "converged", "message", "terminate")]
 #> [1] 1.06609e-08
 ```
 
-`status` is the quickest classification:
-
-- `"converged"` means a configured tolerance was reached;
-- `"budget_exhausted"` means an iteration or callback limit was reached;
-- `"failed"` identifies failures such as a non-finite callback or
-  line-search failure; and
-- `"terminated"` covers another recognized stopping reason.
-
-`converged` is `TRUE` only for the tolerance-based class, while
-`message` is a human-readable summary. Use `terminate$what` when code
-needs the precise reason. Its companion `terminate$val` is the value
-associated with that stopping criterion. For example, after an
-absolute-function-tolerance exit it is the observed change between
-consecutive objective values. `res$f` (or, more explicitly,
-`res$best_f`) holds the objective value.
-
-### Best result and last iterate
-
-By default,
-[`mize()`](https://jlmelville.github.io/mize/reference/mize.md) tracks
-the best evaluated point. `par` and `f` are the usual concise names for
-that result; `best_par` and `best_f` make the same choice explicit.
-`last_par` and `last_f` describe the final optimizer state before any
-earlier best point is restored. They can differ when a method’s
-trajectory is nonmonotone.
-
-``` r
-
-result_points <- data.frame(
-  result = c("best", "last"),
-  x1 = c(res$best_par[1], res$last_par[1]),
-  x2 = c(res$best_par[2], res$last_par[2]),
-  objective = c(res$best_f, res$last_f)
-)
-result_points
-#>   result        x1        x2    objective
-#> 1   best 0.9999972 0.9999923 4.521673e-10
-#> 2   last 0.9999972 0.9999923 4.521673e-10
-
-res[c("iter", "nf", "ng")]
-#> $iter
-#> [1] 37
-#> 
-#> $nf
-#> [1] 49
-#> 
-#> $ng
-#> [1] 49
-```
-
-Function values are conditional result components. At an exact hard
-callback cap,
-[`mize()`](https://jlmelville.github.io/mize/reference/mize.md) will not
-exceed the budget merely to evaluate the returned point, so `f`,
-`best_f`, or `last_f` can be absent. Check with `is.null(res[["f"]])`
-before using a value in budget-sensitive code. The
-[Convergence](https://jlmelville.github.io/mize/articles/convergence.md)
-article explains the status classes, stopping criteria, hard budgets,
-and best-versus-last behavior in detail.
-
-The assertions below protect only the stable lessons of this example:
-the objective is finite and improved, and a tolerance exit has a
-coherent summary.
-
-## Inspect progress without printing everything
+## Inspect progress
 
 With `store_progress = TRUE`, `res$progress` contains the observations
-and diagnostics available at stored iterations. Select the columns
-useful for the question at hand and inspect only the beginning and end:
+and diagnostics available at stored iterations. Plotting the objective
+against the cumulative number of function evaluations gives a quick view
+of the run:
+
+![Line plot of the Rosenbrock objective decreasing from about 24 to near
+zero as cumulative function evaluations increase. The objective axis is
+logarithmic.](mize_files/figure-html/progress-plot-1.png)
+
+Rosenbrock objective values over cumulative function evaluations. The
+vertical axis uses a logarithmic scale.
+
+The stored objective falls by several orders of magnitude during this
+run. For exact values, select the fields useful for the question and
+inspect a few rows from the beginning and end:
 
 ``` r
 
-progress_columns <- intersect(
-  c("f", "step", "nf", "ng", "alpha", "ls_outcome"),
-  names(res$progress)
-)
-progress_view <- res$progress[, progress_columns, drop = FALSE]
-
-head(progress_view, 3)
-#>          f       step nf ng        alpha ls_outcome
-#> 0 24.20000 0.00000000  1  0 0.0000000000       <NA>
-#> 1 19.49933 0.02168573  3  3 0.0000931247      wolfe
-#> 2 11.57248 0.04729285  4  4 0.3468504466      wolfe
-tail(progress_view, 3)
-#>               f         step nf ng alpha ls_outcome
-#> 35 2.303515e-06 0.0113612989 47 47     1      wolfe
-#> 36 1.111307e-08 0.0030856819 48 48     1      wolfe
-#> 37 4.521673e-10 0.0002130984 49 49     1      wolfe
+progress_view <- res$progress[, c("f", "step", "nf", "ng"), drop = FALSE]
 ```
+
+| Iteration | Objective |      Step | Function calls | Gradient calls |
+|----------:|----------:|----------:|---------------:|---------------:|
+|         0 |      24.2 |         0 |              1 |              0 |
+|         1 |      19.5 |   0.02169 |              3 |              3 |
+|         2 |     11.57 |   0.04729 |              4 |              4 |
+|        35 | 2.304e-06 |   0.01136 |             47 |             47 |
+|        36 | 1.111e-08 |  0.003086 |             48 |             48 |
+|        37 | 4.522e-10 | 0.0002131 |             49 |             49 |
 
 The initial row represents the starting point. Here `f` is the current
 objective, `step` is the size of the outer parameter update, and `nf`
-and `ng` are cumulative callback counts. Columns such as `alpha` and
-`ls_outcome` come from a line search. Other methods and settings add
-different columns, and a column is omitted when its owning calculation
-did not produce it. See the [Progress section of the `mize()`
+and `ng` are cumulative callback counts. Other methods and settings can
+add fields such as `alpha` and `ls_outcome`; a field is omitted when its
+owning calculation did not produce it. See the [Progress section of the
+`mize()`
 reference](https://jlmelville.github.io/mize/reference/mize.html#progress)
 for the complete dynamic schema.
 
@@ -200,10 +182,21 @@ For live console output, use `verbose = TRUE`; `log_every` controls how
 often progress is printed or stored. Keeping every iteration can produce
 a large result on a long run.
 
-## Choose a method
+> **Returned points and hard budgets.**
+> [`mize()`](https://jlmelville.github.io/mize/reference/mize.md)
+> normally returns the best evaluated point. For nonmonotone runs,
+> `best_*` and `last_*` distinguish that point from the final iterate.
+> Under an exact callback budget, some objective fields may be
+> unavailable. The
+> [Convergence](https://jlmelville.github.io/mize/articles/convergence.md)
+> article explains these cases, the status classes, and the stopping
+> controls in detail.
 
-The default is a sensible baseline. Problem size and available
-derivative information may suggest another starting point:
+## Where to go next
+
+The default L-BFGS method is a useful baseline for a smooth problem.
+Problem size and available derivative information may suggest another
+method:
 
 | Situation | Method to consider | Main trade-off |
 |----|----|----|
@@ -214,12 +207,7 @@ derivative information may suggest another starting point:
 | Hessian or inverse Hessian is available | `NEWTON` | Requires an `hs` or `hi` callback in the function list |
 
 Treat these as starting points and benchmark promising methods on the
-problem at hand. The [Choosing methods and
-tuning](https://jlmelville.github.io/mize/articles/methods.md) guide
-covers the full method set, compatibility, line searches, step sizes,
-and momentum.
-
-## See also
+problem at hand. Continue with the guide that matches your next task:
 
 - [Convergence](https://jlmelville.github.io/mize/articles/convergence.md)
   explains tolerances, limits, failures, and result interpretation.
@@ -231,4 +219,5 @@ and momentum.
   callbacks.
 - [Choosing methods and
   tuning](https://jlmelville.github.io/mize/articles/methods.md) covers
-  algorithm selection and advanced controls.
+  algorithm selection and advanced controls, including line searches,
+  step sizes, and momentum.

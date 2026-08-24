@@ -129,9 +129,70 @@ for other terminal reasons.</p>
 convergence unestablished. Inspect <code>status</code> and
 <code>converged</code> for the broad outcome and
 <code>terminate$what</code> and <code>terminate$val</code> for the
-detailed reason. This article concentrates on tolerances and limits. For
-a failed run, start with <code>message</code> and the callback or
-line-search diagnostics.</p>
+detailed reason. This article shows how to choose among the controls and
+interpret tolerance, budget, and failure outcomes.</p>
+<div class="section level2">
+<h2 id="choose-stopping-controls">Choose stopping controls<a class="anchor" aria-label="anchor" href="#choose-stopping-controls"></a>
+</h2>
+<p>Each control answers a different question:</p>
+<table class="table">
+<colgroup>
+<col width="25%">
+<col width="25%">
+<col width="25%">
+<col width="25%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Control</th>
+<th align="left">What it detects</th>
+<th align="left">Main limitation</th>
+<th align="left">Additional observation</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">
+<code>abs_tol</code> / <code>rel_tol</code>
+</td>
+<td align="left">Little change in the objective</td>
+<td align="left">Stagnation need not mean stationarity</td>
+<td align="left">Objective</td>
+</tr>
+<tr class="even">
+<td align="left">
+<code>grad_tol</code> / <code>ginf_tol</code>
+</td>
+<td align="left">A small gradient</td>
+<td align="left">Stationary points include saddles and maxima; absolute
+thresholds depend on scaling</td>
+<td align="left">Gradient</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>step_tol</code></td>
+<td align="left">Little movement in the parameters</td>
+<td align="left">May reflect poor scaling or a rejected step</td>
+<td align="left">Parameter update</td>
+</tr>
+<tr class="even">
+<td align="left"><code>max_iter</code></td>
+<td align="left">An outer iteration limit</td>
+<td align="left">Iterations can contain different amounts of work</td>
+<td align="left">None</td>
+</tr>
+<tr class="odd">
+<td align="left">
+<code>max_fn</code> / <code>max_gr</code> /
+<code>max_fg</code>
+</td>
+<td align="left">A callback cost limit</td>
+<td align="left">Says nothing about convergence</td>
+<td align="left">None</td>
+</tr>
+</tbody>
+</table>
+<p>For a general smooth problem, use a gradient criterion when its scale
+is meaningful, retain callback or iteration budgets as safety limits,
+and treat function-change or step tolerances as evidence of stagnation
+without assuming that they establish stationarity.</p>
 <p>We’ll use the two-dimensional Rosenbrock function, which has a
 minimum at <code>c(1, 1)</code> where the function equals zero.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
@@ -147,6 +208,7 @@ minimum at <code>c(1, 1)</code> where the function equals zero.</p>
 <span>  <span class="op">}</span></span>
 <span><span class="op">)</span></span>
 <span><span class="va">rb0</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1.2</span>, <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
+</div>
 <div class="section level2">
 <h2 id="iteration-limit">Iteration limit<a class="anchor" aria-label="anchor" href="#iteration-limit"></a>
 </h2>
@@ -197,25 +259,51 @@ explicitly when you want the absolute criterion alone; similarly, set
 <p>Relative change is calculated as
 <code>abs(fn_old - fn_new) / min(abs(fn_old), abs(fn_new))</code>. If
 the denominator is zero, the relative change is zero when the values are
-equal and <code>Inf</code> otherwise. A large relative tolerance can
-declare convergence after an iteration that made little progress:</p>
+equal and <code>Inf</code> otherwise.</p>
+<p>Consecutive objective values can become similar because a run has
+approached a solution or because its steps have become too small. The
+following one-dimensional quadratic isolates that distinction. Its
+minimizer is 10, and a deliberately small constant step produces little
+relative change while the parameter remains far away:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span></span>
-<span>  <span class="va">rb0</span>,</span>
-<span>  <span class="va">rb_fg</span>,</span>
+<code class="sourceCode R"><span><span class="va">slow_minimum</span> <span class="op">&lt;-</span> <span class="fl">10</span></span>
+<span><span class="va">slow_fg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  fn <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">(</span><span class="va">x</span> <span class="op">-</span> <span class="va">slow_minimum</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span>,</span>
+<span>  gr <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fl">2</span> <span class="op">*</span> <span class="op">(</span><span class="va">x</span> <span class="op">-</span> <span class="va">slow_minimum</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">relative_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span></span>
+<span>  <span class="fl">0</span>,</span>
+<span>  <span class="va">slow_fg</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"SD"</span>,</span>
+<span>  line_search <span class="op">=</span> <span class="st">"constant"</span>,</span>
+<span>  step0 <span class="op">=</span> <span class="fl">1e-4</span>,</span>
+<span>  max_iter <span class="op">=</span> <span class="fl">5</span>,</span>
 <span>  abs_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  rel_tol <span class="op">=</span> <span class="fl">1e-2</span>,</span>
+<span>  rel_tol <span class="op">=</span> <span class="fl">1e-3</span>,</span>
 <span>  grad_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  ginf_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  step_tol <span class="op">=</span> <span class="cn">NULL</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu">result_summary</span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span>
-<span><span class="co">#&gt;      status terminate iter nf ng objective</span></span>
-<span><span class="co">#&gt; 1 converged   rel_tol    5  7  7   4.13905</span></span></code></pre></div>
-<p>Here the result is still far from the known minimum even though the
-relative criterion was satisfied. Efficient methods such as L-BFGS can
-make little progress on an individual iteration, so choose
-<code>rel_tol</code> with care.</p>
+<span><span class="op">)</span></span></code></pre></div>
+<table class="table">
+<thead><tr class="header">
+<th align="left">Reason</th>
+<th align="right">Relative change</th>
+<th align="right">Parameter</th>
+<th align="right">Distance from 10</th>
+</tr></thead>
+<tbody><tr class="odd">
+<td align="left">rel_tol</td>
+<td align="right">4e-04</td>
+<td align="right">0.004</td>
+<td align="right">9.996</td>
+</tr></tbody>
+</table>
+<p>The relative criterion has answered its specific question: recent
+objective values changed little. The distance column shows why that
+observation alone does not establish that the parameter is near the
+minimizer. Pair it with a stationarity criterion when that is the
+conclusion the run must support.</p>
 </div>
 <div class="section level2">
 <h2 id="gradient-tolerances">Gradient tolerances<a class="anchor" aria-label="anchor" href="#gradient-tolerances"></a>
@@ -235,10 +323,11 @@ gradient.</p>
 <span><span class="fu">result_summary</span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span>
 <span><span class="co">#&gt;      status terminate iter nf ng   objective</span></span>
 <span><span class="co">#&gt; 1 converged  grad_tol   37 49 49 4.52167e-10</span></span></code></pre></div>
-<p>The gradient is zero at a differentiable local minimum, even when the
-function value is nonzero, and gradient norms are commonly used when
-comparing optimizers. A small gradient can still mislead; see, for
-example, <a href="https://doi.org/10.1023/A:1014897230089" class="external-link">Nocedal and
+<p>A small gradient indicates approximate stationarity. It does not
+distinguish a minimum from a saddle point or maximum, and an absolute
+threshold depends on the scaling of both the parameters and the
+objective. Gradient norms are still commonly used when comparing
+optimizers; see, for example, <a href="https://doi.org/10.1023/A:1014897230089" class="external-link">Nocedal and
 co-workers</a>.</p>
 <p><code>ginf_tol</code> instead tests the infinity norm: the largest
 absolute component of the gradient. This is another common choice,
@@ -282,7 +371,9 @@ consecutive parameter vectors is small.</p>
 <span><span class="co">#&gt; 1 converged  step_tol   38 50 50 4.60648e-11</span></span></code></pre></div>
 <p>Some methods can reject an iteration and restart from the same
 parameters with different optimizer state. <code>step_tol</code> ignores
-that restart.</p>
+that restart. Because the criterion uses an absolute Euclidean distance,
+rescaling one parameter can also change when it triggers even when the
+underlying path describes the same problem.</p>
 </div>
 <div class="section level2">
 <h2 id="evaluation-budgets">Evaluation budgets<a class="anchor" aria-label="anchor" href="#evaluation-budgets"></a>
@@ -291,57 +382,117 @@ that restart.</p>
 can be a useful proxy for work. The relative costs still depend on the
 problem, and methods and line searches differ in which callbacks they
 need and can reuse.</p>
-<p><code>max_fn</code> is a hard function-evaluation budget:</p>
+<p><code>max_fn</code> caps function evaluations, <code>max_gr</code>
+caps gradient evaluations, and <code>max_fg</code> caps their combined
+total. The following runs use the same problem and disable every
+ordinary tolerance so that each budget supplies the terminal
+condition:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span></span>
-<span>  <span class="va">rb0</span>,</span>
-<span>  <span class="va">rb_fg</span>,</span>
-<span>  max_fn <span class="op">=</span> <span class="fl">10</span>,</span>
-<span>  abs_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  rel_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  grad_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  ginf_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  step_tol <span class="op">=</span> <span class="cn">NULL</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu">result_summary</span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span>
-<span><span class="co">#&gt;             status terminate iter nf ng objective</span></span>
-<span><span class="co">#&gt; 1 budget_exhausted    max_fn    8 10 10   4.09761</span></span></code></pre></div>
-<p><code>max_gr</code> applies the same rule to gradient
-evaluations:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span></span>
-<span>  <span class="va">rb0</span>,</span>
-<span>  <span class="va">rb_fg</span>,</span>
-<span>  max_gr <span class="op">=</span> <span class="fl">10</span>,</span>
-<span>  abs_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  rel_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  grad_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  ginf_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  step_tol <span class="op">=</span> <span class="cn">NULL</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu">result_summary</span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span>
-<span><span class="co">#&gt;             status terminate iter nf ng objective</span></span>
-<span><span class="co">#&gt; 1 budget_exhausted    max_gr    8 10 10   4.09761</span></span></code></pre></div>
-<p><code>max_fg</code> bounds the combined total:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span></span>
-<span>  <span class="va">rb0</span>,</span>
-<span>  <span class="va">rb_fg</span>,</span>
-<span>  max_fg <span class="op">=</span> <span class="fl">10</span>,</span>
-<span>  abs_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  rel_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  grad_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  ginf_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  step_tol <span class="op">=</span> <span class="cn">NULL</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu">result_summary</span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span>
-<span><span class="co">#&gt;             status terminate iter nf ng objective</span></span>
-<span><span class="co">#&gt; 1 budget_exhausted    max_fg    3  5  5   4.28063</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">budget_names</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"max_fn"</span>, <span class="st">"max_gr"</span>, <span class="st">"max_fg"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">run_with_budget</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">budget</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">arguments</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    par <span class="op">=</span> <span class="va">rb0</span>,</span>
+<span>    fg <span class="op">=</span> <span class="va">rb_fg</span>,</span>
+<span>    abs_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>    rel_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>    grad_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>    ginf_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>    step_tol <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  <span class="op">)</span></span>
+<span>  <span class="va">arguments</span><span class="op">[[</span><span class="va">budget</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">10</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">mize</span>, <span class="va">arguments</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">budget_runs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">budget_names</span>, <span class="va">run_with_budget</span><span class="op">)</span>,</span>
+<span>  <span class="va">budget_names</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<table class="table">
+<thead><tr class="header">
+<th align="left">Control</th>
+<th align="left">Reason</th>
+<th align="right">Function calls</th>
+<th align="right">Gradient calls</th>
+<th align="right">Total calls</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">max_fn</td>
+<td align="left">max_fn</td>
+<td align="right">10</td>
+<td align="right">10</td>
+<td align="right">20</td>
+</tr>
+<tr class="even">
+<td align="left">max_gr</td>
+<td align="left">max_gr</td>
+<td align="right">10</td>
+<td align="right">10</td>
+<td align="right">20</td>
+</tr>
+<tr class="odd">
+<td align="left">max_fg</td>
+<td align="left">max_fg</td>
+<td align="right">5</td>
+<td align="right">5</td>
+<td align="right">10</td>
+</tr>
+</tbody>
+</table>
+<p>The separate limits allow ten evaluations of each callback in this
+example; the combined limit stops after ten callbacks in total. The
+table reports the actual work because an iteration can consume different
+numbers of callbacks.</p>
 <p>Each actual callback consumes the applicable budget; reuse of a
 cached value does not. Once a callback budget is exhausted,
 <code>mize</code> makes no later callback covered by that cap. This is
 why a final objective or requested gradient diagnostic can be absent
 when its value was not already available.</p>
+</div>
+<div class="section level2">
+<h2 id="when-several-criteria-are-active">When several criteria are active<a class="anchor" aria-label="anchor" href="#when-several-criteria-are-active"></a>
+</h2>
+<p>All non-<code>NULL</code> criteria are active.
+<code>terminate$what</code> identifies the terminal condition reported
+by the optimizer; it does not imply that every other measure was far
+from its threshold. Hard callback limits are checked before a covered
+callback is made, so the configured cap is respected. When the final
+permitted callback itself establishes convergence or produces a
+non-finite result, that observed tolerance or failure is reported. The
+<a href="../reference/mize.html#convergence">Convergence section of the
+<code>mize()</code> reference</a> gives the complete contract.</p>
+</div>
+<div class="section level2">
+<h2 id="failure-result">Failure result<a class="anchor" aria-label="anchor" href="#failure-result"></a>
+</h2>
+<p>A non-finite callback produces a failure outcome. Here the objective
+is finite, but the gradient callback returns <code>NaN</code>:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">bad_fg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  fn <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">x</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span>,</span>
+<span>  gr <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="cn">NaN</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">failure_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>, <span class="va">bad_fg</span><span class="op">)</span></span>
+<span><span class="va">failure_result</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"status"</span>, <span class="st">"message"</span>, <span class="st">"terminate"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt; $status</span></span>
+<span><span class="co">#&gt; [1] "failed"</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $message</span></span>
+<span><span class="co">#&gt; [1] "Failed: gr_inf encountered."</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $terminate</span></span>
+<span><span class="co">#&gt; $terminate$what</span></span>
+<span><span class="co">#&gt; [1] "gr_inf"</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $terminate$val</span></span>
+<span><span class="co">#&gt; [1] Inf</span></span></code></pre></div>
+<p>The <code>gr_inf</code> reason identifies the non-finite gradient as
+the immediate problem. Begin failure triage with <code>message</code>
+and <code>terminate</code>, then inspect available progress or
+line-search diagnostics for the callback and iteration that produced
+it.</p>
 </div>
 <div class="section level2">
 <h2 id="checking-tolerances-less-often">Checking tolerances less often<a class="anchor" aria-label="anchor" href="#checking-tolerances-less-often"></a>
@@ -355,7 +506,7 @@ reused.</p>
 <p><code>check_conv_every</code> changes the cadence of tolerance
 detection. For example, this run tests the gradient criterion only every
 five iterations:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span></span>
 <span>  <span class="va">rb0</span>,</span>
 <span>  <span class="va">rb_fg</span>,</span>

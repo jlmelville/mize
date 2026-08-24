@@ -14,8 +14,25 @@ terminal reasons.
 A limit often marks the intended end of a bounded run. It leaves
 convergence unestablished. Inspect `status` and `converged` for the
 broad outcome and `terminate$what` and `terminate$val` for the detailed
-reason. This article concentrates on tolerances and limits. For a failed
-run, start with `message` and the callback or line-search diagnostics.
+reason. This article shows how to choose among the controls and
+interpret tolerance, budget, and failure outcomes.
+
+## Choose stopping controls
+
+Each control answers a different question:
+
+| Control | What it detects | Main limitation | Additional observation |
+|:---|:---|:---|:---|
+| `abs_tol` / `rel_tol` | Little change in the objective | Stagnation need not mean stationarity | Objective |
+| `grad_tol` / `ginf_tol` | A small gradient | Stationary points include saddles and maxima; absolute thresholds depend on scaling | Gradient |
+| `step_tol` | Little movement in the parameters | May reflect poor scaling or a rejected step | Parameter update |
+| `max_iter` | An outer iteration limit | Iterations can contain different amounts of work | None |
+| `max_fn` / `max_gr` / `max_fg` | A callback cost limit | Says nothing about convergence | None |
+
+For a general smooth problem, use a gradient criterion when its scale is
+meaningful, retain callback or iteration budgets as safety limits, and
+treat function-change or step tolerances as evidence of stagnation
+without assuming that they establish stationarity.
 
 We’ll use the two-dimensional Rosenbrock function, which has a minimum
 at `c(1, 1)` where the function equals zero.
@@ -92,29 +109,46 @@ similarly, set `abs_tol = NULL` when isolating relative change.
 Relative change is calculated as
 `abs(fn_old - fn_new) / min(abs(fn_old), abs(fn_new))`. If the
 denominator is zero, the relative change is zero when the values are
-equal and `Inf` otherwise. A large relative tolerance can declare
-convergence after an iteration that made little progress:
+equal and `Inf` otherwise.
+
+Consecutive objective values can become similar because a run has
+approached a solution or because its steps have become too small. The
+following one-dimensional quadratic isolates that distinction. Its
+minimizer is 10, and a deliberately small constant step produces little
+relative change while the parameter remains far away:
 
 ``` r
 
-res <- mize(
-  rb0,
-  rb_fg,
+slow_minimum <- 10
+slow_fg <- list(
+  fn = function(x) (x - slow_minimum)^2,
+  gr = function(x) 2 * (x - slow_minimum)
+)
+
+relative_result <- mize(
+  0,
+  slow_fg,
+  method = "SD",
+  line_search = "constant",
+  step0 = 1e-4,
+  max_iter = 5,
   abs_tol = NULL,
-  rel_tol = 1e-2,
+  rel_tol = 1e-3,
   grad_tol = NULL,
   ginf_tol = NULL,
   step_tol = NULL
 )
-result_summary(res)
-#>      status terminate iter nf ng objective
-#> 1 converged   rel_tol    5  7  7   4.13905
 ```
 
-Here the result is still far from the known minimum even though the
-relative criterion was satisfied. Efficient methods such as L-BFGS can
-make little progress on an individual iteration, so choose `rel_tol`
-with care.
+| Reason  | Relative change | Parameter | Distance from 10 |
+|:--------|----------------:|----------:|-----------------:|
+| rel_tol |           4e-04 |     0.004 |            9.996 |
+
+The relative criterion has answered its specific question: recent
+objective values changed little. The distance column shows why that
+observation alone does not establish that the parameter is near the
+minimizer. Pair it with a stationarity criterion when that is the
+conclusion the run must support.
 
 ## Gradient tolerances
 
@@ -136,10 +170,11 @@ result_summary(res)
 #> 1 converged  grad_tol   37 49 49 4.52167e-10
 ```
 
-The gradient is zero at a differentiable local minimum, even when the
-function value is nonzero, and gradient norms are commonly used when
-comparing optimizers. A small gradient can still mislead; see, for
-example, [Nocedal and
+A small gradient indicates approximate stationarity. It does not
+distinguish a minimum from a saddle point or maximum, and an absolute
+threshold depends on the scaling of both the parameters and the
+objective. Gradient norms are still commonly used when comparing
+optimizers; see, for example, [Nocedal and
 co-workers](https://doi.org/10.1023/A:1014897230089).
 
 `ginf_tol` instead tests the infinity norm: the largest absolute
@@ -191,7 +226,9 @@ result_summary(res)
 
 Some methods can reject an iteration and restart from the same
 parameters with different optimizer state. `step_tol` ignores that
-restart.
+restart. Because the criterion uses an absolute Euclidean distance,
+rescaling one parameter can also change when it triggers even when the
+underlying path describes the same problem.
 
 ## Evaluation budgets
 
@@ -200,68 +237,96 @@ be a useful proxy for work. The relative costs still depend on the
 problem, and methods and line searches differ in which callbacks they
 need and can reuse.
 
-`max_fn` is a hard function-evaluation budget:
+`max_fn` caps function evaluations, `max_gr` caps gradient evaluations,
+and `max_fg` caps their combined total. The following runs use the same
+problem and disable every ordinary tolerance so that each budget
+supplies the terminal condition:
 
 ``` r
 
-res <- mize(
-  rb0,
-  rb_fg,
-  max_fn = 10,
-  abs_tol = NULL,
-  rel_tol = NULL,
-  grad_tol = NULL,
-  ginf_tol = NULL,
-  step_tol = NULL
+budget_names <- c("max_fn", "max_gr", "max_fg")
+
+run_with_budget <- function(budget) {
+  arguments <- list(
+    par = rb0,
+    fg = rb_fg,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+  arguments[[budget]] <- 10
+  do.call(mize, arguments)
+}
+
+budget_runs <- setNames(
+  lapply(budget_names, run_with_budget),
+  budget_names
 )
-result_summary(res)
-#>             status terminate iter nf ng objective
-#> 1 budget_exhausted    max_fn    8 10 10   4.09761
 ```
 
-`max_gr` applies the same rule to gradient evaluations:
+| Control | Reason | Function calls | Gradient calls | Total calls |
+|:--------|:-------|---------------:|---------------:|------------:|
+| max_fn  | max_fn |             10 |             10 |          20 |
+| max_gr  | max_gr |             10 |             10 |          20 |
+| max_fg  | max_fg |              5 |              5 |          10 |
 
-``` r
-
-res <- mize(
-  rb0,
-  rb_fg,
-  max_gr = 10,
-  abs_tol = NULL,
-  rel_tol = NULL,
-  grad_tol = NULL,
-  ginf_tol = NULL,
-  step_tol = NULL
-)
-result_summary(res)
-#>             status terminate iter nf ng objective
-#> 1 budget_exhausted    max_gr    8 10 10   4.09761
-```
-
-`max_fg` bounds the combined total:
-
-``` r
-
-res <- mize(
-  rb0,
-  rb_fg,
-  max_fg = 10,
-  abs_tol = NULL,
-  rel_tol = NULL,
-  grad_tol = NULL,
-  ginf_tol = NULL,
-  step_tol = NULL
-)
-result_summary(res)
-#>             status terminate iter nf ng objective
-#> 1 budget_exhausted    max_fg    3  5  5   4.28063
-```
+The separate limits allow ten evaluations of each callback in this
+example; the combined limit stops after ten callbacks in total. The
+table reports the actual work because an iteration can consume different
+numbers of callbacks.
 
 Each actual callback consumes the applicable budget; reuse of a cached
 value does not. Once a callback budget is exhausted, `mize` makes no
 later callback covered by that cap. This is why a final objective or
 requested gradient diagnostic can be absent when its value was not
 already available.
+
+## When several criteria are active
+
+All non-`NULL` criteria are active. `terminate$what` identifies the
+terminal condition reported by the optimizer; it does not imply that
+every other measure was far from its threshold. Hard callback limits are
+checked before a covered callback is made, so the configured cap is
+respected. When the final permitted callback itself establishes
+convergence or produces a non-finite result, that observed tolerance or
+failure is reported. The [Convergence section of the `mize()`
+reference](https://jlmelville.github.io/mize/reference/mize.html#convergence)
+gives the complete contract.
+
+## Failure result
+
+A non-finite callback produces a failure outcome. Here the objective is
+finite, but the gradient callback returns `NaN`:
+
+``` r
+
+bad_fg <- list(
+  fn = function(x) sum(x^2),
+  gr = function(x) rep(NaN, length(x))
+)
+
+failure_result <- mize(c(1, 1), bad_fg)
+failure_result[c("status", "message", "terminate")]
+#> $status
+#> [1] "failed"
+#> 
+#> $message
+#> [1] "Failed: gr_inf encountered."
+#> 
+#> $terminate
+#> $terminate$what
+#> [1] "gr_inf"
+#> 
+#> $terminate$val
+#> [1] Inf
+```
+
+The `gr_inf` reason identifies the non-finite gradient as the immediate
+problem. Begin failure triage with `message` and `terminate`, then
+inspect available progress or line-search diagnostics for the callback
+and iteration that produced it.
 
 ## Checking tolerances less often
 

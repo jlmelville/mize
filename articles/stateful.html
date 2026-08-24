@@ -84,7 +84,8 @@ Melville</h4>
     
 <p>A stateful optimizer separates configuration from iteration. You keep
 the current parameters and optimizer state, decide when to advance them,
-and can log, visualize, intervene, or checkpoint between steps.</p>
+and can log, visualize, apply a caller-owned stopping policy, or
+checkpoint between steps.</p>
 <p>This is useful when a single blocking call to <code><a href="../reference/mize.html">mize()</a></code>
 does not leave enough room for application-specific work. The price of
 that control is that your loop owns the lifecycle: it must retain every
@@ -216,10 +217,24 @@ unchanged.</p>
 <div class="section level2">
 <h2 id="a-minimal-terminal-aware-loop">A minimal terminal-aware loop<a class="anchor" aria-label="anchor" href="#a-minimal-terminal-aware-loop"></a>
 </h2>
-<p>A stateful run does not check its ordinary convergence controls until
-you summarize a step and call <code><a href="../reference/check_mize_convergence.html">check_mize_convergence()</a></code>. A
-minimal safe loop retains state and checks for termination after every
-call that can update the optimizer:</p>
+<blockquote>
+<p><strong>Important.</strong> <code><a href="../reference/mize_step.html">mize_step()</a></code> advances the
+optimizer and may stop on a hard callback budget or an immediate method
+failure. A requested observation from <code><a href="../reference/mize_step_summary.html">mize_step_summary()</a></code>
+can also stop at a hard callback budget. Ordinary numerical tolerances,
+<code>max_iter</code>, and non-finite summary observations are handled
+by <code><a href="../reference/check_mize_convergence.html">check_mize_convergence()</a></code>. A caller-owned loop must
+retain the optimizer returned by each operation, stop if either of the
+first two operations terminates it, and otherwise call the convergence
+check after every step.</p>
+</blockquote>
+<p>The run below has disabled every ordinary numerical tolerance and
+demonstrates only <code>max_iter</code>. Its summary therefore sets
+<code>calc_fn = FALSE</code> and <code>calc_gr = FALSE</code> to avoid
+requesting observations that the convergence check does not need. A loop
+that enables function- or gradient-based tolerances should let
+<code><a href="../reference/mize_step_summary.html">mize_step_summary()</a></code> request the corresponding
+observations.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">par</span> <span class="op">&lt;-</span> <span class="va">rb0</span></span>
 <span></span>
@@ -269,6 +284,62 @@ is <code>budget_exhausted</code>, and <code>converged</code> is
 <code>FALSE</code>.</p>
 </div>
 <div class="section level2">
+<h2 id="work-safely-between-steps">Work safely between steps<a class="anchor" aria-label="anchor" href="#work-safely-between-steps"></a>
+</h2>
+<p>The optimizer’s stored state describes the current problem and
+trajectory. Reading that state and deciding whether to continue leaves
+it coherent. Changing the problem, the current parameters, or controls
+that shape stored algorithm history begins a new run and should go
+through <code><a href="../reference/mize_init.html">mize_init()</a></code>.</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Action</th>
+<th align="left">Examples</th>
+<th align="left">Treatment</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Observe or decide</td>
+<td align="left">Log or plot state, inspect diagnostics, save a
+checkpoint, update caller-owned records, apply an external stopping
+rule</td>
+<td align="left">Continue with the returned <code>opt</code> and
+<code>par</code>.</td>
+</tr>
+<tr class="even">
+<td align="left">Change the problem</td>
+<td align="left">Replace callbacks or captured data, change
+dimension</td>
+<td align="left">Reinitialize.</td>
+</tr>
+<tr class="odd">
+<td align="left">Change the parameter state</td>
+<td align="left">Replace <code>par</code> independently, or change
+parameter meaning or scale</td>
+<td align="left">Reinitialize.</td>
+</tr>
+<tr class="even">
+<td align="left">Change trajectory-owning controls</td>
+<td align="left">Change method; momentum or restart settings; L-BFGS
+memory; CG or TN preconditioning; line-search strategy or
+history-dependent step initialization</td>
+<td align="left">Reinitialize.</td>
+</tr>
+</tbody>
+</table>
+<p>Curvature pairs, cached values, momentum, and line-search history all
+refer to the trajectory that produced them. Replacing part of that
+trajectory while retaining the rest can make the state internally
+inconsistent. Supply stopping controls through <code><a href="../reference/make_mize.html">make_mize()</a></code>
+or <code><a href="../reference/mize_init.html">mize_init()</a></code>; this guide does not rely on direct mutation
+of <code>opt$convergence</code>.</p>
+</div>
+<div class="section level2">
 <h2 id="deliberate-observations-and-diagnostics">Deliberate observations and diagnostics<a class="anchor" aria-label="anchor" href="#deliberate-observations-and-diagnostics"></a>
 </h2>
 <p><code><a href="../reference/mize_step_summary.html">mize_step_summary()</a></code> is where a loop can request
@@ -277,22 +348,138 @@ tracking needs the objective, and <code>calc_gr = TRUE</code> when
 gradient norms are needed. The returned optimizer must be retained
 because a requested callback updates the lifetime counts and can itself
 terminate at a hard budget.</p>
-<p>The summary schema is dynamic. Common fields include
-<code>iter</code>, <code>f</code>, <code>nf</code>, <code>ng</code>,
-<code>step</code>, and <code>alpha</code>; line-search methods can also
-expose <code>alpha_init</code>, <code>slope_init</code>,
-<code>ls_reason</code>, <code>ls_outcome</code>, <code>ls_nf</code>, and
-<code>ls_ng</code>. Some directions add <code>direction_reason</code>,
-and momentum methods can add <code>mu</code>. See
-<code><a href="../reference/mize_step_summary.html">?mize_step_summary</a></code> for the complete current schema.</p>
-<p>Here is one canonical production loop. Its <code>state</code> list
-includes the required <code>opt</code> and <code>par</code>, plus
-caller-owned best and progress records. The best value is the best
-post-step objective this loop has actually observed; it is distinct from
-the optimizer’s current state.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">value_or_na</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span> <span class="cn">NA</span> <span class="kw">else</span> <span class="va">x</span></span>
+<p>The summary schema is dynamic. A field is absent when its calculation
+was not requested or its method did not produce it:</p>
+<table class="table">
+<colgroup>
+<col width="19%">
+<col width="45%">
+<col width="35%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Field group</th>
+<th align="left">Examples</th>
+<th align="left">Availability</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Core</td>
+<td align="left">
+<code>iter</code>, <code>nf</code>, <code>ng</code>,
+<code>step</code>
+</td>
+<td align="left">Generally available</td>
+</tr>
+<tr class="even">
+<td align="left">Requested observations</td>
+<td align="left">
+<code>f</code>, <code>g2n</code>,
+<code>ginfn</code>
+</td>
+<td align="left">When calculated, cached, or requested</td>
+</tr>
+<tr class="odd">
+<td align="left">Line search</td>
+<td align="left">
+<code>alpha</code>, <code>ls_reason</code>,
+<code>ls_outcome</code>, <code>ls_nf</code>, <code>ls_ng</code>
+</td>
+<td align="left">Searches that report these diagnostics</td>
+</tr>
+<tr class="even">
+<td align="left">Direction diagnostics</td>
+<td align="left"><code>direction_reason</code></td>
+<td align="left">Methods that report direction provenance</td>
+</tr>
+<tr class="odd">
+<td align="left">Momentum</td>
+<td align="left"><code>mu</code></td>
+<td align="left">Methods with a momentum stage</td>
+</tr>
+</tbody>
+</table>
+<p>Line searches may also report initialization diagnostics such as
+<code>alpha_init</code> and <code>slope_init</code>. See
+<code><a href="../reference/mize_step_summary.html">?mize_step_summary</a></code> for the complete field definitions, and
+test optional names before application code relies on them.</p>
+<p>The monitored loop follows the same lifecycle on every pass:</p>
+<ol style="list-style-type: decimal">
+<li>Advance one step and retain its optimizer and parameters.</li>
+<li>Stop immediately if the step terminated.</li>
+<li>Request the observations needed by caller-owned records, and retain
+that optimizer too.</li>
+<li>Update the best value and append one typed progress record.</li>
+<li>Apply the ordinary convergence checks.</li>
+</ol>
+<p>The starting objective is requested through the same budget-aware
+summary API before the first step. The complete helper is available
+below for copying.</p>
+<details><summary>
+Complete executable state helpers
+</summary><div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">numeric_or_na</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span> <span class="cn">NA_real_</span> <span class="kw">else</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">character_or_na</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span> <span class="cn">NA_character_</span> <span class="kw">else</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">progress_record</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">step_info</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>    iter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="va">step_info</span><span class="op">$</span><span class="va">iter</span><span class="op">)</span>,</span>
+<span>    f <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">step_info</span><span class="op">$</span><span class="va">f</span><span class="op">)</span>,</span>
+<span>    nf <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="va">step_info</span><span class="op">$</span><span class="va">nf</span><span class="op">)</span>,</span>
+<span>    ng <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="va">step_info</span><span class="op">$</span><span class="va">ng</span><span class="op">)</span>,</span>
+<span>    step <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">step_info</span><span class="op">$</span><span class="va">step</span><span class="op">)</span>,</span>
+<span>    alpha <span class="op">=</span> <span class="fu">numeric_or_na</span><span class="op">(</span><span class="va">step_info</span><span class="op">$</span><span class="va">alpha</span><span class="op">)</span>,</span>
+<span>    ls_outcome <span class="op">=</span> <span class="fu">character_or_na</span><span class="op">(</span><span class="va">step_info</span><span class="op">$</span><span class="va">ls_outcome</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">bind_progress</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">records</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">records</span><span class="op">)</span> <span class="op">==</span> <span class="fl">0L</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>      iter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>      f <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/double.html" class="external-link">double</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>      nf <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>      ng <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>      step <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/double.html" class="external-link">double</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>      alpha <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/double.html" class="external-link">double</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>      ls_outcome <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>    <span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="va">records</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">initialize_stateful</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">opt</span>, <span class="va">par</span>, <span class="va">fg</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">initial_info</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step_summary.html">mize_step_summary</a></span><span class="op">(</span></span>
+<span>    <span class="va">opt</span>,</span>
+<span>    <span class="va">par</span>,</span>
+<span>    <span class="va">fg</span>,</span>
+<span>    calc_fn <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>    calc_gr <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  <span class="op">)</span></span>
+<span>  <span class="va">state</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    opt <span class="op">=</span> <span class="va">initial_info</span><span class="op">$</span><span class="va">opt</span>,</span>
+<span>    par <span class="op">=</span> <span class="va">par</span>,</span>
+<span>    best_par <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>    best_f <span class="op">=</span> <span class="cn">Inf</span>,</span>
+<span>    progress <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">state</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">is_terminated</span> <span class="op">||</span> <span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">initial_info</span><span class="op">$</span><span class="va">f</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="va">state</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/is.finite.html" class="external-link">is.finite</a></span><span class="op">(</span><span class="va">initial_info</span><span class="op">$</span><span class="va">f</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">state</span><span class="op">$</span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/check_mize_convergence.html">check_mize_convergence</a></span><span class="op">(</span><span class="va">initial_info</span><span class="op">)</span></span>
+<span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="va">state</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span></span>
+<span>  <span class="va">state</span><span class="op">$</span><span class="va">best_par</span> <span class="op">&lt;-</span> <span class="va">par</span></span>
+<span>  <span class="va">state</span><span class="op">$</span><span class="va">best_f</span> <span class="op">&lt;-</span> <span class="va">initial_info</span><span class="op">$</span><span class="va">f</span></span>
+<span>  <span class="va">state</span><span class="op">$</span><span class="va">progress</span><span class="op">[[</span><span class="fl">1L</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu">progress_record</span><span class="op">(</span><span class="va">initial_info</span><span class="op">)</span></span>
+<span>  <span class="va">state</span></span>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="va">advance_stateful</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">state</span>, <span class="va">fg</span>, <span class="va">max_steps</span> <span class="op">=</span> <span class="cn">Inf</span><span class="op">)</span> <span class="op">{</span></span>
@@ -325,18 +512,8 @@ the optimizer’s current state.</p>
 <span>        <span class="va">state</span><span class="op">$</span><span class="va">best_par</span> <span class="op">&lt;-</span> <span class="va">state</span><span class="op">$</span><span class="va">par</span></span>
 <span>      <span class="op">}</span></span>
 <span></span>
-<span>      <span class="va">state</span><span class="op">$</span><span class="va">progress</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span></span>
-<span>        <span class="va">state</span><span class="op">$</span><span class="va">progress</span>,</span>
-<span>        <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>          iter <span class="op">=</span> <span class="va">step_info</span><span class="op">$</span><span class="va">iter</span>,</span>
-<span>          f <span class="op">=</span> <span class="va">step_info</span><span class="op">$</span><span class="va">f</span>,</span>
-<span>          nf <span class="op">=</span> <span class="va">step_info</span><span class="op">$</span><span class="va">nf</span>,</span>
-<span>          ng <span class="op">=</span> <span class="va">step_info</span><span class="op">$</span><span class="va">ng</span>,</span>
-<span>          step <span class="op">=</span> <span class="va">step_info</span><span class="op">$</span><span class="va">step</span>,</span>
-<span>          alpha <span class="op">=</span> <span class="fu">value_or_na</span><span class="op">(</span><span class="va">step_info</span><span class="op">$</span><span class="va">alpha</span><span class="op">)</span>,</span>
-<span>          ls_outcome <span class="op">=</span> <span class="fu">value_or_na</span><span class="op">(</span><span class="va">step_info</span><span class="op">$</span><span class="va">ls_outcome</span><span class="op">)</span></span>
-<span>        <span class="op">)</span></span>
-<span>      <span class="op">)</span></span>
+<span>      <span class="va">next_record</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">state</span><span class="op">$</span><span class="va">progress</span><span class="op">)</span> <span class="op">+</span> <span class="fl">1L</span></span>
+<span>      <span class="va">state</span><span class="op">$</span><span class="va">progress</span><span class="op">[[</span><span class="va">next_record</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu">progress_record</span><span class="op">(</span><span class="va">step_info</span><span class="op">)</span></span>
 <span>    <span class="op">}</span></span>
 <span></span>
 <span>    <span class="va">state</span><span class="op">$</span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/check_mize_convergence.html">check_mize_convergence</a></span><span class="op">(</span><span class="va">step_info</span><span class="op">)</span></span>
@@ -345,7 +522,7 @@ the optimizer’s current state.</p>
 <span></span>
 <span>  <span class="va">state</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<p>We will use a bounded BFGS run so the terminal classification is
+</details><p>We will use a bounded BFGS run so the terminal classification is
 unambiguous:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">controls</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
@@ -362,22 +539,80 @@ unambiguous:</p>
 <span>    <span class="va">make_mize</span>,</span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"BFGS"</span>, par <span class="op">=</span> <span class="va">rb0</span>, fg <span class="op">=</span> <span class="va">rb_fg</span><span class="op">)</span>, <span class="va">controls</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>    opt <span class="op">=</span> <span class="va">opt</span>,</span>
-<span>    par <span class="op">=</span> <span class="va">rb0</span>,</span>
-<span>    best_par <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>    best_f <span class="op">=</span> <span class="cn">Inf</span>,</span>
-<span>    progress <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span><span class="op">)</span></span>
-<span>  <span class="op">)</span></span>
+<span>  <span class="fu">initialize_stateful</span><span class="op">(</span><span class="va">opt</span>, <span class="va">rb0</span>, <span class="va">rb_fg</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">uninterrupted</span> <span class="op">&lt;-</span> <span class="fu">advance_stateful</span><span class="op">(</span><span class="fu">new_bfgs_state</span><span class="op">(</span><span class="op">)</span>, <span class="va">rb_fg</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">tail</a></span><span class="op">(</span><span class="va">uninterrupted</span><span class="op">$</span><span class="va">progress</span>, <span class="fl">3</span><span class="op">)</span></span>
-<span><span class="co">#&gt;    iter           f nf ng       step alpha ls_outcome</span></span>
-<span><span class="co">#&gt; 28   28 0.026689274 38 38 0.12722348     1      wolfe</span></span>
-<span><span class="co">#&gt; 29   29 0.015185570 39 39 0.13148806     1      wolfe</span></span>
-<span><span class="co">#&gt; 30   30 0.005002828 40 40 0.04709997     1      wolfe</span></span>
-<span><span class="va">uninterrupted</span><span class="op">$</span><span class="va">opt</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"status"</span>, <span class="st">"converged"</span>, <span class="st">"message"</span>, <span class="st">"terminate"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="va">initial_state</span> <span class="op">&lt;-</span> <span class="fu">new_bfgs_state</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">initial_observation</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  `Starting objective` <span class="op">=</span> <span class="va">initial_state</span><span class="op">$</span><span class="va">best_f</span>,</span>
+<span>  `Function calls` <span class="op">=</span> <span class="va">initial_state</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">counts</span><span class="op">$</span><span class="va">fn</span>,</span>
+<span>  `Progress records` <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">initial_state</span><span class="op">$</span><span class="va">progress</span><span class="op">)</span>,</span>
+<span>  check.names <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="va">initial_observation</span><span class="op">)</span></span></code></pre></div>
+<table class="table">
+<thead><tr class="header">
+<th align="right">Starting objective</th>
+<th align="right">Function calls</th>
+<th align="right">Progress records</th>
+</tr></thead>
+<tbody><tr class="odd">
+<td align="right">24.2</td>
+<td align="right">1</td>
+<td align="right">1</td>
+</tr></tbody>
+</table>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
+<span><span class="va">uninterrupted</span> <span class="op">&lt;-</span> <span class="fu">advance_stateful</span><span class="op">(</span><span class="va">initial_state</span>, <span class="va">rb_fg</span><span class="op">)</span></span>
+<span><span class="va">uninterrupted_progress</span> <span class="op">&lt;-</span> <span class="fu">bind_progress</span><span class="op">(</span><span class="va">uninterrupted</span><span class="op">$</span><span class="va">progress</span><span class="op">)</span></span>
+<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">tail</a></span><span class="op">(</span><span class="va">uninterrupted_progress</span>, <span class="fl">3</span><span class="op">)</span>,</span>
+<span>  digits <span class="op">=</span> <span class="fl">6</span>,</span>
+<span>  row.names <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<table class="table">
+<thead><tr class="header">
+<th align="right">iter</th>
+<th align="right">f</th>
+<th align="right">nf</th>
+<th align="right">ng</th>
+<th align="right">step</th>
+<th align="right">alpha</th>
+<th align="left">ls_outcome</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="right">28</td>
+<td align="right">0.026689</td>
+<td align="right">38</td>
+<td align="right">38</td>
+<td align="right">0.127223</td>
+<td align="right">1</td>
+<td align="left">wolfe</td>
+</tr>
+<tr class="even">
+<td align="right">29</td>
+<td align="right">0.015186</td>
+<td align="right">39</td>
+<td align="right">39</td>
+<td align="right">0.131488</td>
+<td align="right">1</td>
+<td align="left">wolfe</td>
+</tr>
+<tr class="odd">
+<td align="right">30</td>
+<td align="right">0.005003</td>
+<td align="right">40</td>
+<td align="right">40</td>
+<td align="right">0.047100</td>
+<td align="right">1</td>
+<td align="left">wolfe</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">uninterrupted</span><span class="op">$</span><span class="va">opt</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"status"</span>, <span class="st">"converged"</span>, <span class="st">"message"</span>, <span class="st">"terminate"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt; $status</span></span>
 <span><span class="co">#&gt; [1] "budget_exhausted"</span></span>
 <span><span class="co">#&gt; </span></span>
@@ -393,17 +628,21 @@ unambiguous:</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $terminate$val</span></span>
 <span><span class="co">#&gt; [1] 30</span></span></code></pre></div>
-<p>The selected progress columns are useful for this run. Test
-method-specific columns for presence before application code relies on
-them.</p>
+<p>For this BFGS configuration, initialization has not evaluated the
+objective. The first summary therefore consumes one function call and
+records the starting point as the caller-owned best. A repeated request
+at the same point reuses the cached value. Progress remains a list of
+typed one-row data frames until <code>bind_progress()</code> prepares it
+for display; method-specific columns should still be tested for presence
+before application code relies on them.</p>
 <div class="section level3">
 <h3 id="hard-budgets-can-deny-a-requested-observation">Hard budgets can deny a requested observation<a class="anchor" aria-label="anchor" href="#hard-budgets-can-deny-a-requested-observation"></a>
 </h3>
 <p><code>max_fn</code> remains hard when <code>calc_fn = TRUE</code>.
-With no function evaluations available, the summary returns no
-<code>f</code> and its updated optimizer reports the exhausted
-budget:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+With no function evaluations available, initialization records neither a
+best value nor a progress row, and its updated optimizer reports the
+exhausted budget:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">budget_opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/make_mize.html">make_mize</a></span><span class="op">(</span></span>
 <span>  method <span class="op">=</span> <span class="st">"SD"</span>,</span>
 <span>  line_search <span class="op">=</span> <span class="st">"constant"</span>,</span>
@@ -417,35 +656,35 @@ budget:</p>
 <span>  ginf_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  step_tol <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span>
-<span><span class="va">budget_info</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step_summary.html">mize_step_summary</a></span><span class="op">(</span></span>
+<span><span class="va">budget_state</span> <span class="op">&lt;-</span> <span class="fu">initialize_stateful</span><span class="op">(</span></span>
 <span>  <span class="va">budget_opt</span>,</span>
 <span>  <span class="va">rb0</span>,</span>
-<span>  <span class="va">rb_fg</span>,</span>
-<span>  calc_fn <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  <span class="va">rb_fg</span></span>
 <span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  f_available <span class="op">=</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">budget_info</span><span class="op">$</span><span class="va">f</span><span class="op">)</span>,</span>
-<span>  nf <span class="op">=</span> <span class="va">budget_info</span><span class="op">$</span><span class="va">nf</span>,</span>
-<span>  status <span class="op">=</span> <span class="va">budget_info</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">status</span>,</span>
-<span>  terminate <span class="op">=</span> <span class="va">budget_info</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">terminate</span></span>
+<span><span class="va">budget_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  `Best recorded` <span class="op">=</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">budget_state</span><span class="op">$</span><span class="va">best_par</span><span class="op">)</span>,</span>
+<span>  `Function calls` <span class="op">=</span> <span class="va">budget_state</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">counts</span><span class="op">$</span><span class="va">fn</span>,</span>
+<span>  Status <span class="op">=</span> <span class="va">budget_state</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">status</span>,</span>
+<span>  Reason <span class="op">=</span> <span class="va">budget_state</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">terminate</span><span class="op">$</span><span class="va">what</span>,</span>
+<span>  check.names <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
-<span><span class="co">#&gt; $f_available</span></span>
-<span><span class="co">#&gt; [1] FALSE</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $nf</span></span>
-<span><span class="co">#&gt; [1] 0</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $status</span></span>
-<span><span class="co">#&gt; [1] "budget_exhausted"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $terminate</span></span>
-<span><span class="co">#&gt; $terminate$what</span></span>
-<span><span class="co">#&gt; [1] "max_fn"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $terminate$val</span></span>
-<span><span class="co">#&gt; [1] 0</span></span></code></pre></div>
-<p>This is why the production loop both retains
-<code>step_info$opt</code> and guards <code>step_info$f</code>. Calling
+<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="va">budget_result</span><span class="op">)</span></span></code></pre></div>
+<table class="table">
+<thead><tr class="header">
+<th align="left">Best recorded</th>
+<th align="right">Function calls</th>
+<th align="left">Status</th>
+<th align="left">Reason</th>
+</tr></thead>
+<tbody><tr class="odd">
+<td align="left">FALSE</td>
+<td align="right">0</td>
+<td align="left">budget_exhausted</td>
+<td align="left">max_fn</td>
+</tr></tbody>
+</table>
+<p>This is why both initialization and the production loop retain the
+optimizer returned by a summary and guard the requested value. Calling
 <code>fg$fn()</code> directly bypasses <code>mize</code>’s counters and
 limits. Keep direct callback calls outside hard-budget workflows.</p>
 </div>
@@ -457,7 +696,7 @@ limits. Keep direct callback calls outside hard-budget workflows.</p>
 that means the optimizer and parameters, plus the best observation and
 progress log. The callbacks are ordinary program code and are supplied
 again after restoration.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">partial</span> <span class="op">&lt;-</span> <span class="fu">advance_stateful</span><span class="op">(</span></span>
 <span>  <span class="fu">new_bfgs_state</span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  <span class="va">rb_fg</span>,</span>
@@ -470,11 +709,17 @@ again after restoration.</p>
 <span></span>
 <span><span class="va">resumed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="va">checkpoint_file</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink</a></span><span class="op">(</span><span class="va">checkpoint_file</span><span class="op">)</span></span>
+<span><span class="va">checkpoint_progress_is_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">is.list</a></span><span class="op">(</span><span class="va">resumed</span><span class="op">$</span><span class="va">progress</span><span class="op">)</span></span>
+<span><span class="va">checkpoint_records_are_typed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span></span>
+<span>  <span class="va">resumed</span><span class="op">$</span><span class="va">progress</span>,</span>
+<span>  <span class="va">is.data.frame</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">resumed</span> <span class="op">&lt;-</span> <span class="fu">advance_stateful</span><span class="op">(</span><span class="va">resumed</span>, <span class="va">rb_fg</span><span class="op">)</span></span></code></pre></div>
 <p>To show what preservation buys us, compare the resumed run with both
 an uninterrupted stateful run and a one-shot <code><a href="../reference/mize.html">mize()</a></code> call
 using the same method and termination controls:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">one_shot</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span></span>
 <span>  <span class="va">mize</span>,</span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>par <span class="op">=</span> <span class="va">rb0</span>, fg <span class="op">=</span> <span class="va">rb_fg</span>, method <span class="op">=</span> <span class="st">"BFGS"</span><span class="op">)</span>, <span class="va">controls</span><span class="op">)</span></span>
@@ -496,12 +741,64 @@ using the same method and termination controls:</p>
 <span>    <span class="va">resumed</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">terminate</span><span class="op">$</span><span class="va">what</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span>
-<span><span class="va">comparison</span></span>
-<span><span class="co">#&gt;                 run   objective nf ng           status terminate</span></span>
-<span><span class="co">#&gt; 1          one-shot 0.005002828 40 40 budget_exhausted  max_iter</span></span>
-<span><span class="co">#&gt; 2          stateful 0.005002828 40 40 budget_exhausted  max_iter</span></span>
-<span><span class="co">#&gt; 3 checkpoint/resume 0.005002828 40 40 budget_exhausted  max_iter</span></span>
-<span></span>
+<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span></span>
+<span>  <span class="va">comparison</span>,</span>
+<span>  digits <span class="op">=</span> <span class="fl">8</span>,</span>
+<span>  col.names <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>    <span class="st">"Run"</span>,</span>
+<span>    <span class="st">"Objective"</span>,</span>
+<span>    <span class="st">"Function calls"</span>,</span>
+<span>    <span class="st">"Gradient calls"</span>,</span>
+<span>    <span class="st">"Status"</span>,</span>
+<span>    <span class="st">"Reason"</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<table style="width:100%;" class="table">
+<colgroup>
+<col width="21%">
+<col width="12%">
+<col width="17%">
+<col width="17%">
+<col width="19%">
+<col width="10%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Run</th>
+<th align="right">Objective</th>
+<th align="right">Function calls</th>
+<th align="right">Gradient calls</th>
+<th align="left">Status</th>
+<th align="left">Reason</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">one-shot</td>
+<td align="right">0.00500283</td>
+<td align="right">40</td>
+<td align="right">40</td>
+<td align="left">budget_exhausted</td>
+<td align="left">max_iter</td>
+</tr>
+<tr class="even">
+<td align="left">stateful</td>
+<td align="right">0.00500283</td>
+<td align="right">40</td>
+<td align="right">40</td>
+<td align="left">budget_exhausted</td>
+<td align="left">max_iter</td>
+</tr>
+<tr class="odd">
+<td align="left">checkpoint/resume</td>
+<td align="right">0.00500283</td>
+<td align="right">40</td>
+<td align="right">40</td>
+<td align="left">budget_exhausted</td>
+<td align="left">max_iter</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
 <span><span class="va">comparison_tolerance</span> <span class="op">&lt;-</span> <span class="fl">1e-10</span></span>
 <span><span class="va">equivalent</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
 <span>  one_shot_best <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span></span>
@@ -534,16 +831,12 @@ using the same method and termination controls:</p>
 <span>    <span class="va">uninterrupted</span><span class="op">$</span><span class="va">best_f</span>,</span>
 <span>    tolerance <span class="op">=</span> <span class="va">comparison_tolerance</span></span>
 <span>  <span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">equivalent</span></span>
-<span><span class="co">#&gt;      one_shot_best one_shot_objective      one_shot_last    resumed_current </span></span>
-<span><span class="co">#&gt;               TRUE               TRUE               TRUE               TRUE </span></span>
-<span><span class="co">#&gt;   resumed_best_par       resumed_best </span></span>
-<span><span class="co">#&gt;               TRUE               TRUE</span></span></code></pre></div>
-<p>For this deterministic problem and implementation, all comparisons
-pass at <code>1e-10</code>. The comparison shows that serializing and
-restoring the optimizer preserves method state. Bit-for-bit identity
-across platforms remains outside the contract.</p>
+<span><span class="op">)</span></span></code></pre></div>
+<p>The resumed run reaches the same current and best parameters as the
+uninterrupted run to numerical tolerance, and both agree with the
+one-shot run. This is the practical guarantee supplied by checkpointing
+the complete optimizer state; exact byte-for-byte identity across
+different R or platform builds is not required.</p>
 </div>
 <div class="section level2">
 <h2 id="reinitialization-starts-a-new-run">Reinitialization starts a new run<a class="anchor" aria-label="anchor" href="#reinitialization-starts-a-new-run"></a>
@@ -552,7 +845,7 @@ across platforms remains outside the contract.</p>
 deliberately starts a new run. It resets the iteration counter, terminal
 fields, caches, and transient algorithm state. Function and gradient
 counts remain optimizer-lifetime totals:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">counts_before</span> <span class="op">&lt;-</span> <span class="va">uninterrupted</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">counts</span></span>
 <span><span class="va">reinitialized</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_init.html">mize_init</a></span><span class="op">(</span></span>
 <span>  <span class="va">uninterrupted</span><span class="op">$</span><span class="va">opt</span>,</span>
