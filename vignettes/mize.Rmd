@@ -14,185 +14,196 @@ knitr::opts_chunk$set(echo = TRUE, collapse = TRUE, comment = "#>")
 library(mize)
 ```
 
-`mize` is a package for doing unconstrained numerical optimization. This 
-vignette describes the use of the `mize` function, which takes as input
-a function to optimize, its gradient and a starting point and returns the 
-optimized parameters.
+`mize` performs unconstrained numerical optimization when you can provide an
+objective function and its gradient. This guide follows one complete first-use
+path: define the problem, check the gradient, run the optimizer, and interpret
+the result. It ends with pointers to the specialist guides for convergence,
+stateful use, and method tuning.
 
-First, I'll describe the required structure of the function and gradient
-to optimize, then the various convergence options that apply no matter what
-optimization methods are being used.
+## Define the objective and gradient
 
-In the last section, I'll describe the methods which are available and any
-options that apply to them specifically.
+`mize()` receives the objective and gradient together in a list. The `fn`
+function must return one numeric value; `gr` must return a numeric vector with
+the same length as its input. Here is the two-dimensional Rosenbrock function:
 
-## The `fg` list
-
-If you look at `stats::optim`, you'll see you pass the function to be optimized
-and its gradient separately. By contrast, `mize` asks you to bundle them up
-in a list, which I lazily refer to as an `fg` list. Here, for example, is the 
-venerable Rosenbrock function:
-
-```{r Defining a function and gradient to optimize}
+```{r define-rosenbrock}
 rb_fg <- list(
-   fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
-   gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
-                          200 *        (x[2] - x[1] * x[1])) })
-```
-
-For minimizing a simple function, there's not a lot of advantage to this. But
-for more complex optimizations, there are some advantages:
-
-* If `fn` and `gr` require extra parameterization, you can store the extra
-state in a function that creates and returns the `fg` list, and then `fn`
-and `gr` can access that state via the created closure. `stats::optim` takes
-an alternative approach where extra data is passed as `...` to the `optim` 
-function and then internally this is passed to `fn` and `gr` when needed.
-* For some optimization methods (e.g. those using a strong Wolfe line search),
-both `fn` and `gr` need to be evaluated for the same value of `par`. If there's
-a lot of shared work between `fn` and `gr`, this can be quite inefficient.
-If you provide an optional routine called `fg`, which calculates the function
-and gradient simultaneously, this will be used by some parts of `mize` in 
-preference to calling `fn` and `gr` separately, which can save a bit of time.
-
-A version of `rb_fg` with an optional `fg` function could look like:
-
-```{r A function list with an optional fg item}
-rb_fg <- list(
-   fn = function(x) { 100 * (x[2] - x[1] * x[1]) ^ 2 + (1 - x[1]) ^ 2  },
-   gr = function(x) { c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
-                          200 *        (x[2] - x[1] * x[1])) },
-   fg = function(x) {   
-     a <- x[2] - x[1] * x[1]
-     b <- 1 - x[1]
-     list( 
-       fn = 100 * a ^ 2 + b ^ 2,
-       gr = c( -400 * x[1] * a - 2 * b,
-                200 * a)
-     )
-   }
+  fn = function(x) {
+    100 * (x[2] - x[1] * x[1])^2 + (1 - x[1])^2
+  },
+  gr = function(x) {
+    c(
+      -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+      200 * (x[2] - x[1] * x[1])
+    )
+  }
 )
 ```
 
-In the case of the Rosenbrock function, I'm not suggesting you should actually
-do this. See the vignette on [Metric Multi-Dimensional Scaling](mmds.html) for 
-the sort of scenario where it could make a difference.
+For a more involved problem, a factory function can return this list so that
+`fn` and `gr` share data through a closure. The list may also contain an `fg`
+function that computes both values together when they share expensive work.
+The [Metric MDS](mmds.html) article develops that pattern in a realistic
+example.
 
-For the rest of this vignette, we'll just assume you're only providing `fn`
-and `gr`.
+## Choose a starting point and check the gradient
 
-## The parameters to optimize
+The parameters are a numeric vector. Before optimizing, check an analytic
+gradient at a representative, non-special starting point:
 
-The parameters to optimize are passed as a numeric vector, `par`.
-
-As well as using the `rb_fg` list we defined above to describe the Rosenbrock
-function, we'll also start from the following starting point:
-
-```{r Defining a starting point}
+```{r check-gradient}
 rb0 <- c(-1.2, 1)
+gradient_check <- check_mize_gradient(rb_fg, rb0)
+
+gradient_summary <- data.frame(
+  max_abs_error = gradient_check$max_abs_error,
+  max_rel_error = gradient_check$max_rel_error
+)
+gradient_summary
 ```
 
-## Basic options
+`check_mize_gradient()` compares `gr` with a finite-difference approximation
+of `fn`. Small errors do not prove that a gradient is correct everywhere, but
+large errors are a strong reason to fix it before trusting an optimization.
+The full result also identifies the worst coordinate and, when an optional
+combined `fg` function is present, checks it against the separate callbacks.
 
-If you don't particularly care about how your function gets optimized, the
-default setting is to use the limited-memory Broyden-Fletcher-Goldfarb-Shanno
-(L-BFGS) optimizer, which is a good choice for pretty much anything.
-
-You may still need to tweak some options that are independent of the method,
-like the maximum number of iterations to use, or other convergence criteria.
-
-### Defaults
-
-By default, `mize` will grind away on the function you give it for up to 100
-iterations. But it will give up early if it senses that no further progress
-is being made.
-
-The return value provides both the optimized parameter as well as some 
-information about how much work was done to get there.
-
-```{r Defaults}
-res <- mize(rb0, rb_fg)
-# What were the final parameter values? (should be close to c(1, 1))
-res$par
-
-# What was the function value at that point (should be close to 0)
-res$f
-
-# How many iterations did it take?
-res$iter
-
-# How many function evaluations?
-res$nf
-
-# How many gradient evaluations?
-res$ng
-
-# Why did the optimization terminate?
-res$terminate
+```{r assert-gradient, include=FALSE}
+stopifnot(
+  is.finite(gradient_check$max_rel_error),
+  gradient_check$max_rel_error < 1e-6
+)
 ```
 
-As you can see from looking at `res$iter`, the L-BFGS didn't use all 100 
-iterations it had available. The difference between consecutive function values,
-`res$f` got sufficiently low, that the absolute tolerance criterion was passed: 
-`res$terminate$what` will contain a string code that communicates what happened,
-while `res$terminate$val` provides the specific value that causes the 
-termination, although it's rarely interesting.
+## Run the optimization
 
-There is an entire vignette on the 
-[different convergence criteria](convergence.html) available. The defaults 
-should do a reasonable, albeit fairly conservative, job. 
+The default method is limited-memory BFGS (`"L-BFGS"`), a useful general
+starting point for a smooth problem. Set `store_progress = TRUE` here so that
+we can inspect the trajectory later:
 
-### Logging progress to console
-
-If you want to keep track of the progress of the optimization, set the `verbose`
-option to `TRUE`:
-
-```{r Verbose mode}
-res <- mize(rb0, rb_fg, grad_tol = 1e-3, ginf_tol = 1e-3, max_iter = 10, 
-            verbose = TRUE)
+```{r run-mize}
+res <- mize(rb0, rb_fg, store_progress = TRUE)
 ```
 
-As you can see, information about the state of the optimization is logged to
-the console every time the convergence criteria are checked. The values logged 
-are:
+Start by reading the high-level outcome and the detailed termination record:
 
-* `f` - The current value of the function.
-* `g2` - The current value of the gradient 2-norm (if you set a non-`NULL` 
-`grad_tol`).
-* `ginf` - The current value of the gradient infinity norm (if you set a 
-non-`NULL` `ginf_tol`).
-* `nf` - The total number of function evaluations so far.
-* `ng` - The total number of gradient evaluations so far.
-* `step` - The magnitude of the change between the previous version of `par` and
-the current value.
-
-Note that values are also provided for iteration 0, which represents the state
-of `par` at its starting point. Because this requires a function evaluation that
-might otherwise not be needed, you may get results where `nf` and `ng` are one
-larger than you'd otherwise expect if `verbose` was `FALSE`.
-
-Logging every iteration might be more output than you want. You can also set the 
-`log_every` parameter to make logging slightly less noisy:
-
-```{r Log every 10 iterations}
-res <- mize(rb0, rb_fg, grad_tol = 1e-3, verbose = TRUE, log_every = 10)
+```{r result-status}
+res[c("status", "converged", "message", "terminate")]
 ```
 
-On the assumption that you probably want to see information about the last
-iteration, this is also reported, even if it wouldn't normally be reported
-according to the setting for `log_every`.
+`status` is the quickest classification:
 
-### Storing progress
+- `"converged"` means a configured tolerance was reached;
+- `"budget_exhausted"` means an iteration or callback limit was reached;
+- `"failed"` identifies failures such as a non-finite callback or line-search
+  failure; and
+- `"terminated"` covers another recognized stopping reason.
 
-You may wish to do more than stare at the progress numbers logged to the console
-during optimization when `verbose = TRUE`. If you would like access to these
-values after optimization, set the `store_progress` parameter to true, and
-a data frame called `progress` will be part of the return value:
+`converged` is `TRUE` only for the tolerance-based class, while `message` is a
+human-readable summary. Use `terminate$what` when code needs the precise
+reason. Its companion `terminate$val` is the value associated with that
+stopping criterion. For example, after an absolute-function-tolerance exit it
+is the observed change between consecutive objective values. It is not the
+objective value itself: that is `res$f` (or, more explicitly, `res$best_f`).
 
-```{r Returning stored progress}
-res <- mize(rb0, rb_fg, store_progress = TRUE, log_every = 10)
-res$progress
+### Best result and last iterate
+
+By default, `mize()` tracks the best evaluated point. `par` and `f` are the
+usual concise names for that result; `best_par` and `best_f` make the same
+choice explicit. `last_par` and `last_f` describe the final optimizer state
+before any earlier best point is restored. They can differ when a method's
+trajectory is not monotone.
+
+```{r result-points}
+result_points <- data.frame(
+  result = c("best", "last"),
+  x1 = c(res$best_par[1], res$last_par[1]),
+  x2 = c(res$best_par[2], res$last_par[2]),
+  objective = c(res$best_f, res$last_f)
+)
+result_points
+
+res[c("iter", "nf", "ng")]
 ```
 
-As can be seen, `store_progress` will also obey the `log_every` parameter and
-not store every iteration of convergence information if requested.
+Function values are conditional result components. At an exact hard callback
+cap, `mize()` will not exceed the budget merely to evaluate the returned point,
+so `f`, `best_f`, or `last_f` can be absent. Check with `is.null(res[["f"]])`
+before using a value in budget-sensitive code. The
+[Convergence](convergence.html) article explains the status classes, stopping
+criteria, hard budgets, and best-versus-last behavior in detail.
+
+The assertions below protect only the stable lessons of this example: the
+objective is finite and improved, and a tolerance exit has a coherent summary.
+
+```{r assert-result, include=FALSE}
+initial_f <- rb_fg$fn(rb0)
+convergence_reasons <- c(
+  "abs_tol", "rel_tol", "grad_tol", "ginf_tol", "step_tol"
+)
+
+stopifnot(
+  is.finite(res$best_f),
+  res$best_f < initial_f,
+  identical(res$status, "converged"),
+  isTRUE(res$converged),
+  res$terminate$what %in% convergence_reasons
+)
+```
+
+## Inspect progress without printing everything
+
+With `store_progress = TRUE`, `res$progress` contains the observations and
+diagnostics available at stored iterations. Select the columns useful for the
+question at hand and inspect only the beginning and end:
+
+```{r compact-progress}
+progress_columns <- intersect(
+  c("f", "step", "nf", "ng", "alpha", "ls_outcome"),
+  names(res$progress)
+)
+progress_view <- res$progress[, progress_columns, drop = FALSE]
+
+head(progress_view, 3)
+tail(progress_view, 3)
+```
+
+The initial row represents the starting point. Here `f` is the current
+objective, `step` is the size of the outer parameter update, and `nf` and `ng`
+are cumulative callback counts. Columns such as `alpha` and `ls_outcome` come
+from a line search. Other methods and settings add different columns, and a
+column is omitted when its owning calculation did not produce it. See the
+[Progress section of the `mize()` reference](../reference/mize.html#progress)
+for the complete dynamic schema.
+
+For live console output, use `verbose = TRUE`; `log_every` controls how often
+progress is printed or stored. Keeping every iteration can produce a large
+result on a long run.
+
+## Choose a method
+
+The default is a sensible baseline, but problem size and available derivative
+information may suggest another starting point:
+
+| Situation | Method to consider | Main trade-off |
+|---|---|---|
+| General smooth problem | `L-BFGS` | Limited-memory quasi-Newton; the default |
+| Smaller smooth problem | `BFGS` | Dense inverse-Hessian approximation uses quadratic storage |
+| Very tight memory budget | `CG` | Low storage, but more sensitive to scaling and line-search choices |
+| Extra gradient work is acceptable | `TN` | Approximates a Newton step without forming a Hessian |
+| Hessian or inverse Hessian is available | `NEWTON` | Requires an `hs` or `hi` callback in the function list |
+
+These are starting points, not a universal ranking. The
+[Choosing methods and tuning](methods.html) guide covers the full method set,
+compatibility, line searches, step sizes, and momentum.
+
+## Where to go next
+
+- [Convergence](convergence.html) explains tolerances, limits, failures, and
+  result interpretation.
+- [Stateful optimization](stateful.html) shows how to step, monitor,
+  checkpoint, and resume an optimizer.
+- [Metric MDS](mmds.html) is a complete case study using closures, a checked
+  gradient, and combined callbacks.
+- [Choosing methods and tuning](methods.html) covers algorithm selection and
+  advanced controls.
