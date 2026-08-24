@@ -100,12 +100,12 @@ Start with:
 - [Choosing methods and tuning](https://jlmelville.github.io/mize/articles/methods.html)
 - [Convergence](https://jlmelville.github.io/mize/articles/convergence.html)
 - [Stateful optimization](https://jlmelville.github.io/mize/articles/stateful.html)
-- [Metric MDS example](https://jlmelville.github.io/mize/articles/mmds.html)
+- [Metric MDS](https://jlmelville.github.io/mize/articles/mmds.html)
 - [Function reference](https://jlmelville.github.io/mize/reference/index.html)
 
 The CRAN package also includes the main vignettes.
 
-## See Also
+## See also
 
 The Wolfe line searches use conversions of Mark Schmidt's
 [minFunc routines](https://www.cs.ubc.ca/~schmidtm/Software/minFunc.html),

@@ -11,7 +11,7 @@ navbar:
     right: [search, github]
   components:
     intro:
-      text: Get started
+      text: Getting started
       href: articles/mize.html
     articles:
       text: Articles

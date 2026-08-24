@@ -1,7 +1,6 @@
 ---
 title: "Convergence"
 author: "James Melville"
-date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Convergence}
@@ -38,11 +37,11 @@ An optimization can stop for three importantly different reasons:
 The result contract also reserves `status = "terminated"` for other terminal
 reasons.
 
-Reaching a limit is often an intentional end to a bounded run, but it is not
-evidence of convergence. Always inspect `status` and `converged` for the broad
-outcome and `terminate$what` and `terminate$val` for the detailed reason. This
-article concentrates on tolerances and limits; it does not manufacture a
-failure merely to complete the table.
+A limit often marks the intended end of a bounded run. It leaves convergence
+unestablished. Inspect `status` and `converged` for the broad outcome and
+`terminate$what` and `terminate$val` for the detailed reason. This article
+concentrates on tolerances and limits. For a failed run, start with `message`
+and the callback or line-search diagnostics.
 
 We'll use the two-dimensional Rosenbrock function, which has a minimum at
 `c(1, 1)` where the function equals zero.
@@ -91,8 +90,8 @@ stopifnot(
 
 Iteration counts are method-specific: one method may perform much more work
 inside an iteration than another. For comparisons, report callback counts and
-elapsed time as appropriate rather than treating equal iteration limits as
-equal computational effort.
+elapsed time as appropriate. Equal iteration limits do not imply equal
+computational effort.
 
 ## Function-change tolerances
 
@@ -182,8 +181,8 @@ stopifnot(
 ```
 
 The gradient is zero at a differentiable local minimum, even when the function
-value is not zero, and gradient norms are commonly used when comparing
-optimizers. They are not infallible convergence tests; see, for example,
+value is nonzero, and gradient norms are commonly used when comparing
+optimizers. A small gradient can still mislead; see, for example,
 [Nocedal and co-workers](https://doi.org/10.1023/A:1014897230089).
 
 `ginf_tol` instead tests the infinity norm: the largest absolute component of
@@ -212,9 +211,9 @@ stopifnot(
 ```
 
 Checking either gradient tolerance requires a gradient at the current
-position. That may be free because the method already calculated and cached
-it, or it may require an additional callback. The cost depends on the method
-and its line search rather than on the tolerance alone.
+position. A cached current gradient avoids an additional callback; otherwise
+the check requests one. The method and line search determine whether the value
+is already available.
 
 ## Step tolerance
 
@@ -243,8 +242,7 @@ stopifnot(
 ```
 
 Some methods can reject an iteration and restart from the same parameters with
-different optimizer state. `mize` does not treat that restart as satisfying
-`step_tol`.
+different optimizer state. `step_tol` ignores that restart.
 
 ## Evaluation budgets
 
@@ -366,8 +364,8 @@ stopifnot(
 ```
 
 A larger interval can delay recognition of a satisfied tolerance and therefore
-overshoot it. It does not soften callback budgets: `max_fn`, `max_gr`, and
-`max_fg` are enforced when a covered callback would be made. Non-finite
+overshoot it. Callback budgets remain hard: `max_fn`, `max_gr`, and `max_fg`
+are enforced when a covered callback would be made. Non-finite
 callback results and line-search no-step failures are also handled independently
 of the ordinary tolerance cadence.
 
@@ -383,10 +381,17 @@ the best observed result, while `last_par` and `last_f` describe the final
 optimizer state. The traditional `par` and `f` fields currently match the best
 result.
 
-Disabling all tolerances does not necessarily force the best and last results
-to be identical. A method or line search can leave cached function or gradient
-information that lets `mize` identify an earlier best point even without a
-tolerance check. Conversely, a hard callback budget can prevent a final
-observation, so an objective field may be absent or `last_f` may be `NA`.
-Inspect the named fields instead of inferring which point was returned from the
-stopping settings alone.
+Cached function or gradient information can make the best and last results
+differ even with every tolerance disabled. A hard callback budget can also
+prevent a final observation, leaving an objective field absent or `last_f` as
+`NA`. The named fields identify the returned points; stopping settings alone
+leave them ambiguous.
+
+## See also
+
+- [Getting started](mize.html) introduces status and result fields at the first
+  optimization call.
+- [Choosing methods and tuning](methods.html) explains method-specific work and
+  line-search controls.
+- [Stateful optimization](stateful.html) applies these termination controls in
+  a caller-owned loop.

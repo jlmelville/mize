@@ -1,7 +1,6 @@
 ---
 title: "Metric MDS"
 author: "James Melville"
-date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Metric MDS}
@@ -16,8 +15,8 @@ library(mize)
 
 Metric multidimensional scaling (metric MDS) finds a low-dimensional
 configuration whose pairwise distances resemble supplied dissimilarities. It
-is also a useful example of an optimization problem where the objective and
-gradient need fixed data that should not be part of the parameter vector.
+is also a useful example of an optimization problem where a closure keeps fixed
+data out of the parameter vector.
 
 We will reconstruct a two-dimensional configuration for the 21 European cities
 in `datasets::eurodist`. The input contains road distances in kilometres, so a
@@ -48,9 +47,9 @@ $$
 
 At coincident points, $d_{ij} = 0$ and Euclidean distance is not
 differentiable. The implementation uses a named `distance_epsilon` in the
-denominator to keep the calculation finite. This is a numerical convention:
-it slightly perturbs the displayed derivative and does not make it exact at a
-coincident configuration. We therefore validate it at a seeded,
+denominator to keep the calculation finite. This numerical convention
+slightly perturbs the displayed derivative. The derivative remains undefined
+at a coincident configuration, so we validate the implementation at a seeded,
 nondegenerate starting point.
 
 The callback factory below captures the fixed target matrix in a closure. Its
@@ -58,7 +57,7 @@ The callback factory below captures the fixed target matrix in a closure. Its
 coordinates and pairwise distances. The counter will let us compare shared
 work without relying on a noisy timing measurement.
 
-```{r callback factory}
+```{r callback-factory}
 distance_epsilon <- 1e-10
 
 make_mmds_callbacks <- function(
@@ -128,7 +127,7 @@ The separate variant supplies `fn` and `gr`. The combined variant also
 supplies `fg`, which lets `mize` request an objective and gradient from one
 prepared configuration.
 
-```{r seeded start}
+```{r seeded-start}
 target_distances <- datasets::eurodist
 set.seed(42)
 initial_par <- rnorm(attr(target_distances, "Size") * 2)
@@ -146,7 +145,7 @@ combined_callbacks <- make_mmds_callbacks(
 differences. Because the combined callback is present, it also checks that
 `fg` agrees with the separate `fn` and `gr` callbacks.
 
-```{r gradient check}
+```{r gradient-check}
 gradient_check <- check_mize_gradient(
   combined_callbacks$fg,
   initial_par
@@ -162,7 +161,7 @@ gradient_summary <- data.frame(
 signif(gradient_summary, digits = 4)
 ```
 
-```{r assert gradient check, include = FALSE}
+```{r assert-gradient-check, include = FALSE}
 stopifnot(
   gradient_check$max_rel_error < 1e-3,
   isTRUE(gradient_check$fg_consistency$checked),
@@ -232,7 +231,7 @@ termination_table <- data.frame(
 termination_table
 ```
 
-```{r fit table}
+```{r fit-table}
 fit_table <- data.frame(
   callbacks = names(results),
   initial_stress = initial_stress,
@@ -255,7 +254,7 @@ terminate on `rel_tol`; they reduce the distance RMSE from about
 iteration and callback counts without turning an exact count into a lasting
 promise.
 
-```{r assert optimization, include = FALSE}
+```{r assert-optimization, include = FALSE}
 stopifnot(
   all(vapply(results, `[[`, character(1), "status") == "converged"),
   all(vapply(results, `[[`, logical(1), "converged")),
@@ -285,7 +284,7 @@ The logical function and gradient counts are identical because both runs ask
 for the same information. The underlying preparation counts expose the work
 that `fg` shares:
 
-```{r preparation counts}
+```{r preparation-counts}
 preparation_counts <- c(
   separate = separate_callbacks$preparations(),
   combined = combined_callbacks$preparations()
@@ -296,7 +295,7 @@ data.frame(
 )
 ```
 
-```{r assert preparation counts, include = FALSE}
+```{r assert-preparation-counts, include = FALSE}
 stopifnot(
   identical(separate_result$nf, combined_result$nf),
   identical(separate_result$ng, combined_result$ng),
@@ -305,20 +304,18 @@ stopifnot(
 )
 ```
 
-This deterministic count supports the useful claim: when the objective and
-gradient need the same expensive intermediate, a combined callback can avoid
-repeating that work. It does not claim a particular wall-clock speed-up for
-this tiny example.
+This deterministic count shows that a combined callback avoids repeated work
+when the objective and gradient share an expensive intermediate. The tiny
+example provides no useful wall-clock estimate.
 
 ## Interpret the configuration
 
-Distances do not identify absolute position or orientation. Adding one vector
-to every point leaves all distances unchanged, as do rotations and
-reflections. Centering removes the arbitrary translation for display, but the
-axes and handedness remain arbitrary; this is a map-like configuration, not a
-recovered compass orientation.
+Distances leave absolute position and orientation unidentified. Adding one
+vector to every point leaves all distances unchanged, as do rotations and
+reflections. Centering removes the arbitrary translation for display. The plot
+shows distance geometry; its axes and handedness carry no compass meaning.
 
-```{r plot results, fig.width=5.5, fig.height=5.5}
+```{r plot-results, fig.width=5.5, fig.height=5.5}
 center_coordinates <- function(par) {
   coordinates <- matrix(par, ncol = 2, byrow = TRUE)
   sweep(coordinates, 2, colMeans(coordinates))
@@ -337,6 +334,9 @@ plot_mmds <- function(coordinates, distances, ...) {
   )
   label_positions[which.min(coordinates[, 2])] <- 3
   label_positions[which.max(coordinates[, 2])] <- 1
+  city_names <- labels(distances)
+  label_positions[city_names == "Geneva"] <- 2
+  label_positions[city_names == "Lyons"] <- 4
   graphics::plot(
     coordinates,
     type = "n",
@@ -349,7 +349,7 @@ plot_mmds <- function(coordinates, distances, ...) {
   graphics::text(
     coordinates[, 1],
     coordinates[, 2],
-    labels = labels(distances),
+    labels = city_names,
     pos = label_positions,
     offset = 0.25,
     ...
@@ -360,12 +360,11 @@ centered_coordinates <- center_coordinates(combined_result$par)
 plot_mmds(centered_coordinates, target_distances, cex = 0.55)
 ```
 
-The invariance is also an objective-level fact, not just a visual
-interpretation. The hidden check below translates, rotates, and reflects the
-returned configuration and verifies that stress is unchanged to numerical
-tolerance.
+The invariance holds at the objective level. The hidden check below translates,
+rotates, and reflects the returned configuration and verifies that stress is
+unchanged to numerical tolerance.
 
-```{r assert stress invariance, include = FALSE}
+```{r assert-stress-invariance, include = FALSE}
 angle <- pi / 3
 rotation <- matrix(
   c(cos(angle), -sin(angle), sin(angle), cos(angle)),
@@ -397,6 +396,11 @@ stopifnot(relative_invariance_error < 1e-12)
 ```
 
 The same closure pattern applies whenever callbacks need fixed data or share
-an intermediate calculation. For the full callback contract, see `?mize`; for
-step-by-step integration with retained optimizer state, see
-[Stateful optimization](stateful.html).
+an intermediate calculation. For the full callback contract, see `?mize`.
+
+## See also
+
+- [Getting started](mize.html) introduces callback lists and gradient checks.
+- [Convergence](convergence.html) explains the relative tolerance used here.
+- [Stateful optimization](stateful.html) shows step-by-step integration with
+  retained optimizer state.

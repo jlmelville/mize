@@ -1,7 +1,6 @@
 ---
 title: "Choosing methods and tuning"
 author: "James Melville"
-date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Choosing methods and tuning}
@@ -51,23 +50,23 @@ available, or the experiment is specifically about another update rule.
 |---|---|---|
 | General smooth problem | `"L-BFGS"` | Limited-memory curvature model; usually the first method to try |
 | Small or medium smooth problem | `"BFGS"`; consider `"SR1"` for comparison | Dense inverse-Hessian state uses quadratic storage |
-| Reliable Hessian or inverse Hessian available | `"NEWTON"` | Strong local model, but Hessian construction and factorization can dominate |
+| Reliable Hessian or inverse Hessian available | `"NEWTON"` | Strong local model; Hessian construction and factorization can dominate |
 | Large Hessian-free problem | `"TN"` | Approximates a Newton direction with an inner solve and extra gradient work |
-| Specialized nonlinear conjugate-gradient study | `"CG"` | Low storage, but update choice, scaling, and line search matter |
+| Specialized nonlinear conjugate-gradient study | `"CG"` | Low storage; update choice, scaling, and line search matter |
 | Momentum experiment | `"NAG"` or `"Momentum"` | Requires a defined schedule and careful comparison of nonmonotone trajectories |
 | Known or deliberately controlled learning rate | `"SD"` | Simple baseline; performance depends heavily on the step-size strategy |
 | Per-coordinate adaptive learning rate | `"DBD"` | Heuristic update controls both direction scaling and step size |
 
 For algorithmic background, see
 [Nocedal and Wright](https://doi.org/10.1007/978-0-387-40065-5). The choices
-above are starting points, not rankings that hold for every objective.
+above are starting points. Benchmark promising methods on the objective at
+hand.
 
 ### Current method surface
 
-- `"L-BFGS"` stores the most recent `memory` curvature pairs instead of a
-  dense inverse-Hessian approximation. Increasing `memory` retains more
-  history and costs more storage; it does not make the method equivalent to
-  BFGS.
+- `"L-BFGS"` maintains its limited-memory approximation from the most recent
+  `memory` curvature pairs. Increasing `memory` retains more history and costs
+  more storage.
 - `"BFGS"` maintains a dense inverse-Hessian approximation, so its storage is
   quadratic in the number of parameters.
 - `"SR1"` is a dense symmetric-rank-one alternative. Its update is safeguarded,
@@ -84,18 +83,17 @@ above are starting points, not rankings that hold for every objective.
   `"HZ+"` is another restart-enabled choice. The reference topic lists the
   complete update vocabulary.
 - `"SD"` is steepest descent. It is useful as a baseline and with a deliberately
-  chosen constant or adaptive step size, but it is not guaranteed to improve
-  the objective for an arbitrary step.
+  chosen constant or adaptive step size. An arbitrary step can increase the
+  objective.
 - `"NAG"` is Nesterov accelerated gradient. Its momentum depends on `nest_q`
-  and related controls, so compare bounded runs rather than assuming a
-  universal improvement over another method.
+  and related controls. Compare bounded runs with explicit metrics.
 - `"Momentum"` (which may be abbreviated to `"MOM"`) combines steepest descent
   with a classical or Nesterov-style momentum stage and a chosen schedule.
 - `"DBD"` is Delta-Bar-Delta. It owns a per-coordinate learning rate, so its
   step controls replace the requested `line_search`.
-- `"PHESS"` reuses a partial-Hessian factorization. It is accepted by the
-  factory but is experimental/internal, requires `fg$hs`, and is not a
-  recommended starting method.
+- `"PHESS"` reuses a partial-Hessian factorization. The factory accepts this
+  experimental/internal method when `fg$hs` is available. For ordinary work,
+  choose a starting method from the table above.
 
 ```{r method-surface-check, include = FALSE}
 documented_methods <- c(
@@ -109,8 +107,8 @@ stopifnot(all(vapply(
 )))
 ```
 
-Method-specific controls are not interchangeable. For example, `memory`
-applies to L-BFGS and to the optional L-BFGS preconditioner for CG or TN;
+Each method-specific control has a fixed scope. For example, `memory` applies
+to L-BFGS and to the optional L-BFGS preconditioner for CG or TN;
 `cg_update` applies only to CG; and `tn_init` and `tn_exit` apply only to TN.
 Other methods ignore those controls. The same rule applies to step-size
 controls: DBD ignores `line_search`, and Wolfe-only controls are ignored by
@@ -120,20 +118,19 @@ complete accepted values and control scopes.
 ### Nesterov Accelerated Gradient (`"NAG"`)
 
 NAG takes a steepest-descent step and then applies a momentum update. Its
-current objective need not decrease at every iteration, so inspect a trajectory
-and the returned best result rather than judging it from one final point.
+current objective can increase on an iteration. Inspect the full bounded
+trajectory and the returned best result.
 
 `nest_q` controls the built-in NAG schedule. The endpoints are important:
 `nest_q = 0` is the non-strongly-convex limit and gives the largest momentum,
 whereas `nest_q = 1` gives zero momentum and reduces the parameter updates to
-steepest descent. The default is zero. A value between the endpoints is a
-tuning choice, not a known estimate unless the objective supplies the relevant
-strong-convexity information.
+steepest descent. The default is zero. Treat a value between the endpoints as a
+tuning choice. A known strong-convexity ratio requires corresponding
+information about the objective.
 
-The helpers below keep every comparison honest. A table reports the returned
-best and last objectives, total callback counts, status, and termination
-reason. Its companion plot uses the same result objects and shows the
-current-iterate objective against cumulative function callbacks.
+Each comparison reports best and last objectives, callback counts, status, and
+termination reason, then plots the same result objects against cumulative
+function callbacks.
 
 ```{r bounded-comparison-helpers, include = FALSE}
 summarize_runs <- function(results) {
@@ -228,11 +225,12 @@ stopifnot(
 )
 ```
 
-Both rows stop at `max_iter`; they demonstrate progress within a fixed outer
-iteration budget, not convergence. Here `q = 0.001` has the lower last
-objective, while `q = 0` has the lower returned best objective. The plot shows
-current iterates rather than a best-so-far curve. The conflicting order is the
-lesson: define the metric before calling one bounded trajectory “better.”
+Both rows stop at `max_iter` and demonstrate progress within a fixed outer
+iteration budget. Convergence remains unestablished. Here `q = 0.001` has the
+lower last objective, while `q = 0` has the lower returned best objective. The plot shows
+current iterates; the table reports both best and last objectives. The
+conflicting order is the lesson: define the metric before calling one bounded
+trajectory “better.”
 
 The theoretical step size and momentum guarantees require assumptions and
 problem constants that this Rosenbrock example does not supply. For derivations
@@ -291,9 +289,9 @@ plot_current_objective(momentum_runs, "Momentum update order")
 ```
 
 These runs also exhaust `max_iter`. Their table records what happened under
-this configuration; it does not establish a general ranking of the two update
-orders. Use `mom_schedule = "nsconvex"` to combine either order with the NAG
-schedule. With that schedule, `nest_convex_approx = TRUE` selects Sutskever's
+this configuration. Treat the two update orders as choices to test on the
+problem at hand. Use `mom_schedule = "nsconvex"` to combine either order with
+the NAG schedule. With that schedule, `nest_convex_approx = TRUE` selects Sutskever's
 approximation for the `nest_q = 0` case and causes `nest_q` to be ignored.
 
 ## Line searches and step sizes
@@ -311,9 +309,9 @@ rates itself and ignores `line_search`.
 | `"Bold Driver"` | Any finite objective decrease | Heuristic adaptation from the preceding accepted step |
 | `"Constant"` | No search; always uses numeric `step0` | Known learning rate or a controlled experiment |
 
-These choices are not freely interchangeable with every control. `c2`,
-`strong_curvature`, and `approx_armijo` apply only to Wolfe searches. `c1`
-also applies to Armijo backtracking, but not to bold driver or constant steps.
+Each line-search control has a fixed scope. `c2`, `strong_curvature`, and
+`approx_armijo` apply only to Wolfe searches. `c1`
+also applies to Armijo backtracking. Bold driver and constant steps ignore it.
 `ls_max_alpha` and `ls_safe_cubic` are More-Thuente-specific. The DBD controls
 are described separately below.
 
@@ -333,11 +331,10 @@ larger `c2` is looser. The same direction holds for the standard curvature
 condition because the initial slope is negative. `c2` must lie strictly
 between `c1` and 1.
 
-The CG default is `c2 = 0.1`. The next bounded example deliberately increases
-it to `0.5`, making the curvature test looser. This may change accepted steps
-and callback counts; it is a tuning example, not a claim that looser is better.
-It also selects the Hager-Zhang next-step initializer so its possible probe is
-covered by the displayed callback diagnostics.
+The CG default is `c2 = 0.1`. The next bounded example sets `c2 = 0.5`, making
+the curvature test looser. It also selects the Hager-Zhang next-step initializer.
+The table displays the resulting initial proposals, slopes, line-search
+outcomes, and callback counts.
 
 ```{r looser-c2-diagnostics}
 looser_c2 <- mize(
@@ -394,7 +391,7 @@ stopifnot(
 More-Thuente, Rasmussen, and Schmidt use strong curvature with the exact Armijo
 condition by default. Hager-Zhang uses the standard curvature condition with
 the approximate Armijo condition by default. `strong_curvature` and
-`approx_armijo` can override those choices, but doing so changes the conditions
+`approx_armijo` can override those choices. An override changes the conditions
 whose theory applies; treat it as an explicit experiment.
 
 ### Initial step estimates
@@ -424,8 +421,7 @@ quadratic. The probe is attempted only when there is a previous step and both
 the local line-search budgets and the optimizer's remaining hard budgets leave
 enough callbacks for the probe and a subsequent search. Otherwise the rule
 falls back to an enlarged, safeguarded version of the previous step. When the
-probe occurs, it is included in `ls_nf`, as in the diagnostic vocabulary above;
-it is not an unconditional extra evaluation.
+probe occurs, it is included in `ls_nf`, as in the diagnostic vocabulary above.
 
 `try_newton_step` gives the calculated proposal a small upward adjustment, up
 to the natural unit step of 1. Its current default is `TRUE` for `"NEWTON"`,
@@ -474,8 +470,8 @@ bold_res <- mize(
 ```
 
 The constant strategy requires a numeric `step0` and performs no search. With
-steepest descent, `norm_direction = TRUE` makes `step0` the length of the
-parameter update rather than a multiplier of the gradient norm.
+steepest descent, `norm_direction = TRUE` makes `step0` the parameter-update
+length directly.
 
 Bold driver accepts the first tested point with a lower objective, reduces
 failed proposals by `step_down`, and initializes the next iteration by
@@ -484,9 +480,9 @@ the first bold-driver proposal is 1; `step0`, `c1`, `c2`, and `step_up_fun` do
 not configure it. `ls_max_fn` is its local callback limit.
 
 For Wolfe and backtracking searches, `ls_max_fn`, `ls_max_gr`, and `ls_max_fg`
-limit callbacks within one outer line search. They do not replace the optimizer
-budgets `max_fn`, `max_gr`, and `max_fg`, which remain hard limits for the
-entire run. The default local function limit is 20. See the
+limit callbacks within one outer line search. The optimizer budgets `max_fn`,
+`max_gr`, and `max_fg` remain hard limits for the entire run. The default local
+function limit is 20. See the
 [line-search reference](../reference/mize.html#line-search) for the remaining
 specialized safeguards.
 
@@ -507,8 +503,8 @@ The main controls are:
 - `dbd_weight`, the gradient-history weight when no momentum schedule is used.
 
 The following uses the additive update associated with the t-SNE-style
-variant. It is an example of the control semantics, not a generally recommended
-setting for smooth optimization.
+variant. It demonstrates the control semantics. Use problem-specific evidence
+before adopting it for smooth optimization.
 
 ```{r additive-dbd}
 dbd_res <- mize(
@@ -526,10 +522,10 @@ dbd_res <- mize(
 
 If a momentum schedule is supplied with DBD, `dbd_weight` is ignored and the
 momentum update supplies the history. DBD's step calculation itself is
-gradient-based, but function-based convergence criteria still request objective
+gradient-based. Function-based convergence criteria still request objective
 evaluations, and `mize()` may need an objective observation to report a best
 result. Choose convergence controls according to the observations the run can
-afford rather than assuming DBD is function-free.
+afford, and budget for those observations explicitly.
 
 ## Adaptive restart
 
@@ -547,7 +543,8 @@ stored momentum update and resets iteration-dependent momentum schedules. In
 Gradient restart is unavailable with `mom_type = "nesterov"` because its
 gradient is evaluated at a different location. `restart_wait` is the number of
 iterations to wait after a restart before another restart is allowed; its
-default is 10. It is a policy control, not a convergence criterion.
+default is 10. `restart_wait` governs restart policy; termination controls
+govern convergence.
 
 The following comparison uses classical momentum so these restart
 configurations are valid. It holds the start, schedule, and 100-iteration
@@ -600,16 +597,25 @@ stopifnot(
 )
 ```
 
-Every row again reports `budget_exhausted` / `max_iter`, so none is evidence of
-convergence. In this bounded example both wait-1 rows reach smaller best
+Every row again reports `budget_exhausted` / `max_iter`. These runs demonstrate
+bounded progress and leave convergence unestablished. Both wait-1 rows reach smaller best
 and last objectives than their wait-10 counterparts. The gradient/wait-1 row
-has slightly smaller objective values than the function/wait-1 row, but also
-uses more function and gradient callbacks. Those facts describe this table;
-they do not make one restart policy universally preferable.
+has slightly smaller objective values than the function/wait-1 row and uses
+more function and gradient callbacks. These conclusions apply to the displayed
+bounded run.
 
 Function-based validation can add an objective callback when the needed value
 is not cached; gradient validation likewise depends on where gradients are
-already available. Compare both callback columns rather than assuming one
-trigger is free. A shorter `restart_wait` permits more frequent restarts and
-can change both progress and callback demand, so tune it under the budget and
-metric that matter for the application.
+already available. Compare both callback columns; cached observations determine
+the cost of each trigger. A shorter `restart_wait` permits more frequent
+restarts and can change both progress and callback demand, so tune it under the
+budget and metric that matter for the application.
+
+## See also
+
+- [Getting started](mize.html) provides the shortest route to a first result.
+- [Convergence](convergence.html) explains the status and termination fields
+  used in every bounded comparison.
+- [Nesterov accelerated gradient and momentum](nesterov.html) develops the
+  schedule derivations and historical background.
+- [Quasi-hyperbolic momentum](qhm.html) covers another momentum formulation.

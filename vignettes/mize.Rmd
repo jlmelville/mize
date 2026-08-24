@@ -1,10 +1,9 @@
 ---
-title: "Mize"
+title: "Getting started"
 author: "James Melville"
-date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Mize}
+  %\VignetteIndexEntry{Getting started}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -63,8 +62,8 @@ gradient_summary
 ```
 
 `check_mize_gradient()` compares `gr` with a finite-difference approximation
-of `fn`. Small errors do not prove that a gradient is correct everywhere, but
-large errors are a strong reason to fix it before trusting an optimization.
+of `fn`. Large errors are a strong reason to fix the gradient before trusting
+an optimization. Small errors establish local agreement at the checked point.
 The full result also identifies the worst coordinate and, when an optional
 combined `fg` function is present, checks it against the separate callbacks.
 
@@ -103,8 +102,8 @@ res[c("status", "converged", "message", "terminate")]
 human-readable summary. Use `terminate$what` when code needs the precise
 reason. Its companion `terminate$val` is the value associated with that
 stopping criterion. For example, after an absolute-function-tolerance exit it
-is the observed change between consecutive objective values. It is not the
-objective value itself: that is `res$f` (or, more explicitly, `res$best_f`).
+is the observed change between consecutive objective values. `res$f` (or,
+more explicitly, `res$best_f`) holds the objective value.
 
 ### Best result and last iterate
 
@@ -112,7 +111,7 @@ By default, `mize()` tracks the best evaluated point. `par` and `f` are the
 usual concise names for that result; `best_par` and `best_f` make the same
 choice explicit. `last_par` and `last_f` describe the final optimizer state
 before any earlier best point is restored. They can differ when a method's
-trajectory is not monotone.
+trajectory is nonmonotone.
 
 ```{r result-points}
 result_points <- data.frame(
@@ -182,22 +181,22 @@ result on a long run.
 
 ## Choose a method
 
-The default is a sensible baseline, but problem size and available derivative
+The default is a sensible baseline. Problem size and available derivative
 information may suggest another starting point:
 
 | Situation | Method to consider | Main trade-off |
 |---|---|---|
 | General smooth problem | `L-BFGS` | Limited-memory quasi-Newton; the default |
 | Smaller smooth problem | `BFGS` | Dense inverse-Hessian approximation uses quadratic storage |
-| Very tight memory budget | `CG` | Low storage, but more sensitive to scaling and line-search choices |
+| Very tight memory budget | `CG` | Low storage; sensitive to scaling and line-search choices |
 | Extra gradient work is acceptable | `TN` | Approximates a Newton step without forming a Hessian |
 | Hessian or inverse Hessian is available | `NEWTON` | Requires an `hs` or `hi` callback in the function list |
 
-These are starting points, not a universal ranking. The
-[Choosing methods and tuning](methods.html) guide covers the full method set,
-compatibility, line searches, step sizes, and momentum.
+Treat these as starting points and benchmark promising methods on the problem
+at hand. The [Choosing methods and tuning](methods.html) guide covers the full
+method set, compatibility, line searches, step sizes, and momentum.
 
-## Where to go next
+## See also
 
 - [Convergence](convergence.html) explains tolerances, limits, failures, and
   result interpretation.

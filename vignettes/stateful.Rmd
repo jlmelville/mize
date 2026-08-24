@@ -1,10 +1,9 @@
 ---
-title: "Stateful Optimization"
+title: "Stateful optimization"
 author: "James Melville"
-date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Stateful Optimization}
+  %\VignetteIndexEntry{Stateful optimization}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -63,10 +62,10 @@ second_batch <- stats::optim(
 c(first = first_batch$value, second = second_batch$value)
 ```
 
-The second call starts a new BFGS run. It receives the parameters but not the
-first run's inverse-Hessian approximation or other transient method state.
-Shorter batches therefore provide more interruptions while throwing away more
-of the information that makes a stateful method effective.
+The second call starts a new BFGS run. It receives the parameters and discards
+the first run's inverse-Hessian approximation and other transient method state.
+Shorter batches provide more interruptions while throwing away more of the
+information that makes a stateful method effective.
 
 ## The three lifecycle operations
 
@@ -130,8 +129,8 @@ stopifnot(
 )
 ```
 
-Code such as `if (step$f < best_f)` is therefore unsafe. Absence is normal;
-it does not imply that the step failed.
+Code such as `if (step$f < best_f)` is therefore unsafe. An absent observation
+is normal and leaves the step status unchanged.
 
 ## A minimal terminal-aware loop
 
@@ -180,8 +179,8 @@ stopifnot(
 )
 ```
 
-This run deliberately ends at `max_iter = 3`. It is budget-exhausted, not
-converged.
+This run deliberately ends at `max_iter = 3`: its status is
+`budget_exhausted`, and `converged` is `FALSE`.
 
 ## Deliberate observations and diagnostics
 
@@ -301,13 +300,13 @@ stopifnot(
 )
 ```
 
-The selected progress columns are useful for this run, but method-specific
-columns should be tested for presence before application code relies on them.
+The selected progress columns are useful for this run. Test method-specific
+columns for presence before application code relies on them.
 
 ### Hard budgets can deny a requested observation
 
-`calc_fn = TRUE` is a request, not permission to exceed `max_fn`. With no
-function evaluations available, the summary returns no `f` and its updated
+`max_fn` remains hard when `calc_fn = TRUE`. With no function evaluations
+available, the summary returns no `f` and its updated
 optimizer reports the exhausted budget:
 
 ```{r exact-function-budget}
@@ -348,8 +347,8 @@ stopifnot(
 ```
 
 This is why the production loop both retains `step_info$opt` and guards
-`step_info$f`. Calling `fg$fn()` directly would bypass `mize`'s counters
-and limits, so it is not a substitute inside a hard-budget workflow.
+`step_info$f`. Calling `fg$fn()` directly bypasses `mize`'s counters and
+limits. Keep direct callback calls outside hard-budget workflows.
 
 ## Checkpoint and resume
 
@@ -447,9 +446,9 @@ stopifnot(
 ```
 
 For this deterministic problem and implementation, all comparisons pass at
-`1e-10`. The lasting lesson is not a promise of bit-for-bit identity across
-platforms. It is that serializing and restoring the optimizer preserves the
-method state that repeated reinitialization discards.
+`1e-10`. The comparison shows that serializing and restoring the optimizer
+preserves method state. Bit-for-bit identity across platforms remains outside
+the contract.
 
 ## Reinitialization starts a new run
 
@@ -486,5 +485,12 @@ stopifnot(
 Use reinitialization when a new run is intended; use serialization when the
 same run must continue. See `?mize_init`, `?mize_step`,
 `?mize_step_summary`, and `?check_mize_convergence` for the complete API.
-The [Convergence](convergence.html) article explains how to choose and
-interpret termination controls.
+
+## See also
+
+- [Getting started](mize.html) introduces the one-shot workflow and result
+  contract.
+- [Convergence](convergence.html) explains how to choose and interpret
+  termination controls.
+- [Metric MDS](mmds.html) develops a callback closure suitable for either
+  one-shot or stateful use.
