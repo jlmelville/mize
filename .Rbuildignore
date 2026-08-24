@@ -13,7 +13,6 @@
 ^\.lintr$
 ^pkgdown$
 ^pkgdown-site$
-^scripts$
 ^plans$
 ^\.positai$
 ^\.claude$

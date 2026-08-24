@@ -2,7 +2,13 @@
 
 ## Bug fixes and minor improvements
 
-* Fixed several optimizer edge cases found during cleanup.
+* Stateful optimization now handles lifecycle dependencies consistently, and
+global function and gradient evaluation limits are enforced across optimizer
+and line-search callbacks, including truncated Newton inner iterations.
+* Optimizer inputs and objective, gradient, Hessian, and inverse-Hessian
+callback results now receive consistent early validation and clearer errors.
+* Quasi-Newton updates and exact-Newton directions now use safer fallbacks when
+curvature information or Hessian factorization is unsuitable.
 * Wolfe line searches now require an explicitly numeric `step0` to be a
 positive finite scalar; string initializers are unchanged.
 * Line searches using weak Wolfe curvature now accept equality at the
