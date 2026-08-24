@@ -40,105 +40,82 @@ restart options available in `mize`. Start with [Getting started](mize.html)
 for the basic optimization workflow, then use this guide when choosing or
 tuning an optimization strategy.
 
-## Optimization Methods
+## Choosing a method
 
-The available optimization methods are listed below. I won't be describing the
-algorithms behind them in any depth. For that, you should look in
-the book by [Nocedal and Wright](https://doi.org/10.1007/978-0-387-40065-5).
+`mize()` defaults to `"L-BFGS"`, a good starting point for many smooth
+problems when an analytic gradient is available. Change methods for a reason:
+because the problem size changes the storage budget, Hessian information is
+available, or the experiment is specifically about another update rule.
 
-Many of these methods can be thought of as coming up with a direction to move
-in, but with the distance to travel in that direction as being someone else's
-problem, i.e. a line search method needs to also be used to determine the
-step size. We'll discuss the available step size methods separately.
+| Need | Suggested starting point | Main trade-off |
+|---|---|---|
+| General smooth problem | `"L-BFGS"` | Limited-memory curvature model; usually the first method to try |
+| Small or medium smooth problem | `"BFGS"`; consider `"SR1"` for comparison | Dense inverse-Hessian state uses quadratic storage |
+| Reliable Hessian or inverse Hessian available | `"NEWTON"` | Strong local model, but Hessian construction and factorization can dominate |
+| Large Hessian-free problem | `"TN"` | Approximates a Newton direction with an inner solve and extra gradient work |
+| Specialized nonlinear conjugate-gradient study | `"CG"` | Low storage, but update choice, scaling, and line search matter |
+| Momentum experiment | `"NAG"` or `"Momentum"` | Requires a defined schedule and careful comparison of nonmonotone trajectories |
+| Known or deliberately controlled learning rate | `"SD"` | Simple baseline; performance depends heavily on the step-size strategy |
+| Per-coordinate adaptive learning rate | `"DBD"` | Heuristic update controls both direction scaling and step size |
 
-### Steepest Descent (`"SD"`)
+For algorithmic background, see
+[Nocedal and Wright](https://doi.org/10.1007/978-0-387-40065-5). The choices
+above are starting points, not rankings that hold for every objective.
 
-The good news is that you always get some improvement with steepest descent.
-The bad news is everything else: it often takes a long time to make any 
-progress, unless you are 
-[very clever with the step size](https://doi.org/10.1093/imanum/8.1.141). 
-It is however, the basis for most other gradient descent techniques, 
-and many of them will revert back to this direction, at least temporarily, if 
-things start going wrong.
+### Current method surface
 
-```{r Steepest descent}
-res <- mize(rb0, rb_fg, max_iter = 10, method = "SD")
+- `"L-BFGS"` stores the most recent `memory` curvature pairs instead of a
+  dense inverse-Hessian approximation. Increasing `memory` retains more
+  history and costs more storage; it does not make the method equivalent to
+  BFGS.
+- `"BFGS"` maintains a dense inverse-Hessian approximation, so its storage is
+  quadratic in the number of parameters.
+- `"SR1"` is a dense symmetric-rank-one alternative. Its update is safeguarded,
+  and `mize` falls back to a BFGS or steepest-descent direction when necessary
+  to obtain descent.
+- `"NEWTON"` uses `fg$hs` or `fg$hi`. A Hessian or inverse Hessian may be a
+  full matrix or a diagonal vector; unsuccessful or non-descent directions
+  fall back to steepest descent and can be inspected through
+  `direction_reason`.
+- `"TN"` (truncated Newton) approximately solves for a Newton direction using
+  gradient differences. `tn_init`, `tn_exit`, and the optional L-BFGS
+  `preconditioner` control its inner solve.
+- `"CG"` is nonlinear conjugate gradient. `cg_update = "PR+"` is the default;
+  `"HZ+"` is another restart-enabled choice. The reference topic lists the
+  complete update vocabulary.
+- `"SD"` is steepest descent. It is useful as a baseline and with a deliberately
+  chosen constant or adaptive step size, but it is not guaranteed to improve
+  the objective for an arbitrary step.
+- `"NAG"` is Nesterov accelerated gradient. Its momentum depends on `nest_q`
+  and related controls, so compare bounded runs rather than assuming a
+  universal improvement over another method.
+- `"Momentum"` (which may be abbreviated to `"MOM"`) combines steepest descent
+  with a classical or Nesterov-style momentum stage and a chosen schedule.
+- `"DBD"` is Delta-Bar-Delta. It owns a per-coordinate learning rate, so its
+  step controls replace the requested `line_search`.
+- `"PHESS"` reuses a partial-Hessian factorization. It is accepted by the
+  factory but is experimental/internal, requires `fg$hs`, and is not a
+  recommended starting method.
+
+```{r method-surface-check, include = FALSE}
+documented_methods <- c(
+  "SD", "BFGS", "SR1", "L-BFGS", "CG", "TN", "NEWTON", "PHESS", "NAG",
+  "Momentum", "DBD"
+)
+stopifnot(all(vapply(
+  documented_methods,
+  function(method) is.list(make_mize(method = method)),
+  logical(1)
+)))
 ```
 
-### Broyden-Fletcher-Goldfarb-Shanno (`"BFGS"`)
-
-The BFGS method is a quasi-Newton method: it constructs an approximation to the
-inverse of the Hessian. This saves on the annoyance of working out what the
-second derivatives are for your problem, as well as on the time it takes to
-calculate them on every iteration, but not on the storage cost, which is O(N^2).
-It's therefore not appropriate for large problems.
-
-```{r BFGS}
-res <- mize(rb0, rb_fg, max_iter = 10, method = "BFGS")
-```
-
-By default, after the first iteration, the inverse Hessian approximation is 
-scaled to make it more similar to the real inverse Hessian 
-(in terms of eigenvalues). If you don't want to do this, set the `scale_hess`
-parameter to `FALSE`:
-
-```{r BFGS without scaled Hessian}
-res <- mize(rb0, rb_fg, max_iter = 10, method = "BFGS", scale_hess = FALSE)
-```
-
-### Limited-Memory BFGS (`"L-BFGS"`)
-
-The L-BFGS method builds the inverse Hessian approximation implicitly, yielding
-something close to the BFGS direction without ever directly creating a matrix.
-This makes it suitable for larger problems. The closeness to the BFGS result
-is determined by the size of `memory` parameter, which determines the number of
-previous updates that are used to create the direction for the next iteration. 
-The higher this value, the closer to the BFGS result will be obtained, but the 
-more storage is required. In practice, the recommended `memory` size is between
-3 and 7. The default is 5.
-
-```{r LBFGS}
-res <- mize(rb0, rb_fg, max_iter = 10, method = "L-BFGS", memory = 7)
-```
-
-The L-BFGS method also applies a similar Hessian scaling method as with the BFGS
-method, but does so at every iteration. If you don't want it for some reason,
-you can also set `scale_hess` to `FALSE`:
-
-```{r LBFGS without scaled Hessian}
-res <- mize(rb0, rb_fg, max_iter = 10, method = "L-BFGS", scale_hess = FALSE)
-```
-
-### Conjugate Gradient (`"CG"`)
-
-When someone is pulling a decent default optimization off the shelf, if they're
-not reaching for L-BFGS, they're probably going for a conjugate gradient method.
-In their favor, they require less storage than the L-BFGS. However, they tend
-to be a lot more sensitive to poor scaling of the function (i.e. when changing
-different parameters causes very different changes to the objective function)
-and so need tighter line search criteria to make progress.
-
-There are in fact multiple different methods out there under the name 'conjugate
-gradient', which differ in how the direction is determined from the current and 
-previous gradient and the previous direction. The default method in `mize` is
-the "PR+" method (sometimes referred to as "PRP+"), which refers to its 
-inventors, Polak and Ribiere (the third "P" is Polyak who independently 
-discovered it). The "+" indicates that a restart to steepest descent is included
-under certain conditions, which prevents the possibility of convergence failing.
-
-```{r CG with PR+}
-res <- mize(rb0, rb_fg, max_iter = 10, method = "CG")
-```
-
-Other CG update methods are available via the `cg_update` parameter. Methods 
-which seem competitive or even superior to the `"PR+"` update is the `"HS+"`
-method (named after Hestenes and Stiefel) and the `"HZ+"` update (named
-after Hager and Zhang, and part of the 
-[CG_DESCENT](https://users.clas.ufl.edu/hager/papers/Software/) optimizer):
-
-```{r CG with HZ+}
-res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", cg_update = "HZ+")
-```
+Method-specific controls are not interchangeable. For example, `memory`
+applies to L-BFGS and to the optional L-BFGS preconditioner for CG or TN;
+`cg_update` applies only to CG; and `tn_init` and `tn_exit` apply only to TN.
+Other methods ignore those controls. The same rule applies to step-size
+controls: DBD ignores `line_search`, and Wolfe-only controls are ignored by
+constant and bold-driver steps. See [`?mize`](../reference/mize.html) for the
+complete accepted values and control scopes.
 
 ### Nesterov Accelerated Gradient (`"NAG"`)
 
@@ -342,325 +319,240 @@ res <- mize(rb0, rb_fg, max_iter = 10, method = "MOM",
             mom_type = "nesterov")
 ```
 
-## Line Searches
+## Line searches and step sizes
 
-All the above methods need a line search to find out how far to move in the
-gradient descent (i.e. non-momentum) part.
+Most methods first choose a direction and then use `line_search` to choose how
+far to move. DBD is the main exception: it chooses per-coordinate learning
+rates itself and ignores `line_search`.
 
-### Wolfe Line Search
+| Choice | What it accepts | Useful starting context |
+|---|---|---|
+| `"More-Thuente"` | Strong Wolfe conditions by default | Default for direction methods, including quasi-Newton and CG |
+| `"Rasmussen"` or `"Schmidt"` | Strong Wolfe conditions by default | Alternative Wolfe implementations for comparison or troubleshooting |
+| `"Hager-Zhang"` | Standard curvature plus approximate Armijo by default | CG-oriented Wolfe search with Hager-Zhang initializers |
+| `"Backtracking"` | Armijo sufficient decrease | Simpler search when a curvature condition is unnecessary |
+| `"Bold Driver"` | Any finite objective decrease | Heuristic adaptation from the preceding accepted step |
+| `"Constant"` | No search; always uses numeric `step0` | Known learning rate or a controlled experiment |
 
-The default for all methods mentioned so far is a Wolfe line search that
-satisfies the strong Wolfe conditions. Specifically,
-[More-Thuente line search](https://doi.org/10.1145/192115.192132), 
-converted from 
-[Dianne O'Leary's Matlab code](https://www.cs.umd.edu/users/oleary/software/).
-This uses cubic interpolation to find a point close to a minimize along the
-search direction for each iteration. This requires a function and gradient
-evaluation at each candidate point.
+These choices are not freely interchangeable with every control. `c2`,
+`strong_curvature`, and `approx_armijo` apply only to Wolfe searches. `c1`
+also applies to Armijo backtracking, but not to bold driver or constant steps.
+`ls_max_alpha` and `ls_safe_cubic` are More-Thuente-specific. The DBD controls
+are described separately below.
 
-If the More-Thuente line search fails to work for some reason, alternative
-Wolfe line search method from Carl Edward Rasmussen's 
-[conjugate gradient routine](https://gaussianprocess.org/gpml/code/matlab/doc/),
-Mark Schmidt's 
-[minimization routines](https://www.cs.ubc.ca/~schmidtm/Software/minFunc.html),
-and an implementation of [Hager-Zhang](https://doi.org/10.1137/030601880)
-line search are also available (although they are all quite similar):
+### Wolfe conditions and `c2`
 
-```{r other Wolfe line search}
-res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "Rasmussen")
-# Use Mark Schmidt's minFunc line search 
-res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "Schmidt")
-# Hager-Zhang line search  
-res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "Hager-Zhang")
-# Hager-Zhang can be abbreviated to "HZ"
-res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "HZ")
-# You can explicitly set More-Thuente too
-res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "More-Thuente")
-# More-Thuente can be abbreviated to "MT"
-res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "MT")
+For a direction $p$, define the line function
+$\phi(\alpha) = f(x + \alpha p)$ and assume the initial slope
+$\phi'(0) = g(x)^T p$ is negative. Wolfe searches require sufficient decrease
+and a curvature condition. Under the strong curvature condition,
+
+$$
+|\phi'(\alpha)| \leq c_2 |\phi'(0)|.
+$$
+
+A smaller `c2` makes the right-hand side smaller, so it is **stricter**; a
+larger `c2` is looser. The same direction holds for the standard curvature
+condition because the initial slope is negative. `c2` must lie strictly
+between `c1` and 1.
+
+The CG default is `c2 = 0.1`. The next bounded example deliberately increases
+it to `0.5`, making the curvature test looser. This may change accepted steps
+and callback counts; it is a tuning example, not a claim that looser is better.
+It also selects the Hager-Zhang next-step initializer so its possible probe is
+covered by the displayed callback diagnostics.
+
+```{r looser-c2-diagnostics}
+looser_c2 <- mize(
+  rb0,
+  rb_fg,
+  method = "CG",
+  cg_update = "HZ+",
+  line_search = "More-Thuente",
+  c2 = 0.5,
+  step_next_init = "hz",
+  max_iter = 4,
+  abs_tol = NULL,
+  rel_tol = NULL,
+  grad_tol = NULL,
+  ginf_tol = NULL,
+  step_tol = NULL,
+  store_progress = TRUE
+)
+
+line_search_columns <- c(
+  "alpha_init", "slope_init", "ls_reason", "ls_outcome", "ls_nf", "ls_ng"
+)
+line_search_diagnostics <- looser_c2$progress[
+  !is.na(looser_c2$progress$ls_reason),
+  line_search_columns,
+  drop = FALSE
+]
+rownames(line_search_diagnostics) <- NULL
+line_search_diagnostics
 ```
 
-A variety of interpolation methods are available in the Matlab minfunc code, but 
-mize only uses the default: use cubic interpolation and extrapolation methods,
-falling back to back-tracking Armijo search (also using cubic interpolation) if
-a non-finite value is encountered.
+`alpha_init` is the safeguarded starting proposal and `slope_init` is
+$\phi'(0)$. `ls_reason` says why the search stopped, while `ls_outcome` says
+what kind of point was ultimately selected; the two need not be identical.
+`ls_nf` and `ls_ng` count callbacks owned by that outer line search, excluding
+its cached starting point. These columns are method-specific and appear only
+when their owning stage supplies them.
 
-Default values for the line search tolerance use the advice given in the Nocedal
-and Wright book: the `c1` parameter is set to `1e-4`, while `c2` is set to `0.9`
-for quasi-Newton methods (BFGS and L-BFGS) and `0.1` for everything else. For a
-line search involving the strong Wolfe conditions, the `c2` parameter measures
-how strict the line search is: the smaller it is (it cannot be set smaller than
-`c1` or greater than 1), the tighter the line search. This is an important
-property for some conjugate gradient methods to maintain their convergence
-properties.
-
-You may be able to get away with a looser line search (smaller `c2`) for some 
-methods, e.g.:
-
-```{r Line search parameters}
-res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", cg_update = "HZ+", 
-            c2 = 0.5, c1 = 0.1)
+```{r looser-c2-check, include = FALSE}
+stopifnot(
+  identical(looser_c2$status, "budget_exhausted"),
+  identical(looser_c2$terminate$what, "max_iter"),
+  identical(names(line_search_diagnostics), line_search_columns),
+  nrow(line_search_diagnostics) > 0,
+  all(is.finite(line_search_diagnostics$alpha_init)),
+  all(line_search_diagnostics$alpha_init > 0),
+  all(is.finite(line_search_diagnostics$slope_init)),
+  all(line_search_diagnostics$slope_init < 0),
+  all(line_search_diagnostics$ls_nf >= 0),
+  all(line_search_diagnostics$ls_ng >= 0)
+)
 ```
 
-#### Initial Step Size Guess
+More-Thuente, Rasmussen, and Schmidt use strong curvature with the exact Armijo
+condition by default. Hager-Zhang uses the standard curvature condition with
+the approximate Armijo condition by default. `strong_curvature` and
+`approx_armijo` can override those choices, but doing so changes the conditions
+whose theory applies; treat it as an explicit experiment.
 
-Another important choice is what step size to start each iteration from. Nocedal
-and Wright suggest two methods based on the result achieved for the previous 
-iteration, one involving the ratio of the slopes at consecutive iterations, and 
-one involving a quadratic interpolation. By default, for Wolfe line searches
-other than `"Hager-Zhang"`, the quadratic interpolation method is tried.
+### Initial step estimates
 
-To try the slope ratio method, set `step_next_init = "slope"`.
+On the first outer iteration, the named `step0` choices use the starting
+gradient $g$ and direction $p$. Writing the directional derivative as
+$\phi'(0) = g^T p$, the current formulas are:
 
-```{r Line search with slope ratio}
-res <- mize(rb0, rb_fg, max_iter = 10, step_next_init = "slope")
-```
-In the [CG_DESCENT](https://doi.org/10.1145/1132973.1132979) software, Hager
-and Zhang suggest using a "QuadStep" method. In this case, a small trial step is
-attempted followed by a quadratic interpolation. If the resulting quadratic is
-strongly convex (for a 1D quadratic $Ax^2 + Bx + c$, this just means $A > 0$),
-then the minimizer of the quadratic is used as the initial guess. Otherwise,
-a multiple of the previous step length is used (in `mize`, the old step length
-is doubled). This is the default if `line_search = "hz"` is used. To explicitly
-set it for other methods, use `step_next_init = "hz"` (or `"hager-zhang"`):
+- `"rasmussen"`: $1 / (1 - \phi'(0))$. For steepest descent, this becomes
+  $1 / (1 + \lVert g \rVert_2^2)$.
+- `"scipy"`: $-\lVert g \rVert_2 / \phi'(0)$. For steepest descent, where
+  $p = -g$, this reduces to $1 / \lVert g \rVert_2$.
+- `"schmidt"`: $1 / \lVert g \rVert_1$; there is no added 1 in the
+  denominator.
+- `"hz"`: Hager-Zhang scaling based first on the relative infinity norms of
+  the parameters and gradient, then on the objective and squared gradient norm,
+  with a safeguarded fallback.
 
-```{r Line search with Hager-Zhang QuadStep}
-res <- mize(rb0, rb_fg, max_iter = 10, step_next_init = "hz", 
-            line_search = "mt")
-```
-For the budget-conscious, be aware that using this method always incurs an 
-extra function evaluation per iteration, even if the quadratic minimizer isn't
-used as the guess.
+A positive finite numeric `step0` bypasses these formulas. Hager-Zhang uses its
+own first-step estimator by default; the other gradient searches default to
+Rasmussen.
 
-#### Initial Step Size Guess on First Iteration
+After the first iteration, `step_next_init` can use a slope ratio, quadratic
+interpolation, the Hager-Zhang `"hz"` rule, or a fixed positive number.
+Hager-Zhang's next-step rule may make one objective-only probe to fit a
+quadratic. The probe is attempted only when there is a previous step and both
+the local line-search budgets and the optimizer's remaining hard budgets leave
+enough callbacks for the probe and a subsequent search. Otherwise the rule
+falls back to an enlarged, safeguarded version of the previous step. When the
+probe occurs, it is included in `ls_nf`, as in the diagnostic vocabulary above;
+it is not an unconditional extra evaluation.
 
-This only leaves what to do on the very first iteration, where there is no
-previous iteration to look at. You don't really have much information at that
-point apart from the gradient, so all the implementations I've seen use a step 
-size that is effectively inversely proportional to a norm of the gradient:
+`try_newton_step` gives the calculated proposal a small upward adjustment, up
+to the natural unit step of 1. Its current default is `TRUE` for `"NEWTON"`,
+`"PHESS"`, `"BFGS"`, `"SR1"`, `"L-BFGS"`, and `"TN"`, and `FALSE` otherwise.
+`"PHESS"` remains experimental/internal despite sharing this default. Set
+`try_newton_step` explicitly when comparing initialization policies.
 
-* Carl Edward Rasmussen's 
-[conjugate gradient routine](https://gaussianprocess.org/gpml/code/matlab/doc/)
-uses $\frac{1}{1+\left\| g \right\|_2^2}$
-* [SciPy](https://scipy.org/)'s `optimize.py` uses
-$\frac{1}{\left\| g \right\|_2}$
-* Mark Schmidt's 
-[minimization routines](https://www.cs.ubc.ca/~schmidtm/Software/minFunc.html)
-uses $\frac{1}{1+\left\| g \right\|_1}$
-* Hager and Zhang use a slightly more complicated procedure for their 
-[CG_DESCENT](https://doi.org/10.1145/1132973.1132979) software: 
-use $\psi_0\frac{\left\|x\right\|_\infty}{\left\|g\right\|_\infty}$, where $x$
-is the initial parameter vector and $\psi_0$ is a small positive value (e.g.
-0.01), or if that doesn't produce a finite positive value, use 
-$\psi_0\frac{\left|f\right|}{\left\|g\right\|_{2}^{2}}$ where $\left|f\right|$ 
-is the absolute value of the function evaluated at $x$. And if that doesn't 
-work, just use 1.
+### Backtracking, constant, and bold-driver steps
 
-By default, the Hager-Zhang line search uses the CG_DESCENT method. For other 
-Wolfe line searches I have arbitrarily plumped for the Rasmussen method. If you
-think it will make a huge difference you can explicitly choose by passing one of
-`"rasmussen"`, `"scipy"`, `"schmidt"` or `"hz"` to the `step0` argument, e.g.:
+Armijo backtracking repeatedly reduces the candidate until it provides the
+decrease controlled by `c1`. With `step_down = NULL`, the current implementation
+uses cubic interpolation and evaluates function and gradient at candidate
+points. A numeric `step_down` instead multiplies the candidate by that fixed
+factor and uses function-only candidate evaluations.
 
-```{r Line search with scipy initialization}
-res <- mize(rb0, rb_fg, max_iter = 10, step0 = "scipy")
-```
+```{r armijo-and-fixed-steps}
+backtracking_res <- mize(
+  rb0,
+  rb_fg,
+  method = "SD",
+  line_search = "Backtracking",
+  step0 = 1,
+  step_down = 0.5,
+  max_iter = 10
+)
 
-You may also pass a positive finite number to `step0` and it will be used as-is:
+constant_res <- mize(
+  rb0,
+  rb_fg,
+  method = "SD",
+  line_search = "Constant",
+  norm_direction = TRUE,
+  step0 = 0.01,
+  max_iter = 10
+)
 
-```{r Line search with initial step length of 1}
-# An initial guess of 1 for the step length isn't bad for L-BFGS
-res <- mize(rb0, rb_fg, max_iter = 10, step0 = 1, method = "L-BFGS")
-```
-
-The L-BFGS and BFGS methods will also attempt the "natural" Newton step length
-of 1, in the way suggested in Nocedal and Wright. If you don't want to do this
-for some reason, it can be explicitly turned off or on via the 
-`try_newton_step` parameter:
-
-```{r BFGS with no Newton step}
-res <- mize(rb0, rb_fg, max_iter = 10, method = "BFGS", try_newton_step = FALSE)
-```
-
-For every other method this is off by default anyway with no particular reason
-to turn it on.
-
-All Wolfe line searches except `Hager-Zhang` use the strong curvature condition
-to determine when to terminate the line search. The Hager-Zhang line search uses
-the standard curvature conditions by default. It also uses an approximation to 
-the Armijo sufficient descent conditions which may prevent premature termination
-of a line search when the minimizer lies close to the initial step size under
-some circumstances. Use of these variations on the Wolfe conditions can be
-applied to any of the Wolfe line searches by supplying the `strong_curvature`
-and `approx_armijo` options:
-
-```{r alternative Wolfe conditions}
-# Rasmussen line search with standard Wolfe conditions
-res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "Rasmussen",
-            strong_curvature = FALSE)
-# Hager-Zhang with strong Wolfe conditions
-res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "HZ",
-            strong_curvature = TRUE, approx_armijo = FALSE)
-# More-Thuente with approx Armijo conditions
-res <- mize(rb0, rb_fg, max_iter = 10, method = "CG", line_search = "MT",
-            approx_armijo = TRUE)
+bold_res <- mize(
+  rb0,
+  rb_fg,
+  method = "SD",
+  line_search = "Bold Driver",
+  step_down = 0.5,
+  step_up = 1.1,
+  max_iter = 10
+)
 ```
 
-It's not obvious to me that any proof of convergence that exists for a given
-line search method will hold up when the curvature and Armijo conditions are
-altered, so be careful when using specifying these options.
+The constant strategy requires a numeric `step0` and performs no search. With
+steepest descent, `norm_direction = TRUE` makes `step0` the length of the
+parameter update rather than a multiplier of the gradient norm.
 
-### Other Line Searches
+Bold driver accepts the first tested point with a lower objective, reduces
+failed proposals by `step_down`, and initializes the next iteration by
+multiplying the last accepted step by `step_up`. In the current implementation
+the first bold-driver proposal is 1; `step0`, `c1`, `c2`, and `step_up_fun` do
+not configure it. `ls_max_fn` is its local callback limit.
 
-The Wolfe line search is your best bet, but there are some alternatives
-(of somewhat dubious value). 
+For Wolfe and backtracking searches, `ls_max_fn`, `ls_max_gr`, and `ls_max_fg`
+limit callbacks within one outer line search. They do not replace the optimizer
+budgets `max_fn`, `max_gr`, and `max_fg`, which remain hard limits for the
+entire run. The default local function limit is 20. See the
+[line-search reference](../reference/mize.html#line-search) for the remaining
+specialized safeguards.
 
-You can set a constant value for the step size. But note that the total step
-size is actually determined by the product of the step size and the length
-of the gradient vector, so you may want to set `norm_direction` too:
+## Delta-Bar-Delta learning rates
 
-```{r constant step size}
-res <- mize(rb0, rb_fg, max_iter = 10, method = "SD", line_search = "constant",
-            norm_direction = TRUE, step0 = 0.01)
+`method = "DBD"` changes a per-coordinate learning rate from the agreement in
+sign between the current gradient and a weighted history. Because DBD chooses
+both the direction scaling and the step, `line_search` is ignored.
+
+The main controls are:
+
+- `step0`, the initial per-coordinate learning rate (a positive number or a
+  named first-step estimator);
+- `step_down`, the multiplicative decrease when signs disagree;
+- `step_up`, the increase when signs agree;
+- `step_up_fun`, either `"*"` for a proportional increase (the default) or
+  `"+"` for an additive increase; and
+- `dbd_weight`, the gradient-history weight when no momentum schedule is used.
+
+The following uses the additive update associated with the t-SNE-style
+variant. It is an example of the control semantics, not a generally recommended
+setting for smooth optimization.
+
+```{r additive-dbd}
+dbd_res <- mize(
+  rb0,
+  rb_fg,
+  method = "DBD",
+  step0 = "rasmussen",
+  step_down = 0.8,
+  step_up = 0.2,
+  step_up_fun = "+",
+  dbd_weight = 0.5,
+  max_iter = 10
+)
 ```
 
-There is also a backtracking line search, which repeatedly reduces the step size
-starting from `step0`, until the sufficient decrease condition (also known as
-the Armijo condition) of the Wolfe line search conditions is fulfilled. This is
-controlled by `c1`, the larger the value, the larger the decrease in the
-function value is needed for a step size to be accepted. By default, the cubic
-interpolation method from 
-[minFunc](https://www.cs.ubc.ca/~schmidtm/Software/minFunc.html) is used to
-find the step size.
-
-```{r backtracking with cubic interpolation}
-res <- mize(rb0, rb_fg, max_iter = 10, line_search = "backtracking", step0 = 1, 
-            c1 = 0.1)
-```
-
-You will often see a simple fixed step size reduction used in combination 
-with this line search, mainly due to ease of implementation. Cubic interpolation
-is probably always preferable, but if you want to use a constant step size 
-reduction, provide a non-`NULL` value to `step_down`. The step size will be 
-multiplied by this value so it should be a value between zero and one. Set it
-to `0.5`, for example, to halve the step size while backtracking:
-
-```{r backtracking with halved step size}
-res <- mize(rb0, rb_fg, max_iter = 10, line_search = "backtracking",
-            step0 = 1, c1 = 0.1, step_down = 0.5)
-```
-
-A similar approach is the `"bold driver"`, which also backtracks, but starts
-from the step size found for the last iteration, increased by a factor 
-`step_up`.
-
-```{r bold driver}
-# increase step size by 10%, but reduce by 50%
-res <- mize(rb0, rb_fg, max_iter = 10, line_search = "bold",
-            step0 = 1, step_down = 0.5, step_up = 1.1)
-```
-
-Unlike backtracking line search, the bold driver accepts any function decrease,
-and does not use `c1`.
-
-### Maximum function or gradient evaluations per line search
-
-It's a good idea to specify a maximum number of function evaluations that can
-be spent in any one line search. This guards against the possibility of poorly
-chosen parameters, badly behaved functions or other numerical issues causing
-the line search to fail to converge. By default, no more than 20 function
-evaluations are allowed per line search. The `ls_max_fn`, `ls_max_gr` and 
-`ls_max_fg` can be used to control this:
-
-```{r max line search functions}
-# No more than 10 gradient evaluations allowed per line search
-res <- mize(rb0, rb_fg, max_iter = 10, ls_max_gr = 10)
-```
-
-## Adaptive Learning Rate Methods
-
-So far, the `method` and `line_search` arguments can be freely mixed and 
-matched. However, some methods choose both the direction and the step size
-directly. The 
-[Delta-Bar-Delta method](https://doi.org/10.1016/0893-6080(88)90003-2) has its 
-roots in neural network research but was also used in the currently popular 
-[t-Distributed Stochastic Neighbor Embedding](https://lvdmaaten.github.io/tsne/) 
-data visualization method.
-
-The way DBD works is to consider each component of the gradient and a weighted
-average of previous iterates gradients. If the sign has changed for that 
-component, that suggests the minimum has been skipped, so the step size (where 
-each component is initialized with value `step0`) is reduced (by a factor 
-`step_down`) in that direction. Otherwise the step size is increased 
-(by a factor `step_up`). The weighting of the average of previous gradients is 
-controlled by `dbd_theta`, which varies between 0 and 1.
-
-The same line search parameters that control the bold driver method can be used
-in DBD:
-
-```{r}
-res <- mize(rb0, rb_fg, max_iter = 10, method = "DBD",
-            step0 = "rasmussen", step_down = 0.5, step_up = 1.1,
-            dbd_weight = 0.5)
-```
-
-One extra parameter is available: `step_up_fn`. In the original DBD paper, 
-when the new step size is to be increased for a component, it is done by adding
-the value of `step_up` to the current value of the step size.
-[Janet and co-workers](https://doi.org/10.1109/IJCNN.1998.687205) noted that
-when the step sizes are small compared to the value of `step_up` this can lead
-to far too large a step size increase. Instead, they suggest multiplying by
-`step_up` so that a percentage increase in the step size is achieved. This is
-the default behavior in `mize`, but the t-SNE optimization method uses the 
-addition method. To get this behavior, set the `step_up_fun` value to `"+"`:
-
-```{r t-SNE style DBD parameters}
-res <- mize(rb0, rb_fg, max_iter = 10, method = "DBD",
-            step0 = "rasmussen", step_down = 0.8, step_up = 0.2,
-            step_up_fun = "+")
-```
-
-The DBD method can be used with momentum. If it is, then the `dbd_weight`
-parameter is ignored and instead of storing its own history of weighted 
-gradients, the update vector stored by the momentum routines is used instead.
-This is not mentioned in the original paper, but is used in the t-SNE
-implementation. 
-
-The DBD method is interesting in that it uses no function evaluations at all
-in its optimization. It doesn't even avail itself of the values of any of the
-gradient components, only their signs. However, as a result, it's really, really
-easy for DBD to diverge horribly and quickly. You will therefore want to ensure
-that you are checking the convergence. This is one of the methods where using
-the `grad_tol` or `ginf_tol` is a better idea than `abs_tol` and `rel_tol`,
-because it provides some check on divergence without calculating the function
-ever iteration only for convergence checking purposes.
-
-```{r}
-# DBD with rel_tol and abs_tol is explicitly set
-res <- mize(rb0, rb_fg, max_iter = 10, method = "DBD",
-             step0 = "rasmussen", step_down = 0.8, step_up = 0.2,
-             step_up_fun = "+", rel_tol = 1e-8, abs_tol = 1e-8)
-# 10 gradient calculations as expected
-res$ng
-# But 10 function calculations too, only used in the tolerance check
-res$nf
-
-# Turn off the rel_tol and abs_tol and let max_iter handle termination
-res <- mize(rb0, rb_fg, max_iter = 10, method = "DBD",
-            step0 = "rasmussen", step_down = 0.8, step_up = 0.2,
-            step_up_fun = "+", rel_tol = NULL, abs_tol = NULL,
-            grad_tol = 1e-5)
-# 11 gradient calculations
-res$ng
-# Only one function evalation needed (to calculate res$f)
-res$nf
-```
-
-Using `grad_tol` results in one extra gradient calculation (because it using
-gradients for the convergence check), but only one function evaluation. The
-more iterations this runs for, the better trade off this is, although in the
-event of a diverging optimization, the "best" `par` that is returned may not
-be as good as would have been returned if we were also using function 
-evaluations.
+If a momentum schedule is supplied with DBD, `dbd_weight` is ignored and the
+momentum update supplies the history. DBD's step calculation itself is
+gradient-based, but function-based convergence criteria still request objective
+evaluations, and `mize()` may need an objective observation to report a best
+result. Choose convergence controls according to the observations the run can
+afford rather than assuming DBD is function-free.
 
 ## Adaptive Restart
 
