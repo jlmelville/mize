@@ -19,6 +19,8 @@ navbar:
         - text: Package guides
         - text: Getting started
           href: articles/mize.html
+        - text: Choosing methods and tuning
+          href: articles/methods.html
         - text: Convergence
           href: articles/convergence.html
         - text: Stateful optimization
@@ -60,6 +62,7 @@ articles:
     navbar: Package guides
     contents:
       - mize
+      - methods
       - convergence
       - stateful
       - mmds

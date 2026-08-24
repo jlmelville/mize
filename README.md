@@ -97,6 +97,7 @@ The package website is <https://jlmelville.github.io/mize/>.
 Start with:
 
 - [Getting started](https://jlmelville.github.io/mize/articles/mize.html)
+- [Choosing methods and tuning](https://jlmelville.github.io/mize/articles/methods.html)
 - [Convergence](https://jlmelville.github.io/mize/articles/convergence.html)
 - [Stateful optimization](https://jlmelville.github.io/mize/articles/stateful.html)
 - [Metric MDS example](https://jlmelville.github.io/mize/articles/mmds.html)
