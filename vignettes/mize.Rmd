@@ -55,17 +55,29 @@ rb0 <- c(-1.2, 1)
 gradient_check <- check_mize_gradient(rb_fg, rb0)
 
 gradient_summary <- data.frame(
-  max_abs_error = gradient_check$max_abs_error,
-  max_rel_error = gradient_check$max_rel_error
+  "Maximum absolute error" = formatC(
+    gradient_check$max_abs_error,
+    format = "e",
+    digits = 2
+  ),
+  "Maximum relative error" = formatC(
+    gradient_check$max_rel_error,
+    format = "e",
+    digits = 2
+  ),
+  check.names = FALSE
 )
-gradient_summary
+knitr::kable(gradient_summary, align = c("r", "r"))
 ```
 
 `check_mize_gradient()` compares `gr` with a finite-difference approximation
 of `fn`. Large errors are a strong reason to fix the gradient before trusting
-an optimization. Small errors establish local agreement at the checked point.
-The full result also identifies the worst coordinate and, when an optional
-combined `fg` function is present, checks it against the separate callbacks.
+an optimization. At this point, the analytic and finite-difference gradients
+agree to approximately
+`r formatC(gradient_check$max_rel_error, format = "e", digits = 1)` in relative
+terms. The full result also identifies the worst coordinate and, when an
+optional combined `fg` function is present, checks it against the separate
+callbacks.
 
 ```{r assert-gradient, include=FALSE}
 stopifnot(
@@ -84,13 +96,20 @@ we can inspect the trajectory later:
 res <- mize(rb0, rb_fg, store_progress = TRUE)
 ```
 
-Start by reading the high-level outcome and the detailed termination record:
+Start with the fitted parameters, objective, and high-level outcome:
 
-```{r result-status}
-res[c("status", "converged", "message", "terminate")]
+```{r result-summary}
+res[c("par", "f", "status", "message")]
 ```
 
-`status` is the quickest classification:
+The Rosenbrock function has a known minimum at `c(1, 1)`, where its objective is
+zero. The returned parameters are close to that point, the objective is close
+to zero, and `status = "converged"` says that a configured numerical tolerance
+was reached.
+
+### Read the termination record
+
+`status` gives the quickest classification of any run:
 
 - `"converged"` means a configured tolerance was reached;
 - `"budget_exhausted"` means an iteration or callback limit was reached;
@@ -99,41 +118,12 @@ res[c("status", "converged", "message", "terminate")]
 - `"terminated"` covers another recognized stopping reason.
 
 `converged` is `TRUE` only for the tolerance-based class, while `message` is a
-human-readable summary. Use `terminate$what` when code needs the precise
-reason. Its companion `terminate$val` is the value associated with that
-stopping criterion. For example, after an absolute-function-tolerance exit it
-is the observed change between consecutive objective values. `res$f` (or,
-more explicitly, `res$best_f`) holds the objective value.
+human-readable summary. Use the detailed record when code needs the precise
+reason:
 
-### Best result and last iterate
-
-By default, `mize()` tracks the best evaluated point. `par` and `f` are the
-usual concise names for that result; `best_par` and `best_f` make the same
-choice explicit. `last_par` and `last_f` describe the final optimizer state
-before any earlier best point is restored. They can differ when a method's
-trajectory is nonmonotone.
-
-```{r result-points}
-result_points <- data.frame(
-  result = c("best", "last"),
-  x1 = c(res$best_par[1], res$last_par[1]),
-  x2 = c(res$best_par[2], res$last_par[2]),
-  objective = c(res$best_f, res$last_f)
-)
-result_points
-
-res[c("iter", "nf", "ng")]
+```{r result-termination}
+res[c("converged", "terminate")]
 ```
-
-Function values are conditional result components. At an exact hard callback
-cap, `mize()` will not exceed the budget merely to evaluate the returned point,
-so `f`, `best_f`, or `last_f` can be absent. Check with `is.null(res[["f"]])`
-before using a value in budget-sensitive code. The
-[Convergence](convergence.html) article explains the status classes, stopping
-criteria, hard budgets, and best-versus-last behavior in detail.
-
-The assertions below protect only the stable lessons of this example: the
-objective is finite and improved, and a tolerance exit has a coherent summary.
 
 ```{r assert-result, include=FALSE}
 initial_f <- rb_fg$fn(rb0)
@@ -150,39 +140,83 @@ stopifnot(
 )
 ```
 
-## Inspect progress without printing everything
+## Inspect progress
 
 With `store_progress = TRUE`, `res$progress` contains the observations and
-diagnostics available at stored iterations. Select the columns useful for the
-question at hand and inspect only the beginning and end:
+diagnostics available at stored iterations. Plotting the objective against the
+cumulative number of function evaluations gives a quick view of the run:
+
+```{r progress-plot, echo=FALSE, fig.width=6.5, fig.height=4.2, fig.cap="Rosenbrock objective values over cumulative function evaluations. The vertical axis uses a logarithmic scale.", fig.alt="Line plot of the Rosenbrock objective decreasing from about 24 to near zero as cumulative function evaluations increase. The objective axis is logarithmic."}
+progress_for_plot <- subset(res$progress, is.finite(f) & f > 0)
+
+plot(
+  progress_for_plot$nf,
+  progress_for_plot$f,
+  type = "o",
+  pch = 16,
+  cex = 0.6,
+  log = "y",
+  xlab = "Cumulative function evaluations",
+  ylab = "Objective"
+)
+
+stopifnot(
+  nrow(progress_for_plot) > 1,
+  tail(progress_for_plot$f, 1) < progress_for_plot$f[1]
+)
+```
+
+The stored objective falls by several orders of magnitude during this run.
+For exact values, select the fields useful for the question and inspect a few
+rows from the beginning and end:
 
 ```{r compact-progress}
-progress_columns <- intersect(
-  c("f", "step", "nf", "ng", "alpha", "ls_outcome"),
-  names(res$progress)
-)
-progress_view <- res$progress[, progress_columns, drop = FALSE]
+progress_view <- res$progress[, c("f", "step", "nf", "ng"), drop = FALSE]
+```
 
-head(progress_view, 3)
-tail(progress_view, 3)
+```{r progress-table, echo=FALSE}
+progress_rows <- unique(c(
+  seq_len(min(3L, nrow(progress_view))),
+  seq.int(max(1L, nrow(progress_view) - 2L), nrow(progress_view))
+))
+progress_excerpt <- progress_view[progress_rows, , drop = FALSE]
+
+progress_table <- data.frame(
+  Iteration = as.integer(rownames(progress_excerpt)),
+  Objective = trimws(formatC(progress_excerpt$f, format = "g", digits = 4)),
+  Step = trimws(formatC(progress_excerpt$step, format = "g", digits = 4)),
+  "Function calls" = progress_excerpt$nf,
+  "Gradient calls" = progress_excerpt$ng,
+  check.names = FALSE
+)
+knitr::kable(
+  progress_table,
+  align = rep("r", ncol(progress_table))
+)
 ```
 
 The initial row represents the starting point. Here `f` is the current
 objective, `step` is the size of the outer parameter update, and `nf` and `ng`
-are cumulative callback counts. Columns such as `alpha` and `ls_outcome` come
-from a line search. Other methods and settings add different columns, and a
-column is omitted when its owning calculation did not produce it. See the
-[Progress section of the `mize()` reference](../reference/mize.html#progress)
-for the complete dynamic schema.
+are cumulative callback counts. Other methods and settings can add fields such
+as `alpha` and `ls_outcome`; a field is omitted when its owning calculation did
+not produce it. See the [Progress section of the `mize()`
+reference](../reference/mize.html#progress) for the complete dynamic schema.
 
 For live console output, use `verbose = TRUE`; `log_every` controls how often
 progress is printed or stored. Keeping every iteration can produce a large
 result on a long run.
 
-## Choose a method
+> **Returned points and hard budgets.** `mize()` normally returns the best
+> evaluated point. For nonmonotone runs, `best_*` and `last_*` distinguish that
+> point from the final iterate. Under an exact callback budget, some objective
+> fields may be unavailable. The [Convergence](convergence.html) article
+> explains these cases, the status classes, and the stopping controls in
+> detail.
 
-The default is a sensible baseline. Problem size and available derivative
-information may suggest another starting point:
+## Where to go next
+
+The default L-BFGS method is a useful baseline for a smooth problem. Problem
+size and available derivative information may suggest another method:
 
 | Situation | Method to consider | Main trade-off |
 |---|---|---|
@@ -193,10 +227,7 @@ information may suggest another starting point:
 | Hessian or inverse Hessian is available | `NEWTON` | Requires an `hs` or `hi` callback in the function list |
 
 Treat these as starting points and benchmark promising methods on the problem
-at hand. The [Choosing methods and tuning](methods.html) guide covers the full
-method set, compatibility, line searches, step sizes, and momentum.
-
-## See also
+at hand. Continue with the guide that matches your next task:
 
 - [Convergence](convergence.html) explains tolerances, limits, failures, and
   result interpretation.
@@ -205,4 +236,4 @@ method set, compatibility, line searches, step sizes, and momentum.
 - [Metric MDS](mmds.html) is a complete case study using closures, a checked
   gradient, and combined callbacks.
 - [Choosing methods and tuning](methods.html) covers algorithm selection and
-  advanced controls.
+  advanced controls, including line searches, step sizes, and momentum.
