@@ -1,15 +1,3 @@
-capture_mize_messages <- function(expr) {
-  messages <- character()
-  withCallingHandlers(
-    force(expr),
-    message = function(cnd) {
-      messages <<- c(messages, trimws(conditionMessage(cnd)))
-      invokeRestart("muffleMessage")
-    }
-  )
-  messages
-}
-
 test_that("opt_report prints optional progress fields", {
   step_info <- list(
     iter = 3,

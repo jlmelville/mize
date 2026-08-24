@@ -10,6 +10,18 @@ expect_equal_abs <- function(object, expected, tolerance, info = NULL) {
   )
 }
 
+capture_mize_messages <- function(expr) {
+  messages <- character()
+  withCallingHandlers(
+    force(expr),
+    message = function(cnd) {
+      messages <<- c(messages, trimws(conditionMessage(cnd)))
+      invokeRestart("muffleMessage")
+    }
+  )
+  messages
+}
+
 # Step Size Expectation ---------------------------------------------------
 
 expect_step <- function(

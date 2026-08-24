@@ -1584,7 +1584,7 @@ test_that("a changed parameter does not inherit the starting gradient", {
 test_that("initial and periodic summaries share the global function budget", {
   witness <- make_budget_witness()
 
-  expect_message(
+  messages <- capture_mize_messages(
     result <- mize(
       1,
       witness$fg,
@@ -1601,10 +1601,13 @@ test_that("initial and periodic summaries share the global function budget", {
       step_tol = NULL,
       verbose = TRUE,
       store_progress = TRUE
-    ),
-    "iter"
+    )
   )
 
+  expect_length(messages, 3)
+  expect_match(messages[1], "iter 0")
+  expect_match(messages[2], "iter 1")
+  expect_match(messages[3], "iter 2")
   expect_identical(witness$counts(), c(fn = 3, gr = 2))
   expect_budget_counts(result, witness)
   expect_equal(result$terminate$what, "abs_tol")
@@ -1615,7 +1618,7 @@ test_that("initial and periodic summaries share the global function budget", {
 test_that("progress and final reporting do not spend an exhausted gradient budget", {
   witness <- make_budget_witness()
 
-  expect_message(
+  messages <- capture_mize_messages(
     result <- mize(
       1,
       witness$fg,
@@ -1633,10 +1636,12 @@ test_that("progress and final reporting do not spend an exhausted gradient budge
       step_tol = NULL,
       verbose = TRUE,
       store_progress = TRUE
-    ),
-    "iter 1"
+    )
   )
 
+  expect_length(messages, 2)
+  expect_match(messages[1], "iter 0")
+  expect_match(messages[2], "iter 1")
   expect_identical(witness$counts(), c(fn = 0, gr = 1))
   expect_budget_counts(result, witness)
   expect_equal(result$terminate$what, "max_gr")
