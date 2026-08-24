@@ -119,205 +119,182 @@ complete accepted values and control scopes.
 
 ### Nesterov Accelerated Gradient (`"NAG"`)
 
-The Nesterov Accelerated Gradient method consists of doing a steepest
-descent step immediately followed by a step that resembles momentum (see below),
-but with the previous gradient term replaced with the current gradient.
+NAG takes a steepest-descent step and then applies a momentum update. Its
+current objective need not decrease at every iteration, so inspect a trajectory
+and the returned best result rather than judging it from one final point.
 
-```{r NAG}
-res <- mize(rb0, rb_fg, max_iter = 10, method = "NAG")
-```
+`nest_q` controls the built-in NAG schedule. The endpoints are important:
+`nest_q = 0` is the non-strongly-convex limit and gives the largest momentum,
+whereas `nest_q = 1` gives zero momentum and reduces the parameter updates to
+steepest descent. The default is zero. A value between the endpoints is a
+tuning choice, not a known estimate unless the objective supplies the relevant
+strong-convexity information.
 
-Be aware that the convergence of NAG is not guaranteed to be monotone, that is
-you may (and probably will) see the function value increase between iterations.
-Getting the optimum convergence rates guaranteed by theory requires you to be
-able to estimate how strong the convexity of the function you are minimizing is.
+The helpers below keep every comparison honest. A table reports the returned
+best and last objectives, total callback counts, status, and termination
+reason. Its companion plot uses the same result objects and shows the
+current-iterate objective against cumulative function callbacks.
 
-To see this in action, let's increase the iteration count to 100 and plot the 
-progress of the function:
-
-```{r NAG with 100 steps}
-res <- mize(rb0, rb_fg, max_iter = 100, method = "NAG", store_progress = TRUE)
-plot(res$progress$nf, log(res$progress$f), type = "l")
-res$f
-```
-
-Yikes. If you let this optimization continue, it does eventually settle down,
-but it's a real test of patience. Clearly, in this case, there's probably
-a better estimate of the strong convexity parameter.
-
-You can control the strong convexity estimate with the `nest_q` parameter, which
-is inversely related to the amount of momentum that is applied. It should take 
-a value between `0` (you think your function is strongly convex) and `1` 
-(method becomes steepest descent). The default is zero, and this is in fact
-the assumed value in most applications and papers.
-
-Let's try turning down the momentum a little bit and repeat:
-
-```{r NAG with 100 steps and less aggressive momentum}
-resq <- mize(rb0, rb_fg, max_iter = 100, method = "NAG", nest_q = 0.001, 
-            store_progress = TRUE)
-plot(res$progress$nf, log(res$progress$f), type = "l",
-     ylim = range(log(res$progress$f), log(resq$progress$f)))
-lines(resq$progress$nf, log(resq$progress$f), col = "red")
-resq$f
-```
-
-The red line is the result with `nest_q = 0.001`. That's better. Unfortunately, 
-I have no advice on how you should go about estimating the right value for 
-`nest_q`. However, see the section on Adaptive Restart for ways to ameliorate 
-the problem.
-
-To get the theoretical guarantees about convergence, you actually need to follow
-a fairly strict formula about what the step size should be (it's related to the
-reciprocal of the Lipschitz constant of the function), and 
-[Sutskever](https://hdl.handle.net/1807/36012) notes that for non-convex 
-functions (with sparse stochastic gradient) the theoretically optimal momentum 
-and step size values are too aggressive. Alas, the best advice (at least for
-deep learning applications) given was "manual tuning".
-
-There are connections between NAG and classical momentum, and there is some
-evidence (at least in deep learning) that replacing classical momentum
-with the NAG method, but using the same momentum schedule (see below) can
-improve results. I have written more (much more) on the subject
-[here](https://jlmelville.github.io/mize/articles/nesterov.html).
-
-### Classical Momentum (`"MOM"`)
-
-Momentum methods use steepest descent and then add a fraction of the previous
-iteration's direction. Often the effectiveness of this approach is likened
-to inertia and has the effect of damping the oscillation in direction that 
-slows the progress of steepest descent with poorly-scaled functions.
-
-Originally popular for training neural networks, the momentum value is often
-a constant and set to a fairly high value, like `0.9`. You can set a constant
-momentum by setting the `mom_schedule` parameter:
-
-```{r Momentum}
-res <- mize(rb0, rb_fg, max_iter = 10, method = "MOM", mom_schedule = 0.9)
-```
-
-Momentum-based methods share the same issues as Nesterov Accelerated Gradient:
-convergence need not be monotone. The plot below demonstrates:
-
-```{r Momentum plot}
-res <- mize(rb0, rb_fg, max_iter = 100, method = "MOM", mom_schedule = 0.9,
-            store_progress = TRUE)
-plot(res$progress$nf, log(res$progress$f), type = "l")
-res$f
-```
-
-To be fair, there is little reason to believe that the sort of settings used
-for neural network training would be effective for minimizing the Rosenbrock
-function.
-
-Non-constant momentum schedules are also available, by passing a string to 
-`mom_schedule`. These include:
-
-* A `switch` function, that steps the momentum from one value (`mom_init`), 
-to another (`mom_final`) at a specified iteration (`mom_switch_iter`):
-```{r momentum with a switch function}
-# Switch from a momentum of 0.4 to 0.8 at iteration 5
-res <- mize(rb0, rb_fg, max_iter = 10, method = "MOM", mom_schedule = "switch",
-            mom_init = 0.4, mom_final = 0.8, mom_switch_iter = 5)
-```
-* A `ramp` function, the linearly increases the momentum from `mom_init`
-to `mom_final` over `max_iter` iterations:
-```{r momentum with a ramp function}
-res <- mize(rb0, rb_fg, max_iter = 10, method = "MOM", mom_schedule = "ramp",
-            mom_init = 0.4, mom_final = 0.8)
-```
-* The schedule used in NAG can be used here by asking for a `"nsconvex"` 
-schedule.
-```{r momentum with nesterov schedule}
-res <- mize(rb0, rb_fg, max_iter = 10, method = "MOM", mom_schedule = "nsconvex")
-```
-* The `nest_q` parameter can also be used here as it can be with NAG:
-```{r momentum with nesterov schedule and non-zero q}
-res <- mize(rb0, rb_fg, max_iter = 10, method = "MOM", mom_schedule = "nsconvex",
-            nest_q = 0.001)
-```
-
-If none of this meets your needs, you can pass a function that takes the current
-iteration number and the maximum number of iterations as input and returns a 
-scalar, which will be used as the momentum value, although the value will be 
-clamped between 0 and 1.
-
-For example, you could create a momentum schedule that randomly picks a value
-between 0 and 1:
-```{r momentum with random momentum}
-mom_fn <- function(iter, max_iter) {
-  runif(n = 1, min = 0, max = 1)
+```{r bounded-comparison-helpers, include = FALSE}
+summarize_runs <- function(results) {
+  rows <- lapply(seq_along(results), function(i) {
+    result <- results[[i]]
+    data.frame(
+      Run = names(results)[[i]],
+      `Best objective` = result$best_f,
+      `Last objective` = result$last_f,
+      `Function callbacks` = result$nf,
+      `Gradient callbacks` = result$ng,
+      Status = result$status,
+      Termination = result$terminate$what,
+      check.names = FALSE
+    )
+  })
+  summary <- do.call(rbind, rows)
+  rownames(summary) <- NULL
+  summary
 }
-res <- mize(rb0, rb_fg, max_iter = 10, method = "MOM", mom_schedule = mom_fn)
-```
-I'm not saying it's a *good* idea.
 
-### Simplified Nesterov Momentum
+assert_bounded_runs <- function(results) {
+  summary <- summarize_runs(results)
+  stopifnot(
+    all(summary$Status == "budget_exhausted"),
+    all(summary$Termination == "max_iter"),
+    all(is.finite(summary[["Best objective"]])),
+    all(is.finite(summary[["Last objective"]])),
+    all(summary[["Best objective"]] <= summary[["Last objective"]])
+  )
+}
 
-Interest in NAG in the neural network community (specifically deep learning),
-was sparked by papers from 
-[Sutskever and co-workers](https://proceedings.mlr.press/v28/sutskever13.html)
-and [Bengio and co-workers](https://arxiv.org/abs/1212.0901) who showed that 
-it could be related to classical momentum in a way that made it easy to 
-implement if you already had a working classical momentum implementation, and
-more importantly, that it seemed to give improvements over classical momentum.
+plot_current_objective <- function(results, title) {
+  traces <- lapply(results, function(result) {
+    keep <- is.finite(result$progress$nf) &
+      is.finite(result$progress$f) & result$progress$f > 0
+    result$progress[keep, c("nf", "f"), drop = FALSE]
+  })
+  stopifnot(all(vapply(traces, nrow, integer(1)) > 0L))
 
-As `mize` already offers NAG by setting `method = "NAG"`, being able to use it
-in a different form related to classical momentum may seem superfluous. But in 
-fact, the use of what's often called "NAG" in deep learning is slightly more
-general (and as far as I'm aware, has no convergence theory to go with it, so
-improvements are not guaranteed). It's probably better to refer to it as 
-(simplified) Nesterov momentum.
-
-At any rate, the key observation of Sutskever was that NAG could be considered
-a momentum method where the momentum stage occurs before the gradient descent
-stage. In this formulation, you can have whatever momentum schedule you like,
-and the hope is that the gradient descent stage can more easily correct if the 
-momentum schedule is too aggressive because it gets to "see" the result of the 
-momentum update and hence the descent occurs from a different location.
-
-To get Nesterov momentum, you need only add a `mom_type = "nesterov"` parameter
-to a momentum optimizer:
-
-```{r Simplified Nesterov momentum}
-res <- mize(rb0, rb_fg, max_iter = 10, method = "MOM", mom_schedule = 0.9, 
-            mom_type = "nesterov")
-```
-
-I know you're itching to see whether Nesterov momentum can calm down the bad 
-case of non-monotone convergence we got with a large classical momentum value
-on the Rosenbrock function:
-
-```{r Nesterov versus classical momentum}
-resc <- mize(rb0, rb_fg, max_iter = 100, method = "MOM", mom_schedule = 0.9, 
-             store_progress = TRUE)
-resn <- mize(rb0, rb_fg, max_iter = 100, method = "MOM", mom_schedule = 0.9, 
-             mom_type = "nesterov", 
-             store_progress = TRUE)
-# Best f found for Nesterov momentum
-resn$f
-# Best f found for classical momentum
-resc$f
-plot(resc$progress$nf, log(resc$progress$f), type = "l",
-     ylim = range(log(resc$progress$f), log(resn$progress$f)))
-lines(resn$progress$nf, log(resn$progress$f), col = "red")
+  colors <- rep(
+    c("#000000", "#0072B2", "#D55E00", "#009E73", "#CC79A7"),
+    length.out = length(traces)
+  )
+  line_types <- rep(c(1, 2, 3, 4, 5), length.out = length(traces))
+  plot(
+    NA_real_,
+    NA_real_,
+    xlim = range(unlist(lapply(traces, `[[`, "nf"))),
+    ylim = range(unlist(lapply(traces, `[[`, "f"))),
+    log = "y",
+    xlab = "Cumulative function calls",
+    ylab = "Current objective (log scale)",
+    main = title
+  )
+  grid()
+  for (i in seq_along(traces)) {
+    lines(traces[[i]]$nf, traces[[i]]$f, col = colors[[i]], lty = line_types[[i]])
+  }
+  legend(
+    "topright",
+    legend = names(results),
+    col = colors,
+    lty = line_types,
+    bty = "n",
+    cex = 0.75,
+    ncol = if (length(results) > 3L) 2 else 1
+  )
+}
 ```
 
-The Nesterov momentum is in red. And yes, it's a lot smoother. On the other 
-hand, you can see that the cost function increases and then levels off.
-Clearly, some tweaking of the correct momentum schedule to use is needed.
-
-Sutskever also came up with a simplified approximation to the momentum schedule
-used in NAG. It doesn't have a big effect on the run time, only applies for
-the default `nest_q` of 0, and at early iterations the momentum is much larger.
-To use it, set the `nest_convex_approx = TRUE` when using the 
-`mom_schedule = "nesterov"`:
-
-```{r Nesterov momentum with convex approximation}
-res <- mize(rb0, rb_fg, max_iter = 10, method = "MOM", 
-            mom_schedule = "nsconvex", nest_convex_approx = TRUE, 
-            mom_type = "nesterov")
+```{r nag-q-comparison, fig.width = 7, fig.height = 4.5}
+nag_runs <- list(
+  `q = 0` = mize(
+    rb0, rb_fg, method = "NAG", nest_q = 0,
+    max_iter = 100, store_progress = TRUE
+  ),
+  `q = 0.001` = mize(
+    rb0, rb_fg, method = "NAG", nest_q = 0.001,
+    max_iter = 100, store_progress = TRUE
+  )
+)
+assert_bounded_runs(nag_runs)
+knitr::kable(summarize_runs(nag_runs), digits = 6)
+plot_current_objective(nag_runs, "NAG and nest_q")
 ```
+
+```{r nag-order-check, include = FALSE}
+stopifnot(
+  nag_runs[["q = 0.001"]]$last_f < nag_runs[["q = 0"]]$last_f,
+  nag_runs[["q = 0"]]$best_f < nag_runs[["q = 0.001"]]$best_f
+)
+```
+
+Both rows stop at `max_iter`; they demonstrate progress within a fixed outer
+iteration budget, not convergence. Here `q = 0.001` has the lower last
+objective, while `q = 0` has the lower returned best objective. The plot shows
+current iterates rather than a best-so-far curve. The conflicting order is the
+lesson: define the metric before calling one bounded trajectory “better.”
+
+The theoretical step size and momentum guarantees require assumptions and
+problem constants that this Rosenbrock example does not supply. For derivations
+and historical context, see the [Nesterov background note](nesterov.html).
+
+### Classical Momentum (`"Momentum"`)
+
+Classical momentum adds a fraction of the previous update to a
+steepest-descent update. `mom_schedule` defines that fraction:
+
+| Value | Schedule |
+|---|---|
+| A number such as `0.9` | Constant momentum |
+| `"switch"` | Change from `mom_init` to `mom_final` at `mom_switch_iter` |
+| `"ramp"` | Increase linearly from `mom_init` to `mom_final` |
+| `"nsconvex"` | Use the NAG schedule, controlled by the `nest_*` arguments |
+| A function | Compute a scalar from the iteration, optionally also `max_iter` |
+
+A custom schedule can be deterministic when randomness adds no lesson:
+
+```{r deterministic-momentum-schedule}
+cosine_schedule <- function(iter, max_iter) {
+  phase <- min(iter / max_iter, 1)
+  0.4 + 0.2 * (1 - cos(pi * phase))
+}
+custom_momentum <- mize(
+  rb0, rb_fg, method = "Momentum", mom_schedule = cosine_schedule,
+  max_iter = 10
+)
+```
+
+The schedule is clamped to the supported momentum range. Built-in schedules
+are preferable when they express the intended experiment directly.
+
+### Classical and Nesterov-style momentum
+
+With `method = "Momentum"`, `mom_type = "classical"` applies momentum after
+the gradient step; `mom_type = "nesterov"` applies it before that step. The
+schedule remains an independent choice. The next comparison holds the
+schedule, start, objective, and iteration budget fixed.
+
+```{r momentum-type-comparison, fig.width = 7, fig.height = 4.5}
+momentum_runs <- list(
+  Classical = mize(
+    rb0, rb_fg, method = "Momentum", mom_schedule = 0.9,
+    max_iter = 100, store_progress = TRUE
+  ),
+  Nesterov = mize(
+    rb0, rb_fg, method = "Momentum", mom_schedule = 0.9,
+    mom_type = "nesterov", max_iter = 100, store_progress = TRUE
+  )
+)
+assert_bounded_runs(momentum_runs)
+knitr::kable(summarize_runs(momentum_runs), digits = 6)
+plot_current_objective(momentum_runs, "Momentum update order")
+```
+
+These runs also exhaust `max_iter`. Their table records what happened under
+this configuration; it does not establish a general ranking of the two update
+orders. Use `mom_schedule = "nsconvex"` to combine either order with the NAG
+schedule. With that schedule, `nest_convex_approx = TRUE` selects Sutskever's
+approximation for the `nest_q = 0` case and causes `nest_q` to be ignored.
 
 ## Line searches and step sizes
 
@@ -554,80 +531,85 @@ evaluations, and `mize()` may need an objective observation to report a best
 result. Choose convergence controls according to the observations the run can
 afford rather than assuming DBD is function-free.
 
-## Adaptive Restart
+## Adaptive restart
 
-[O'Donoghue and Candes](https://arxiv.org/abs/1204.3982) described a restart
-scheme for NAG as a cure for the non-monotonic convergence. They suggest using
-either a function-based check (did the function value after the gradient descent
-stage decrease between iterations?) or a gradient-based check (is the momentum
-direction a descent direction?). If the check fails, then the momentum is 
-restarted: the previous update vector is discarded and the momentum set back to
-zero.
+[O'Donoghue and Candes](https://arxiv.org/abs/1204.3982) proposed restarting
+accelerated schemes when momentum appears unhelpful. A restart discards the
+stored momentum update and resets iteration-dependent momentum schedules. In
+`mize`, it can be applied to any optimizer configuration that uses momentum.
 
-`mize` allows these checks to be used to restart any momentum scheme, not just 
-NAG. The only change is that the function-based check is carried out at the
-beginning and end of each iteration, rather than at the end of the gradient
-descent stage. Restarting is applied using the `restart` argument, supplying
-either `fn` or `gr` for function-based and gradient-based restarting,
-respectively:
+| `restart` | Trigger |
+|---|---|
+| `"fn"` | The objective does not decrease on consecutive iterations |
+| `"gr"` | The proposed update is not a descent direction |
+| `"speed"` | The update vector does not grow in Euclidean norm |
 
-```{r momentum with restart}
-resc <- mize(rb0, rb_fg, max_iter = 100, method = "MOM", mom_schedule = 0.9, 
-             store_progress = TRUE)
-resf <- mize(rb0, rb_fg, max_iter = 100, method = "MOM", mom_schedule = 0.9, 
-             store_progress = TRUE, restart = "fn")
-resg <- mize(rb0, rb_fg, max_iter = 100, method = "MOM", mom_schedule = 0.9, 
-             store_progress = TRUE, restart = "gr")
-plot(resc$progress$nf, log(resc$progress$f), type = "l", 
-     ylim = range(log(resc$progress$f), log(resf$progress$f),
-                  log(resg$progress$f)))
-lines(resf$progress$nf, log(resf$progress$f), col = "red")
-lines(resg$progress$nf, log(resg$progress$f), col = "blue")
+Gradient restart is unavailable with `mom_type = "nesterov"` because its
+gradient is evaluated at a different location. `restart_wait` is the number of
+iterations to wait after a restart before another restart is allowed; its
+default is 10. It is a policy control, not a convergence criterion.
+
+The following comparison uses classical momentum so these restart
+configurations are valid. It holds the start, schedule, and 100-iteration
+budget fixed, then varies restart type and wait. The no-restart result is
+reused from the preceding comparison.
+
+```{r adaptive-restart-comparison, fig.width = 7, fig.height = 4.5}
+restart_runs <- list(
+  None = momentum_runs[["Classical"]],
+  `fn, wait = 10` = mize(
+    rb0, rb_fg, method = "Momentum", mom_schedule = 0.9,
+    restart = "fn", restart_wait = 10,
+    max_iter = 100, store_progress = TRUE
+  ),
+  `gr, wait = 10` = mize(
+    rb0, rb_fg, method = "Momentum", mom_schedule = 0.9,
+    restart = "gr", restart_wait = 10,
+    max_iter = 100, store_progress = TRUE
+  ),
+  `fn, wait = 1` = mize(
+    rb0, rb_fg, method = "Momentum", mom_schedule = 0.9,
+    restart = "fn", restart_wait = 1,
+    max_iter = 100, store_progress = TRUE
+  ),
+  `gr, wait = 1` = mize(
+    rb0, rb_fg, method = "Momentum", mom_schedule = 0.9,
+    restart = "gr", restart_wait = 1,
+    max_iter = 100, store_progress = TRUE
+  )
+)
+assert_bounded_runs(restart_runs)
+knitr::kable(summarize_runs(restart_runs), digits = 6)
+plot_current_objective(restart_runs, "Adaptive restart")
 ```
 
-Adaptive restart (red and blue lines) certainly seems to help here, although
-with either gradient or function-based restart seeming equally effective.
-
-The only downside to adaptive restart is that you may want to choose the type
-of restart to not require more overhead of function and gradient calls than
-necessary. In practice, the gradient-based restart is economical because in
-most cases, the gradient calculated at the end of the iteration can be re-used
-for the gradient descent at the start of the next iteration. The one exception
-here is when using nesterov momentum, where the gradients aren't calculated
-in the right location to be of use. In that case, you are better off using
-function-based restarting, although if you aren't checking convergence
-with a function calculation or using a line search method that makes use of
-the function at the starting point, you will obviously incur the overhead
-of the function call. This is one reason to favour using the NAG method directly
-rather than emulating it with Nesterov momentum.
-
-There is also a `restart_wait` parameter. This determines how many iterations 
-to wait between attempted restarts. By default, using the value from the paper
-of Su and co-workers, we wait 10 iterations before allowing another restart.
-Making the wait time too short may lead to premature convergence:
-
-```{r momentum with restart and wait time}
-resfw <- mize(rb0, rb_fg, max_iter = 100, method = "MOM", mom_schedule = 0.9, 
-             store_progress = TRUE, restart = "fn", restart_wait = 1)
-resgw <- mize(rb0, rb_fg, max_iter = 100, method = "MOM", mom_schedule = 0.9, 
-             store_progress = TRUE, restart = "gr", restart_wait = 1)
-plot(resc$progress$nf, log(resc$progress$f), type = "l", 
-     ylim = range(log(resc$progress$f), log(resf$progress$f),
-                  log(resg$progress$f), log(resfw$progress$f),
-                  log(resgw$progress$f)))
-lines(resf$progress$nf, log(resf$progress$f), col = "red")
-lines(resfw$progress$nf, log(resfw$progress$f), col = "blue")
-lines(resgw$progress$nf, log(resgw$progress$f), col = "orange")
+```{r restart-order-check, include = FALSE}
+fn_wait_10 <- restart_runs[["fn, wait = 10"]]
+gr_wait_10 <- restart_runs[["gr, wait = 10"]]
+fn_wait_1 <- restart_runs[["fn, wait = 1"]]
+gr_wait_1 <- restart_runs[["gr, wait = 1"]]
+stopifnot(
+  fn_wait_1$best_f < fn_wait_10$best_f,
+  fn_wait_1$last_f < fn_wait_10$last_f,
+  gr_wait_1$best_f < gr_wait_10$best_f,
+  gr_wait_1$last_f < gr_wait_10$last_f,
+  gr_wait_1$best_f < fn_wait_1$best_f,
+  gr_wait_1$last_f < fn_wait_1$last_f,
+  gr_wait_1$nf > fn_wait_1$nf,
+  gr_wait_1$ng > fn_wait_1$ng
+)
 ```
 
-Here, reducing the wait time to 1 had a great effect on gradient restarting
-(the orange line), it substantially outperforms the other methods.
-On the other hand, function restarting more often (the blue line) led to worse 
-performance.
+Every row again reports `budget_exhausted` / `max_iter`, so none is evidence of
+convergence. In this bounded example both wait-1 rows reach smaller best
+and last objectives than their wait-10 counterparts. The gradient/wait-1 row
+has slightly smaller objective values than the function/wait-1 row, but also
+uses more function and gradient callbacks. Those facts describe this table;
+they do not make one restart policy universally preferable.
 
-There is also a `"speed"` restart type, related to a restart strategy introduced
-by [Su and co-workers](https://papers.nips.cc/paper/5322-a-differential-equation-for-modeling-nesterovs-accelerated-gradient-method-theory-and-insights),
-which restarts if the update vector doesn't increase in length (as measured by
-Euclidean 2-norm) between iterations. This seems less performant in their
-experiments than gradient-based restarting, but might provide more stability
-under some circumstances.
+Function-based validation can add an objective callback when the needed value
+is not cached; gradient validation likewise depends on where gradients are
+already available. Compare both callback columns rather than assuming one
+trigger is free. A shorter `restart_wait` permits more frequent restarts and
+can change both progress and callback demand, so tune it under the budget and
+metric that matter for the application.
