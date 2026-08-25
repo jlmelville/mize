@@ -648,6 +648,45 @@ test_that("inverse Hessian consumers accept vector and matrix forms", {
   }
 })
 
+test_that("matrix inverse Hessians preserve vector parameters across steps", {
+  for (method in c("NEWTON", "L-BFGS")) {
+    seen <- list()
+    record_par <- function(x) {
+      expect_null(dim(x), info = method)
+      seen[[length(seen) + 1L]] <<- x
+      x
+    }
+    fg <- list(
+      fn = function(x) sum(record_par(x)^2) / 2,
+      gr = function(x) record_par(x),
+      hi = function(x) {
+        record_par(x)
+        diag(length(x))
+      }
+    )
+
+    result <- mize(
+      c(2, -1),
+      fg,
+      method = method,
+      line_search = "constant",
+      step0 = 0.25,
+      max_iter = 3,
+      check_conv_every = NULL,
+      abs_tol = NULL,
+      rel_tol = NULL,
+      grad_tol = NULL,
+      ginf_tol = NULL,
+      step_tol = NULL
+    )
+
+    expect_gt(length(seen), 3L)
+    expect_true(all(vapply(seen, function(x) is.null(dim(x)), logical(1))))
+    expect_null(dim(result$par), info = method)
+    expect_equal(result$par, c(0.84375, -0.421875), info = method)
+  }
+})
+
 test_that("NEWTON rejects malformed inverse Hessians at first consumption", {
   malformed <- list(
     wrong_type = "invalid",

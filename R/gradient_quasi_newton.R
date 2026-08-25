@@ -342,7 +342,7 @@ lbfgs_guess <- function(
     hm <- validate_inverse_hessian(fg$hi(par), length(qm))
     if (is.matrix(hm)) {
       # Full matrix: not necessarily a great idea for memory usage
-      pm <- hm %*% qm
+      pm <- as.vector(hm %*% qm)
     } else {
       # It's a vector representing a diagonal matrix
       pm <- hm * qm

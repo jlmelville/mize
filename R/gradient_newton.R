@@ -49,7 +49,7 @@ newton_direction <- function(try_safe_chol = FALSE) {
         # H, an approximation to (or exact) inverse of the Hessian
         hm <- validate_inverse_hessian(fg$hi(par), length(par))
         if (methods::is(hm, "matrix")) {
-          pm <- -hm %*% gm
+          pm <- as.vector(-hm %*% gm)
           direction_reason <- "inverse_hessian_multiply"
         } else {
           # vector: assume it's a diagonal approximation of H
