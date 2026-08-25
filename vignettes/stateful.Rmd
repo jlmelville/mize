@@ -100,10 +100,12 @@ either form, always use the updated `opt` and `par` returned by each step.
 
 ## Optional observations
 
-`mize_step()` always returns `opt`, `par`, `nf`, and `ng`. It returns
-`f` or `g` only when that value was calculated at the returned parameters.
-For example, constant-step steepest descent needs a gradient at the old
-parameters but does not observe either value at the new parameters:
+`mize_step()` always returns `opt`, `par`, `nf`, `ng`, `nh`, and `nhi`. The
+last four fields are optimizer-lifetime callback counts; `nh` and `nhi` remain
+zero when no Hessian or inverse-Hessian callback has been accepted. The step
+returns `f` or `g` only when that value was calculated at the returned
+parameters. For example, constant-step steepest descent needs a gradient at the
+old parameters but does not observe either value at the new parameters:
 
 ```{r optional-observation-witness}
 observation_opt <- make_mize(
@@ -126,7 +128,9 @@ names(observation_step)
 ```{r assert-optional-observation-witness, include = FALSE}
 stopifnot(
   is.null(observation_step$f),
-  is.null(observation_step$g)
+  is.null(observation_step$g),
+  identical(observation_step$nh, 0),
+  identical(observation_step$nhi, 0)
 )
 ```
 
@@ -234,7 +238,7 @@ summary_schema <- data.frame(
     "Momentum"
   ),
   Examples = c(
-    "`iter`, `nf`, `ng`, `step`",
+    "`iter`, `nf`, `ng`, `nh`, `nhi`, `step`",
     "`f`, `g2n`, `ginfn`",
     "`alpha`, `ls_reason`, `ls_outcome`, `ls_nf`, `ls_ng`",
     "`direction_reason`",
@@ -286,6 +290,8 @@ progress_record <- function(step_info) {
     f = as.numeric(step_info$f),
     nf = as.integer(step_info$nf),
     ng = as.integer(step_info$ng),
+    nh = as.integer(step_info$nh),
+    nhi = as.integer(step_info$nhi),
     step = as.numeric(step_info$step),
     alpha = numeric_or_na(step_info$alpha),
     ls_outcome = character_or_na(step_info$ls_outcome)
@@ -299,6 +305,8 @@ bind_progress <- function(records) {
       f = double(),
       nf = integer(),
       ng = integer(),
+      nh = integer(),
+      nhi = integer(),
       step = double(),
       alpha = double(),
       ls_outcome = character()
@@ -625,7 +633,10 @@ builds is not required.
 
 Calling `mize_init()` on an existing optimizer deliberately starts a new run.
 It resets the iteration counter, terminal fields, caches, and transient
-algorithm state. Function and gradient counts remain optimizer-lifetime totals:
+algorithm state. Function, gradient, Hessian, and inverse-Hessian counts remain
+optimizer-lifetime totals. Initialization may extend those totals when the
+method itself requests curvature; this BFGS example supplies no `hi`, so its
+counts are unchanged:
 
 ```{r reinitialization-lifecycle}
 counts_before <- uninterrupted$opt$counts
