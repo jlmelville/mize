@@ -189,10 +189,18 @@ thresholds depend on scaling</td>
 </tr>
 </tbody>
 </table>
-<p>For a general smooth problem, use a gradient criterion when its scale
-is meaningful, retain callback or iteration budgets as safety limits,
-and treat function-change or step tolerances as evidence of stagnation
-without assuming that they establish stationarity.</p>
+<p>Out of the box, <code><a href="../reference/mize.html">mize()</a></code> checks for small absolute and
+relative changes in the objective and for a small parameter update; all
+three tolerances use <code>sqrt(.Machine$double.eps)</code>.
+Gradient-based stopping is disabled. A run is capped at 100 outer
+iterations, while <code>max_fn</code>, <code>max_gr</code>, and
+<code>max_fg</code> do not impose finite run-wide limits unless you set
+them. Those run-wide callback limits are separate from the controls
+applied within an individual line search.</p>
+<p>For a general smooth problem, enable a gradient criterion when its
+scale is meaningful, retain callback or iteration limits as safety
+bounds, and treat objective-change or step tolerances as evidence of
+stagnation rather than proof of stationarity.</p>
 <p>We’ll use the two-dimensional Rosenbrock function, which has a
 minimum at <code>c(1, 1)</code> where the function equals zero.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">

@@ -63,15 +63,17 @@ transient method state. Shorter batches provide more interruptions while
 throwing away more of the information that makes a stateful method
 effective.
 
-## The three lifecycle operations
+## The stateful lifecycle
 
-The stateful API has three main operations:
+The stateful API separates five responsibilities:
 
 | Operation | Role |
 |:---|:---|
 | [`make_mize()`](https://jlmelville.github.io/mize/reference/make_mize.md) | Configure an optimizer; optionally initialize it when `par` and `fg` are available. |
 | [`mize_init()`](https://jlmelville.github.io/mize/reference/mize_init.md) | Bind an optimizer to a starting point and callbacks, and initialize a new run. |
-| [`mize_step()`](https://jlmelville.github.io/mize/reference/mize_step.md) | Advance one iteration and return updated `opt` and `par`. |
+| [`mize_step()`](https://jlmelville.github.io/mize/reference/mize_step.md) | Advance one iteration; it may terminate on a hard callback budget or an immediate method failure. |
+| [`mize_step_summary()`](https://jlmelville.github.io/mize/reference/mize_step_summary.md) | Request current observations and diagnostics; it may terminate on a hard callback budget. |
+| [`check_mize_convergence()`](https://jlmelville.github.io/mize/reference/check_mize_convergence.md) | Apply ordinary tolerances and `max_iter`, and classify non-finite summary observations or a completed line search with no usable step. |
 
 Configuration and initialization can be separate:
 
@@ -94,7 +96,13 @@ opt <- mize_init(
 Or pass `par` and `fg` to
 [`make_mize()`](https://jlmelville.github.io/mize/reference/make_mize.md)
 to initialize immediately. In either form, always use the updated `opt`
-and `par` returned by each step.
+and `par` returned by each step. During iteration, retain the optimizer
+returned by both
+[`mize_step()`](https://jlmelville.github.io/mize/reference/mize_step.md)
+and
+[`mize_step_summary()`](https://jlmelville.github.io/mize/reference/mize_step_summary.md),
+then pass the summary to
+[`check_mize_convergence()`](https://jlmelville.github.io/mize/reference/check_mize_convergence.md).
 
 ## Optional observations
 
@@ -132,18 +140,14 @@ observation is normal and leaves the step status unchanged.
 
 ## A minimal terminal-aware loop
 
-> **Important.**
+> **Important.** Retain the optimizer returned by both
 > [`mize_step()`](https://jlmelville.github.io/mize/reference/mize_step.md)
-> advances the optimizer and may stop on a hard callback budget or an
-> immediate method failure. A requested observation from
-> [`mize_step_summary()`](https://jlmelville.github.io/mize/reference/mize_step_summary.md)
-> can also stop at a hard callback budget. Ordinary numerical
-> tolerances, `max_iter`, non-finite summary observations, and a
-> completed line search that selected no usable step are handled by
-> [`check_mize_convergence()`](https://jlmelville.github.io/mize/reference/check_mize_convergence.md).
-> A caller-owned loop must retain the optimizer returned by each
-> operation, stop if either of the first two operations terminates it,
-> and otherwise call the convergence check after every step.
+> and
+> [`mize_step_summary()`](https://jlmelville.github.io/mize/reference/mize_step_summary.md),
+> stop if either operation terminates it, and otherwise call
+> [`check_mize_convergence()`](https://jlmelville.github.io/mize/reference/check_mize_convergence.md)
+> after every completed step. This order keeps hard callback budgets and
+> ordinary convergence checks consistent.
 
 The run below has disabled every ordinary numerical tolerance and
 demonstrates only `max_iter`. Its summary therefore sets
@@ -156,6 +160,17 @@ request the corresponding observations.
 ``` r
 
 par <- rb0
+opt <- make_mize(
+  method = "BFGS",
+  par = par,
+  fg = rb_fg,
+  max_iter = 3,
+  abs_tol = NULL,
+  rel_tol = NULL,
+  grad_tol = NULL,
+  ginf_tol = NULL,
+  step_tol = NULL
+)
 
 while (!opt$is_terminated) {
   par_old <- par

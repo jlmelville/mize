@@ -66,8 +66,12 @@ complete accepted values and control scopes.
 ## Tune the line search when
 
 Most methods choose a direction and then use `line_search` to choose how
-far to move. Inspect the diagnostic associated with the symptom before
-changing a control.
+far to move. With `store_progress = TRUE`, inspect the diagnostics
+produced by the search in `res$progress`. In a stateful loop, the
+corresponding diagnostics are returned by
+[`mize_step_summary()`](https://jlmelville.github.io/mize/reference/mize_step_summary.md).
+Start with the field associated with the symptom before changing a
+control.
 
 | Symptom | First evidence to inspect | Possible next action |
 |----|----|----|
@@ -285,15 +289,15 @@ entire run. See the [line-search
 reference](https://jlmelville.github.io/mize/reference/mize.html#line-search)
 for specialized safeguards and defaults.
 
-## Specialized methods
+## Momentum and adaptive learning-rate methods
 
-The comparisons below use a fixed outer-iteration budget. `abs_tol = 0`
-asks the high-level loop to observe the objective at every iteration so
-the tables and plots describe the accepted trajectory; the other
-ordinary tolerances are disabled. They illustrate one problem and do not
-establish convergence or a generally superior configuration. Each table
-reports both best and last objectives because momentum trajectories may
-be nonmonotone.
+The trajectory comparisons below use a fixed outer-iteration budget.
+`abs_tol = 0` asks the high-level loop to observe the objective at every
+iteration so the tables and plots describe the accepted trajectory; the
+other ordinary tolerances are disabled. They illustrate one problem and
+do not establish convergence or a generally superior configuration.
+Comparison tables report both best and last objectives because momentum
+trajectories may be nonmonotone.
 
 ### Nesterov Accelerated Gradient (`"NAG"`)
 

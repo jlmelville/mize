@@ -135,9 +135,9 @@ throwing away more of the information that makes a stateful method
 effective.</p>
 </div>
 <div class="section level2">
-<h2 id="the-three-lifecycle-operations">The three lifecycle operations<a class="anchor" aria-label="anchor" href="#the-three-lifecycle-operations"></a>
+<h2 id="the-stateful-lifecycle">The stateful lifecycle<a class="anchor" aria-label="anchor" href="#the-stateful-lifecycle"></a>
 </h2>
-<p>The stateful API has three main operations:</p>
+<p>The stateful API separates five responsibilities:</p>
 <table class="table">
 <colgroup>
 <col width="50%">
@@ -160,8 +160,19 @@ and initialize a new run.</td>
 </tr>
 <tr class="odd">
 <td align="left"><code><a href="../reference/mize_step.html">mize_step()</a></code></td>
-<td align="left">Advance one iteration and return updated
-<code>opt</code> and <code>par</code>.</td>
+<td align="left">Advance one iteration; it may terminate on a hard
+callback budget or an immediate method failure.</td>
+</tr>
+<tr class="even">
+<td align="left"><code><a href="../reference/mize_step_summary.html">mize_step_summary()</a></code></td>
+<td align="left">Request current observations and diagnostics; it may
+terminate on a hard callback budget.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code><a href="../reference/check_mize_convergence.html">check_mize_convergence()</a></code></td>
+<td align="left">Apply ordinary tolerances and <code>max_iter</code>,
+and classify non-finite summary observations or a completed line search
+with no usable step.</td>
 </tr>
 </tbody>
 </table>
@@ -182,7 +193,9 @@ and initialize a new run.</td>
 <p>Or pass <code>par</code> and <code>fg</code> to
 <code><a href="../reference/make_mize.html">make_mize()</a></code> to initialize immediately. In either form,
 always use the updated <code>opt</code> and <code>par</code> returned by
-each step.</p>
+each step. During iteration, retain the optimizer returned by both
+<code><a href="../reference/mize_step.html">mize_step()</a></code> and <code><a href="../reference/mize_step_summary.html">mize_step_summary()</a></code>, then pass
+the summary to <code><a href="../reference/check_mize_convergence.html">check_mize_convergence()</a></code>.</p>
 </div>
 <div class="section level2">
 <h2 id="optional-observations">Optional observations<a class="anchor" aria-label="anchor" href="#optional-observations"></a>
@@ -221,16 +234,12 @@ unchanged.</p>
 <h2 id="a-minimal-terminal-aware-loop">A minimal terminal-aware loop<a class="anchor" aria-label="anchor" href="#a-minimal-terminal-aware-loop"></a>
 </h2>
 <blockquote>
-<p><strong>Important.</strong> <code><a href="../reference/mize_step.html">mize_step()</a></code> advances the
-optimizer and may stop on a hard callback budget or an immediate method
-failure. A requested observation from <code><a href="../reference/mize_step_summary.html">mize_step_summary()</a></code>
-can also stop at a hard callback budget. Ordinary numerical tolerances,
-<code>max_iter</code>, non-finite summary observations, and a completed
-line search that selected no usable step are handled by
-<code><a href="../reference/check_mize_convergence.html">check_mize_convergence()</a></code>. A caller-owned loop must retain
-the optimizer returned by each operation, stop if either of the first
-two operations terminates it, and otherwise call the convergence check
-after every step.</p>
+<p><strong>Important.</strong> Retain the optimizer returned by both
+<code><a href="../reference/mize_step.html">mize_step()</a></code> and <code><a href="../reference/mize_step_summary.html">mize_step_summary()</a></code>, stop if
+either operation terminates it, and otherwise call
+<code><a href="../reference/check_mize_convergence.html">check_mize_convergence()</a></code> after every completed step. This
+order keeps hard callback budgets and ordinary convergence checks
+consistent.</p>
 </blockquote>
 <p>The run below has disabled every ordinary numerical tolerance and
 demonstrates only <code>max_iter</code>. Its summary therefore sets
@@ -241,6 +250,17 @@ that enables function- or gradient-based tolerances should let
 observations.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">par</span> <span class="op">&lt;-</span> <span class="va">rb0</span></span>
+<span><span class="va">opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/make_mize.html">make_mize</a></span><span class="op">(</span></span>
+<span>  method <span class="op">=</span> <span class="st">"BFGS"</span>,</span>
+<span>  par <span class="op">=</span> <span class="va">par</span>,</span>
+<span>  fg <span class="op">=</span> <span class="va">rb_fg</span>,</span>
+<span>  max_iter <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  abs_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  rel_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  grad_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  ginf_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  step_tol <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span>
 <span></span>
 <span><span class="kw">while</span> <span class="op">(</span><span class="op">!</span><span class="va">opt</span><span class="op">$</span><span class="va">is_terminated</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">par_old</span> <span class="op">&lt;-</span> <span class="va">par</span></span>

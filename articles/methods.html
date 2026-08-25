@@ -202,8 +202,11 @@ accepted values and control scopes.</p>
 <h2 id="tune-the-line-search-when">Tune the line search when<a class="anchor" aria-label="anchor" href="#tune-the-line-search-when"></a>
 </h2>
 <p>Most methods choose a direction and then use <code>line_search</code>
-to choose how far to move. Inspect the diagnostic associated with the
-symptom before changing a control.</p>
+to choose how far to move. With <code>store_progress = TRUE</code>,
+inspect the diagnostics produced by the search in
+<code>res$progress</code>. In a stateful loop, the corresponding
+diagnostics are returned by <code><a href="../reference/mize_step_summary.html">mize_step_summary()</a></code>. Start with
+the field associated with the symptom before changing a control.</p>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -577,15 +580,15 @@ specialized safeguards and defaults.</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="specialized-methods">Specialized methods<a class="anchor" aria-label="anchor" href="#specialized-methods"></a>
+<h2 id="momentum-and-adaptive-learning-rate-methods">Momentum and adaptive learning-rate methods<a class="anchor" aria-label="anchor" href="#momentum-and-adaptive-learning-rate-methods"></a>
 </h2>
-<p>The comparisons below use a fixed outer-iteration budget.
+<p>The trajectory comparisons below use a fixed outer-iteration budget.
 <code>abs_tol = 0</code> asks the high-level loop to observe the
 objective at every iteration so the tables and plots describe the
 accepted trajectory; the other ordinary tolerances are disabled. They
 illustrate one problem and do not establish convergence or a generally
-superior configuration. Each table reports both best and last objectives
-because momentum trajectories may be nonmonotone.</p>
+superior configuration. Comparison tables report both best and last
+objectives because momentum trajectories may be nonmonotone.</p>
 <div class="section level3">
 <h3 id="nesterov-accelerated-gradient-nag">Nesterov Accelerated Gradient (<code>"NAG"</code>)<a class="anchor" aria-label="anchor" href="#nesterov-accelerated-gradient-nag"></a>
 </h3>

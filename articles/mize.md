@@ -170,13 +170,10 @@ progress_view <- res$progress[, c("f", "step", "nf", "ng"), drop = FALSE]
 |        37 | 4.522e-10 | 0.0002131 |             49 |             49 |
 
 The initial row represents the starting point. Here `f` is the current
-objective, `step` is the size of the outer parameter update, and `nf`,
-`ng`, `nh`, and `nhi` are cumulative function, gradient, Hessian, and
-inverse-Hessian callback counts. This run supplies no curvature
-callback, so its `nh` and `nhi` columns remain zero and the compact view
-above omits them. Other methods and settings can add fields such as
-`alpha` and `ls_outcome`; a field is omitted when its owning calculation
-did not produce it. See the [Progress section of the `mize()`
+objective, `step` is the size of the parameter update, and `nf` and `ng`
+are cumulative function and gradient callback counts. The available
+columns depend on the method and calculations requested; see the
+[Progress section of the `mize()`
 reference](https://jlmelville.github.io/mize/reference/mize.html#progress)
 for the complete dynamic schema.
 

@@ -289,15 +289,10 @@ inspect a few rows from the beginning and end:</p>
 </tbody>
 </table>
 <p>The initial row represents the starting point. Here <code>f</code> is
-the current objective, <code>step</code> is the size of the outer
-parameter update, and <code>nf</code>, <code>ng</code>, <code>nh</code>,
-and <code>nhi</code> are cumulative function, gradient, Hessian, and
-inverse-Hessian callback counts. This run supplies no curvature
-callback, so its <code>nh</code> and <code>nhi</code> columns remain
-zero and the compact view above omits them. Other methods and settings
-can add fields such as <code>alpha</code> and <code>ls_outcome</code>; a
-field is omitted when its owning calculation did not produce it. See the
-<a href="../reference/mize.html#progress">Progress section of the
+the current objective, <code>step</code> is the size of the parameter
+update, and <code>nf</code> and <code>ng</code> are cumulative function
+and gradient callback counts. The available columns depend on the method
+and calculations requested; see the <a href="../reference/mize.html#progress">Progress section of the
 <code>mize()</code> reference</a> for the complete dynamic schema.</p>
 <p>For live console output, use <code>verbose = TRUE</code>;
 <code>log_every</code> controls how often progress is printed or stored.
