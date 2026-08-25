@@ -15,7 +15,7 @@ function value, gradient norm and step size may be returned."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">mize</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.5.9001</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.5.9002</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -111,6 +111,8 @@ counts).</p></li>
 <li><p><code>ginfn</code>: Infinity-norm of the gradient at <code>par</code>.</p></li>
 <li><p><code>nf</code>: Number of function evaluations so far.</p></li>
 <li><p><code>ng</code>: Number of gradient evaluations so far.</p></li>
+<li><p><code>nh</code>: Number of accepted Hessian callback evaluations so far.</p></li>
+<li><p><code>nhi</code>: Number of accepted inverse-Hessian callback evaluations so far.</p></li>
 <li><p><code>step</code>: Size of the step between <code>par_old</code> and <code>par</code>,
 if <code>par_old</code> is provided.</p></li>
 <li><p><code>alpha</code>: Step length of the gradient descent part of the step.</p></li>

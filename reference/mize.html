@@ -15,7 +15,7 @@ Broyden-Fletcher-Goldfarb-Shanno (BFGS), and the limited memory BFGS."></head><b
 
     <a class="navbar-brand me-2" href="../index.html">mize</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.5.9001</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.5.9002</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -436,6 +436,11 @@ includes any extra evaluations required for convergence calculations using
 <code>grad_tol</code>. As with <code>nf</code>, additional gradient calculations beyond
 what you're expecting may have been needed for logging, convergence and
 calculating the value of <code>g2n</code> or <code>ginfn</code> (see below).</p></li>
+<li><p><code>nh</code>: Total number of accepted Hessian callback evaluations. This is zero
+when no <code>fg$hs</code> callback was used.</p></li>
+<li><p><code>nhi</code>: Total number of accepted inverse-Hessian callback evaluations. This
+is zero when no <code>fg$hi</code> callback was used. Internal quasi-Newton updates do
+not contribute to <code>nh</code> or <code>nhi</code>.</p></li>
 <li><p><code>f</code>: Value of the function at the returned value of <code>par</code>. This component
 is absent when the value is unavailable under the hard-budget behavior
 described in the 'Convergence' section.</p></li>
@@ -494,7 +499,15 @@ diagonal of the inverse Hessian. Used by <code>"NEWTON"</code> when <code>hs</co
 provided, by <code>"BFGS"</code> and <code>"SR1"</code> to initialize their inverse-Hessian
 approximation, and by <code>"L-BFGS"</code> as the initial inverse-Hessian
 approximation in its two-loop recursion.</p></li>
-</ul><p>The <code>fg</code> function is optional, but for some methods (e.g. line search
+</ul><p>Calls to <code>hs</code> and <code>hi</code> are reported separately as <code>nh</code> and <code>nhi</code> in
+results and progress. These counts increase only after the callback result
+passes mize's Hessian or inverse-Hessian validation. Internal BFGS, SR1, and
+L-BFGS updates do not contribute. NEWTON requests its supplied curvature on
+each direction calculation; PHESS normally requests <code>hs</code> during
+initialization and reuses it; BFGS and SR1 request a supplied <code>hi</code> during
+initialization; and L-BFGS requests a supplied <code>hi</code> on each direction
+calculation.</p>
+<p>The <code>fg</code> function is optional, but for some methods (e.g. line search
 methods based on the Wolfe criteria), both the function and gradient values
 are needed for the same parameter value. Calculating them in the same
 function can save time if there is a lot of shared work.</p>
@@ -726,10 +739,12 @@ the momentum scheme will default to a constant value of <code>0.9</code>.</p>
 
 <p>If <code>store_progress = TRUE</code>, the returned <code>progress</code> data frame records the
 information available at each stored iteration. Common columns are <code>f</code>,
-<code>g2n</code>, <code>ginfn</code>, cumulative function and gradient counts <code>nf</code> and <code>ng</code>, the
+<code>g2n</code>, <code>ginfn</code>, cumulative callback counts <code>nf</code>, <code>ng</code>, <code>nh</code>, and <code>nhi</code>, the
 realized outer <code>step</code>, the gradient-descent step length <code>alpha</code>, and the
-momentum coefficient <code>mu</code>. Columns are included only when their owning
-method or calculation supplies them.</p>
+momentum coefficient <code>mu</code>. The four cumulative count columns are always
+present; <code>nh</code> and <code>nhi</code> are zero when no Hessian or inverse-Hessian callback
+has been accepted. Other columns are included only when their owning method
+or calculation supplies them.</p>
 <p><code>store_progress</code> controls retention of these observations. It does not by
 itself force objective or gradient calculations; those callbacks run only
 when the optimization method, convergence criteria, or another explicit

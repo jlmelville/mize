@@ -99,10 +99,13 @@ and `par` returned by each step.
 ## Optional observations
 
 [`mize_step()`](https://jlmelville.github.io/mize/reference/mize_step.md)
-always returns `opt`, `par`, `nf`, and `ng`. It returns `f` or `g` only
-when that value was calculated at the returned parameters. For example,
-constant-step steepest descent needs a gradient at the old parameters
-but does not observe either value at the new parameters:
+always returns `opt`, `par`, `nf`, `ng`, `nh`, and `nhi`. The last four
+fields are optimizer-lifetime callback counts; `nh` and `nhi` remain
+zero when no Hessian or inverse-Hessian callback has been accepted. The
+step returns `f` or `g` only when that value was calculated at the
+returned parameters. For example, constant-step steepest descent needs a
+gradient at the old parameters but does not observe either value at the
+new parameters:
 
 ``` r
 
@@ -121,7 +124,7 @@ observation_opt <- make_mize(
 )
 observation_step <- mize_step(observation_opt, rb0, rb_fg)
 names(observation_step)
-#> [1] "opt" "par" "nf"  "ng"
+#> [1] "opt" "par" "nf"  "ng"  "nh"  "nhi"
 ```
 
 Code such as `if (step$f < best_f)` is therefore unsafe. An absent
@@ -239,7 +242,7 @@ was not requested or its method did not produce it:
 
 | Field group | Examples | Availability |
 |:---|:---|:---|
-| Core | `iter`, `nf`, `ng`, `step` | Generally available |
+| Core | `iter`, `nf`, `ng`, `nh`, `nhi`, `step` | Generally available |
 | Requested observations | `f`, `g2n`, `ginfn` | When calculated, cached, or requested |
 | Line search | `alpha`, `ls_reason`, `ls_outcome`, `ls_nf`, `ls_ng` | Searches that report these diagnostics |
 | Direction diagnostics | `direction_reason` | Methods that report direction provenance |
@@ -282,6 +285,8 @@ progress_record <- function(step_info) {
     f = as.numeric(step_info$f),
     nf = as.integer(step_info$nf),
     ng = as.integer(step_info$ng),
+    nh = as.integer(step_info$nh),
+    nhi = as.integer(step_info$nhi),
     step = as.numeric(step_info$step),
     alpha = numeric_or_na(step_info$alpha),
     ls_outcome = character_or_na(step_info$ls_outcome)
@@ -295,6 +300,8 @@ bind_progress <- function(records) {
       f = double(),
       nf = integer(),
       ng = integer(),
+      nh = integer(),
+      nhi = integer(),
       step = double(),
       alpha = double(),
       ls_outcome = character()
@@ -423,11 +430,11 @@ knitr::kable(
 )
 ```
 
-| iter |        f |  nf |  ng |     step | alpha | ls_outcome |
-|-----:|---------:|----:|----:|---------:|------:|:-----------|
-|   28 | 0.026689 |  38 |  38 | 0.127223 |     1 | wolfe      |
-|   29 | 0.015186 |  39 |  39 | 0.131488 |     1 | wolfe      |
-|   30 | 0.005003 |  40 |  40 | 0.047100 |     1 | wolfe      |
+| iter |        f |  nf |  ng |  nh | nhi |     step | alpha | ls_outcome |
+|-----:|---------:|----:|----:|----:|----:|---------:|------:|:-----------|
+|   28 | 0.026689 |  38 |  38 |   0 |   0 | 0.127223 |     1 | wolfe      |
+|   29 | 0.015186 |  39 |  39 |   0 |   0 | 0.131488 |     1 | wolfe      |
+|   30 | 0.005003 |  40 |  40 |   0 |   0 | 0.047100 |     1 | wolfe      |
 
 ``` r
 
@@ -630,7 +637,10 @@ Calling
 [`mize_init()`](https://jlmelville.github.io/mize/reference/mize_init.md)
 on an existing optimizer deliberately starts a new run. It resets the
 iteration counter, terminal fields, caches, and transient algorithm
-state. Function and gradient counts remain optimizer-lifetime totals:
+state. Function, gradient, Hessian, and inverse-Hessian counts remain
+optimizer-lifetime totals. Initialization may extend those totals when
+the method itself requests curvature; this BFGS example supplies no
+`hi`, so its counts are unchanged:
 
 ``` r
 

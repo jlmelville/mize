@@ -235,7 +235,9 @@ underlying path describes the same problem.
 When function or gradient callbacks dominate runtime, their counts can
 be a useful proxy for work. The relative costs still depend on the
 problem, and methods and line searches differ in which callbacks they
-need and can reuse.
+need and can reuse. Accepted Hessian and inverse-Hessian callbacks are
+reported separately as `nh` and `nhi`; they are observational fields and
+are not governed by `max_fn`, `max_gr`, or `max_fg`.
 
 `max_fn` caps function evaluations, `max_gr` caps gradient evaluations,
 and `max_fg` caps their combined total. The following runs use the same

@@ -26,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">mize</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.5.9001</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.5.9002</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -188,7 +188,10 @@ each step.</p>
 <h2 id="optional-observations">Optional observations<a class="anchor" aria-label="anchor" href="#optional-observations"></a>
 </h2>
 <p><code><a href="../reference/mize_step.html">mize_step()</a></code> always returns <code>opt</code>,
-<code>par</code>, <code>nf</code>, and <code>ng</code>. It returns
+<code>par</code>, <code>nf</code>, <code>ng</code>, <code>nh</code>, and
+<code>nhi</code>. The last four fields are optimizer-lifetime callback
+counts; <code>nh</code> and <code>nhi</code> remain zero when no Hessian
+or inverse-Hessian callback has been accepted. The step returns
 <code>f</code> or <code>g</code> only when that value was calculated at
 the returned parameters. For example, constant-step steepest descent
 needs a gradient at the old parameters but does not observe either value
@@ -209,7 +212,7 @@ at the new parameters:</p>
 <span><span class="op">)</span></span>
 <span><span class="va">observation_step</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_step.html">mize_step</a></span><span class="op">(</span><span class="va">observation_opt</span>, <span class="va">rb0</span>, <span class="va">rb_fg</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">observation_step</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "opt" "par" "nf"  "ng"</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "opt" "par" "nf"  "ng"  "nh"  "nhi"</span></span></code></pre></div>
 <p>Code such as <code>if (step$f &lt; best_f)</code> is therefore
 unsafe. An absent observation is normal and leaves the step status
 unchanged.</p>
@@ -367,7 +370,7 @@ was not requested or its method did not produce it:</p>
 <td align="left">Core</td>
 <td align="left">
 <code>iter</code>, <code>nf</code>, <code>ng</code>,
-<code>step</code>
+<code>nh</code>, <code>nhi</code>, <code>step</code>
 </td>
 <td align="left">Generally available</td>
 </tr>
@@ -432,6 +435,8 @@ Complete executable state helpers
 <span>    f <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">step_info</span><span class="op">$</span><span class="va">f</span><span class="op">)</span>,</span>
 <span>    nf <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="va">step_info</span><span class="op">$</span><span class="va">nf</span><span class="op">)</span>,</span>
 <span>    ng <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="va">step_info</span><span class="op">$</span><span class="va">ng</span><span class="op">)</span>,</span>
+<span>    nh <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="va">step_info</span><span class="op">$</span><span class="va">nh</span><span class="op">)</span>,</span>
+<span>    nhi <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="va">step_info</span><span class="op">$</span><span class="va">nhi</span><span class="op">)</span>,</span>
 <span>    step <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">step_info</span><span class="op">$</span><span class="va">step</span><span class="op">)</span>,</span>
 <span>    alpha <span class="op">=</span> <span class="fu">numeric_or_na</span><span class="op">(</span><span class="va">step_info</span><span class="op">$</span><span class="va">alpha</span><span class="op">)</span>,</span>
 <span>    ls_outcome <span class="op">=</span> <span class="fu">character_or_na</span><span class="op">(</span><span class="va">step_info</span><span class="op">$</span><span class="va">ls_outcome</span><span class="op">)</span></span>
@@ -445,6 +450,8 @@ Complete executable state helpers
 <span>      f <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/double.html" class="external-link">double</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>      nf <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>      ng <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>      nh <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>      nhi <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>      step <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/double.html" class="external-link">double</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>      alpha <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/double.html" class="external-link">double</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>      ls_outcome <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span></span>
@@ -578,6 +585,8 @@ unambiguous:</p>
 <th align="right">f</th>
 <th align="right">nf</th>
 <th align="right">ng</th>
+<th align="right">nh</th>
+<th align="right">nhi</th>
 <th align="right">step</th>
 <th align="right">alpha</th>
 <th align="left">ls_outcome</th>
@@ -588,6 +597,8 @@ unambiguous:</p>
 <td align="right">0.026689</td>
 <td align="right">38</td>
 <td align="right">38</td>
+<td align="right">0</td>
+<td align="right">0</td>
 <td align="right">0.127223</td>
 <td align="right">1</td>
 <td align="left">wolfe</td>
@@ -597,6 +608,8 @@ unambiguous:</p>
 <td align="right">0.015186</td>
 <td align="right">39</td>
 <td align="right">39</td>
+<td align="right">0</td>
+<td align="right">0</td>
 <td align="right">0.131488</td>
 <td align="right">1</td>
 <td align="left">wolfe</td>
@@ -606,6 +619,8 @@ unambiguous:</p>
 <td align="right">0.005003</td>
 <td align="right">40</td>
 <td align="right">40</td>
+<td align="right">0</td>
+<td align="right">0</td>
 <td align="right">0.047100</td>
 <td align="right">1</td>
 <td align="left">wolfe</td>
@@ -844,8 +859,11 @@ different R or platform builds is not required.</p>
 </h2>
 <p>Calling <code><a href="../reference/mize_init.html">mize_init()</a></code> on an existing optimizer
 deliberately starts a new run. It resets the iteration counter, terminal
-fields, caches, and transient algorithm state. Function and gradient
-counts remain optimizer-lifetime totals:</p>
+fields, caches, and transient algorithm state. Function, gradient,
+Hessian, and inverse-Hessian counts remain optimizer-lifetime totals.
+Initialization may extend those totals when the method itself requests
+curvature; this BFGS example supplies no <code>hi</code>, so its counts
+are unchanged:</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">counts_before</span> <span class="op">&lt;-</span> <span class="va">uninterrupted</span><span class="op">$</span><span class="va">opt</span><span class="op">$</span><span class="va">counts</span></span>
 <span><span class="va">reinitialized</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize_init.html">mize_init</a></span><span class="op">(</span></span>

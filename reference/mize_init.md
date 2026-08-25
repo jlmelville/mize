@@ -118,11 +118,13 @@ already be initialized.
 [`mize_step()`](https://jlmelville.github.io/mize/reference/mize_step.md)
 requires an initialized optimizer and does not carry out initialization
 itself. Reinitialization resets the iteration counter and transient
-algorithm state, but preserves accumulated function and gradient
-evaluation counts and explicitly registered custom hooks. Initialization
-does not guarantee that the objective or gradient has been evaluated at
-`par`. If caller-owned records need a starting observation, request it
-with
+algorithm state, but preserves accumulated function, gradient, Hessian,
+and inverse-Hessian evaluation counts and explicitly registered custom
+hooks. Initialization itself may extend the curvature counts: PHESS
+requests `fg$hs`, while BFGS and SR1 request a supplied `fg$hi` as part
+of initialization. Initialization does not guarantee that the objective
+or gradient has been evaluated at `par`. If caller-owned records need a
+starting observation, request it with
 [`mize_step_summary()`](https://jlmelville.github.io/mize/reference/mize_step_summary.md)
 using `calc_fn = TRUE` or `calc_gr = TRUE`, and retain the `opt`
 returned by that call. Any requested callback still honors the

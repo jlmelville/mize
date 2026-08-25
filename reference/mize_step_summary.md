@@ -63,6 +63,10 @@ or calculation did not supply a value are omitted.
 
 - `ng`: Number of gradient evaluations so far.
 
+- `nh`: Number of accepted Hessian callback evaluations so far.
+
+- `nhi`: Number of accepted inverse-Hessian callback evaluations so far.
+
 - `step`: Size of the step between `par_old` and `par`, if `par_old` is
   provided.
 

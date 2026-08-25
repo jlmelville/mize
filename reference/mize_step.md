@@ -44,6 +44,16 @@ Result of the current optimization step, a list with components:
   [`mize_init()`](https://jlmelville.github.io/mize/reference/mize_init.md)
   calls.
 
+- `nh`: Total number of accepted Hessian callback evaluations over the
+  optimizer's lifetime. This count persists across
+  [`mize_init()`](https://jlmelville.github.io/mize/reference/mize_init.md)
+  calls.
+
+- `nhi`: Total number of accepted inverse-Hessian callback evaluations
+  over the optimizer's lifetime. This count persists across
+  [`mize_init()`](https://jlmelville.github.io/mize/reference/mize_init.md)
+  calls.
+
 - `f`: Optional. The new value of the function, evaluated at the
   returned value of `par`. Only present if calculated as part of the
   optimization step (e.g. during a line search calculation).

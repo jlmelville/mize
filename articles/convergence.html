@@ -26,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">mize</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.5.9001</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.5.9002</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -381,7 +381,10 @@ underlying path describes the same problem.</p>
 <p>When function or gradient callbacks dominate runtime, their counts
 can be a useful proxy for work. The relative costs still depend on the
 problem, and methods and line searches differ in which callbacks they
-need and can reuse.</p>
+need and can reuse. Accepted Hessian and inverse-Hessian callbacks are
+reported separately as <code>nh</code> and <code>nhi</code>; they are
+observational fields and are not governed by <code>max_fn</code>,
+<code>max_gr</code>, or <code>max_fg</code>.</p>
 <p><code>max_fn</code> caps function evaluations, <code>max_gr</code>
 caps gradient evaluations, and <code>max_fg</code> caps their combined
 total. The following runs use the same problem and disable every

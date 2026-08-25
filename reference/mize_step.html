@@ -13,7 +13,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">mize</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.5.9001</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.5.9002</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -89,6 +89,10 @@ iteration.</p></li>
 This count persists across <code><a href="mize_init.html">mize_init()</a></code> calls.</p></li>
 <li><p><code>ng</code>: Total number of gradient evaluations over the optimizer's lifetime.
 This count persists across <code><a href="mize_init.html">mize_init()</a></code> calls.</p></li>
+<li><p><code>nh</code>: Total number of accepted Hessian callback evaluations over the
+optimizer's lifetime. This count persists across <code><a href="mize_init.html">mize_init()</a></code> calls.</p></li>
+<li><p><code>nhi</code>: Total number of accepted inverse-Hessian callback evaluations over
+the optimizer's lifetime. This count persists across <code><a href="mize_init.html">mize_init()</a></code> calls.</p></li>
 <li><p><code>f</code>: Optional. The new value of the function, evaluated at the
 returned value of <code>par</code>. Only present if calculated as part of the
 optimization step (e.g. during a line search calculation).</p></li>
