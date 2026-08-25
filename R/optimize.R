@@ -382,6 +382,8 @@ update_progress <- function(step_info, progress) {
     "ginfn",
     "nf",
     "ng",
+    "nh",
+    "nhi",
     "step",
     "alpha",
     "mu",
@@ -577,12 +579,13 @@ append_stage <- function(opt, stage) {
   opt
 }
 
-# Initialize a list to store the number of times the function and gradient
-# is called.
+# Initialize callback evaluation counts.
 make_counts <- function() {
   list(
     fn = 0,
-    gr = 0
+    gr = 0,
+    hs = 0,
+    hi = 0
   )
 }
 
@@ -639,6 +642,18 @@ mize_validate_combined_result <- function(value, n, label) {
     paste0(label, "$gr")
   )
   value
+}
+
+calc_hs <- function(opt, par, hs, allow_vector) {
+  value <- validate_hessian(hs(par), length(par), allow_vector)
+  opt$counts$hs <- opt$counts$hs + 1
+  list(opt = opt, value = value)
+}
+
+calc_hi <- function(opt, par, hi) {
+  value <- validate_inverse_hessian(hi(par), length(par))
+  opt$counts$hi <- opt$counts$hi + 1
+  list(opt = opt, value = value)
 }
 
 # Uncached function evaluation for arbitrary values of par

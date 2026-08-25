@@ -9,6 +9,12 @@ and line-search callbacks, including truncated Newton inner iterations.
 callback results now receive consistent early validation and clearer errors.
 * Quasi-Newton updates and exact-Newton directions now use safer fallbacks when
 curvature information or Hessian factorization is unsuitable.
+* NEWTON and L-BFGS now preserve plain vector parameters across multiple
+iterations when a supplied inverse-Hessian callback returns a full matrix.
+* `mize()`, `mize_step()`, `mize_step_summary()`, and stored progress now report
+accepted Hessian and inverse-Hessian callback counts as `nh` and `nhi`. The
+fields are always present, remain zero when unused, and persist across
+reinitialization like `nf` and `ng`.
 * Wolfe line searches now require an explicitly numeric `step0` to be a
 positive finite scalar; string initializers are unchanged.
 * Line searches using weak Wolfe curvature now accept equality at the

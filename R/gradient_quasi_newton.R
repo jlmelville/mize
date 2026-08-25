@@ -115,7 +115,9 @@ bfgs_direction <- function(eps = .Machine$double.eps, scale_inverse = FALSE) {
       sub_stage$value <- rep(0, n)
 
       if (!is.null(fg$hi)) {
-        hm <- validate_inverse_hessian(fg$hi(par), n)
+        curvature <- calc_hi(opt, par, fg$hi)
+        opt <- curvature$opt
+        hm <- curvature$value
         if (!is.matrix(hm)) {
           # Allow for just a vector to be passed, representing a diagonal
           # approximation to the Hessian inverse. But we'll store it as the
@@ -223,7 +225,9 @@ sr1_direction <- function(
       sub_stage$value <- rep(0, n)
 
       if (!is.null(fg$hi)) {
-        hm <- validate_inverse_hessian(fg$hi(par), n)
+        curvature <- calc_hi(opt, par, fg$hi)
+        opt <- curvature$opt
+        hm <- curvature$value
         if (!is.matrix(hm)) {
           # Allow for just a vector to be passed, representing a diagonal
           # approximation to the Hessian inverse. But we'll store it as the
@@ -320,9 +324,9 @@ lbfgs_init <- function(opt, stage, sub_stage, par, fg, iter) {
 }
 # Initial guess for solving Bp = q for p by using an approximation
 # for H, the inverse of B, and calculating Hq directly.
-# You can provide the inverse hessian function fg$hi and par, which can return
-# either a matrix (although if it's dense that's not a great idea), or a vector
-# in which case it's assumed to represent a diagonal matrix.
+# You can provide an inverse Hessian approximation, which may be a matrix
+# (although if it's dense that's not a great idea), or a vector representing a
+# diagonal matrix.
 # Or you can set scale_inverse to TRUE and the usual L-BFGS guess for H as
 # given by Nocedal and Wright is used. rho and eps may not be NULL in that case.
 # Or you can set scale_inverse = FALSE and you will get q back directly, i.e.
@@ -334,18 +338,16 @@ lbfgs_guess <- function(
   rho = NULL,
   ym = NULL,
   eps = NULL,
-  fg = NULL,
-  par = NULL
+  hi = NULL
 ) {
-  # User-defined hessian inverse approximations
-  if (!is.null(fg) && !is.null(fg$hi)) {
-    hm <- validate_inverse_hessian(fg$hi(par), length(qm))
-    if (is.matrix(hm)) {
+  # User-defined Hessian inverse approximations
+  if (!is.null(hi)) {
+    if (is.matrix(hi)) {
       # Full matrix: not necessarily a great idea for memory usage
-      pm <- as.vector(hm %*% qm)
+      pm <- as.vector(hi %*% qm)
     } else {
       # It's a vector representing a diagonal matrix
-      pm <- hm * qm
+      pm <- hi * qm
     }
   } else {
     # The usual L-BFGS guess
@@ -363,9 +365,8 @@ lbfgs_guess <- function(
   pm
 }
 
-# Solve Bp = q for p by the two-loop recursion. If fn and par are non NULL
-# and fg has the Hessian inverse function hi defined, it will be used to
-# initialize the inital guess for p. Otherwise, if scale_inverse = TRUE, the
+# Solve Bp = q for p by the two-loop recursion. If hi is non-NULL, it is used to
+# initialize the initial guess for p. Otherwise, if scale_inverse = TRUE, the
 # usual L-BFGS guess is used. Otherwise, q is used.
 # Note that we usually want to find p = -Hg, so usually take the negative of
 # the return value
@@ -374,8 +375,7 @@ lbfgs_solve <- function(
   lbfgs_state,
   scale_inverse,
   eps,
-  fg = NULL,
-  par = NULL
+  hi = NULL
 ) {
   sms <- lbfgs_state$sms
   yms <- lbfgs_state$yms
@@ -386,8 +386,7 @@ lbfgs_solve <- function(
       qm,
       scale_inverse = scale_inverse,
       eps = eps,
-      fg = fg,
-      par = par
+      hi = hi
     ))
   }
 
@@ -405,8 +404,7 @@ lbfgs_solve <- function(
     rhos[[length(rhos)]],
     yms[[length(yms)]],
     eps,
-    fg,
-    par
+    hi
   )
 
   # loop forwards
@@ -473,10 +471,17 @@ lbfgs_direction <- function(
       gm <- get_gr_curr(opt, iter)
       gm_old <- opt$cache$gr_old
 
+      hi <- NULL
+      if (!is.null(fg$hi)) {
+        curvature <- calc_hi(opt, par, fg$hi)
+        opt <- curvature$opt
+        hi <- curvature$value
+      }
+
       if (is.null(gm_old)) {
         # First iteration do steepest descent unless we have home-brew
         # H approximation in fg
-        pm <- lbfgs_guess(-gm, fg = fg, par = par)
+        pm <- lbfgs_guess(-gm, hi = hi)
       } else {
         # Update the memory
         # y_{k-1}, s_{k-1} using notation in Nocedal and Wright
@@ -486,7 +491,13 @@ lbfgs_direction <- function(
 
         # Solve Bp = -g with updated memory
         # lbfgs_solve returns Hg, so take negative of result
-        pm <- -lbfgs_solve(gm, sub_stage, scale_inverse, sub_stage$eps, fg, par)
+        pm <- -lbfgs_solve(
+          gm,
+          sub_stage,
+          scale_inverse,
+          sub_stage$eps,
+          hi = hi
+        )
       }
 
       descent <- dot(gm, pm)
@@ -495,7 +506,7 @@ lbfgs_direction <- function(
       }
 
       sub_stage$value <- pm
-      list(sub_stage = sub_stage)
+      list(opt = opt, sub_stage = sub_stage)
     },
     depends = c("gradient_old", "update_old")
   ))

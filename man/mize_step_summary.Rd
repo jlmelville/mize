@@ -39,6 +39,8 @@ counts).
 \item \code{ginfn}: Infinity-norm of the gradient at \code{par}.
 \item \code{nf}: Number of function evaluations so far.
 \item \code{ng}: Number of gradient evaluations so far.
+\item \code{nh}: Number of accepted Hessian callback evaluations so far.
+\item \code{nhi}: Number of accepted inverse-Hessian callback evaluations so far.
 \item \code{step}: Size of the step between \code{par_old} and \code{par},
 if \code{par_old} is provided.
 \item \code{alpha}: Step length of the gradient descent part of the step.

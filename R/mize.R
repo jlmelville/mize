@@ -26,6 +26,15 @@
 #'   approximation, and by `"L-BFGS"` as the initial inverse-Hessian
 #'   approximation in its two-loop recursion.
 #'
+#' Calls to `hs` and `hi` are reported separately as `nh` and `nhi` in
+#' results and progress. These counts increase only after the callback result
+#' passes mize's Hessian or inverse-Hessian validation. Internal BFGS, SR1, and
+#' L-BFGS updates do not contribute. NEWTON requests its supplied curvature on
+#' each direction calculation; PHESS normally requests `hs` during
+#' initialization and reuses it; BFGS and SR1 request a supplied `hi` during
+#' initialization; and L-BFGS requests a supplied `hi` on each direction
+#' calculation.
+#'
 #' The `fg` function is optional, but for some methods (e.g. line search
 #' methods based on the Wolfe criteria), both the function and gradient values
 #' are needed for the same parameter value. Calculating them in the same
@@ -279,10 +288,12 @@
 #'
 #' If `store_progress = TRUE`, the returned `progress` data frame records the
 #' information available at each stored iteration. Common columns are `f`,
-#' `g2n`, `ginfn`, cumulative function and gradient counts `nf` and `ng`, the
+#' `g2n`, `ginfn`, cumulative callback counts `nf`, `ng`, `nh`, and `nhi`, the
 #' realized outer `step`, the gradient-descent step length `alpha`, and the
-#' momentum coefficient `mu`. Columns are included only when their owning
-#' method or calculation supplies them.
+#' momentum coefficient `mu`. The four cumulative count columns are always
+#' present; `nh` and `nhi` are zero when no Hessian or inverse-Hessian callback
+#' has been accepted. Other columns are included only when their owning method
+#' or calculation supplies them.
 #'
 #' `store_progress` controls retention of these observations. It does not by
 #' itself force objective or gradient calculations; those callbacks run only
@@ -598,6 +609,11 @@
 #'  `grad_tol`. As with `nf`, additional gradient calculations beyond
 #'  what you're expecting may have been needed for logging, convergence and
 #'  calculating the value of `g2n` or `ginfn` (see below).
+#' * `nh`: Total number of accepted Hessian callback evaluations. This is zero
+#'  when no `fg$hs` callback was used.
+#' * `nhi`: Total number of accepted inverse-Hessian callback evaluations. This
+#'  is zero when no `fg$hi` callback was used. Internal quasi-Newton updates do
+#'  not contribute to `nh` or `nhi`.
 #' * `f`: Value of the function at the returned value of `par`. This component
 #'  is absent when the value is unavailable under the hard-budget behavior
 #'  described in the 'Convergence' section.
@@ -881,6 +897,8 @@ mize <- function(
       "ginfn",
       "nf",
       "ng",
+      "nh",
+      "nhi",
       "par",
       "best_par",
       "best_f",

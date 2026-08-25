@@ -45,6 +45,10 @@
 #'  This count persists across [mize_init()] calls.
 #' * `ng`: Total number of gradient evaluations over the optimizer's lifetime.
 #'  This count persists across [mize_init()] calls.
+#' * `nh`: Total number of accepted Hessian callback evaluations over the
+#'  optimizer's lifetime. This count persists across [mize_init()] calls.
+#' * `nhi`: Total number of accepted inverse-Hessian callback evaluations over
+#'  the optimizer's lifetime. This count persists across [mize_init()] calls.
 #' * `f`: Optional. The new value of the function, evaluated at the
 #'  returned value of `par`. Only present if calculated as part of the
 #'  optimization step (e.g. during a line search calculation).
@@ -106,7 +110,9 @@ mize_step <- function(opt, par, fg) {
       opt = opt,
       par = par,
       nf = opt$counts$fn,
-      ng = opt$counts$gr
+      ng = opt$counts$gr,
+      nh = opt$counts$hs,
+      nhi = opt$counts$hi
     ))
   }
 
@@ -219,7 +225,14 @@ mize_step <- function(opt, par, fg) {
     opt <- set_gr_curr(opt, starting_gradient, iter + 1)
   }
 
-  res <- list(opt = opt, par = par, nf = opt$counts$fn, ng = opt$counts$gr)
+  res <- list(
+    opt = opt,
+    par = par,
+    nf = opt$counts$fn,
+    ng = opt$counts$gr,
+    nh = opt$counts$hs,
+    nhi = opt$counts$hi
+  )
   if (has_fn_curr(opt, iter + 1)) {
     res$f <- opt$cache$fn_curr
   }
@@ -240,8 +253,10 @@ mize_step <- function(opt, par, fg) {
 #' optimizer will already be initialized. [mize_step()] requires an
 #' initialized optimizer and does not carry out initialization itself.
 #' Reinitialization resets the iteration counter and transient algorithm state,
-#' but preserves accumulated function and gradient evaluation counts and
-#' explicitly registered custom hooks.
+#' but preserves accumulated function, gradient, Hessian, and inverse-Hessian
+#' evaluation counts and explicitly registered custom hooks. Initialization
+#' itself may extend the curvature counts: PHESS requests `fg$hs`, while BFGS
+#' and SR1 request a supplied `fg$hi` as part of initialization.
 #' Initialization does not guarantee that the objective or gradient has been
 #' evaluated at `par`. If caller-owned records need a starting observation,
 #' request it with [mize_step_summary()] using `calc_fn = TRUE` or

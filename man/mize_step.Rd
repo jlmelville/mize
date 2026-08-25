@@ -26,6 +26,10 @@ iteration.
 This count persists across \code{\link[=mize_init]{mize_init()}} calls.
 \item \code{ng}: Total number of gradient evaluations over the optimizer's lifetime.
 This count persists across \code{\link[=mize_init]{mize_init()}} calls.
+\item \code{nh}: Total number of accepted Hessian callback evaluations over the
+optimizer's lifetime. This count persists across \code{\link[=mize_init]{mize_init()}} calls.
+\item \code{nhi}: Total number of accepted inverse-Hessian callback evaluations over
+the optimizer's lifetime. This count persists across \code{\link[=mize_init]{mize_init()}} calls.
 \item \code{f}: Optional. The new value of the function, evaluated at the
 returned value of \code{par}. Only present if calculated as part of the
 optimization step (e.g. during a line search calculation).

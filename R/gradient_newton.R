@@ -13,7 +13,9 @@ newton_direction <- function(try_safe_chol = FALSE) {
       if (!is.null(fg$hs)) {
         # B, an approximation to the (or the exact) Hessian
         # We now need to solve Bp = -g for p
-        bm <- validate_hessian(fg$hs(par), length(par), allow_vector = TRUE)
+        curvature <- calc_hs(opt, par, fg$hs, allow_vector = TRUE)
+        opt <- curvature$opt
+        bm <- curvature$value
 
         if (methods::is(bm, "matrix")) {
           if (try_safe_chol) {
@@ -47,7 +49,9 @@ newton_direction <- function(try_safe_chol = FALSE) {
         }
       } else if (!is.null(fg$hi)) {
         # H, an approximation to (or exact) inverse of the Hessian
-        hm <- validate_inverse_hessian(fg$hi(par), length(par))
+        curvature <- calc_hi(opt, par, fg$hi)
+        opt <- curvature$opt
+        hm <- curvature$value
         if (methods::is(hm, "matrix")) {
           pm <- as.vector(-hm %*% gm)
           direction_reason <- "inverse_hessian_multiply"
@@ -67,7 +71,7 @@ newton_direction <- function(try_safe_chol = FALSE) {
       }
       sub_stage$value <- pm
       sub_stage$direction_reason <- direction_reason
-      list(sub_stage = sub_stage)
+      list(opt = opt, sub_stage = sub_stage)
     }
   ))
 }
@@ -79,14 +83,18 @@ partial_hessian_direction <- function(hessian_every = 0) {
   make_direction(list(
     init = function(opt, stage, sub_stage, par, fg, iter) {
       if (hessian_every == 0) {
-        hm <- validate_hessian(fg$hs(par), length(par), allow_vector = FALSE)
+        curvature <- calc_hs(opt, par, fg$hs, allow_vector = FALSE)
+        opt <- curvature$opt
+        hm <- curvature$value
         sub_stage$rm <- chol(hm)
       }
-      list(sub_stage = sub_stage)
+      list(opt = opt, sub_stage = sub_stage)
     },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
       if (hessian_every > 0 && iter %% hessian_every == 0) {
-        hm <- validate_hessian(fg$hs(par), length(par), allow_vector = FALSE)
+        curvature <- calc_hs(opt, par, fg$hs, allow_vector = FALSE)
+        opt <- curvature$opt
+        hm <- curvature$value
         sub_stage$rm <- chol(hm)
       }
 
@@ -99,7 +107,7 @@ partial_hessian_direction <- function(hessian_every = 0) {
         pm <- -gm
       }
       sub_stage$value <- pm
-      list(sub_stage = sub_stage)
+      list(opt = opt, sub_stage = sub_stage)
     }
   ))
 }

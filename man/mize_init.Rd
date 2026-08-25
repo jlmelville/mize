@@ -72,8 +72,10 @@ if \code{fg} and \code{par} are available when calling
 optimizer will already be initialized. \code{\link[=mize_step]{mize_step()}} requires an
 initialized optimizer and does not carry out initialization itself.
 Reinitialization resets the iteration counter and transient algorithm state,
-but preserves accumulated function and gradient evaluation counts and
-explicitly registered custom hooks.
+but preserves accumulated function, gradient, Hessian, and inverse-Hessian
+evaluation counts and explicitly registered custom hooks. Initialization
+itself may extend the curvature counts: PHESS requests \code{fg$hs}, while BFGS
+and SR1 request a supplied \code{fg$hi} as part of initialization.
 Initialization does not guarantee that the objective or gradient has been
 evaluated at \code{par}. If caller-owned records need a starting observation,
 request it with \code{\link[=mize_step_summary]{mize_step_summary()}} using \code{calc_fn = TRUE} or

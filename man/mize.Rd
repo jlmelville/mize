@@ -270,6 +270,11 @@ includes any extra evaluations required for convergence calculations using
 \code{grad_tol}. As with \code{nf}, additional gradient calculations beyond
 what you're expecting may have been needed for logging, convergence and
 calculating the value of \code{g2n} or \code{ginfn} (see below).
+\item \code{nh}: Total number of accepted Hessian callback evaluations. This is zero
+when no \code{fg$hs} callback was used.
+\item \code{nhi}: Total number of accepted inverse-Hessian callback evaluations. This
+is zero when no \code{fg$hi} callback was used. Internal quasi-Newton updates do
+not contribute to \code{nh} or \code{nhi}.
 \item \code{f}: Value of the function at the returned value of \code{par}. This component
 is absent when the value is unavailable under the hard-budget behavior
 described in the 'Convergence' section.
@@ -335,6 +340,15 @@ provided, by \code{"BFGS"} and \code{"SR1"} to initialize their inverse-Hessian
 approximation, and by \code{"L-BFGS"} as the initial inverse-Hessian
 approximation in its two-loop recursion.
 }
+
+Calls to \code{hs} and \code{hi} are reported separately as \code{nh} and \code{nhi} in
+results and progress. These counts increase only after the callback result
+passes mize's Hessian or inverse-Hessian validation. Internal BFGS, SR1, and
+L-BFGS updates do not contribute. NEWTON requests its supplied curvature on
+each direction calculation; PHESS normally requests \code{hs} during
+initialization and reuses it; BFGS and SR1 request a supplied \code{hi} during
+initialization; and L-BFGS requests a supplied \code{hi} on each direction
+calculation.
 
 The \code{fg} function is optional, but for some methods (e.g. line search
 methods based on the Wolfe criteria), both the function and gradient values
@@ -606,10 +620,12 @@ the momentum scheme will default to a constant value of \code{0.9}.
 
 If \code{store_progress = TRUE}, the returned \code{progress} data frame records the
 information available at each stored iteration. Common columns are \code{f},
-\code{g2n}, \code{ginfn}, cumulative function and gradient counts \code{nf} and \code{ng}, the
+\code{g2n}, \code{ginfn}, cumulative callback counts \code{nf}, \code{ng}, \code{nh}, and \code{nhi}, the
 realized outer \code{step}, the gradient-descent step length \code{alpha}, and the
-momentum coefficient \code{mu}. Columns are included only when their owning
-method or calculation supplies them.
+momentum coefficient \code{mu}. The four cumulative count columns are always
+present; \code{nh} and \code{nhi} are zero when no Hessian or inverse-Hessian callback
+has been accepted. Other columns are included only when their owning method
+or calculation supplies them.
 
 \code{store_progress} controls retention of these observations. It does not by
 itself force objective or gradient calculations; those callbacks run only

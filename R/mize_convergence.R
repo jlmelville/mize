@@ -51,6 +51,8 @@
 #' * `ginfn`: Infinity-norm of the gradient at `par`.
 #' * `nf`: Number of function evaluations so far.
 #' * `ng`: Number of gradient evaluations so far.
+#' * `nh`: Number of accepted Hessian callback evaluations so far.
+#' * `nhi`: Number of accepted inverse-Hessian callback evaluations so far.
 #' * `step`: Size of the step between `par_old` and `par`,
 #'  if `par_old` is provided.
 #' * `alpha`: Step length of the gradient descent part of the step.
@@ -201,6 +203,8 @@ mize_step_summary <- function(
     ginfn = ginfn,
     nf = opt$counts$fn,
     ng = opt$counts$gr,
+    nh = opt$counts$hs,
+    nhi = opt$counts$hi,
     step = step_size,
     alpha = alpha,
     iter = iter
