@@ -55,10 +55,17 @@ Each control answers a different question:
 | `max_iter` | An outer iteration limit | Iterations can contain different amounts of work | None |
 | `max_fn` / `max_gr` / `max_fg` | A callback cost limit | Says nothing about convergence | None |
 
-For a general smooth problem, use a gradient criterion when its scale is
-meaningful, retain callback or iteration budgets as safety limits, and treat
-function-change or step tolerances as evidence of stagnation without assuming
-that they establish stationarity.
+Out of the box, `mize()` checks for small absolute and relative changes in the
+objective and for a small parameter update; all three tolerances use
+`sqrt(.Machine$double.eps)`. Gradient-based stopping is disabled. A run is
+capped at 100 outer iterations, while `max_fn`, `max_gr`, and `max_fg` do not
+impose finite run-wide limits unless you set them. Those run-wide callback
+limits are separate from the controls applied within an individual line search.
+
+For a general smooth problem, enable a gradient criterion when its scale is
+meaningful, retain callback or iteration limits as safety bounds, and treat
+objective-change or step tolerances as evidence of stagnation rather than proof
+of stationarity.
 
 We'll use the two-dimensional Rosenbrock function, which has a minimum at
 `c(1, 1)` where the function equals zero.
