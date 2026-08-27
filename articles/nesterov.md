@@ -177,21 +177,24 @@ Perhaps a visualization will help. Here are two full iterations of NAG
 in its standard form, separated by boxes so you can see where one
 iteration ends and the other begins.
 
-\\ \boxed{ \phi\_{t+1} = \theta_t - \varepsilon_t \nabla f\left(\theta_t
-\right) \\ \theta\_{t+1} = \phi\_{t+1} + \mu_t\left(\phi\_{t+1} -
-\phi\_{t} \right)} \\ \boxed{ \phi\_{t+2} = \theta\_{t+1} -
+\\ \begin{aligned} \boxed{\begin{aligned} \phi\_{t+1} &= \theta_t -
+\varepsilon_t \nabla f\left(\theta_t \right) \\ \theta\_{t+1} &=
+\phi\_{t+1} + \mu_t\left(\phi\_{t+1} - \phi\_{t} \right) \end{aligned}}
+\\\[0.75em\] \boxed{\begin{aligned} \phi\_{t+2} &= \theta\_{t+1} -
 \varepsilon\_{t+1} \nabla f\left(\theta\_{t+1} \right) \\ \theta\_{t+2}
-= \phi\_{t+2} + \mu\_{t+1}\left(\phi\_{t+2} - \phi\_{t+1} \right) } \\
+&= \phi\_{t+2} + \mu\_{t+1}\left(\phi\_{t+2} - \phi\_{t+1} \right)
+\end{aligned}} \end{aligned} \\
 
 The Sutskever derivation says shift the boundaries of the iteration so
 that it starts one stage later. This is the same four equations as
 above, but with a box showing the new definition of the iteration:
 
-\\ \phi\_{t+1} = \theta_t - \varepsilon_t \nabla f\left(\theta_t \right)
-\\ \boxed { \theta\_{t+1} = \phi\_{t+1} + \mu_t\left(\phi\_{t+1} -
-\phi\_{t} \right) \\ \phi\_{t+2} = \theta\_{t+1} - \varepsilon\_{t+1}
-\nabla f\left(\theta\_{t+1} \right) } \\ \theta\_{t+2} = \phi\_{t+2} +
-\mu\_{t+1}\left(\phi\_{t+2} - \phi\_{t+1} \right) \\
+\\ \begin{aligned} \phi\_{t+1} &= \theta_t - \varepsilon_t \nabla
+f\left(\theta_t \right) \\ \boxed{\begin{aligned} \theta\_{t+1} &=
+\phi\_{t+1} + \mu_t\left(\phi\_{t+1} - \phi\_{t} \right) \\ \phi\_{t+2}
+&= \theta\_{t+1} - \varepsilon\_{t+1} \nabla f\left(\theta\_{t+1}
+\right) \end{aligned}} \\ \theta\_{t+2} &= \phi\_{t+2} +
+\mu\_{t+1}\left(\phi\_{t+2} - \phi\_{t+1} \right) \end{aligned} \\
 
 Now that the definition of where we start and finish each iteration has
 changed we need to re-label some variables: uses of \\\phi\\ and

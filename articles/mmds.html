@@ -381,150 +381,111 @@ reproducible fit without claiming that it found the global minimum.</p>
 <div class="section level2">
 <h2 id="put-the-configuration-on-the-map">Put the configuration on the map<a class="anchor" aria-label="anchor" href="#put-the-configuration-on-the-map"></a>
 </h2>
-<p>The fitted configuration may initially look sideways or mirrored.
-Stress depends only on pairwise distances, so translating, rotating, or
-reflecting every point produces an equally good solution. Metric MDS
-recovers an approximate distance geometry, while its origin, compass
-direction, and handedness remain undetermined.</p>
-<p>For a familiar frame of reference, we project approximate city-centre
-locations onto a plane measured in kilometres, then find the translated,
-rotated, or reflected copy of the fitted configuration that lies closest
-to them. The alignment uses an orthogonal transformation and leaves the
-scale fixed. Consequently, it preserves every fitted distance and the
-raw stress.</p>
-<details><summary>
-Show the projection and alignment code
-</summary><div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">city_names</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/labels.html" class="external-link">labels</a></span><span class="op">(</span><span class="va">target_distances</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Approximate city-centre coordinates based on maps::world.cities (maps 3.4.3),</span></span>
-<span><span class="co"># with the historical eurodist names retained and Hook of Holland added.</span></span>
-<span><span class="va">city_locations</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  city <span class="op">=</span> <span class="va">city_names</span>,</span>
-<span>  longitude <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>    <span class="fl">23.73</span>, <span class="fl">2.17</span>, <span class="fl">4.33</span>, <span class="fl">1.86</span>, <span class="op">-</span><span class="fl">1.63</span>, <span class="fl">6.97</span>, <span class="fl">12.57</span>,</span>
-<span>    <span class="fl">6.14</span>, <span class="op">-</span><span class="fl">5.35</span>, <span class="fl">10.00</span>, <span class="fl">4.13</span>, <span class="op">-</span><span class="fl">9.14</span>, <span class="fl">4.83</span>, <span class="op">-</span><span class="fl">3.71</span>,</span>
-<span>    <span class="fl">5.37</span>, <span class="fl">9.19</span>, <span class="fl">11.58</span>, <span class="fl">2.34</span>, <span class="fl">12.50</span>, <span class="fl">18.07</span>, <span class="fl">16.37</span></span>
-<span>  <span class="op">)</span>,</span>
-<span>  latitude <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>    <span class="fl">37.98</span>, <span class="fl">41.40</span>, <span class="fl">50.83</span>, <span class="fl">50.95</span>, <span class="fl">49.64</span>, <span class="fl">50.95</span>, <span class="fl">55.68</span>,</span>
-<span>    <span class="fl">46.21</span>, <span class="fl">36.14</span>, <span class="fl">53.55</span>, <span class="fl">51.98</span>, <span class="fl">38.72</span>, <span class="fl">45.76</span>, <span class="fl">40.42</span>,</span>
-<span>    <span class="fl">43.31</span>, <span class="fl">45.48</span>, <span class="fl">48.14</span>, <span class="fl">48.86</span>, <span class="fl">41.89</span>, <span class="fl">59.33</span>, <span class="fl">48.22</span></span>
-<span>  <span class="op">)</span></span>
+<p>Distances leave absolute position and orientation unidentified.
+Adding one vector to every point leaves all distances unchanged, as do
+rotations and reflections. A coordinate-only plot therefore cannot tell
+us where north is, but it also leaves a more useful question unanswered:
+after accounting for those arbitrary choices, where does the recovered
+shape disagree with the actual geography?</p>
+<p>To make that comparison, we use a small geographic reference bundled
+with the article. The map outline and 20 city coordinates come from <a href="https://www.naturalearthdata.com/" class="external-link">Natural Earth</a>; the Hook of
+Holland coordinate comes from <a href="https://www.geonames.org/" class="external-link">GeoNames</a>. The source, license, and
+reproduction details are recorded with the data files.</p>
+<p>The helper below uses an equirectangular projection centred on
+Europe. Its coordinates are approximate kilometres, which is sufficient
+for a regional diagnostic rather than a precision map.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">geography_path</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span></span>
+<span>  <span class="st">"extdata"</span>,</span>
+<span>  <span class="st">"eurodist-geography.csv"</span>,</span>
+<span>  package <span class="op">=</span> <span class="st">"mize"</span></span>
 <span><span class="op">)</span></span>
+<span><span class="va">map_path</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span></span>
+<span>  <span class="st">"extdata"</span>,</span>
+<span>  <span class="st">"europe-map.csv"</span>,</span>
+<span>  package <span class="op">=</span> <span class="st">"mize"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">city_geography</span> <span class="op">&lt;-</span> <span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="va">geography_path</span><span class="op">)</span></span>
+<span><span class="va">europe_map</span> <span class="op">&lt;-</span> <span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="va">map_path</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">project_azimuthal_equidistant</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span></span>
-<span>  <span class="va">longitude</span>,</span>
-<span>  <span class="va">latitude</span>,</span>
-<span>  <span class="va">center_longitude</span>,</span>
-<span>  <span class="va">center_latitude</span>,</span>
-<span>  <span class="va">radius_km</span> <span class="op">=</span> <span class="fl">6371.0088</span></span>
-<span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">to_radians</span> <span class="op">&lt;-</span> <span class="va">pi</span> <span class="op">/</span> <span class="fl">180</span></span>
-<span>  <span class="va">lambda</span> <span class="op">&lt;-</span> <span class="va">longitude</span> <span class="op">*</span> <span class="va">to_radians</span></span>
-<span>  <span class="va">phi</span> <span class="op">&lt;-</span> <span class="va">latitude</span> <span class="op">*</span> <span class="va">to_radians</span></span>
-<span>  <span class="va">lambda0</span> <span class="op">&lt;-</span> <span class="va">center_longitude</span> <span class="op">*</span> <span class="va">to_radians</span></span>
-<span>  <span class="va">phi0</span> <span class="op">&lt;-</span> <span class="va">center_latitude</span> <span class="op">*</span> <span class="va">to_radians</span></span>
-<span>  <span class="va">delta_lambda</span> <span class="op">&lt;-</span> <span class="va">lambda</span> <span class="op">-</span> <span class="va">lambda0</span></span>
-<span></span>
-<span>  <span class="va">cos_angle</span> <span class="op">&lt;-</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">sin</a></span><span class="op">(</span><span class="va">phi0</span><span class="op">)</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">sin</a></span><span class="op">(</span><span class="va">phi</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">cos</a></span><span class="op">(</span><span class="va">phi0</span><span class="op">)</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">cos</a></span><span class="op">(</span><span class="va">phi</span><span class="op">)</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">cos</a></span><span class="op">(</span><span class="va">delta_lambda</span><span class="op">)</span></span>
-<span>  <span class="va">cos_angle</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">pmax</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">pmin</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">cos_angle</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="va">angle</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">acos</a></span><span class="op">(</span><span class="va">cos_angle</span><span class="op">)</span></span>
-<span></span>
-<span>  <span class="va">projection_scale</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">angle</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="va">nonzero</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/is.finite.html" class="external-link">is.finite</a></span><span class="op">(</span><span class="va">angle</span><span class="op">)</span> <span class="op">&amp;</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">angle</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">.Machine</span><span class="op">$</span><span class="va">double.eps</span><span class="op">)</span></span>
-<span>  <span class="va">projection_scale</span><span class="op">[</span><span class="va">nonzero</span><span class="op">]</span> <span class="op">&lt;-</span></span>
-<span>    <span class="va">angle</span><span class="op">[</span><span class="va">nonzero</span><span class="op">]</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">sin</a></span><span class="op">(</span><span class="va">angle</span><span class="op">[</span><span class="va">nonzero</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="va">project_geography</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">longitude</span>, <span class="va">latitude</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">earth_radius_km</span> <span class="op">&lt;-</span> <span class="fl">6371.009</span></span>
+<span>  <span class="va">reference_longitude</span> <span class="op">&lt;-</span> <span class="fl">9</span></span>
+<span>  <span class="va">reference_latitude</span> <span class="op">&lt;-</span> <span class="fl">48</span></span>
+<span>  <span class="va">degrees_to_radians</span> <span class="op">&lt;-</span> <span class="va">pi</span> <span class="op">/</span> <span class="fl">180</span></span>
 <span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span></span>
-<span>    east_km <span class="op">=</span></span>
-<span>      <span class="va">radius_km</span> <span class="op">*</span></span>
-<span>      <span class="va">projection_scale</span> <span class="op">*</span></span>
-<span>      <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">cos</a></span><span class="op">(</span><span class="va">phi</span><span class="op">)</span> <span class="op">*</span></span>
-<span>      <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">sin</a></span><span class="op">(</span><span class="va">delta_lambda</span><span class="op">)</span>,</span>
-<span>    north_km <span class="op">=</span></span>
-<span>      <span class="va">radius_km</span> <span class="op">*</span></span>
-<span>      <span class="va">projection_scale</span> <span class="op">*</span></span>
-<span>      <span class="op">(</span></span>
-<span>        <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">cos</a></span><span class="op">(</span><span class="va">phi0</span><span class="op">)</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">sin</a></span><span class="op">(</span><span class="va">phi</span><span class="op">)</span> <span class="op">-</span></span>
-<span>          <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">sin</a></span><span class="op">(</span><span class="va">phi0</span><span class="op">)</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">cos</a></span><span class="op">(</span><span class="va">phi</span><span class="op">)</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">cos</a></span><span class="op">(</span><span class="va">delta_lambda</span><span class="op">)</span></span>
-<span>      <span class="op">)</span></span>
+<span>    x <span class="op">=</span> <span class="va">earth_radius_km</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">cos</a></span><span class="op">(</span><span class="va">reference_latitude</span> <span class="op">*</span> <span class="va">degrees_to_radians</span><span class="op">)</span> <span class="op">*</span></span>
+<span>      <span class="op">(</span><span class="va">longitude</span> <span class="op">-</span> <span class="va">reference_longitude</span><span class="op">)</span> <span class="op">*</span> <span class="va">degrees_to_radians</span>,</span>
+<span>    y <span class="op">=</span> <span class="va">earth_radius_km</span> <span class="op">*</span></span>
+<span>      <span class="op">(</span><span class="va">latitude</span> <span class="op">-</span> <span class="va">reference_latitude</span><span class="op">)</span> <span class="op">*</span> <span class="va">degrees_to_radians</span></span>
 <span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>The alignment is fitted rather than chosen by eye. It removes
+translation, allows rotation or reflection because handedness is
+unidentified, and uses one uniform scale factor. The scale separates the
+overall inflation of road distances relative to straight-line geography
+from differences in the configuration’s shape. It is used only for this
+geographic comparison; the optimizer’s returned configuration and raw
+stress remain unchanged. The singular value decomposition finds the
+least-squares similarity alignment.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">center_coordinates</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">par</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">coordinates</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="va">par</span>, ncol <span class="op">=</span> <span class="fl">2</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/sweep.html" class="external-link">sweep</a></span><span class="op">(</span><span class="va">coordinates</span>, <span class="fl">2</span>, <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colMeans</a></span><span class="op">(</span><span class="va">coordinates</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">rigid_align</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">configuration</span>, <span class="va">reference</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">configuration_center</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colMeans</a></span><span class="op">(</span><span class="va">configuration</span><span class="op">)</span></span>
+<span><span class="va">align_to_reference</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">configuration</span>, <span class="va">reference</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">configuration</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/scale.html" class="external-link">scale</a></span><span class="op">(</span></span>
+<span>    <span class="va">configuration</span>,</span>
+<span>    center <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>    scale <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  <span class="op">)</span></span>
 <span>  <span class="va">reference_center</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colMeans</a></span><span class="op">(</span><span class="va">reference</span><span class="op">)</span></span>
-<span>  <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sweep.html" class="external-link">sweep</a></span><span class="op">(</span><span class="va">configuration</span>, <span class="fl">2</span>, <span class="va">configuration_center</span><span class="op">)</span></span>
-<span>  <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sweep.html" class="external-link">sweep</a></span><span class="op">(</span><span class="va">reference</span>, <span class="fl">2</span>, <span class="va">reference_center</span><span class="op">)</span></span>
-<span></span>
-<span>  <span class="va">decomposition</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/svd.html" class="external-link">svd</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/crossprod.html" class="external-link">crossprod</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="va">orthogonal</span> <span class="op">&lt;-</span> <span class="va">decomposition</span><span class="op">$</span><span class="va">u</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="va">decomposition</span><span class="op">$</span><span class="va">v</span><span class="op">)</span></span>
+<span>  <span class="va">centered_reference</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sweep.html" class="external-link">sweep</a></span><span class="op">(</span><span class="va">reference</span>, <span class="fl">2</span>, <span class="va">reference_center</span><span class="op">)</span></span>
+<span>  <span class="va">decomposition</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/svd.html" class="external-link">svd</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/crossprod.html" class="external-link">crossprod</a></span><span class="op">(</span><span class="va">configuration</span>, <span class="va">centered_reference</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">orthogonal_transform</span> <span class="op">&lt;-</span> <span class="va">decomposition</span><span class="op">$</span><span class="va">u</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="va">decomposition</span><span class="op">$</span><span class="va">v</span><span class="op">)</span></span>
+<span>  <span class="va">scale_factor</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">decomposition</span><span class="op">$</span><span class="va">d</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">configuration</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span></span>
 <span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>    coordinates <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sweep.html" class="external-link">sweep</a></span><span class="op">(</span></span>
-<span>      <span class="va">x</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">orthogonal</span>,</span>
+<span>      <span class="va">scale_factor</span> <span class="op">*</span> <span class="va">configuration</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">orthogonal_transform</span>,</span>
 <span>      <span class="fl">2</span>,</span>
 <span>      <span class="va">reference_center</span>,</span>
 <span>      <span class="st">"+"</span></span>
 <span>    <span class="op">)</span>,</span>
-<span>    orthogonal <span class="op">=</span> <span class="va">orthogonal</span></span>
+<span>    scale <span class="op">=</span> <span class="va">scale_factor</span>,</span>
+<span>    determinant <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/det.html" class="external-link">det</a></span><span class="op">(</span><span class="va">orthogonal_transform</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">projection_center</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">city_locations</span><span class="op">$</span><span class="va">longitude</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">city_locations</span><span class="op">$</span><span class="va">latitude</span><span class="op">)</span></span>
+<span><span class="va">centered_coordinates</span> <span class="op">&lt;-</span> <span class="fu">center_coordinates</span><span class="op">(</span><span class="va">combined_result</span><span class="op">$</span><span class="va">par</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">city_geography</span><span class="op">$</span><span class="va">city</span>, <span class="fu"><a href="https://rdrr.io/r/base/labels.html" class="external-link">labels</a></span><span class="op">(</span><span class="va">target_distances</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">geographic_coordinates</span> <span class="op">&lt;-</span> <span class="fu">project_geography</span><span class="op">(</span></span>
+<span>  <span class="va">city_geography</span><span class="op">$</span><span class="va">longitude</span>,</span>
+<span>  <span class="va">city_geography</span><span class="op">$</span><span class="va">latitude</span></span>
 <span><span class="op">)</span></span>
-<span><span class="va">geographic_coordinates</span> <span class="op">&lt;-</span> <span class="fu">project_azimuthal_equidistant</span><span class="op">(</span></span>
-<span>  <span class="va">city_locations</span><span class="op">$</span><span class="va">longitude</span>,</span>
-<span>  <span class="va">city_locations</span><span class="op">$</span><span class="va">latitude</span>,</span>
-<span>  center_longitude <span class="op">=</span> <span class="va">projection_center</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
-<span>  center_latitude <span class="op">=</span> <span class="va">projection_center</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span></span>
+<span><span class="va">alignment</span> <span class="op">&lt;-</span> <span class="fu">align_to_reference</span><span class="op">(</span></span>
+<span>  <span class="va">centered_coordinates</span>,</span>
+<span>  <span class="va">geographic_coordinates</span></span>
 <span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">mmds_coordinates</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span></span>
-<span>  <span class="va">combined_result</span><span class="op">$</span><span class="va">par</span>,</span>
-<span>  ncol <span class="op">=</span> <span class="fl">2</span>,</span>
-<span>  byrow <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">alignment</span> <span class="op">&lt;-</span> <span class="fu">rigid_align</span><span class="op">(</span><span class="va">mmds_coordinates</span>, <span class="va">geographic_coordinates</span><span class="op">)</span></span>
 <span><span class="va">aligned_coordinates</span> <span class="op">&lt;-</span> <span class="va">alignment</span><span class="op">$</span><span class="va">coordinates</span></span>
-<span></span>
-<span><span class="va">europe</span> <span class="op">&lt;-</span> <span class="fu">maps</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/maps/man/map.html" class="external-link">map</a></span><span class="op">(</span></span>
-<span>  <span class="st">"world"</span>,</span>
-<span>  plot <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  xlim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">12</span>, <span class="fl">27</span><span class="op">)</span>,</span>
-<span>  ylim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">34</span>, <span class="fl">62</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">outside_europe</span> <span class="op">&lt;-</span></span>
-<span>  <span class="va">europe</span><span class="op">$</span><span class="va">x</span> <span class="op">&lt;</span> <span class="op">-</span><span class="fl">12</span> <span class="op">|</span> <span class="va">europe</span><span class="op">$</span><span class="va">x</span> <span class="op">&gt;</span> <span class="fl">27</span> <span class="op">|</span></span>
-<span>  <span class="va">europe</span><span class="op">$</span><span class="va">y</span> <span class="op">&lt;</span> <span class="fl">34</span> <span class="op">|</span> <span class="va">europe</span><span class="op">$</span><span class="va">y</span> <span class="op">&gt;</span> <span class="fl">62</span></span>
-<span><span class="va">europe</span><span class="op">$</span><span class="va">x</span><span class="op">[</span><span class="va">outside_europe</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="cn">NA_real_</span></span>
-<span><span class="va">europe</span><span class="op">$</span><span class="va">y</span><span class="op">[</span><span class="va">outside_europe</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="cn">NA_real_</span></span>
-<span><span class="va">europe_coordinates</span> <span class="op">&lt;-</span> <span class="fu">project_azimuthal_equidistant</span><span class="op">(</span></span>
-<span>  <span class="va">europe</span><span class="op">$</span><span class="va">x</span>,</span>
-<span>  <span class="va">europe</span><span class="op">$</span><span class="va">y</span>,</span>
-<span>  center_longitude <span class="op">=</span> <span class="va">projection_center</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
-<span>  center_latitude <span class="op">=</span> <span class="va">projection_center</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-</details><div class="figure">
-<img src="mmds_files/figure-html/aligned-map-1.png" class="r-plt" alt="Outline map of Europe with geographic city locations shown as open circles and rigidly aligned metric MDS positions shown as filled points, joined by grey line segments." width="691.2"><p class="caption">
-Open circles mark projected geographic locations. Filled points show the
-metric-MDS configuration after translation, rotation, and possible
-reflection; grey segments join corresponding cities. No rescaling was
-applied.
-</p>
-</div>
-<p>The 126 km pairwise-distance RMSE summarizes how well the
-configuration fits the road-distance table. The segments in the map
-answer a second question: how closely does that road-distance geometry
-resemble projected geography? Their remaining lengths are expected
-because road routes, coastlines, and the compromise required to fit all
-210 city pairs affect the target distances.</p>
+<span><span class="va">geographic_residual_km</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">rowSums</a></span><span class="op">(</span></span>
+<span>  <span class="op">(</span><span class="va">aligned_coordinates</span> <span class="op">-</span> <span class="va">geographic_coordinates</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span></span>
+<span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">geographic_rmse_km</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">geographic_residual_km</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>The fitted scale factor is 0.694, and this fit includes a reflection
+because the optimized configuration’s handedness is arbitrary. Each
+orange segment in the map joins a city’s geographic location to its
+aligned MDS location. The triangle pattern retains the recovered
+distance geometry, while the segments make its local errors visible.
+Their RMSE is about 269 km after the global similarity alignment. Long
+segments at Athens and Stockholm, for example, are information that a
+polished but unreferenced coordinate plot would hide.</p>
+<p><img src="mmds_files/figure-html/plot-geographic-alignment-1.png" class="r-plt" alt="Map of Europe comparing the geographic and similarity-aligned metric MDS locations of 21 cities. Black open circles mark geographic locations, blue triangles mark aligned MDS locations, and orange segments show pointwise discrepancies; the residual RMSE is about 269 kilometres." width="672"></p>
+<p>The invariance holds at the objective level. The hidden check below
+translates, rotates, and reflects the returned configuration and
+verifies that stress is unchanged to numerical tolerance.</p>
 <p>Starting from road distances alone, the optimizer recovers a
 recognizable geometry even though its coordinate frame is arbitrary. The
 closure and combined-callback pattern used here also applies whenever an

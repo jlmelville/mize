@@ -266,156 +266,128 @@ fit without claiming that it found the global minimum.
 
 ## Put the configuration on the map
 
-The fitted configuration may initially look sideways or mirrored. Stress
-depends only on pairwise distances, so translating, rotating, or
-reflecting every point produces an equally good solution. Metric MDS
-recovers an approximate distance geometry, while its origin, compass
-direction, and handedness remain undetermined.
+Distances leave absolute position and orientation unidentified. Adding
+one vector to every point leaves all distances unchanged, as do
+rotations and reflections. A coordinate-only plot therefore cannot tell
+us where north is, but it also leaves a more useful question unanswered:
+after accounting for those arbitrary choices, where does the recovered
+shape disagree with the actual geography?
 
-For a familiar frame of reference, we project approximate city-centre
-locations onto a plane measured in kilometres, then find the translated,
-rotated, or reflected copy of the fitted configuration that lies closest
-to them. The alignment uses an orthogonal transformation and leaves the
-scale fixed. Consequently, it preserves every fitted distance and the
-raw stress.
+To make that comparison, we use a small geographic reference bundled
+with the article. The map outline and 20 city coordinates come from
+[Natural Earth](https://www.naturalearthdata.com/); the Hook of Holland
+coordinate comes from [GeoNames](https://www.geonames.org/). The source,
+license, and reproduction details are recorded with the data files.
 
-Show the projection and alignment code
+The helper below uses an equirectangular projection centred on Europe.
+Its coordinates are approximate kilometres, which is sufficient for a
+regional diagnostic rather than a precision map.
 
 ``` r
 
-city_names <- labels(target_distances)
-
-# Approximate city-centre coordinates based on maps::world.cities (maps 3.4.3),
-# with the historical eurodist names retained and Hook of Holland added.
-city_locations <- data.frame(
-  city = city_names,
-  longitude = c(
-    23.73, 2.17, 4.33, 1.86, -1.63, 6.97, 12.57,
-    6.14, -5.35, 10.00, 4.13, -9.14, 4.83, -3.71,
-    5.37, 9.19, 11.58, 2.34, 12.50, 18.07, 16.37
-  ),
-  latitude = c(
-    37.98, 41.40, 50.83, 50.95, 49.64, 50.95, 55.68,
-    46.21, 36.14, 53.55, 51.98, 38.72, 45.76, 40.42,
-    43.31, 45.48, 48.14, 48.86, 41.89, 59.33, 48.22
-  )
+geography_path <- system.file(
+  "extdata",
+  "eurodist-geography.csv",
+  package = "mize"
 )
+map_path <- system.file(
+  "extdata",
+  "europe-map.csv",
+  package = "mize"
+)
+city_geography <- utils::read.csv(geography_path)
+europe_map <- utils::read.csv(map_path)
 
-project_azimuthal_equidistant <- function(
-  longitude,
-  latitude,
-  center_longitude,
-  center_latitude,
-  radius_km = 6371.0088
-) {
-  to_radians <- pi / 180
-  lambda <- longitude * to_radians
-  phi <- latitude * to_radians
-  lambda0 <- center_longitude * to_radians
-  phi0 <- center_latitude * to_radians
-  delta_lambda <- lambda - lambda0
-
-  cos_angle <-
-    sin(phi0) * sin(phi) +
-    cos(phi0) * cos(phi) * cos(delta_lambda)
-  cos_angle <- pmax(-1, pmin(1, cos_angle))
-  angle <- acos(cos_angle)
-
-  projection_scale <- rep(1, length(angle))
-  nonzero <- is.finite(angle) &
-    abs(angle) > sqrt(.Machine$double.eps)
-  projection_scale[nonzero] <-
-    angle[nonzero] / sin(angle[nonzero])
+project_geography <- function(longitude, latitude) {
+  earth_radius_km <- 6371.009
+  reference_longitude <- 9
+  reference_latitude <- 48
+  degrees_to_radians <- pi / 180
 
   cbind(
-    east_km =
-      radius_km *
-      projection_scale *
-      cos(phi) *
-      sin(delta_lambda),
-    north_km =
-      radius_km *
-      projection_scale *
-      (
-        cos(phi0) * sin(phi) -
-          sin(phi0) * cos(phi) * cos(delta_lambda)
-      )
+    x = earth_radius_km * cos(reference_latitude * degrees_to_radians) *
+      (longitude - reference_longitude) * degrees_to_radians,
+    y = earth_radius_km *
+      (latitude - reference_latitude) * degrees_to_radians
   )
 }
+```
 
-rigid_align <- function(configuration, reference) {
-  configuration_center <- colMeans(configuration)
+The alignment is fitted rather than chosen by eye. It removes
+translation, allows rotation or reflection because handedness is
+unidentified, and uses one uniform scale factor. The scale separates the
+overall inflation of road distances relative to straight-line geography
+from differences in the configuration’s shape. It is used only for this
+geographic comparison; the optimizer’s returned configuration and raw
+stress remain unchanged. The singular value decomposition finds the
+least-squares similarity alignment.
+
+``` r
+
+center_coordinates <- function(par) {
+  coordinates <- matrix(par, ncol = 2, byrow = TRUE)
+  sweep(coordinates, 2, colMeans(coordinates))
+}
+
+align_to_reference <- function(configuration, reference) {
+  configuration <- scale(
+    configuration,
+    center = TRUE,
+    scale = FALSE
+  )
   reference_center <- colMeans(reference)
-  x <- sweep(configuration, 2, configuration_center)
-  y <- sweep(reference, 2, reference_center)
-
-  decomposition <- svd(crossprod(x, y))
-  orthogonal <- decomposition$u %*% t(decomposition$v)
+  centered_reference <- sweep(reference, 2, reference_center)
+  decomposition <- svd(crossprod(configuration, centered_reference))
+  orthogonal_transform <- decomposition$u %*% t(decomposition$v)
+  scale_factor <- sum(decomposition$d) / sum(configuration^2)
 
   list(
     coordinates = sweep(
-      x %*% orthogonal,
+      scale_factor * configuration %*% orthogonal_transform,
       2,
       reference_center,
       "+"
     ),
-    orthogonal = orthogonal
+    scale = scale_factor,
+    determinant = det(orthogonal_transform)
   )
 }
 
-projection_center <- c(
-  mean(city_locations$longitude),
-  mean(city_locations$latitude)
+centered_coordinates <- center_coordinates(combined_result$par)
+stopifnot(identical(city_geography$city, labels(target_distances)))
+geographic_coordinates <- project_geography(
+  city_geography$longitude,
+  city_geography$latitude
 )
-geographic_coordinates <- project_azimuthal_equidistant(
-  city_locations$longitude,
-  city_locations$latitude,
-  center_longitude = projection_center[1],
-  center_latitude = projection_center[2]
+alignment <- align_to_reference(
+  centered_coordinates,
+  geographic_coordinates
 )
-
-mmds_coordinates <- matrix(
-  combined_result$par,
-  ncol = 2,
-  byrow = TRUE
-)
-alignment <- rigid_align(mmds_coordinates, geographic_coordinates)
 aligned_coordinates <- alignment$coordinates
-
-europe <- maps::map(
-  "world",
-  plot = FALSE,
-  xlim = c(-12, 27),
-  ylim = c(34, 62)
-)
-outside_europe <-
-  europe$x < -12 | europe$x > 27 |
-  europe$y < 34 | europe$y > 62
-europe$x[outside_europe] <- NA_real_
-europe$y[outside_europe] <- NA_real_
-europe_coordinates <- project_azimuthal_equidistant(
-  europe$x,
-  europe$y,
-  center_longitude = projection_center[1],
-  center_latitude = projection_center[2]
-)
+geographic_residual_km <- sqrt(rowSums(
+  (aligned_coordinates - geographic_coordinates)^2
+))
+geographic_rmse_km <- sqrt(mean(geographic_residual_km^2))
 ```
 
-![Outline map of Europe with geographic city locations shown as open
-circles and rigidly aligned metric MDS positions shown as filled points,
-joined by grey line segments.](mmds_files/figure-html/aligned-map-1.png)
+The fitted scale factor is 0.694, and this fit includes a reflection
+because the optimized configuration’s handedness is arbitrary. Each
+orange segment in the map joins a city’s geographic location to its
+aligned MDS location. The triangle pattern retains the recovered
+distance geometry, while the segments make its local errors visible.
+Their RMSE is about 269 km after the global similarity alignment. Long
+segments at Athens and Stockholm, for example, are information that a
+polished but unreferenced coordinate plot would hide.
 
-Open circles mark projected geographic locations. Filled points show the
-metric-MDS configuration after translation, rotation, and possible
-reflection; grey segments join corresponding cities. No rescaling was
-applied.
+![Map of Europe comparing the geographic and similarity-aligned metric
+MDS locations of 21 cities. Black open circles mark geographic
+locations, blue triangles mark aligned MDS locations, and orange
+segments show pointwise discrepancies; the residual RMSE is about 269
+kilometres.](mmds_files/figure-html/plot-geographic-alignment-1.png)
 
-The 126 km pairwise-distance RMSE summarizes how well the configuration
-fits the road-distance table. The segments in the map answer a second
-question: how closely does that road-distance geometry resemble
-projected geography? Their remaining lengths are expected because road
-routes, coastlines, and the compromise required to fit all 210 city
-pairs affect the target distances.
+The invariance holds at the objective level. The hidden check below
+translates, rotates, and reflects the returned configuration and
+verifies that stress is unchanged to numerical tolerance.
 
 Starting from road distances alone, the optimizer recovers a
 recognizable geometry even though its coordinate frame is arbitrary. The
