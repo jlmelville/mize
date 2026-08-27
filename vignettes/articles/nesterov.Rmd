@@ -184,13 +184,16 @@ standard form, separated by boxes so you can see where one iteration ends and
 the other begins.
 
 $$
-\boxed{
-\phi_{t+1} = \theta_t - \varepsilon_t \nabla f\left(\theta_t \right) \\
-\theta_{t+1} = \phi_{t+1} + \mu_t\left(\phi_{t+1} - \phi_{t} \right)} \\
-\boxed{
-\phi_{t+2} = \theta_{t+1} - \varepsilon_{t+1} \nabla f\left(\theta_{t+1} \right) \\
-\theta_{t+2} = \phi_{t+2} + \mu_{t+1}\left(\phi_{t+2} - \phi_{t+1} \right)
-}
+\begin{aligned}
+\boxed{\begin{aligned}
+\phi_{t+1} &= \theta_t - \varepsilon_t \nabla f\left(\theta_t \right) \\
+\theta_{t+1} &= \phi_{t+1} + \mu_t\left(\phi_{t+1} - \phi_{t} \right)
+\end{aligned}} \\[0.75em]
+\boxed{\begin{aligned}
+\phi_{t+2} &= \theta_{t+1} - \varepsilon_{t+1} \nabla f\left(\theta_{t+1} \right) \\
+\theta_{t+2} &= \phi_{t+2} + \mu_{t+1}\left(\phi_{t+2} - \phi_{t+1} \right)
+\end{aligned}}
+\end{aligned}
 $$
 
 The Sutskever derivation says shift the boundaries of the iteration so that it
@@ -198,13 +201,14 @@ starts one stage later. This is the same four equations as above, but with a
 box showing the new definition of the iteration:
 
 $$
-\phi_{t+1} = \theta_t - \varepsilon_t \nabla f\left(\theta_t \right) \\
-\boxed
-{
-\theta_{t+1} = \phi_{t+1} + \mu_t\left(\phi_{t+1} - \phi_{t} \right) \\
-\phi_{t+2} = \theta_{t+1} - \varepsilon_{t+1} \nabla f\left(\theta_{t+1} \right)
-} \\
-\theta_{t+2} = \phi_{t+2} + \mu_{t+1}\left(\phi_{t+2} - \phi_{t+1} \right)
+\begin{aligned}
+\phi_{t+1} &= \theta_t - \varepsilon_t \nabla f\left(\theta_t \right) \\
+\boxed{\begin{aligned}
+\theta_{t+1} &= \phi_{t+1} + \mu_t\left(\phi_{t+1} - \phi_{t} \right) \\
+\phi_{t+2} &= \theta_{t+1} - \varepsilon_{t+1} \nabla f\left(\theta_{t+1} \right)
+\end{aligned}} \\
+\theta_{t+2} &= \phi_{t+2} + \mu_{t+1}\left(\phi_{t+2} - \phi_{t+1} \right)
+\end{aligned}
 $$
 
 Now that the definition of where we start and finish each iteration has changed
