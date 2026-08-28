@@ -26,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">mize</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.5.9002</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -189,6 +189,14 @@ is documented for completeness rather than recommended as a normal
 starting point. For algorithmic background on the general direction
 methods, see <a href="https://doi.org/10.1007/978-0-387-40065-5" class="external-link">Nocedal
 and Wright</a>.</p>
+<p>When supplied curvature is expensive, compare <code>nh</code> and
+<code>nhi</code> alongside <code>nf</code> and <code>ng</code>. The
+first pair count accepted <code>fg$hs</code> and <code>fg$hi</code>
+callback results; they do not count the internal updates used to
+construct BFGS, SR1, or L-BFGS approximations. This keeps callback cost
+distinct from algorithmic curvature work. See the <a href="../reference/mize.html#value"><code>mize()</code> result
+reference</a> for the counting contract and the <a href="convergence.html#evaluation-budgets">Convergence guide</a> for its
+relationship to callback budgets.</p>
 <p>Each method-specific control has a fixed scope. For example,
 <code>memory</code> applies to L-BFGS and to the optional L-BFGS
 preconditioner for CG or TN; <code>cg_update</code> applies only to CG;

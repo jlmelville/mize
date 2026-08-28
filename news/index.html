@@ -13,7 +13,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">mize</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.5.9002</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -52,21 +52,26 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="mize-development-version">mize (development version)<a class="anchor" aria-label="anchor" href="#mize-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.3.0" id="mize-030">mize 0.3.0<a class="anchor" aria-label="anchor" href="#mize-030"></a></h2>
+<p>This release improves optimizer robustness and observability while retaining the existing public function and method names.</p>
 <div class="section level3">
-<h3 id="bug-fixes-and-minor-improvements-development-version">Bug fixes and minor improvements<a class="anchor" aria-label="anchor" href="#bug-fixes-and-minor-improvements-development-version"></a></h3>
+<h3 id="new-features-0-3-0">New features<a class="anchor" aria-label="anchor" href="#new-features-0-3-0"></a></h3>
+<ul><li>New function: <code><a href="../reference/check_mize_gradient.html">check_mize_gradient()</a></code>, which compares an analytic gradient with a finite-difference approximation.</li>
+<li>
+<code><a href="../reference/mize.html">mize()</a></code> now returns status fields: <code>converged</code>, <code>status</code>, and <code>message</code>, plus explicit best/last result fields (<code>best_par</code>, <code>best_f</code>, <code>last_par</code>, and <code>last_f</code>).</li>
+<li>
+<code><a href="../reference/mize.html">mize()</a></code>, <code><a href="../reference/mize_step.html">mize_step()</a></code>, <code><a href="../reference/mize_step_summary.html">mize_step_summary()</a></code>, and stored progress now report accepted Hessian and inverse-Hessian callback counts as <code>nh</code> and <code>nhi</code>. The fields are always present, remain zero when unused, and persist across reinitialization like <code>nf</code> and <code>ng</code>.</li>
+<li>With <code>store_progress = TRUE</code>, <code><a href="../reference/mize.html">mize()</a></code> now exposes optional line-search reason, selected-point provenance, local callback counts, initial scale, and exact-Newton direction provenance.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="bug-fixes-and-minor-improvements-0-3-0">Bug fixes and minor improvements<a class="anchor" aria-label="anchor" href="#bug-fixes-and-minor-improvements-0-3-0"></a></h3>
 <ul><li>Stateful optimization now handles lifecycle dependencies consistently, and global function and gradient evaluation limits are enforced across optimizer and line-search callbacks, including truncated Newton inner iterations.</li>
 <li>Optimizer inputs and objective, gradient, Hessian, and inverse-Hessian callback results now receive consistent early validation and clearer errors.</li>
 <li>Quasi-Newton updates and exact-Newton directions now use safer fallbacks when curvature information or Hessian factorization is unsuitable.</li>
 <li>NEWTON and L-BFGS now preserve plain vector parameters across multiple iterations when a supplied inverse-Hessian callback returns a full matrix.</li>
-<li>
-<code><a href="../reference/mize.html">mize()</a></code>, <code><a href="../reference/mize_step.html">mize_step()</a></code>, <code><a href="../reference/mize_step_summary.html">mize_step_summary()</a></code>, and stored progress now report accepted Hessian and inverse-Hessian callback counts as <code>nh</code> and <code>nhi</code>. The fields are always present, remain zero when unused, and persist across reinitialization like <code>nf</code> and <code>ng</code>.</li>
 <li>Wolfe line searches now require an explicitly numeric <code>step0</code> to be a positive finite scalar; string initializers are unchanged.</li>
 <li>Line searches using weak Wolfe curvature now accept equality at the curvature boundary. The optional Hager-Zhang initializer probe now counts toward the line search’s local function and combined evaluation limits. Hager-Zhang initializer arithmetic also safely handles non-finite values and uses the specified Euclidean gradient norm.</li>
-<li>New function: <code><a href="../reference/check_mize_gradient.html">check_mize_gradient()</a></code>, which compares an analytic gradient with a finite-difference approximation.</li>
-<li>
-<code><a href="../reference/mize.html">mize()</a></code> now returns status fields: <code>converged</code>, <code>status</code>, and <code>message</code>, plus explicit best/last result fields (<code>best_par</code>, <code>best_f</code>, <code>last_par</code>, and <code>last_f</code>).</li>
-<li>With <code>store_progress = TRUE</code>, <code><a href="../reference/mize.html">mize()</a></code> now exposes optional line-search reason, selected-point provenance, local callback counts, initial scale, and exact-Newton direction provenance. A line search that selects no usable step and produces no complete optimizer transition now reports <code>line_search_failed</code> instead of tolerance convergence; an exact global callback budget retains precedence.</li>
+<li>A line search that selects no usable step and produces no complete optimizer transition now reports <code>line_search_failed</code> instead of tolerance convergence; an exact global callback budget retains precedence.</li>
 </ul></div>
 </div>
     <div class="section level2">

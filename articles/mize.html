@@ -26,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">mize</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.5.9002</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -183,6 +183,26 @@ where its objective is zero. The returned parameters are close to that
 point, the objective is close to zero, and
 <code>status = "converged"</code> says that a configured numerical
 tolerance was reached.</p>
+<p>Callback counts make the work behind the result inspectable:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">res</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nf"</span>, <span class="st">"ng"</span>, <span class="st">"nh"</span>, <span class="st">"nhi"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt; $nf</span></span>
+<span><span class="co">#&gt; [1] 49</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $ng</span></span>
+<span><span class="co">#&gt; [1] 49</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $nh</span></span>
+<span><span class="co">#&gt; [1] 0</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $nhi</span></span>
+<span><span class="co">#&gt; [1] 0</span></span></code></pre></div>
+<p><code>nf</code> and <code>ng</code> count function and gradient
+callbacks. <code>nh</code> and <code>nhi</code> count accepted
+user-supplied Hessian and inverse-Hessian callback results. They are
+zero in this run because the default L-BFGS method builds its curvature
+model internally and <code>rb_fg</code> supplies neither curvature
+callback.</p>
 <div class="section level3">
 <h3 id="read-the-termination-record">Read the termination record<a class="anchor" aria-label="anchor" href="#read-the-termination-record"></a>
 </h3>
@@ -204,7 +224,7 @@ reason.</li>
 <p><code>converged</code> is <code>TRUE</code> only for the
 tolerance-based class, while <code>message</code> is a human-readable
 summary. Use the detailed record when code needs the precise reason:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">res</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"converged"</span>, <span class="st">"terminate"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt; $converged</span></span>
 <span><span class="co">#&gt; [1] TRUE</span></span>
@@ -233,7 +253,7 @@ vertical axis uses a logarithmic scale.
 <p>The stored objective falls by several orders of magnitude during this
 run. For exact values, select the fields useful for the question and
 inspect a few rows from the beginning and end:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">progress_view</span> <span class="op">&lt;-</span> <span class="va">res</span><span class="op">$</span><span class="va">progress</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"f"</span>, <span class="st">"step"</span>, <span class="st">"nf"</span>, <span class="st">"ng"</span><span class="op">)</span>, drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span></span></code></pre></div>
 <table class="table">
 <thead><tr class="header">
@@ -291,8 +311,10 @@ inspect a few rows from the beginning and end:</p>
 <p>The initial row represents the starting point. Here <code>f</code> is
 the current objective, <code>step</code> is the size of the parameter
 update, and <code>nf</code> and <code>ng</code> are cumulative function
-and gradient callback counts. The available columns depend on the method
-and calculations requested; see the <a href="../reference/mize.html#progress">Progress section of the
+and gradient callback counts. The progress data also contains cumulative
+<code>nh</code> and <code>nhi</code>; the compact table omits them
+because both remain zero for this run. The available columns depend on
+the method and calculations requested; see the <a href="../reference/mize.html#progress">Progress section of the
 <code>mize()</code> reference</a> for the complete dynamic schema.</p>
 <p>For live console output, use <code>verbose = TRUE</code>;
 <code>log_every</code> controls how often progress is printed or stored.

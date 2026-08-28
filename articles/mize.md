@@ -109,6 +109,30 @@ objective is zero. The returned parameters are close to that point, the
 objective is close to zero, and `status = "converged"` says that a
 configured numerical tolerance was reached.
 
+Callback counts make the work behind the result inspectable:
+
+``` r
+
+res[c("nf", "ng", "nh", "nhi")]
+#> $nf
+#> [1] 49
+#> 
+#> $ng
+#> [1] 49
+#> 
+#> $nh
+#> [1] 0
+#> 
+#> $nhi
+#> [1] 0
+```
+
+`nf` and `ng` count function and gradient callbacks. `nh` and `nhi`
+count accepted user-supplied Hessian and inverse-Hessian callback
+results. They are zero in this run because the default L-BFGS method
+builds its curvature model internally and `rb_fg` supplies neither
+curvature callback.
+
 ### Read the termination record
 
 `status` gives the quickest classification of any run:
@@ -171,9 +195,11 @@ progress_view <- res$progress[, c("f", "step", "nf", "ng"), drop = FALSE]
 
 The initial row represents the starting point. Here `f` is the current
 objective, `step` is the size of the parameter update, and `nf` and `ng`
-are cumulative function and gradient callback counts. The available
-columns depend on the method and calculations requested; see the
-[Progress section of the `mize()`
+are cumulative function and gradient callback counts. The progress data
+also contains cumulative `nh` and `nhi`; the compact table omits them
+because both remain zero for this run. The available columns depend on
+the method and calculations requested; see the [Progress section of the
+`mize()`
 reference](https://jlmelville.github.io/mize/reference/mize.html#progress)
 for the complete dynamic schema.
 

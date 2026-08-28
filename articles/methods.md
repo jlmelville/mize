@@ -54,6 +54,16 @@ completeness rather than recommended as a normal starting point. For
 algorithmic background on the general direction methods, see [Nocedal
 and Wright](https://doi.org/10.1007/978-0-387-40065-5).
 
+When supplied curvature is expensive, compare `nh` and `nhi` alongside
+`nf` and `ng`. The first pair count accepted `fg$hs` and `fg$hi`
+callback results; they do not count the internal updates used to
+construct BFGS, SR1, or L-BFGS approximations. This keeps callback cost
+distinct from algorithmic curvature work. See the [`mize()` result
+reference](https://jlmelville.github.io/mize/reference/mize.html#value)
+for the counting contract and the [Convergence
+guide](https://jlmelville.github.io/mize/articles/convergence.html#evaluation-budgets)
+for its relationship to callback budgets.
+
 Each method-specific control has a fixed scope. For example, `memory`
 applies to L-BFGS and to the optional L-BFGS preconditioner for CG or
 TN; `cg_update` applies only to CG; and `tn_init` and `tn_exit` apply
