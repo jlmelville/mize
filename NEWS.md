@@ -1,4 +1,22 @@
-# mize (development version)
+# mize 0.3.0
+
+This release improves optimizer robustness and observability while retaining
+the existing public function and method names.
+
+## New features
+
+* New function: `check_mize_gradient()`, which compares an analytic gradient
+with a finite-difference approximation.
+* `mize()` now returns status fields: `converged`, `status`, and `message`, plus
+explicit best/last result fields (`best_par`, `best_f`, `last_par`, and
+`last_f`).
+* `mize()`, `mize_step()`, `mize_step_summary()`, and stored progress now report
+accepted Hessian and inverse-Hessian callback counts as `nh` and `nhi`. The
+fields are always present, remain zero when unused, and persist across
+reinitialization like `nf` and `ng`.
+* With `store_progress = TRUE`, `mize()` now exposes optional line-search
+reason, selected-point provenance, local callback counts, initial scale, and
+exact-Newton direction provenance.
 
 ## Bug fixes and minor improvements
 
@@ -11,10 +29,6 @@ callback results now receive consistent early validation and clearer errors.
 curvature information or Hessian factorization is unsuitable.
 * NEWTON and L-BFGS now preserve plain vector parameters across multiple
 iterations when a supplied inverse-Hessian callback returns a full matrix.
-* `mize()`, `mize_step()`, `mize_step_summary()`, and stored progress now report
-accepted Hessian and inverse-Hessian callback counts as `nh` and `nhi`. The
-fields are always present, remain zero when unused, and persist across
-reinitialization like `nf` and `ng`.
 * Wolfe line searches now require an explicitly numeric `step0` to be a
 positive finite scalar; string initializers are unchanged.
 * Line searches using weak Wolfe curvature now accept equality at the
@@ -22,17 +36,9 @@ curvature boundary. The optional Hager-Zhang initializer probe now counts
 toward the line search's local function and combined evaluation limits.
 Hager-Zhang initializer arithmetic also safely handles non-finite values and
 uses the specified Euclidean gradient norm.
-* New function: `check_mize_gradient()`, which compares an analytic gradient
-with a finite-difference approximation.
-* `mize()` now returns status fields: `converged`,
-`status`, and `message`, plus explicit best/last result fields (`best_par`,
-`best_f`, `last_par`, and `last_f`).
-* With `store_progress = TRUE`, `mize()` now exposes optional line-search
-reason, selected-point provenance, local callback counts, initial scale, and
-exact-Newton direction provenance. A line search that selects no usable step
-and produces no complete optimizer transition now reports `line_search_failed`
-instead of tolerance convergence; an exact global callback budget retains
-precedence.
+* A line search that selects no usable step and produces no complete optimizer
+transition now reports `line_search_failed` instead of tolerance convergence;
+an exact global callback budget retains precedence.
 
 # mize 0.2.5
 
