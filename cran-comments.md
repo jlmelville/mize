@@ -1,8 +1,6 @@
 ## New release
 
-This is a feature and maintenance release that adds optimizer diagnostics and
-gradient checking, and improves validation, callback budgeting, line-search
-behavior, and Newton and quasi-Newton robustness.
+This is a feature and maintenance release.
 
 ## Test environments
 
@@ -22,7 +20,7 @@ behavior, and Newton and quasi-Newton robustness.
 
 ## revdepcheck results
 
-We checked 1 reverse dependency from CRAN, comparing R CMD check results across
+We checked 2 reverse dependencies from CRAN, comparing R CMD check results across
 CRAN and development versions of mize.
 
 * We saw 0 new problems.
