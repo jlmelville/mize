@@ -8,7 +8,10 @@ behavior, and Newton and quasi-Newton robustness.
 
 * local Ubuntu 26.04.1 LTS, R 4.5.2, GCC 15.2.0
 * Ubuntu 24.04 (on GitHub Actions), R 4.5.3, R 4.6.1, and R-devel
+* Fedora 42 (on R-hub), R-devel 4.7.0, GCC 15.2.1, ATLAS 3.10
+* local Windows 11 build, R 4.6.1
 * Windows Server 2022 (on GitHub Actions), R 4.5.3 and R 4.6.1
+* local macOS Tahoe, R 4.6.1
 * macOS Tahoe 26 (on GitHub Actions), R 4.6.1
 
 ## R CMD check results
