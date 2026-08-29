@@ -5,7 +5,6 @@
 ^README\.md$
 ^\.travis\.yml$
 ^cran-comments\.md$
-^revdep-results\.md$
 ^CRAN-RELEASE$
 ^\.github$
 ^CRAN-SUBMISSION$
