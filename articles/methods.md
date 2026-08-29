@@ -356,7 +356,7 @@ objective before the comparison and use that metric consistently.
 The theoretical step-size and momentum guarantees require assumptions
 and problem constants that this Rosenbrock example does not supply. For
 derivations and historical context, see the [Nesterov background
-note](https://jlmelville.github.io/mize/articles/nesterov.md).
+note](https://jlmelville.github.io/mize/articles/nesterov.html).
 
 ### Momentum schedules and update order
 
@@ -578,8 +578,8 @@ policy under the budget and metric that matter for the application.
   explains the status and termination fields used in every bounded
   comparison.
 - [Nesterov accelerated gradient and
-  momentum](https://jlmelville.github.io/mize/articles/nesterov.md)
+  momentum](https://jlmelville.github.io/mize/articles/nesterov.html)
   develops the schedule derivations and historical background.
 - [Quasi-hyperbolic
-  momentum](https://jlmelville.github.io/mize/articles/qhm.md) covers
+  momentum](https://jlmelville.github.io/mize/articles/qhm.html) covers
   another momentum formulation.
