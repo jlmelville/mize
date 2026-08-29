@@ -1,7 +1,7 @@
 # mize 0.3.0
 
-This release improves optimizer robustness and observability while retaining
-the existing public function and method names.
+This release improves optimizer robustness (mainly bug fixes when pathological
+conditions are encountered) and observability.
 
 ## New features
 
@@ -11,9 +11,7 @@ with a finite-difference approximation.
 explicit best/last result fields (`best_par`, `best_f`, `last_par`, and
 `last_f`).
 * `mize()`, `mize_step()`, `mize_step_summary()`, and stored progress now report
-accepted Hessian and inverse-Hessian callback counts as `nh` and `nhi`. The
-fields are always present, remain zero when unused, and persist across
-reinitialization like `nf` and `ng`.
+accepted Hessian and inverse-Hessian callback counts as `nh` and `nhi`.
 * With `store_progress = TRUE`, `mize()` now exposes optional line-search
 reason, selected-point provenance, local callback counts, initial scale, and
 exact-Newton direction provenance.
@@ -37,8 +35,7 @@ toward the line search's local function and combined evaluation limits.
 Hager-Zhang initializer arithmetic also safely handles non-finite values and
 uses the specified Euclidean gradient norm.
 * A line search that selects no usable step and produces no complete optimizer
-transition now reports `line_search_failed` instead of tolerance convergence;
-an exact global callback budget retains precedence.
+transition now reports `line_search_failed` instead of tolerance convergence.
 
 # mize 0.2.5
 
