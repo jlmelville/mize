@@ -2,8 +2,8 @@
 
 ## mize 0.3.0
 
-This release improves optimizer robustness and observability while
-retaining the existing public function and method names.
+This release improves optimizer robustness (mainly bug fixes when
+pathological conditions are encountered) and observability.
 
 ### New features
 
@@ -19,9 +19,7 @@ retaining the existing public function and method names.
   [`mize_step()`](https://jlmelville.github.io/mize/reference/mize_step.md),
   [`mize_step_summary()`](https://jlmelville.github.io/mize/reference/mize_step_summary.md),
   and stored progress now report accepted Hessian and inverse-Hessian
-  callback counts as `nh` and `nhi`. The fields are always present,
-  remain zero when unused, and persist across reinitialization like `nf`
-  and `ng`.
+  callback counts as `nh` and `nhi`.
 - With `store_progress = TRUE`,
   [`mize()`](https://jlmelville.github.io/mize/reference/mize.md) now
   exposes optional line-search reason, selected-point provenance, local
@@ -51,8 +49,7 @@ retaining the existing public function and method names.
   non-finite values and uses the specified Euclidean gradient norm.
 - A line search that selects no usable step and produces no complete
   optimizer transition now reports `line_search_failed` instead of
-  tolerance convergence; an exact global callback budget retains
-  precedence.
+  tolerance convergence.
 
 ## mize 0.2.5
 
