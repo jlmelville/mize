@@ -84,7 +84,9 @@ After each active step, call
 retain its returned `opt`, and then call
 [`check_mize_convergence()`](https://jlmelville.github.io/mize/reference/check_mize_convergence.md)
 if the summary did not terminate the optimizer. The examples below show
-this sequence.
+this sequence. A candidate parameter vector containing `Inf`, `NaN`, or
+`NA` terminates the optimizer with `opt$terminate$what = "par_inf"`; the
+returned `par` is rolled back to its value at the start of the step.
 
 Normally calling this function should return a more optimized vector of
 parameters than the input, or at least leave the parameters unchanged if

@@ -791,10 +791,10 @@ caused termination.</p>
 based termination (<code>"abs_tol"</code>, <code>"rel_tol"</code>, <code>"grad_tol"</code>,
 <code>"ginf_tol"</code>, or <code>"step_tol"</code>). The <code>status</code> value is <code>"converged"</code> for
 those tolerance exits, <code>"budget_exhausted"</code> for <code>"max_iter"</code>, <code>"max_fn"</code>,
-<code>"max_gr"</code>, or <code>"max_fg"</code>, <code>"failed"</code> for <code>"fn_inf"</code>, <code>"gr_inf"</code>, or
-<code>"line_search_failed"</code>, and <code>"terminated"</code> for any other termination
-reason.</p>
-<p>The following parameters control various stopping criteria:</p><ul><li><p><code>max_iter</code>: Maximum number of iterations to calculate. Reaching
+<code>"max_gr"</code>, or <code>"max_fg"</code>, <code>"failed"</code> for <code>"par_inf"</code>, <code>"fn_inf"</code>,
+<code>"gr_inf"</code>, or <code>"line_search_failed"</code>, and <code>"terminated"</code> for any other
+termination reason.</p>
+<p>The following controls and runtime conditions determine stopping:</p><ul><li><p><code>max_iter</code>: Maximum number of iterations to calculate. Reaching
 this limit is indicated by <code>terminate$what</code> being <code>"max_iter"</code>.</p></li>
 <li><p><code>max_fn</code>: Hard maximum number of function evaluations allowed.
 Indicated by <code>terminate$what</code> being <code>"max_fn"</code>.</p></li>
@@ -827,6 +827,9 @@ value. Indicated by <code>terminate$what</code> being <code>"step_tol"</code>.
 For those optimization methods which allow for abandoning the result of an
 iteration and restarting using the previous iteration's value of
 <code>par</code> an iteration, <code>step_tol</code> will not be triggered.</p></li>
+<li><p>A non-finite candidate parameter vector is indicated by
+<code>terminate$what</code> being <code>"par_inf"</code>. The update is rejected and <code>par</code> is
+rolled back before a downstream hook or callback can observe the candidate.</p></li>
 </ul><p>Once <code>max_fn</code>, <code>max_gr</code>, or <code>max_fg</code> is the termination reason, no later
 function or gradient callback is made, even if another callback-specific
 limit still has capacity. If the final permitted callback instead establishes
@@ -870,16 +873,19 @@ check is carried out. If the <code>store_progress</code> parameter is <code>TRUE
 then progress summaries and available method-specific diagnostics will be
 returned as a data frame. For a long optimization this could be a lot of
 data, so by default it is not stored.</p>
-<p>Other ways for the optimization to terminate is if an iteration generates a
-non-finite (i.e. <code>Inf</code> or <code>NaN</code>) gradient or function value.
-Some, but not all, line-searches will try to recover from the latter, by
+<p>Other ways for the optimization to terminate are if an iteration generates
+a non-finite (i.e. <code>Inf</code>, <code>NaN</code>, or <code>NA</code>) candidate parameter vector,
+gradient, or function value.
+Some, but not all, line-searches will try to recover from the latter by
 reducing the step size, but a non-finite gradient calculation during the
 gradient descent portion of optimization is considered catastrophic by mize,
 and it will give up. Termination under non-finite gradient or function
 conditions will result in <code>terminate$what</code> being <code>"gr_inf"</code> or
-<code>"fn_inf"</code> respectively. Unlike the convergence criteria, the
-optimization will detect these error conditions and terminate even if a
-convergence check would not be carried out for this iteration.</p>
+<code>"fn_inf"</code> respectively; a non-finite candidate parameter vector results in
+<code>"par_inf"</code> and rollback to the parameters at the start of the iteration.
+Unlike the convergence criteria, the optimization will detect these error
+conditions and terminate even if a convergence check would not be carried
+out for this iteration.</p>
 <p>The value of <code>par</code> in the return value should be the parameters which
 correspond to the lowest value of the function that has been calculated
 during the optimization. As discussed above however, determining which set

@@ -116,7 +116,10 @@ or an optimization method fails. Ordinary numerical tolerances and
 <code>max_iter</code> are applied by <code><a href="check_mize_convergence.html">check_mize_convergence()</a></code>. After each active step,
 call <code><a href="mize_step_summary.html">mize_step_summary()</a></code>, retain its returned <code>opt</code>, and then call
 <code><a href="check_mize_convergence.html">check_mize_convergence()</a></code> if the summary did not terminate the optimizer.
-The examples below show this sequence.</p>
+The examples below show this sequence.
+A candidate parameter vector containing <code>Inf</code>, <code>NaN</code>, or <code>NA</code> terminates the
+optimizer with <code>opt$terminate$what = "par_inf"</code>; the returned <code>par</code> is
+rolled back to its value at the start of the step.</p>
 <p>Normally calling this function should return a more optimized vector of
 parameters than the input, or at least leave the parameters unchanged if no
 improvement was found, although this is determined by how the optimizer was

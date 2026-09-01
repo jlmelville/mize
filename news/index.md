@@ -28,9 +28,11 @@ pathological conditions are encountered) and observability.
 ### Bug fixes and minor improvements
 
 - DBD now returns structured `fn_inf` or `gr_inf` failures when a later
-  objective or gradient is non-finite, validates its initial step
-  controls, and safeguards named initial-step estimates using the
-  current parameter scale.
+  objective or gradient is non-finite, and `par_inf` if an update would
+  produce non-finite parameters. Such an update is rolled back before
+  callbacks can observe it. DBD also validates its initial step controls
+  and safeguards named initial-step estimates using the current
+  parameter scale.
 - Momentum schedules now reject malformed or non-finite configured
   values and function results. The `"ramp"` and `"switch"` schedules
   require numeric `mom_init` and `mom_final` values, and adaptive
