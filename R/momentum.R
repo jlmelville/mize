@@ -46,9 +46,17 @@ make_momentum_step <- function(
       if (!use_init_mom && sub_stage$t <= 1) {
         sub_stage$value <- 0
       } else {
+        momentum <- sub_stage$mu_fn(
+          sub_stage$t,
+          opt$convergence$max_iter
+        )
+        mize_validate_finite_numeric(
+          momentum,
+          "mom_schedule function result"
+        )
         sub_stage$value <-
           sclamp(
-            sub_stage$mu_fn(sub_stage$t, opt$convergence$max_iter),
+            momentum,
             min = sub_stage$min_value,
             max = sub_stage$max_value
           )

@@ -483,6 +483,67 @@ test_that("Terminates semi-gracefully if gradient is non-finite", {
   expect_equal(res$iter, 6)
 })
 
+test_that("DBD returns a later non-finite gradient as a structured failure", {
+  gradient_calls <- 0L
+  fg <- list(
+    fn = function(x) sum(x^2),
+    gr = function(x) {
+      gradient_calls <<- gradient_calls + 1L
+      if (gradient_calls >= 3L) rep(NaN, length(x)) else 2 * x
+    }
+  )
+
+  res <- mize(
+    c(1, -1),
+    fg,
+    method = "DBD",
+    step0 = 0.1,
+    max_iter = 10,
+    check_conv_every = 1,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = 1e-6,
+    step_tol = NULL
+  )
+
+  expect_gte(gradient_calls, 3L)
+  expect_equal(res$ng, gradient_calls)
+  expect_equal(res$terminate$what, "gr_inf")
+  expect_false(res$converged)
+  expect_equal(res$status, "failed")
+})
+
+test_that("DBD returns a later non-finite objective as a structured failure", {
+  function_calls <- 0L
+  fg <- list(
+    fn = function(x) {
+      function_calls <<- function_calls + 1L
+      if (function_calls >= 3L) NaN else sum(x^2)
+    },
+    gr = function(x) 2 * x
+  )
+
+  res <- mize(
+    c(1, -1),
+    fg,
+    method = "DBD",
+    step0 = 0.1,
+    max_iter = 10,
+    check_conv_every = 1,
+    abs_tol = 1e-8,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+
+  expect_equal(function_calls, 3L)
+  expect_equal(res$terminate$what, "fn_inf")
+  expect_false(res$converged)
+  expect_equal(res$status, "failed")
+})
+
 test_that("Step tolerance is triggered when progress stalls", {
   # NULL abs_tol to stop it from triggering before step_tol
   res <- mize(

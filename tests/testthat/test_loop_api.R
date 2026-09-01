@@ -359,3 +359,48 @@ test_that("stateful convergence reports status fields", {
   expect_equal(opt$status, "budget_exhausted")
   expect_true(grepl("max_iter", opt$message, fixed = TRUE))
 })
+
+test_that("stateful DBD reports a later non-finite gradient", {
+  gradient_calls <- 0L
+  fg <- list(
+    fn = function(x) sum(x^2),
+    gr = function(x) {
+      gradient_calls <<- gradient_calls + 1L
+      if (gradient_calls >= 3L) rep(NaN, length(x)) else 2 * x
+    }
+  )
+  par <- c(1, -1)
+  opt <- make_mize(
+    method = "DBD",
+    step0 = 0.1,
+    par = par,
+    fg = fg,
+    max_iter = 10,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = 1e-6,
+    step_tol = NULL
+  )
+
+  while (!opt$is_terminated) {
+    par_old <- par
+    step <- mize_step(opt, par, fg)
+    opt <- step$opt
+    par <- step$par
+    if (opt$is_terminated) {
+      break
+    }
+
+    summary <- mize_step_summary(opt, par, fg, par_old)
+    opt <- summary$opt
+    if (!opt$is_terminated) {
+      opt <- check_mize_convergence(summary)
+    }
+  }
+
+  expect_equal(gradient_calls, 3L)
+  expect_equal(opt$terminate$what, "gr_inf")
+  expect_false(opt$converged)
+  expect_equal(opt$status, "failed")
+})

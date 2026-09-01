@@ -106,6 +106,14 @@ mize_validate_positive_numeric <- function(value, argument, allow_inf = FALSE) {
   invisible(value)
 }
 
+mize_validate_finite_numeric <- function(value, argument) {
+  if (!mize_is_numeric_scalar(value) || !is.finite(value)) {
+    stop(argument, " must be a finite numeric scalar", call. = FALSE)
+  }
+
+  invisible(value)
+}
+
 mize_validate_flag <- function(value, argument) {
   if (!is.logical(value) || length(value) != 1L || is.na(value)) {
     stop(argument, " must be TRUE or FALSE", call. = FALSE)
@@ -238,8 +246,10 @@ mize_validate_initial_par <- function(par) {
 #' @param mom_type Momentum type, either `"classical"` or
 #'   `"nesterov"`.
 #' @param mom_schedule Momentum schedule. See 'Details' of [mize()].
-#' @param mom_init Initial momentum value.
-#' @param mom_final Final momentum value.
+#' @param mom_init Numeric initial momentum value. Required for the
+#'   `"ramp"` and `"switch"` momentum schedules.
+#' @param mom_final Numeric final momentum value. Required for the
+#'   `"ramp"` and `"switch"` momentum schedules.
 #' @param mom_switch_iter For `mom_schedule` `"switch"` only, the
 #'   iteration when `mom_init` is changed to `mom_final`.
 #' @param mom_linear_weight If `TRUE`, the gradient contribution to the
@@ -417,6 +427,9 @@ make_mize <- function(
   ) {
     mize_validate_count(memory, "memory", minimum = 1)
   }
+  if (method %in% c("sd", "nag", "momentum", "dbd")) {
+    mize_validate_flag(norm_direction, "norm_direction")
+  }
 
   switch(
     method,
@@ -552,10 +565,39 @@ make_mize <- function(
     }
     mize_validate_range(dbd_weight, "dbd_weight", 0, 1)
 
-    if (is.character(step0) || is.numeric(step0)) {
-      eps_init <- step0
-    } else {
+    if (is.null(step0)) {
       eps_init <- "rasmussen"
+    } else if (is.numeric(step0)) {
+      mize_validate_positive_numeric(step0, "step0")
+      eps_init <- step0
+    } else if (
+      is.character(step0) &&
+        length(step0) == 1L &&
+        !is.na(step0)
+    ) {
+      eps_init <- tryCatch(
+        match.arg(
+          tolower(step0),
+          c("rasmussen", "scipy", "schmidt", "hz", "hager-zhang")
+        ),
+        error = function(condition) {
+          stop(
+            "step0 must be a documented initializer for method DBD",
+            call. = FALSE
+          )
+        }
+      )
+      if (eps_init == "hager-zhang") {
+        eps_init <- "hz"
+      }
+    } else {
+      stop(
+        paste(
+          "step0 must be a positive finite numeric scalar",
+          "or documented initializer for method DBD"
+        ),
+        call. = FALSE
+      )
     }
     if (step_up_fun == "*") {
       step_up_fun <- `*`
@@ -845,7 +887,10 @@ make_mize <- function(
 
   # Momentum configuration
   if (!is.null(mom_schedule)) {
+    mize_validate_flag(use_init_mom, "use_init_mom")
+    mize_validate_flag(mom_linear_weight, "mom_linear_weight")
     if (is.numeric(mom_schedule)) {
+      mize_validate_finite_numeric(mom_schedule, "mom_schedule")
       mom_step <- make_momentum_step(
         mu_fn = make_constant(value = mom_schedule),
         use_init_mom = use_init_mom
@@ -863,7 +908,12 @@ make_mize <- function(
       if (mom_schedule == "switch") {
         mize_validate_count(mom_switch_iter, "mom_switch_iter")
       }
+      if (mom_schedule %in% c("ramp", "switch")) {
+        mize_validate_finite_numeric(mom_init, "mom_init")
+        mize_validate_finite_numeric(mom_final, "mom_final")
+      }
       if (mom_schedule == "nsconvex") {
+        mize_validate_flag(nest_convex_approx, "nest_convex_approx")
         mize_validate_count(nest_burn_in, "nest_burn_in")
         if (!nest_convex_approx) {
           mize_validate_range(nest_q, "nest_q", 0, 1)

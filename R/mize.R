@@ -242,8 +242,8 @@
 #'   Nesterov Accelerated Gradient method.
 #' * `mom_schedule`: How the momentum changes over the course of the
 #'   optimization:
-#'   * If a numerical scalar is provided, a constant momentum will be
-#'     applied throughout.
+#'   * If a finite numerical scalar is provided, a constant momentum will be
+#'     applied throughout. Values outside `[0, 1]` are clamped to that range.
 #'   * `"nsconvex"`: Use the momentum schedule from the Nesterov
 #'   Accelerated Gradient method suggested for non-strongly convex functions.
 #'   Parameters which control the NAG momentum
@@ -254,8 +254,9 @@
 #'   * `"ramp"`: Linearly increase from one momentum value
 #'   (`mom_init`) to another (`mom_final`).
 #'   * If a function is provided, this will be invoked to provide a momentum
-#'   value. It must take one argument (the current iteration number) and return
-#'   a scalar.
+#'   value. It must take one argument (the current iteration number), may
+#'   optionally take `max_iter` as a second argument, and must return a finite
+#'   numeric scalar. Returned values are clamped to `[0, 1]`.
 #'
 #'   String arguments are case insensitive and can be abbreviated.
 #'
@@ -545,8 +546,10 @@
 #' @param mom_type Momentum type, either `"classical"` or
 #' `"nesterov"`. See 'Details'.
 #' @param mom_schedule Momentum schedule. See 'Details'.
-#' @param mom_init Initial momentum value.
-#' @param mom_final Final momentum value.
+#' @param mom_init Numeric initial momentum value. Required for the
+#' `"ramp"` and `"switch"` momentum schedules.
+#' @param mom_final Numeric final momentum value. Required for the
+#' `"ramp"` and `"switch"` momentum schedules.
 #' @param mom_switch_iter For `mom_schedule` `"switch"` only, the
 #' iteration when `mom_init` is changed to `mom_final`.
 #' @param use_init_mom If `TRUE`, then the momentum coefficient on

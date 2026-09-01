@@ -77,13 +77,20 @@ delta_bar_delta <- function(
 
       if (!is.numeric(sub_stage$epsilon)) {
         initial_slope <- dot(delta, stage$direction$value)
-        sub_stage$epsilon <- guess_initial_alpha(
-          sub_stage$epsilon,
-          parameters = NULL,
-          value = NULL,
-          gradient = delta,
-          slope = initial_slope,
-          try_newton_step = FALSE
+        initial_value <- if (has_fn_curr(opt, iter)) {
+          get_fn_curr(opt, iter)
+        } else {
+          NULL
+        }
+        sub_stage$epsilon <- safeguard_initial_alpha(
+          guess_initial_alpha(
+            sub_stage$epsilon,
+            parameters = par,
+            value = initial_value,
+            gradient = delta,
+            slope = initial_slope,
+            try_newton_step = FALSE
+          )
         )
       }
 

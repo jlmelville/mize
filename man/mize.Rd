@@ -185,9 +185,11 @@ condition in Wolfe line search. See the 'Line Search' section for details.}
 
 \item{mom_schedule}{Momentum schedule. See 'Details'.}
 
-\item{mom_init}{Initial momentum value.}
+\item{mom_init}{Numeric initial momentum value. Required for the
+\code{"ramp"} and \code{"switch"} momentum schedules.}
 
-\item{mom_final}{Final momentum value.}
+\item{mom_final}{Numeric final momentum value. Required for the
+\code{"ramp"} and \code{"switch"} momentum schedules.}
 
 \item{mom_switch_iter}{For \code{mom_schedule} \code{"switch"} only, the
 iteration when \code{mom_init} is changed to \code{mom_final}.}
@@ -569,8 +571,8 @@ Nesterov Accelerated Gradient method.
 \item \code{mom_schedule}: How the momentum changes over the course of the
 optimization:
 \itemize{
-\item If a numerical scalar is provided, a constant momentum will be
-applied throughout.
+\item If a finite numerical scalar is provided, a constant momentum will be
+applied throughout. Values outside \verb{[0, 1]} are clamped to that range.
 \item \code{"nsconvex"}: Use the momentum schedule from the Nesterov
 Accelerated Gradient method suggested for non-strongly convex functions.
 Parameters which control the NAG momentum
@@ -581,8 +583,9 @@ a specified iteration (\code{mom_switch_iter}).
 \item \code{"ramp"}: Linearly increase from one momentum value
 (\code{mom_init}) to another (\code{mom_final}).
 \item If a function is provided, this will be invoked to provide a momentum
-value. It must take one argument (the current iteration number) and return
-a scalar.
+value. It must take one argument (the current iteration number), may
+optionally take \code{max_iter} as a second argument, and must return a finite
+numeric scalar. Returned values are clamped to \verb{[0, 1]}.
 }
 
 String arguments are case insensitive and can be abbreviated.

@@ -303,6 +303,43 @@ test_that("adaptive restart replaces update_old hook behavior", {
   expect_equal(accepted$cache$update_old, -0.2)
 })
 
+test_that("function restart safely rejects a non-finite candidate objective", {
+  function_calls <- 0L
+  fg <- list(
+    fn = function(x) {
+      function_calls <<- function_calls + 1L
+      if (function_calls >= 2L) NaN else sum(x^2)
+    },
+    gr = function(x) 2 * x
+  )
+  par <- c(1, -1)
+  opt <- make_mize(
+    method = "MOM",
+    line_search = "constant",
+    step0 = 0.1,
+    mom_schedule = 0.5,
+    restart = "fn",
+    restart_wait = 1,
+    par = par,
+    fg = fg,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+
+  result <- mize_step(opt, par, fg)
+
+  expect_equal(function_calls, 2L)
+  expect_equal(result$par, par)
+  expect_equal(result$f, sum(par^2))
+  expect_false(result$opt$ok)
+  expect_equal(result$opt$restart_at, 1)
+  expect_false(result$opt$is_terminated)
+  expect_equal(result$opt$cache$update_old, rep(0, length(par)))
+})
+
 test_that("reinitialization resets algorithm state and preserves custom hooks", {
   fg <- state_hook_quadratic()
   opt <- make_mize(
@@ -371,6 +408,65 @@ test_that("reinitialization clears adaptive restart timing", {
   expect_null(opt$restart_at)
   expect_equal(opt$cache$update_old, 0)
   expect_equal(opt$stages$momentum$step_size$t, 1)
+})
+
+test_that("reinitialized specialized methods match a fresh first transition", {
+  fg <- state_hook_quadratic()
+  par <- c(1, -1)
+  configurations <- list(
+    DBD = list(method = "DBD", step0 = 0.1),
+    MOM = list(
+      method = "MOM",
+      line_search = "constant",
+      step0 = 0.1,
+      mom_schedule = 0.5
+    ),
+    NAG = list(
+      method = "NAG",
+      line_search = "constant",
+      step0 = 0.1
+    )
+  )
+
+  for (configuration_name in names(configurations)) {
+    args <- c(
+      configurations[[configuration_name]],
+      list(
+        par = par,
+        fg = fg,
+        abs_tol = NULL,
+        rel_tol = NULL,
+        grad_tol = NULL,
+        ginf_tol = NULL,
+        step_tol = NULL
+      )
+    )
+    opt <- do.call(make_mize, args)
+    first <- mize_step(opt, par, fg)
+    second <- mize_step(first$opt, first$par, fg)
+
+    counts_before <- second$opt$counts
+    reinitialized <- mize_init(second$opt, par, fg)
+    fresh <- do.call(make_mize, args)
+    reinitialized_step <- mize_step(reinitialized, par, fg)
+    fresh_step <- mize_step(fresh, par, fg)
+
+    expect_equal(
+      reinitialized_step$par,
+      fresh_step$par,
+      info = configuration_name
+    )
+    expect_equal(
+      reinitialized_step$opt$stages,
+      fresh_step$opt$stages,
+      info = configuration_name
+    )
+    expect_equal(
+      reinitialized_step$opt$counts$gr - counts_before$gr,
+      fresh_step$opt$counts$gr,
+      info = configuration_name
+    )
+  }
 })
 
 test_that("eager updates expose per-stage parameters and summed validation update", {

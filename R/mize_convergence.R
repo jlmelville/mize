@@ -96,6 +96,13 @@ mize_step_summary <- function(
   calc_fn = NULL,
   calc_gr = NULL
 ) {
+  if (!is.null(calc_fn)) {
+    mize_validate_flag(calc_fn, "calc_fn")
+  }
+  if (!is.null(calc_gr)) {
+    mize_validate_flag(calc_gr, "calc_gr")
+  }
+
   iter <- opt$iter
   # An internal flag useful for unit tests: if FALSE, doesn't count any
   # fn/gr calculations towards their counts. Can still get back fn/gr values

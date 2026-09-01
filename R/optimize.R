@@ -6,6 +6,8 @@ mize_validate_loop_cadence <- function(
   verbose,
   store_progress
 ) {
+  mize_validate_flag(verbose, "verbose")
+  mize_validate_flag(store_progress, "store_progress")
   if (!is.null(check_conv_every)) {
     mize_validate_count(check_conv_every, "check_conv_every", minimum = 1)
   }
@@ -176,7 +178,10 @@ opt_loop <- function(
         if (is.null(best_crit)) {
           best_crit <- "fn"
         }
-        if (best_crit == "fn" && opt$cache$fn_curr < best_fn) {
+        if (
+          identical(best_crit, "fn") &&
+            isTRUE(opt$cache$fn_curr < best_fn)
+        ) {
           best_fn <- opt$cache$fn_curr
           best_par <- par
         }
@@ -184,8 +189,12 @@ opt_loop <- function(
         if (is.null(best_crit)) {
           best_crit <- "gr"
         }
-        if (best_crit == "gr" && norm_inf(opt$cache$gr_curr) < best_grn) {
-          best_grn <- norm_inf(opt$cache$gr_curr)
+        current_grn <- norm_inf(opt$cache$gr_curr)
+        if (
+          identical(best_crit, "gr") &&
+            isTRUE(current_grn < best_grn)
+        ) {
+          best_grn <- current_grn
           best_par <- par
         }
       }

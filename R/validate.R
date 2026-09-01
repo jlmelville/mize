@@ -3,7 +3,7 @@
 # Checks that the function value has decreased over the step
 require_validate_fn <- function(opt, par, fg, iter, par0, update) {
   if (can_restart(opt, iter)) {
-    opt$ok <- opt$cache$fn_new < get_fn_curr(opt, iter)
+    opt$ok <- isTRUE(opt$cache$fn_new < get_fn_curr(opt, iter))
   }
   opt
 }
@@ -16,7 +16,7 @@ attr(require_validate_fn, "depends") <- "fn_new fn_curr save_cache_on_failure"
 # i.e. not using the implementation of Nesterov Acceleration
 require_validate_gr <- function(opt, par, fg, iter, par0, update) {
   if (can_restart(opt, iter)) {
-    opt$ok <- dot(get_gr_curr(opt, iter), update) < 0
+    opt$ok <- isTRUE(dot(get_gr_curr(opt, iter), update) < 0)
   }
   opt
 }
@@ -27,7 +27,7 @@ attr(require_validate_gr, "depends") <- "gradient save_cache_on_failure"
 # Checks that the update vector is getting larger
 require_validate_speed <- function(opt, par, fg, iter, par0, update) {
   if (can_restart(opt, iter)) {
-    opt$ok <- sqnorm2(update) > sqnorm2(opt$cache$update_old)
+    opt$ok <- isTRUE(sqnorm2(update) > sqnorm2(opt$cache$update_old))
   }
   opt
 }

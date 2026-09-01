@@ -1508,7 +1508,12 @@ test_that("feature-specific iteration controls are gated by consumption", {
   }
 
   expect_no_error(make_mize(method = "NAG", nest_burn_in = 0))
-  expect_no_error(make_mize(mom_schedule = "switch", mom_switch_iter = 0))
+  expect_no_error(make_mize(
+    mom_schedule = "switch",
+    mom_init = 0.2,
+    mom_final = 0.8,
+    mom_switch_iter = 0
+  ))
   expect_error(
     make_mize(mom_schedule = "switch", mom_switch_iter = NULL),
     "mom_switch_iter"
@@ -1545,6 +1550,217 @@ test_that("feature-specific iteration controls are gated by consumption", {
   expect_no_error(make_mize(method = "NAG", restart = "fn", restart_wait = 1))
 })
 
+test_that("momentum controls require finite scalar values when consumed", {
+  invalid_scalars <- list(
+    nonscalar = c(0.2, 0.8),
+    missing = NA_real_,
+    nan = NaN,
+    positive_infinite = Inf,
+    negative_infinite = -Inf
+  )
+
+  for (case_name in names(invalid_scalars)) {
+    expect_error(
+      make_mize(
+        method = "MOM",
+        mom_schedule = invalid_scalars[[case_name]]
+      ),
+      "mom_schedule",
+      info = case_name
+    )
+  }
+
+  for (schedule in c("ramp", "switch")) {
+    schedule_args <- list(
+      method = "MOM",
+      mom_schedule = schedule,
+      mom_init = 0.2,
+      mom_final = 0.8
+    )
+    if (schedule == "switch") {
+      schedule_args$mom_switch_iter <- 2
+    }
+
+    expect_error(
+      do.call(
+        make_mize,
+        utils::modifyList(schedule_args, list(mom_init = NULL))
+      ),
+      "mom_init",
+      info = paste(schedule, "missing mom_init")
+    )
+    expect_error(
+      do.call(
+        make_mize,
+        utils::modifyList(schedule_args, list(mom_final = NULL))
+      ),
+      "mom_final",
+      info = paste(schedule, "missing mom_final")
+    )
+
+    for (argument in c("mom_init", "mom_final")) {
+      for (case_name in names(invalid_scalars)) {
+        args <- schedule_args
+        args[[argument]] <- invalid_scalars[[case_name]]
+        expect_error(
+          do.call(make_mize, args),
+          argument,
+          info = paste(schedule, argument, case_name)
+        )
+      }
+    }
+    for (argument in c("mom_init", "mom_final")) {
+      args <- schedule_args
+      args[[argument]] <- "bad"
+      expect_error(
+        do.call(make_mize, args),
+        argument,
+        info = paste(schedule, argument, "wrong_type")
+      )
+    }
+  }
+
+  invalid_flags <- list(
+    wrong_type = 1,
+    nonscalar = c(TRUE, FALSE),
+    missing = NA
+  )
+  for (case_name in names(invalid_flags)) {
+    expect_error(
+      make_mize(method = "MOM", use_init_mom = invalid_flags[[case_name]]),
+      "use_init_mom",
+      info = case_name
+    )
+    expect_error(
+      make_mize(
+        method = "MOM",
+        mom_linear_weight = invalid_flags[[case_name]]
+      ),
+      "mom_linear_weight",
+      info = case_name
+    )
+    expect_error(
+      make_mize(
+        method = "NAG",
+        nest_convex_approx = invalid_flags[[case_name]]
+      ),
+      "nest_convex_approx",
+      info = case_name
+    )
+    expect_error(
+      make_mize(method = "DBD", norm_direction = invalid_flags[[case_name]]),
+      "norm_direction",
+      info = case_name
+    )
+  }
+
+  expect_no_error(make_mize(method = "MOM", mom_schedule = -1))
+  expect_no_error(make_mize(method = "MOM", mom_schedule = 2))
+})
+
+test_that("function-valued momentum schedules return finite numeric scalars", {
+  fg <- list(
+    fn = function(x) sum(x^2),
+    gr = function(x) 2 * x
+  )
+  invalid_results <- list(
+    wrong_type = "bad",
+    nonscalar = c(0.2, 0.8),
+    missing = NA_real_,
+    nan = NaN,
+    positive_infinite = Inf,
+    negative_infinite = -Inf
+  )
+
+  for (case_name in names(invalid_results)) {
+    schedule <- local({
+      value <- invalid_results[[case_name]]
+      function(iter) value
+    })
+    expect_error(
+      mize(
+        c(1, -1),
+        fg,
+        method = "MOM",
+        line_search = "constant",
+        step0 = 0.1,
+        mom_schedule = schedule,
+        use_init_mom = TRUE,
+        max_iter = 1
+      ),
+      "mom_schedule function result must be a finite numeric scalar",
+      fixed = TRUE,
+      info = case_name
+    )
+  }
+
+  expect_no_error(mize(
+    c(1, -1),
+    fg,
+    method = "MOM",
+    line_search = "constant",
+    step0 = 0.1,
+    mom_schedule = function(iter) 0.5,
+    use_init_mom = TRUE,
+    max_iter = 1
+  ))
+})
+
+test_that("loop and summary observation flags reject malformed values", {
+  fg <- list(
+    fn = function(x) sum(x^2),
+    gr = function(x) 2 * x
+  )
+  invalid_flags <- list(
+    wrong_type = 1,
+    nonscalar = c(TRUE, FALSE),
+    missing = NA
+  )
+
+  for (argument in c("verbose", "store_progress")) {
+    for (case_name in names(invalid_flags)) {
+      args <- list(
+        par = c(1, -1),
+        fg = fg,
+        method = "SD",
+        line_search = "constant",
+        step0 = 0.1,
+        max_iter = 0
+      )
+      args[[argument]] <- invalid_flags[[case_name]]
+      expect_error(
+        do.call(mize, args),
+        argument,
+        info = paste(argument, case_name)
+      )
+    }
+  }
+
+  opt <- make_mize(
+    method = "SD",
+    line_search = "constant",
+    step0 = 0.1,
+    par = c(1, -1),
+    fg = fg
+  )
+  for (argument in c("calc_fn", "calc_gr")) {
+    for (case_name in names(invalid_flags)) {
+      args <- list(opt = opt, par = c(1, -1), fg = fg)
+      args[[argument]] <- invalid_flags[[case_name]]
+      expect_error(
+        do.call(mize_step_summary, args),
+        argument,
+        info = paste(argument, case_name)
+      )
+    }
+    for (value in list(NULL, FALSE, TRUE)) {
+      args <- list(opt = opt, par = c(1, -1), fg = fg)
+      args[[argument]] <- value
+      expect_no_error(do.call(mize_step_summary, args))
+    }
+  }
+})
+
 test_that("constant line search requires a finite numeric scalar step0", {
   invalid_steps <- list(
     missing = NULL,
@@ -1569,6 +1785,94 @@ test_that("constant line search requires a finite numeric scalar step0", {
 
   expect_no_error(make_mize(line_search = "mt", step0 = "RaSmUsSeN"))
   expect_no_error(make_mize(method = "DBD", step0 = "RaSmUsSeN"))
+})
+
+test_that("DBD requires a positive scalar or documented step0 initializer", {
+  invalid_steps <- list(
+    zero = 0,
+    negative = -1,
+    nonscalar = c(0.1, 0.2),
+    missing_value = NA_real_,
+    nan = NaN,
+    positive_infinite = Inf,
+    negative_infinite = -Inf,
+    unknown = "bad",
+    character_vector = c("rasmussen", "scipy")
+  )
+
+  for (case_name in names(invalid_steps)) {
+    expect_error(
+      make_mize(method = "DBD", step0 = invalid_steps[[case_name]]),
+      "step0",
+      info = case_name
+    )
+  }
+
+  fg <- list(
+    fn = function(x) sum(x^2),
+    gr = function(x) 2 * x
+  )
+  for (step0 in c("RaSmUsSeN", "ScIpY", "ScHmIdT", "HZ", "Hager-Zhang")) {
+    result <- mize(
+      c(1, -1),
+      fg,
+      method = "DBD",
+      step0 = step0,
+      max_iter = 1,
+      abs_tol = NULL,
+      rel_tol = NULL,
+      grad_tol = NULL,
+      ginf_tol = NULL,
+      step_tol = NULL
+    )
+    expect_equal(length(result$par), 2L, info = step0)
+    expect_true(all(is.finite(result$par)), info = step0)
+  }
+  expect_no_error(make_mize(method = "DBD", step0 = 0.1))
+})
+
+test_that("DBD safeguards a non-finite derived step0", {
+  fg <- list(
+    fn = function(x) 0,
+    gr = function(x) rep(1e308, length(x))
+  )
+
+  result <- mize(
+    c(1, -1),
+    fg,
+    method = "DBD",
+    step0 = "scipy",
+    max_iter = 1,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+
+  expect_true(all(is.finite(result$par)))
+})
+
+test_that("DBD Hager-Zhang step0 uses the current parameter scale", {
+  fg <- list(
+    fn = function(x) sum(x^2),
+    gr = function(x) 2 * x
+  )
+
+  result <- mize(
+    c(1, -1),
+    fg,
+    method = "DBD",
+    step0 = "hz",
+    max_iter = 1,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+
+  expect_equal(result$par, c(0.989, -0.989))
 })
 
 test_that("Wolfe line searches require a positive finite numeric step0", {

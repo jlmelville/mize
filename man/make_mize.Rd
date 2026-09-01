@@ -178,9 +178,11 @@ condition in Wolfe line search. See the 'Line Search' section of
 
 \item{mom_schedule}{Momentum schedule. See 'Details' of \code{\link[=mize]{mize()}}.}
 
-\item{mom_init}{Initial momentum value.}
+\item{mom_init}{Numeric initial momentum value. Required for the
+\code{"ramp"} and \code{"switch"} momentum schedules.}
 
-\item{mom_final}{Final momentum value.}
+\item{mom_final}{Numeric final momentum value. Required for the
+\code{"ramp"} and \code{"switch"} momentum schedules.}
 
 \item{mom_switch_iter}{For \code{mom_schedule} \code{"switch"} only, the
 iteration when \code{mom_init} is changed to \code{mom_final}.}
