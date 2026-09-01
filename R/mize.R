@@ -342,11 +342,11 @@
 #' based termination (`"abs_tol"`, `"rel_tol"`, `"grad_tol"`,
 #' `"ginf_tol"`, or `"step_tol"`). The `status` value is `"converged"` for
 #' those tolerance exits, `"budget_exhausted"` for `"max_iter"`, `"max_fn"`,
-#' `"max_gr"`, or `"max_fg"`, `"failed"` for `"fn_inf"`, `"gr_inf"`, or
-#' `"line_search_failed"`, and `"terminated"` for any other termination
-#' reason.
+#' `"max_gr"`, or `"max_fg"`, `"failed"` for `"par_inf"`, `"fn_inf"`,
+#' `"gr_inf"`, or `"line_search_failed"`, and `"terminated"` for any other
+#' termination reason.
 #'
-#' The following parameters control various stopping criteria:
+#' The following controls and runtime conditions determine stopping:
 #'
 #'
 #' * `max_iter`: Maximum number of iterations to calculate. Reaching
@@ -382,6 +382,9 @@
 #'   For those optimization methods which allow for abandoning the result of an
 #'   iteration and restarting using the previous iteration's value of
 #'   `par` an iteration, `step_tol` will not be triggered.
+#' * A non-finite candidate parameter vector is indicated by
+#'   `terminate$what` being `"par_inf"`. The update is rejected and `par` is
+#'   rolled back before a downstream hook or callback can observe the candidate.
 #'
 #' Once `max_fn`, `max_gr`, or `max_fg` is the termination reason, no later
 #' function or gradient callback is made, even if another callback-specific
@@ -432,16 +435,19 @@
 #' returned as a data frame. For a long optimization this could be a lot of
 #' data, so by default it is not stored.
 #'
-#' Other ways for the optimization to terminate is if an iteration generates a
-#' non-finite (i.e. `Inf` or `NaN`) gradient or function value.
-#' Some, but not all, line-searches will try to recover from the latter, by
+#' Other ways for the optimization to terminate are if an iteration generates
+#' a non-finite (i.e. `Inf`, `NaN`, or `NA`) candidate parameter vector,
+#' gradient, or function value.
+#' Some, but not all, line-searches will try to recover from the latter by
 #' reducing the step size, but a non-finite gradient calculation during the
 #' gradient descent portion of optimization is considered catastrophic by mize,
 #' and it will give up. Termination under non-finite gradient or function
 #' conditions will result in `terminate$what` being `"gr_inf"` or
-#' `"fn_inf"` respectively. Unlike the convergence criteria, the
-#' optimization will detect these error conditions and terminate even if a
-#' convergence check would not be carried out for this iteration.
+#' `"fn_inf"` respectively; a non-finite candidate parameter vector results in
+#' `"par_inf"` and rollback to the parameters at the start of the iteration.
+#' Unlike the convergence criteria, the optimization will detect these error
+#' conditions and terminate even if a convergence check would not be carried
+#' out for this iteration.
 #'
 #' The value of `par` in the return value should be the parameters which
 #' correspond to the lowest value of the function that has been calculated

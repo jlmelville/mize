@@ -679,11 +679,11 @@ The \code{converged}, \code{status}, and \code{message} return values summarize
 based termination (\code{"abs_tol"}, \code{"rel_tol"}, \code{"grad_tol"},
 \code{"ginf_tol"}, or \code{"step_tol"}). The \code{status} value is \code{"converged"} for
 those tolerance exits, \code{"budget_exhausted"} for \code{"max_iter"}, \code{"max_fn"},
-\code{"max_gr"}, or \code{"max_fg"}, \code{"failed"} for \code{"fn_inf"}, \code{"gr_inf"}, or
-\code{"line_search_failed"}, and \code{"terminated"} for any other termination
-reason.
+\code{"max_gr"}, or \code{"max_fg"}, \code{"failed"} for \code{"par_inf"}, \code{"fn_inf"},
+\code{"gr_inf"}, or \code{"line_search_failed"}, and \code{"terminated"} for any other
+termination reason.
 
-The following parameters control various stopping criteria:
+The following controls and runtime conditions determine stopping:
 \itemize{
 \item \code{max_iter}: Maximum number of iterations to calculate. Reaching
 this limit is indicated by \code{terminate$what} being \code{"max_iter"}.
@@ -718,6 +718,9 @@ value. Indicated by \code{terminate$what} being \code{"step_tol"}.
 For those optimization methods which allow for abandoning the result of an
 iteration and restarting using the previous iteration's value of
 \code{par} an iteration, \code{step_tol} will not be triggered.
+\item A non-finite candidate parameter vector is indicated by
+\code{terminate$what} being \code{"par_inf"}. The update is rejected and \code{par} is
+rolled back before a downstream hook or callback can observe the candidate.
 }
 
 Once \code{max_fn}, \code{max_gr}, or \code{max_fg} is the termination reason, no later
@@ -769,16 +772,19 @@ then progress summaries and available method-specific diagnostics will be
 returned as a data frame. For a long optimization this could be a lot of
 data, so by default it is not stored.
 
-Other ways for the optimization to terminate is if an iteration generates a
-non-finite (i.e. \code{Inf} or \code{NaN}) gradient or function value.
-Some, but not all, line-searches will try to recover from the latter, by
+Other ways for the optimization to terminate are if an iteration generates
+a non-finite (i.e. \code{Inf}, \code{NaN}, or \code{NA}) candidate parameter vector,
+gradient, or function value.
+Some, but not all, line-searches will try to recover from the latter by
 reducing the step size, but a non-finite gradient calculation during the
 gradient descent portion of optimization is considered catastrophic by mize,
 and it will give up. Termination under non-finite gradient or function
 conditions will result in \code{terminate$what} being \code{"gr_inf"} or
-\code{"fn_inf"} respectively. Unlike the convergence criteria, the
-optimization will detect these error conditions and terminate even if a
-convergence check would not be carried out for this iteration.
+\code{"fn_inf"} respectively; a non-finite candidate parameter vector results in
+\code{"par_inf"} and rollback to the parameters at the start of the iteration.
+Unlike the convergence criteria, the optimization will detect these error
+conditions and terminate even if a convergence check would not be carried
+out for this iteration.
 
 The value of \code{par} in the return value should be the parameters which
 correspond to the lowest value of the function that has been calculated

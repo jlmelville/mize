@@ -544,6 +544,52 @@ test_that("DBD returns a later non-finite objective as a structured failure", {
   expect_equal(res$status, "failed")
 })
 
+test_that("DBD rolls back non-finite candidate parameters", {
+  callback_parameters <- list()
+  fg <- list(
+    fn = function(x) {
+      callback_parameters[[length(callback_parameters) + 1L]] <<- x
+      0
+    },
+    gr = function(x) {
+      callback_parameters[[length(callback_parameters) + 1L]] <<- x
+      c(2, -2)
+    }
+  )
+  par <- c(1, -1)
+
+  # The candidate failure must take precedence at the live max_iter boundary.
+  res <- mize(
+    par,
+    fg,
+    method = "DBD",
+    step0 = .Machine$double.xmax,
+    max_iter = 1,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+
+  expect_equal(res$par, par)
+  expect_equal(res$last_par, par)
+  expect_equal(res$terminate$what, "par_inf")
+  expect_false(res$converged)
+  expect_equal(res$status, "failed")
+  expect_true(grepl("par_inf", res$message, fixed = TRUE))
+  expect_equal(res$nf, 1)
+  expect_equal(res$ng, 1)
+  expect_length(callback_parameters, 2L)
+  expect_true(all(vapply(
+    callback_parameters,
+    function(x) {
+      all(is.finite(x))
+    },
+    logical(1)
+  )))
+})
+
 test_that("Step tolerance is triggered when progress stalls", {
   # NULL abs_tol to stop it from triggering before step_tol
   res <- mize(

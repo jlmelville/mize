@@ -550,3 +550,65 @@ test_that("eager updates expose per-stage parameters and summed validation updat
     )
   )
 })
+
+test_that("non-finite candidate parameters stop before unsafe hooks", {
+  fg <- state_hook_quadratic()
+
+  make_overflow_direction <- function() {
+    make_direction(list(
+      calculate = function(opt, stage, sub_stage, par, fg, iter) {
+        sub_stage$value <- .Machine$double.xmax
+        list(sub_stage = sub_stage)
+      }
+    ))
+  }
+
+  for (eager_update in c(FALSE, TRUE)) {
+    update_mode <- if (eager_update) "eager" else "deferred"
+    opt <- make_opt(
+      make_stages(
+        make_stage(
+          "overflow_stage",
+          direction = make_overflow_direction(),
+          step_size = constant_step_size(value = 1)
+        )
+      )
+    )
+    opt$eager_update <- eager_update
+    opt <- mize_init(
+      opt,
+      .Machine$double.xmax,
+      fg,
+      abs_tol = NULL,
+      rel_tol = NULL,
+      grad_tol = NULL
+    )
+
+    after_stage_probe <- function(opt, stage, par, fg, iter, ...) {
+      opt$trace <- c(opt$trace, paste0("after_stage_finite=", is.finite(par)))
+      list(opt = opt)
+    }
+    attr(after_stage_probe, "name") <- "after_stage_probe"
+    attr(after_stage_probe, "event") <- "after stage"
+
+    validation_probe <- function(opt, par, fg, iter, par0, update) {
+      opt$trace <- c(opt$trace, "validation")
+      opt
+    }
+    attr(validation_probe, "name") <- "validation_probe"
+    attr(validation_probe, "event") <- "during validation"
+
+    opt <- register_hook(opt, after_stage_probe)
+    opt <- register_hook(opt, validation_probe)
+
+    res <- mize_step(opt, .Machine$double.xmax, fg)
+
+    expect_equal(res$par, .Machine$double.xmax, info = update_mode)
+    expect_equal(res$opt$terminate$what, "par_inf", info = update_mode)
+    expect_equal(res$opt$status, "failed", info = update_mode)
+    expect_equal(res$nf, 0, info = update_mode)
+    expect_equal(res$ng, 0, info = update_mode)
+    expected_trace <- if (eager_update) NULL else "after_stage_finite=TRUE"
+    expect_equal(res$opt$trace, expected_trace, info = update_mode)
+  }
+})

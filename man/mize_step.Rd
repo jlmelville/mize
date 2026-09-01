@@ -58,6 +58,9 @@ or an optimization method fails. Ordinary numerical tolerances and
 call \code{\link[=mize_step_summary]{mize_step_summary()}}, retain its returned \code{opt}, and then call
 \code{\link[=check_mize_convergence]{check_mize_convergence()}} if the summary did not terminate the optimizer.
 The examples below show this sequence.
+A candidate parameter vector containing \code{Inf}, \code{NaN}, or \code{NA} terminates the
+optimizer with \code{opt$terminate$what = "par_inf"}; the returned \code{par} is
+rolled back to its value at the start of the step.
 
 Normally calling this function should return a more optimized vector of
 parameters than the input, or at least leave the parameters unchanged if no

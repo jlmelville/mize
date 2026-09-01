@@ -18,6 +18,9 @@
 #' call [mize_step_summary()], retain its returned `opt`, and then call
 #' [check_mize_convergence()] if the summary did not terminate the optimizer.
 #' The examples below show this sequence.
+#' A candidate parameter vector containing `Inf`, `NaN`, or `NA` terminates the
+#' optimizer with `opt$terminate$what = "par_inf"`; the returned `par` is
+#' rolled back to its value at the start of the step.
 #'
 #' Normally calling this function should return a more optimized vector of
 #' parameters than the input, or at least leave the parameters unchanged if no
@@ -149,6 +152,10 @@ mize_step <- function(opt, par, fg) {
 
     if (opt$eager_update) {
       par <- par + stage$result
+      opt <- terminate_on_nonfinite_parameters(opt, par)
+      if (!is.null(opt$terminate)) {
+        break
+      }
     }
 
     opt <- life_cycle_hook("stage", "after", opt, par, fg, iter)
@@ -161,29 +168,32 @@ mize_step <- function(opt, par, fg) {
     opt$ok <- TRUE
     if (!opt$eager_update) {
       par <- par + step_result
+      opt <- terminate_on_nonfinite_parameters(opt, par)
     }
 
-    # intercept whether we want to accept the new solution
-    opt <- life_cycle_hook(
-      "validation",
-      "before",
-      opt,
-      par,
-      fg,
-      iter,
-      par0,
-      step_result
-    )
-    opt <- life_cycle_hook(
-      "validation",
-      "during",
-      opt,
-      par,
-      fg,
-      iter,
-      par0,
-      step_result
-    )
+    if (is.null(opt$terminate)) {
+      # intercept whether we want to accept the new solution
+      opt <- life_cycle_hook(
+        "validation",
+        "before",
+        opt,
+        par,
+        fg,
+        iter,
+        par0,
+        step_result
+      )
+      opt <- life_cycle_hook(
+        "validation",
+        "during",
+        opt,
+        par,
+        fg,
+        iter,
+        par0,
+        step_result
+      )
+    }
   }
   # If the this solution was vetoed or the catastrophe happened,
   # roll back to the previous one.

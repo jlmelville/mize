@@ -50,6 +50,18 @@ terminate_on_budget <- function(opt) {
   opt
 }
 
+# Stop before a non-finite candidate parameter vector can be observed by a
+# downstream hook or callback.
+terminate_on_nonfinite_parameters <- function(opt, par) {
+  if (is.null(opt$terminate) && any(!is.finite(par))) {
+    opt <- set_mize_termination(
+      opt,
+      list(what = "par_inf", val = Inf)
+    )
+  }
+  opt
+}
+
 # Return the budget termination that would prevent a callback, if any.
 callback_budget_termination <- function(opt, callback) {
   if (
@@ -160,7 +172,7 @@ mize_termination_summary <- function(terminate) {
   what <- terminate[["what"]]
   converged_whats <- c("abs_tol", "rel_tol", "grad_tol", "ginf_tol", "step_tol")
   budget_whats <- c("max_iter", "max_fn", "max_gr", "max_fg")
-  failure_whats <- c("fn_inf", "gr_inf", "line_search_failed")
+  failure_whats <- c("par_inf", "fn_inf", "gr_inf", "line_search_failed")
 
   if (what %in% converged_whats) {
     status <- "converged"

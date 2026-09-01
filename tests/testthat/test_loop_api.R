@@ -404,3 +404,41 @@ test_that("stateful DBD reports a later non-finite gradient", {
   expect_false(opt$converged)
   expect_equal(opt$status, "failed")
 })
+
+test_that("stateful DBD rolls back non-finite candidate parameters", {
+  callback_parameters <- list()
+  fg <- list(
+    fn = function(x) {
+      callback_parameters[[length(callback_parameters) + 1L]] <<- x
+      0
+    },
+    gr = function(x) {
+      callback_parameters[[length(callback_parameters) + 1L]] <<- x
+      c(2, -2)
+    }
+  )
+  par <- c(1, -1)
+  opt <- make_mize(
+    method = "DBD",
+    step0 = .Machine$double.xmax,
+    par = par,
+    fg = fg,
+    max_iter = 1,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL
+  )
+
+  step <- mize_step(opt, par, fg)
+
+  expect_equal(step$par, par)
+  expect_equal(step$opt$terminate$what, "par_inf")
+  expect_false(step$opt$converged)
+  expect_equal(step$opt$status, "failed")
+  expect_equal(step$nf, 0)
+  expect_equal(step$ng, 1)
+  expect_length(callback_parameters, 1L)
+  expect_true(all(is.finite(callback_parameters[[1L]])))
+})
