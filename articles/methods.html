@@ -603,12 +603,13 @@ objectives because momentum trajectories may be nonmonotone.</p>
 <p>NAG takes a steepest-descent step and then applies a momentum update.
 Its current objective can increase on an iteration, so inspect the full
 trajectory and the returned best result.</p>
-<p><code>nest_q</code> controls the built-in NAG schedule. At
-<code>nest_q = 0</code>, the non-strongly-convex limit gives the largest
-momentum; at <code>nest_q = 1</code>, momentum is zero and the parameter
-updates reduce to steepest descent. The default is zero. A value between
-the endpoints is a tuning choice unless the objective supplies the
-strong-convexity information needed to motivate it.</p>
+<p><code>nest_q</code> controls the <code>"nsconvex"</code> NAG
+schedule. It ranges from <code>0</code>, the non-strongly-convex limit
+and largest momentum, to <code>1</code>, zero momentum. The default is
+<code>0</code>. With <code>nest_q = 1</code> and
+<code>nest_convex_approx = FALSE</code>, callback counts match
+<code>method = "SD"</code> and progress data have no <code>mu</code>
+column.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">nag_runs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  `q = 0` <span class="op">=</span> <span class="fu">run_bounded</span><span class="op">(</span><span class="st">"NAG"</span>, nest_q <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>

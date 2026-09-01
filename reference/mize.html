@@ -734,6 +734,12 @@ cause premature convergence. These methods were developed specifically
 for the NAG method, but can be employed with any momentum type and schedule.</p>
 <p>If <code>method</code> type <code>"momentum"</code> is specified with no other values,
 the momentum scheme will default to a constant value of <code>0.9</code>.</p>
+<p>For the fixed zero-momentum forms of classical Momentum
+(<code>mom_schedule = 0</code>) and NAG's built-in schedule (<code>nest_q = 1</code>,
+<code>nest_convex_approx = FALSE</code>), status reporting follows <code>method = "SD"</code>, so
+momentum-specific fields such as <code>mu</code> are omitted. Adaptive restart also has
+no effect. Other momentum configurations retain momentum-specific reporting
+even if their schedule evaluates to zero.</p>
     </div>
     <div class="section level2">
     <h2 id="progress">Progress<a class="anchor" aria-label="anchor" href="#progress"></a></h2>

@@ -27,6 +27,11 @@ pathological conditions are encountered) and observability.
 
 ### Bug fixes and minor improvements
 
+- Classical Momentum with numeric `mom_schedule = 0`, and NAG with the
+  `"nsconvex"` schedule, `nest_q = 1`, and `nest_convex_approx = FALSE`,
+  no longer make redundant function and gradient calls. In these
+  configurations, `restart` is ignored and progress no longer includes
+  `mu`.
 - DBD now returns structured `fn_inf` or `gr_inf` failures when a later
   objective or gradient is non-finite, and `par_inf` if an update would
   produce non-finite parameters. Such an update is rolled back before

@@ -315,12 +315,11 @@ NAG takes a steepest-descent step and then applies a momentum update.
 Its current objective can increase on an iteration, so inspect the full
 trajectory and the returned best result.
 
-`nest_q` controls the built-in NAG schedule. At `nest_q = 0`, the
-non-strongly-convex limit gives the largest momentum; at `nest_q = 1`,
-momentum is zero and the parameter updates reduce to steepest descent.
-The default is zero. A value between the endpoints is a tuning choice
-unless the objective supplies the strong-convexity information needed to
-motivate it.
+`nest_q` controls the `"nsconvex"` NAG schedule. It ranges from `0`, the
+non-strongly-convex limit and largest momentum, to `1`, zero momentum.
+The default is `0`. With `nest_q = 1` and `nest_convex_approx = FALSE`,
+callback counts match `method = "SD"` and progress data have no `mu`
+column.
 
 ``` r
 
