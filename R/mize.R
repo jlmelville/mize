@@ -285,6 +285,13 @@
 #' If `method` type `"momentum"` is specified with no other values,
 #' the momentum scheme will default to a constant value of `0.9`.
 #'
+#' For the fixed zero-momentum forms of classical Momentum
+#' (`mom_schedule = 0`) and NAG's built-in schedule (`nest_q = 1`,
+#' `nest_convex_approx = FALSE`), status reporting follows `method = "SD"`, so
+#' momentum-specific fields such as `mu` are omitted. Adaptive restart also has
+#' no effect. Other momentum configurations retain momentum-specific reporting
+#' even if their schedule evaluates to zero.
+#'
 #' @section Progress:
 #'
 #' If `store_progress = TRUE`, the returned `progress` data frame records the

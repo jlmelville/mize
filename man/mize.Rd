@@ -616,6 +616,13 @@ for the NAG method, but can be employed with any momentum type and schedule.
 
 If \code{method} type \code{"momentum"} is specified with no other values,
 the momentum scheme will default to a constant value of \code{0.9}.
+
+For the fixed zero-momentum forms of classical Momentum
+(\code{mom_schedule = 0}) and NAG's built-in schedule (\code{nest_q = 1},
+\code{nest_convex_approx = FALSE}), status reporting follows \code{method = "SD"}, so
+momentum-specific fields such as \code{mu} are omitted. Adaptive restart also has
+no effect. Other momentum configurations retain momentum-specific reporting
+even if their schedule evaluates to zero.
 }
 
 \section{Progress}{

@@ -270,7 +270,7 @@ test_that("no-step budget wins over function-difference convergence", {
     method = "MOM",
     line_search = "More-Thuente",
     step0 = 0.02,
-    mom_schedule = 0,
+    mom_schedule = function(iter) 0,
     ls_max_fn = 1,
     max_iter = 20,
     max_fn = 13,

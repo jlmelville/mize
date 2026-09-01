@@ -867,6 +867,7 @@ make_mize <- function(
   mom_type <- match.arg(tolower(mom_type), c("classical", "nesterov"))
 
   mom_direction <- momentum_direction()
+  static_zero_momentum <- FALSE
 
   if (method == "nag") {
     # Nesterov Accelerated Gradient
@@ -891,6 +892,9 @@ make_mize <- function(
     mize_validate_flag(mom_linear_weight, "mom_linear_weight")
     if (is.numeric(mom_schedule)) {
       mize_validate_finite_numeric(mom_schedule, "mom_schedule")
+      static_zero_momentum <- method == "momentum" &&
+        mom_type == "classical" &&
+        mom_schedule == 0
       mom_step <- make_momentum_step(
         mu_fn = make_constant(value = mom_schedule),
         use_init_mom = use_init_mom
@@ -918,6 +922,9 @@ make_mize <- function(
         if (!nest_convex_approx) {
           mize_validate_range(nest_q, "nest_q", 0, 1)
         }
+        static_zero_momentum <- method == "nag" &&
+          !nest_convex_approx &&
+          nest_q == 1
       }
 
       mom_step <- switch(
@@ -947,20 +954,22 @@ make_mize <- function(
       )
     }
 
-    mom_stage <- momentum_stage(
-      direction = mom_direction,
-      step_size = mom_step
-    )
+    if (!static_zero_momentum) {
+      mom_stage <- momentum_stage(
+        direction = mom_direction,
+        step_size = mom_step
+      )
 
-    opt <- append_stage(opt, mom_stage)
+      opt <- append_stage(opt, mom_stage)
 
-    if (mom_linear_weight) {
-      opt <- append_stage(opt, momentum_correction_stage())
+      if (mom_linear_weight) {
+        opt <- append_stage(opt, momentum_correction_stage())
+      }
     }
   }
 
   # Adaptive Restart
-  if (!is.null(restart)) {
+  if (!is.null(restart) && !static_zero_momentum) {
     restart <- match.arg(tolower(restart), c("none", "fn", "gr", "speed"))
     if (restart != "none") {
       mize_validate_count(restart_wait, "restart_wait", minimum = 1)
