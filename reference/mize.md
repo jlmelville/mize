@@ -248,11 +248,13 @@ mize(
 
 - mom_init:
 
-  Initial momentum value.
+  Numeric initial momentum value. Required for the `"ramp"` and
+  `"switch"` momentum schedules.
 
 - mom_final:
 
-  Final momentum value.
+  Numeric final momentum value. Required for the `"ramp"` and `"switch"`
+  momentum schedules.
 
 - mom_switch_iter:
 
@@ -715,8 +717,9 @@ momentum arguments:
 - `mom_schedule`: How the momentum changes over the course of the
   optimization:
 
-  - If a numerical scalar is provided, a constant momentum will be
-    applied throughout.
+  - If a finite numerical scalar is provided, a constant momentum will
+    be applied throughout. Values outside `[0, 1]` are clamped to that
+    range.
 
   - `"nsconvex"`: Use the momentum schedule from the Nesterov
     Accelerated Gradient method suggested for non-strongly convex
@@ -732,7 +735,9 @@ momentum arguments:
 
   - If a function is provided, this will be invoked to provide a
     momentum value. It must take one argument (the current iteration
-    number) and return a scalar.
+    number), may optionally take `max_iter` as a second argument, and
+    must return a finite numeric scalar. Returned values are clamped to
+    `[0, 1]`.
 
   String arguments are case insensitive and can be abbreviated.
 

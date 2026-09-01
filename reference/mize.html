@@ -313,11 +313,13 @@ condition in Wolfe line search. See the 'Line Search' section for details.</p></
 
 
 <dt id="arg-mom-init">mom_init<a class="anchor" aria-label="anchor" href="#arg-mom-init"></a></dt>
-<dd><p>Initial momentum value.</p></dd>
+<dd><p>Numeric initial momentum value. Required for the
+<code>"ramp"</code> and <code>"switch"</code> momentum schedules.</p></dd>
 
 
 <dt id="arg-mom-final">mom_final<a class="anchor" aria-label="anchor" href="#arg-mom-final"></a></dt>
-<dd><p>Final momentum value.</p></dd>
+<dd><p>Numeric final momentum value. Required for the
+<code>"ramp"</code> and <code>"switch"</code> momentum schedules.</p></dd>
 
 
 <dt id="arg-mom-switch-iter">mom_switch_iter<a class="anchor" aria-label="anchor" href="#arg-mom-switch-iter"></a></dt>
@@ -696,8 +698,8 @@ through the momentum arguments:</p><ul><li><p><code>mom_type</code>: Momentum ty
 gradient descent as suggested by Sutskever, emulating the behavior of the
 Nesterov Accelerated Gradient method.</p></li>
 <li><p><code>mom_schedule</code>: How the momentum changes over the course of the
-optimization:</p><ul><li><p>If a numerical scalar is provided, a constant momentum will be
-applied throughout.</p></li>
+optimization:</p><ul><li><p>If a finite numerical scalar is provided, a constant momentum will be
+applied throughout. Values outside <code>[0, 1]</code> are clamped to that range.</p></li>
 <li><p><code>"nsconvex"</code>: Use the momentum schedule from the Nesterov
 Accelerated Gradient method suggested for non-strongly convex functions.
 Parameters which control the NAG momentum
@@ -708,8 +710,9 @@ a specified iteration (<code>mom_switch_iter</code>).</p></li>
 <li><p><code>"ramp"</code>: Linearly increase from one momentum value
 (<code>mom_init</code>) to another (<code>mom_final</code>).</p></li>
 <li><p>If a function is provided, this will be invoked to provide a momentum
-value. It must take one argument (the current iteration number) and return
-a scalar.</p></li>
+value. It must take one argument (the current iteration number), may
+optionally take <code>max_iter</code> as a second argument, and must return a finite
+numeric scalar. Returned values are clamped to <code>[0, 1]</code>.</p></li>
 </ul><p>String arguments are case insensitive and can be abbreviated.</p></li>
 </ul><p>The <code>restart</code> parameter provides a way to restart the momentum if the
 optimization appears to be not be making progress, inspired by the method

@@ -65,7 +65,9 @@
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-and-minor-improvements-0-3-0">Bug fixes and minor improvements<a class="anchor" aria-label="anchor" href="#bug-fixes-and-minor-improvements-0-3-0"></a></h3>
-<ul><li>Stateful optimization now handles lifecycle dependencies consistently, and global function and gradient evaluation limits are enforced across optimizer and line-search callbacks, including truncated Newton inner iterations.</li>
+<ul><li>DBD now returns structured <code>fn_inf</code> or <code>gr_inf</code> failures when a later objective or gradient is non-finite, validates its initial step controls, and safeguards named initial-step estimates using the current parameter scale.</li>
+<li>Momentum schedules now reject malformed or non-finite configured values and function results. The <code>"ramp"</code> and <code>"switch"</code> schedules require numeric <code>mom_init</code> and <code>mom_final</code> values, and adaptive restart safely rejects non-finite comparisons instead of raising a control-flow error.</li>
+<li>Stateful optimization now handles lifecycle dependencies consistently, and global function and gradient evaluation limits are enforced across optimizer and line-search callbacks, including truncated Newton inner iterations.</li>
 <li>Optimizer inputs and objective, gradient, Hessian, and inverse-Hessian callback results now receive consistent early validation and clearer errors.</li>
 <li>Quasi-Newton updates and exact-Newton directions now use safer fallbacks when curvature information or Hessian factorization is unsuitable.</li>
 <li>NEWTON and L-BFGS now preserve plain vector parameters across multiple iterations when a supplied inverse-Hessian callback returns a full matrix.</li>

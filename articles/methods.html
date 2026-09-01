@@ -688,19 +688,19 @@ defines the momentum fraction:</p>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td>A number such as <code>0.9</code>
+<td>A finite number such as <code>0.9</code>
 </td>
 <td>Constant momentum</td>
 </tr>
 <tr class="even">
 <td><code>"switch"</code></td>
-<td>Change from <code>mom_init</code> to <code>mom_final</code> at
-<code>mom_switch_iter</code>
+<td>Change from finite <code>mom_init</code> to finite
+<code>mom_final</code> at <code>mom_switch_iter</code>
 </td>
 </tr>
 <tr class="odd">
 <td><code>"ramp"</code></td>
-<td>Increase linearly from <code>mom_init</code> to
+<td>Increase linearly from finite <code>mom_init</code> to finite
 <code>mom_final</code>
 </td>
 </tr>
@@ -711,12 +711,16 @@ arguments</td>
 </tr>
 <tr class="odd">
 <td>A function</td>
-<td>Compute a scalar from the iteration, optionally also
+<td>Compute a finite numeric scalar from the iteration, optionally also
 <code>max_iter</code>
 </td>
 </tr>
 </tbody>
 </table>
+<p>Numeric schedule values and function results are clamped to the
+interval <code>[0, 1]</code>. The <code>"switch"</code> and
+<code>"ramp"</code> schedules require both <code>mom_init</code> and
+<code>mom_final</code>.</p>
 <p>A deterministic custom schedule is easiest to inspect independently
 of an optimizer trajectory:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
@@ -852,6 +856,10 @@ increase or <code>"+"</code> for an additive increase; and</li>
 <code>dbd_weight</code>, the gradient-history weight when no
 momentum schedule is used.</li>
 </ul>
+<p><code>step0</code> must be a positive finite numeric scalar or one of
+the named first-step initializers described above. Named estimates are
+safeguarded before DBD uses them, and the <code>"hz"</code> estimate
+uses the current parameter scale.</p>
 <p>The following configuration uses the additive update associated with
 the t-SNE-style variant. It demonstrates control semantics; adopting it
 for a smooth optimization problem requires problem-specific

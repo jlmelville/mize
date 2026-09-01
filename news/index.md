@@ -27,6 +27,15 @@ pathological conditions are encountered) and observability.
 
 ### Bug fixes and minor improvements
 
+- DBD now returns structured `fn_inf` or `gr_inf` failures when a later
+  objective or gradient is non-finite, validates its initial step
+  controls, and safeguards named initial-step estimates using the
+  current parameter scale.
+- Momentum schedules now reject malformed or non-finite configured
+  values and function results. The `"ramp"` and `"switch"` schedules
+  require numeric `mom_init` and `mom_final` values, and adaptive
+  restart safely rejects non-finite comparisons instead of raising a
+  control-flow error.
 - Stateful optimization now handles lifecycle dependencies consistently,
   and global function and gradient evaluation limits are enforced across
   optimizer and line-search callbacks, including truncated Newton inner

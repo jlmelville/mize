@@ -243,11 +243,13 @@ make_mize(
 
 - mom_init:
 
-  Initial momentum value.
+  Numeric initial momentum value. Required for the `"ramp"` and
+  `"switch"` momentum schedules.
 
 - mom_final:
 
-  Final momentum value.
+  Numeric final momentum value. Required for the `"ramp"` and `"switch"`
+  momentum schedules.
 
 - mom_switch_iter:
 

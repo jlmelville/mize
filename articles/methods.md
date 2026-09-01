@@ -365,11 +365,15 @@ fraction:
 
 | Value | Schedule |
 |----|----|
-| A number such as `0.9` | Constant momentum |
-| `"switch"` | Change from `mom_init` to `mom_final` at `mom_switch_iter` |
-| `"ramp"` | Increase linearly from `mom_init` to `mom_final` |
+| A finite number such as `0.9` | Constant momentum |
+| `"switch"` | Change from finite `mom_init` to finite `mom_final` at `mom_switch_iter` |
+| `"ramp"` | Increase linearly from finite `mom_init` to finite `mom_final` |
 | `"nsconvex"` | Use the NAG schedule, controlled by the `nest_*` arguments |
-| A function | Compute a scalar from the iteration, optionally also `max_iter` |
+| A function | Compute a finite numeric scalar from the iteration, optionally also `max_iter` |
+
+Numeric schedule values and function results are clamped to the interval
+`[0, 1]`. The `"switch"` and `"ramp"` schedules require both `mom_init`
+and `mom_final`.
 
 A deterministic custom schedule is easiest to inspect independently of
 an optimizer trajectory:
@@ -461,6 +465,11 @@ The main controls are:
   an additive increase; and
 - `dbd_weight`, the gradient-history weight when no momentum schedule is
   used.
+
+`step0` must be a positive finite numeric scalar or one of the named
+first-step initializers described above. Named estimates are safeguarded
+before DBD uses them, and the `"hz"` estimate uses the current parameter
+scale.
 
 The following configuration uses the additive update associated with the
 t-SNE-style variant. It demonstrates control semantics; adopting it for
