@@ -126,11 +126,11 @@ previous step size is used to initialize the next iteration.</p></dd>
 
 
 <dt id="arg-scale-hess">scale_hess<a class="anchor" aria-label="anchor" href="#arg-scale-hess"></a></dt>
-<dd><p>if <code>TRUE</code>, the approximation to the inverse Hessian is
-scaled according to the method described by Nocedal and Wright
-(approximating an eigenvalue). Applies only to the methods <code>BFGS</code>
-(where the scaling is applied only during the first step) and <code>L-BFGS</code>
-(where the scaling is applied during every iteration). Ignored otherwise.</p></dd>
+<dd><p>If <code>TRUE</code>, scale the initial inverse-Hessian approximation
+using the heuristic described by Nocedal and Wright. BFGS and SR1 apply the
+scaling before the first quasi-Newton update if it has positive curvature;
+L-BFGS applies it at every iteration with stored curvature history. Ignored
+otherwise.</p></dd>
 
 
 <dt id="arg-memory">memory<a class="anchor" aria-label="anchor" href="#arg-memory"></a></dt>
