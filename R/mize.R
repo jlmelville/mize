@@ -353,6 +353,14 @@
 #' `"gr_inf"`, or `"line_search_failed"`, and `"terminated"` for any other
 #' termination reason.
 #'
+#' Point selection is separate from stopping. When objective values are
+#' available for best-result tracking, `par` and `best_par` identify an observed
+#' optimizer state with the lowest observed objective, while `last_par`
+#' identifies the final state before any best-result restoration. If a stopping
+#' condition was detected before restoration, `terminate`, `status`, and
+#' `converged` describe that stopping event. In contrast, `f`, `g2n`, and
+#' `ginfn` describe the returned `par`.
+#'
 #' The following controls and runtime conditions determine stopping:
 #'
 #'
@@ -607,11 +615,11 @@
 #' 'Progress' section.
 #' @return A list with components:
 #'
-#' * `par`: Optimized parameters. Normally, this is the best set of
-#'  parameters seen during optimization, i.e. the set that produced the minimum
-#'  function value. This requires that convergence checking with is carried out,
-#'  including function evaluation where necessary. See the 'Convergence'
-#'  section for details.
+#' * `par`: Returned parameters. When objective values are available for
+#'  best-result tracking, this is an observed optimizer state with the lowest
+#'  objective. If objective values never establish the comparison, `mize()` may
+#'  instead use the smallest observed infinity norm of the gradient. See the
+#'  'Convergence' section for details.
 #' * `nf`: Total number of function evaluations carried out. This
 #'  includes any extra evaluations required for convergence calculations. Also,
 #'  a function evaluation may be attempted to calculate the value of `f`
@@ -633,11 +641,10 @@
 #' * `f`: Value of the function at the returned value of `par`. This component
 #'  is absent when the value is unavailable under the hard-budget behavior
 #'  described in the 'Convergence' section.
-#' * `best_par`: The best parameters returned by `mize()`. This is
-#'  currently the same value as `par`, and is provided so callers can use an
-#'  explicit best-vs-last naming convention.
-#' * `best_f`: Value of the function at `best_par`. This is currently
-#'  the same value as `f`, and is absent under the same budget condition.
+#' * `best_par`: Explicit alias for `par`, provided so callers can use a
+#'  best-versus-last naming convention.
+#' * `best_f`: Value of the function at `best_par`. This is the same value as
+#'  `f` and is absent under the same budget condition.
 #' * `last_par`: Parameters from the last optimizer state before any final
 #'  best-result restoration. This is the same as `par` unless `mize()` returns
 #'  an earlier best point.
@@ -653,9 +660,9 @@
 #'  Calculated only if `ginf_tol` is non-null.
 #' * `iter`: The number of iterations the optimization was carried
 #'  out for.
-#' * `terminate`: List containing items: `what`, indicating what
-#'  convergence criterion was met, and `val` specifying the value at
-#'  convergence. See the 'Convergence' section for more details.
+#' * `terminate`: List containing `what`, which identifies the termination
+#'  condition, and `val`, which records its observed value or diagnostic detail.
+#'  See the 'Convergence' section for more details.
 #' * `converged`: Logical value indicating whether `terminate$what` is one of
 #'  the tolerance-based convergence criteria.
 #' * `status`: Short string classifying the termination reason. One of
@@ -665,6 +672,9 @@
 #'  method-specific diagnostics. Only present if `store_progress` is set to
 #'  `TRUE`. See the 'Progress' section. Could get quite large if the
 #'  optimization is long and progress is stored regularly.
+#'
+#' Run `vignette("convergence")` for a worked example of choosing between the
+#' best and last result fields.
 #' @references
 #'
 #' Gilbert, J. C., & Nocedal, J. (1992). Global convergence properties of conjugate gradient methods for optimization.

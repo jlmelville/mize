@@ -254,11 +254,11 @@ does not independently request objective or gradient calculations. See the
 \value{
 A list with components:
 \itemize{
-\item \code{par}: Optimized parameters. Normally, this is the best set of
-parameters seen during optimization, i.e. the set that produced the minimum
-function value. This requires that convergence checking with is carried out,
-including function evaluation where necessary. See the 'Convergence'
-section for details.
+\item \code{par}: Returned parameters. When objective values are available for
+best-result tracking, this is an observed optimizer state with the lowest
+objective. If objective values never establish the comparison, \code{mize()} may
+instead use the smallest observed infinity norm of the gradient. See the
+'Convergence' section for details.
 \item \code{nf}: Total number of function evaluations carried out. This
 includes any extra evaluations required for convergence calculations. Also,
 a function evaluation may be attempted to calculate the value of \code{f}
@@ -280,11 +280,10 @@ not contribute to \code{nh} or \code{nhi}.
 \item \code{f}: Value of the function at the returned value of \code{par}. This component
 is absent when the value is unavailable under the hard-budget behavior
 described in the 'Convergence' section.
-\item \code{best_par}: The best parameters returned by \code{mize()}. This is
-currently the same value as \code{par}, and is provided so callers can use an
-explicit best-vs-last naming convention.
-\item \code{best_f}: Value of the function at \code{best_par}. This is currently
-the same value as \code{f}, and is absent under the same budget condition.
+\item \code{best_par}: Explicit alias for \code{par}, provided so callers can use a
+best-versus-last naming convention.
+\item \code{best_f}: Value of the function at \code{best_par}. This is the same value as
+\code{f} and is absent under the same budget condition.
 \item \code{last_par}: Parameters from the last optimizer state before any final
 best-result restoration. This is the same as \code{par} unless \code{mize()} returns
 an earlier best point.
@@ -300,9 +299,9 @@ of the gradient vector, evaluated at the returned value of \code{par}.
 Calculated only if \code{ginf_tol} is non-null.
 \item \code{iter}: The number of iterations the optimization was carried
 out for.
-\item \code{terminate}: List containing items: \code{what}, indicating what
-convergence criterion was met, and \code{val} specifying the value at
-convergence. See the 'Convergence' section for more details.
+\item \code{terminate}: List containing \code{what}, which identifies the termination
+condition, and \code{val}, which records its observed value or diagnostic detail.
+See the 'Convergence' section for more details.
 \item \code{converged}: Logical value indicating whether \code{terminate$what} is one of
 the tolerance-based convergence criteria.
 \item \code{status}: Short string classifying the termination reason. One of
@@ -313,6 +312,9 @@ method-specific diagnostics. Only present if \code{store_progress} is set to
 \code{TRUE}. See the 'Progress' section. Could get quite large if the
 optimization is long and progress is stored regularly.
 }
+
+Run \code{vignette("convergence")} for a worked example of choosing between the
+best and last result fields.
 }
 \description{
 Numerical optimization including conjugate gradient,
@@ -689,6 +691,14 @@ those tolerance exits, \code{"budget_exhausted"} for \code{"max_iter"}, \code{"m
 \code{"max_gr"}, or \code{"max_fg"}, \code{"failed"} for \code{"par_inf"}, \code{"fn_inf"},
 \code{"gr_inf"}, or \code{"line_search_failed"}, and \code{"terminated"} for any other
 termination reason.
+
+Point selection is separate from stopping. When objective values are
+available for best-result tracking, \code{par} and \code{best_par} identify an observed
+optimizer state with the lowest observed objective, while \code{last_par}
+identifies the final state before any best-result restoration. If a stopping
+condition was detected before restoration, \code{terminate}, \code{status}, and
+\code{converged} describe that stopping event. In contrast, \code{f}, \code{g2n}, and
+\code{ginfn} describe the returned \code{par}.
 
 The following controls and runtime conditions determine stopping:
 \itemize{

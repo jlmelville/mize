@@ -475,16 +475,85 @@ uses `check_conv_every` for both.
 
 ## Best and last results
 
-`mize` returns explicit best-versus-last fields: `best_par` and `best_f` name
-the best observed result, while `last_par` and `last_f` describe the final
-optimizer state. The traditional `par` and `f` fields currently match the best
-result.
+Stopping and point selection answer different questions. A tolerance, limit,
+or failure decides when a run ends. When objective values are available for
+best-result tracking, `mize` returns the observed optimizer state with the
+lowest objective, even if the stopping event occurred at a later state.
+
+| Question | Fields | Interpretation |
+|:--|:--|:--|
+| Which point is the optimization result? | `par`, `f` | The returned best point and its objective |
+| Which names state that choice explicitly? | `best_par`, `best_f` | Aliases for `par` and `f` |
+| Which point ended the optimizer loop? | `last_par`, `last_f` | The final optimizer state before any best-result restoration |
+| Why did the run end? | `status`, `converged`, `message`, `terminate` | The stopping event; if detected before restoration, it is associated with the last state or transition |
+| Where are returned gradient norms evaluated? | `g2n`, `ginfn` | At `par`, not necessarily at `last_par` |
+
+When objective tracking is active, use `par` or `best_par` for the lowest
+observed objective. Use `last_par` when you need the parameters associated with
+the terminal optimizer state. If no objective value establishes best-result
+tracking, `mize` may instead compare observed infinity norms of the gradient.
+
+The following constructed run makes the distinction visible. Its constant
+step moves from a lower objective to a stationary point with a higher
+objective. The gradient tolerance stops the run at the stationary point, but
+`mize` returns the lower-objective starting point.
+
+```{r best-and-last-results}
+separating_fg <- list(
+  fn = function(x) -3 * x^3 + 5 * x^2 - x,
+  gr = function(x) -9 * x^2 + 10 * x - 1
+)
+
+separated_result <- mize(
+  0,
+  separating_fg,
+  method = "SD",
+  line_search = "constant",
+  step0 = 1,
+  max_iter = 1,
+  abs_tol = 0,
+  rel_tol = NULL,
+  grad_tol = NULL,
+  ginf_tol = 0,
+  step_tol = NULL,
+  store_progress = TRUE
+)
+
+point_comparison <- data.frame(
+  Point = c("Returned best", "Terminal"),
+  Parameter = c(separated_result$best_par, separated_result$last_par),
+  Objective = c(separated_result$best_f, separated_result$last_f),
+  `Gradient infinity norm` = c(
+    separated_result$ginfn,
+    separated_result$terminate$val
+  ),
+  check.names = FALSE
+)
+knitr::kable(point_comparison, align = c("l", "r", "r", "r"))
+```
+
+```{r assert-best-and-last-results, include = FALSE}
+stopifnot(
+  identical(separated_result$terminate$what, "ginf_tol"),
+  identical(separated_result$status, "converged"),
+  identical(separated_result$best_par, separated_result$par),
+  separated_result$best_f < separated_result$last_f,
+  identical(separated_result$best_par, 0),
+  identical(separated_result$last_par, 1),
+  identical(separated_result$terminate$val, 0),
+  identical(separated_result$ginfn, 1)
+)
+```
+
+Here `terminate$val = 0` is the gradient norm that satisfied `ginf_tol` at
+`last_par = 1`. The returned `ginfn = 1` is evaluated at `par = 0`. These
+values describe different points, so they do not conflict.
 
 Cached function or gradient information can make the best and last results
-differ even with every tolerance disabled. A hard callback budget can also
-prevent a final observation, leaving an objective field absent or `last_f` as
-`NA`. The named fields identify the returned points; stopping settings alone
-leave them ambiguous.
+differ even when every tolerance is disabled. A hard callback budget can also
+prevent a final observation. In that case, an objective result field can be
+absent, and `last_f` can be `NA` when `last_par` differs from `par`. Check that
+the required field is present and non-missing before using it programmatically.
 
 ## See also
 
