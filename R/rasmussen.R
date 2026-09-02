@@ -65,6 +65,9 @@ make_rasmussen_wolfe_policy <- function(
     zoom_bounds = function(zoom_state) {
       c(zoom_state$lower_point$alpha, zoom_state$upper_point$alpha)
     },
+    zoom_endpoints = function(zoom_state) {
+      list(zoom_state$lower_point, zoom_state$upper_point)
+    },
     process_zoom_trial = function(
       zoom_state,
       trial_point,

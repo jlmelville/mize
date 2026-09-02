@@ -399,3 +399,334 @@ test_that("line-search backends share one explicit callable protocol", {
     expect_identical(names(formals(searches[[name]])), expected, info = name)
   }
 })
+
+test_that("line parameter projection uses exact numeric identity", {
+  unnamed <- c(1, 0)
+  named <- c(first = 1, second = -0)
+
+  expect_equal(project_line_parameters(c(1, 2), 0.5, c(-2, 4)), c(0, 4))
+  expect_true(line_parameters_are_identical(unnamed, named))
+  expect_true(line_parameters_are_identical(c(0, -0), c(-0, 0)))
+  expect_false(line_parameters_are_identical(c(1, 2), c(1, 2, 3)))
+  expect_false(line_parameters_are_identical(c(1, 2), c(1, Inf)))
+})
+
+test_that("bracket admission reconstructs a truthful colliding point", {
+  direction <- -2^-53
+  initial_point <- list(
+    alpha = 0,
+    value = 1,
+    gradient = -0.5 / direction,
+    slope = -0.5,
+    parameters = 1
+  )
+  lower_point <- list(
+    alpha = 1,
+    value = 0.9,
+    gradient = -0.4 / direction,
+    slope = -0.4,
+    parameters = project_line_parameters(1, 1, direction)
+  )
+  upper_point <- list(
+    alpha = 2,
+    value = 0.8,
+    gradient = 0,
+    slope = 0,
+    parameters = project_line_parameters(1, 2, direction)
+  )
+  conditions <- make_line_condition_policy(0.25, 0.5)
+
+  expect_false(conditions$wolfe(initial_point, upper_point))
+  admission <- admit_bracketed_line_alpha(
+    alpha = 1.5,
+    first_endpoint = lower_point,
+    second_endpoint = upper_point,
+    initial_parameters = 1,
+    search_direction = direction
+  )
+
+  expect_identical(admission$status, "collision")
+  expect_identical(admission$matching_endpoint, "second")
+  expect_equal(admission$condition_point$alpha, 1.5)
+  expect_equal(admission$condition_point$parameters, upper_point$parameters)
+  expect_equal(admission$condition_point$value, upper_point$value)
+  expect_equal(admission$condition_point$gradient, upper_point$gradient)
+  expect_equal(admission$condition_point$slope, upper_point$slope)
+  expect_true(conditions$wolfe(initial_point, admission$condition_point))
+  expect_null(admission$replacement)
+  expect_null(find_novel_bracketed_line_parameters(
+    lower_point,
+    upper_point,
+    1,
+    direction
+  ))
+})
+
+test_that("bracket admission finds a third realized parameter vector", {
+  direction <- -2^-52
+  lower_point <- list(
+    alpha = 0,
+    value = 1,
+    gradient = -1 / direction,
+    slope = -1,
+    parameters = 1
+  )
+  upper_point <- list(
+    alpha = 2,
+    value = 2,
+    gradient = 1 / direction,
+    slope = 1,
+    parameters = project_line_parameters(1, 2, direction)
+  )
+
+  admission <- admit_bracketed_line_alpha(
+    alpha = 0.25,
+    first_endpoint = lower_point,
+    second_endpoint = upper_point,
+    initial_parameters = 1,
+    search_direction = direction
+  )
+  replacement <- find_novel_bracketed_line_parameters(
+    lower_point,
+    upper_point,
+    1,
+    direction
+  )
+
+  expect_identical(admission$status, "collision")
+  expect_equal(replacement$alpha, 1)
+  expect_false(line_parameters_are_identical(
+    replacement$parameters,
+    lower_point$parameters
+  ))
+  expect_false(line_parameters_are_identical(
+    replacement$parameters,
+    upper_point$parameters
+  ))
+})
+
+test_that("a novel parameter vector remains evaluable at an equal objective", {
+  initial_parameters <- 1
+  search_direction <- -2^-52
+  initial_point <- list(
+    alpha = 0,
+    value = 1,
+    gradient = -1 / search_direction,
+    slope = -1,
+    parameters = initial_parameters
+  )
+  upper_point <- list(
+    alpha = 2,
+    value = 1,
+    gradient = 1 / search_direction,
+    slope = 1,
+    parameters = project_line_parameters(
+      initial_parameters,
+      2,
+      search_direction
+    )
+  )
+  callback_parameters <- numeric()
+  evaluator <- make_line_evaluator(
+    function(alpha, calc_gradient = TRUE) {
+      parameters <- project_line_parameters(
+        initial_parameters,
+        alpha,
+        search_direction
+      )
+      callback_parameters <<- c(callback_parameters, parameters)
+      list(
+        alpha = alpha,
+        value = 1,
+        gradient = 0,
+        slope = 0,
+        parameters = parameters
+      )
+    },
+    initial_point = initial_point,
+    max_evaluations = 1
+  )
+
+  recovery <- recover_bracketed_line_point(
+    evaluator = evaluator,
+    alpha = 1,
+    min_alpha = 0,
+    first_endpoint = initial_point,
+    second_endpoint = upper_point,
+    initial_point = initial_point,
+    condition_policy = make_line_condition_policy(0.1, 0.5),
+    search_direction = search_direction,
+    max_evaluations = 1
+  )
+
+  expect_true(recovery$succeeded)
+  expect_false(recovery$accepted)
+  expect_identical(environment(evaluator)$evaluation_count, 1L)
+  expect_equal(callback_parameters, recovery$line_point$parameters)
+  expect_equal(recovery$line_point$value, initial_point$value)
+})
+
+test_that("bracketed nonfinite recovery neither repeats nor changes its reason", {
+  initial_parameters <- 1
+  search_direction <- -2^-52
+  initial_point <- list(
+    alpha = 0,
+    value = 1,
+    gradient = -1 / search_direction,
+    slope = -1,
+    parameters = initial_parameters
+  )
+  upper_point <- list(
+    alpha = 4,
+    value = 2,
+    gradient = 1 / search_direction,
+    slope = 1,
+    parameters = project_line_parameters(
+      initial_parameters,
+      4,
+      search_direction
+    )
+  )
+  callback_parameters <- numeric()
+  evaluator <- make_line_evaluator(
+    function(alpha, calc_gradient = TRUE) {
+      parameters <- project_line_parameters(
+        initial_parameters,
+        alpha,
+        search_direction
+      )
+      callback_parameters <<- c(callback_parameters, parameters)
+      list(
+        alpha = alpha,
+        value = Inf,
+        gradient = Inf,
+        slope = Inf,
+        parameters = parameters
+      )
+    },
+    initial_point = initial_point,
+    max_evaluations = Inf
+  )
+
+  recovery <- recover_bracketed_line_point(
+    evaluator = evaluator,
+    alpha = 2,
+    min_alpha = 0,
+    first_endpoint = initial_point,
+    second_endpoint = upper_point,
+    initial_point = initial_point,
+    condition_policy = make_line_condition_policy(0.1, 0.5),
+    search_direction = search_direction,
+    max_evaluations = Inf
+  )
+
+  expect_false(recovery$succeeded)
+  expect_null(recovery$termination_reason)
+  expect_gt(length(callback_parameters), 0L)
+  expect_identical(
+    length(unique(callback_parameters)),
+    length(callback_parameters)
+  )
+})
+
+test_that("bracket admission preserves legacy behavior for inconsistent maps", {
+  initial_parameters <- 1
+  direction <- -2^-53
+  lower_point <- list(
+    alpha = 0,
+    value = 1,
+    gradient = 1,
+    slope = -1,
+    parameters = initial_parameters
+  )
+  inconsistent_upper <- list(
+    alpha = 2,
+    value = 2,
+    gradient = 1,
+    slope = 1,
+    parameters = 123
+  )
+
+  cases <- list(
+    inconsistent_endpoint = list(
+      parameters = initial_parameters,
+      direction = direction,
+      endpoint = inconsistent_upper
+    ),
+    missing_direction = list(
+      parameters = initial_parameters,
+      direction = NULL,
+      endpoint = lower_point
+    ),
+    nonfinite_parameters = list(
+      parameters = Inf,
+      direction = direction,
+      endpoint = inconsistent_upper
+    )
+  )
+
+  for (case_name in names(cases)) {
+    case <- cases[[case_name]]
+    admission <- admit_bracketed_line_alpha(
+      alpha = 1,
+      first_endpoint = lower_point,
+      second_endpoint = case$endpoint,
+      initial_parameters = case$parameters,
+      search_direction = case$direction
+    )
+    expect_identical(admission$status, "unchecked", info = case_name)
+  }
+})
+
+test_that("the fast admission path falls back for nonconformable endpoints", {
+  initial_parameters <- c(1, 2)
+  search_direction <- c(-0.25, 0)
+  initial_point <- list(
+    alpha = 0,
+    value = 1,
+    gradient = c(1, 0),
+    slope = -0.25,
+    parameters = initial_parameters
+  )
+  inconsistent_endpoint <- list(
+    alpha = 2,
+    value = 2,
+    gradient = 0,
+    slope = 0,
+    parameters = 0.5
+  )
+  evaluator <- make_line_evaluator(
+    function(alpha, calc_gradient = TRUE) {
+      list(
+        alpha = alpha,
+        value = 0.5,
+        gradient = c(0, 0),
+        slope = 0,
+        parameters = initial_parameters + alpha * search_direction
+      )
+    },
+    max_evaluations = 1
+  )
+  initialize_line_evaluator_parameter_witness(
+    evaluator,
+    initial_point,
+    search_direction
+  )
+
+  recovery <- recover_bracketed_line_point(
+    evaluator = evaluator,
+    alpha = 1,
+    min_alpha = 0,
+    first_endpoint = initial_point,
+    second_endpoint = inconsistent_endpoint,
+    initial_point = initial_point,
+    condition_policy = make_line_condition_policy(0.1, 0.5),
+    search_direction = search_direction,
+    max_evaluations = 1
+  )
+
+  expect_true(recovery$succeeded)
+  expect_false(recovery$accepted)
+  expect_equal(recovery$line_point$alpha, 1)
+  expect_identical(environment(evaluator)$evaluation_count, 1L)
+})

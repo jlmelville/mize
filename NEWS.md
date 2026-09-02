@@ -47,6 +47,9 @@ curvature boundary. The optional Hager-Zhang initializer probe now counts
 toward the line search's local function and combined evaluation limits.
 Hager-Zhang initializer arithmetic also safely handles non-finite values and
 uses the specified Euclidean gradient norm.
+* Bracketed Wolfe line searches now avoid repeated objective and gradient
+callbacks when floating-point step changes cannot produce a new parameter
+vector.
 * A line search that selects no usable step and produces no complete optimizer
 transition now reports `line_search_failed` instead of tolerance convergence.
 

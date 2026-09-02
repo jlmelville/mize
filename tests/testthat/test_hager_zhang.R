@@ -356,6 +356,157 @@ test_that("Hager-Zhang counts evaluations used to repair a secant bracket", {
   expect_identical(result$termination_reason, "wolfe")
 })
 
+test_that("Hager-Zhang accepts a colliding secant alpha from endpoint data", {
+  initial_parameters <- 1
+  search_direction <- -2^-53
+  initial_point <- list(
+    alpha = 0,
+    value = 1,
+    gradient = -0.5 / search_direction,
+    slope = -0.5,
+    parameters = initial_parameters
+  )
+  callback_alphas <- numeric()
+  evaluate <- function(alpha, calc_gradient = TRUE) {
+    callback_alphas <<- c(callback_alphas, alpha)
+    parameters <- project_line_parameters(
+      initial_parameters,
+      alpha,
+      search_direction
+    )
+    slope <- if (alpha == 1) -0.4 else 0
+    list(
+      alpha = alpha,
+      value = if (alpha == 1) 0.85 else 0.8,
+      gradient = slope / search_direction,
+      slope = slope,
+      parameters = parameters
+    )
+  }
+  search <- make_hager_zhang_search(
+    armijo_constant = 0.25,
+    curvature_constant = 0.5,
+    max_evaluations = 5,
+    strong_curvature = TRUE,
+    approximate_armijo = FALSE,
+    method_policy = make_hager_zhang_policy(expansion_factor = 2)
+  )
+
+  result <- search(
+    evaluate,
+    initial_point,
+    initial_alpha = 1,
+    search_direction = search_direction
+  )
+
+  expect_equal(callback_alphas, c(1, 2))
+  expect_identical(result$function_evaluations, 2L)
+  expect_identical(result$gradient_evaluations, 2L)
+  expect_identical(result$termination_reason, "wolfe")
+  expect_identical(result$outcome, "wolfe")
+  expect_equal(result$line_point$alpha, 1.5)
+  expect_equal(
+    result$line_point$parameters,
+    project_line_parameters(initial_parameters, 2, search_direction)
+  )
+})
+
+test_that("Hager-Zhang bisection stops at parameter exhaustion", {
+  initial_parameters <- 1
+  search_direction <- -2^-54
+  initial_point <- list(
+    alpha = 0,
+    value = 1,
+    gradient = -0.5 / search_direction,
+    slope = -0.5,
+    parameters = initial_parameters
+  )
+  upper_endpoint <- list(
+    alpha = 2,
+    value = 1.1,
+    gradient = 0,
+    slope = 0,
+    parameters = project_line_parameters(
+      initial_parameters,
+      2,
+      search_direction
+    )
+  )
+  evaluator <- make_line_evaluator(
+    function(alpha, calc_gradient = TRUE) {
+      stop("parameter-exhausted bisection must not invoke the callback")
+    },
+    initial_point = initial_point,
+    max_evaluations = Inf
+  )
+
+  result <- bisect_hager_zhang_bracket(
+    bracket = make_hager_zhang_bracket(initial_point, upper_endpoint),
+    initial_point = initial_point,
+    evaluator = evaluator,
+    approximate_decrease_tolerance = 0,
+    condition_policy = make_line_condition_policy(0.25, 0.5),
+    method_policy = make_hager_zhang_policy(
+      relative_interval_tolerance = 1
+    ),
+    search_direction = search_direction
+  )
+
+  expect_false(result$succeeded)
+  expect_identical(result$termination_reason, "rounding_stagnation")
+  expect_identical(environment(evaluator)$evaluation_count, 0L)
+  expect_identical(
+    result$bracket,
+    make_hager_zhang_bracket(initial_point, upper_endpoint)
+  )
+})
+
+test_that("Hager-Zhang keeps interval tolerance when a new vector is reachable", {
+  initial_parameters <- 1
+  search_direction <- -2^-52
+  initial_point <- list(
+    alpha = 0,
+    value = 1,
+    gradient = -1 / search_direction,
+    slope = -1,
+    parameters = initial_parameters
+  )
+  upper_endpoint <- list(
+    alpha = 2,
+    value = 2,
+    gradient = 1 / search_direction,
+    slope = 1,
+    parameters = project_line_parameters(
+      initial_parameters,
+      2,
+      search_direction
+    )
+  )
+  evaluator <- make_line_evaluator(
+    function(alpha, calc_gradient = TRUE) {
+      stop("interval tolerance must stop before another callback")
+    },
+    initial_point = initial_point,
+    max_evaluations = Inf
+  )
+
+  result <- bisect_hager_zhang_bracket(
+    bracket = make_hager_zhang_bracket(initial_point, upper_endpoint),
+    initial_point = initial_point,
+    evaluator = evaluator,
+    approximate_decrease_tolerance = 0,
+    condition_policy = make_line_condition_policy(0.1, 0.5),
+    method_policy = make_hager_zhang_policy(
+      relative_interval_tolerance = 1
+    ),
+    search_direction = search_direction
+  )
+
+  expect_false(result$succeeded)
+  expect_identical(result$termination_reason, "relative_interval_tolerance")
+  expect_identical(environment(evaluator)$evaluation_count, 0L)
+})
+
 test_that("Hager-Zhang safely handles a nonfinite second secant trial", {
   initial_point <- list(alpha = 0, value = 0, slope = -1, gradient = -1)
   evaluated_alphas <- numeric()

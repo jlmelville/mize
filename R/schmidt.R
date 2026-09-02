@@ -67,6 +67,9 @@ make_schmidt_wolfe_policy <- function(
         zoom_state$endpoints[[2L]]$alpha
       ))
     },
+    zoom_endpoints = function(zoom_state) {
+      zoom_state$endpoints
+    },
     process_zoom_trial = function(
       zoom_state,
       trial_point,

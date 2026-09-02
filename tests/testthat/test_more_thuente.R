@@ -802,3 +802,64 @@ test_that("More-Thuente termination reasons retain their precedence", {
     "budget_exhausted"
   )
 })
+
+test_that("More-Thuente accepts a colliding alpha from endpoint data", {
+  initial_parameters <- 1
+  search_direction <- -2^-53
+  parameter_ulp <- 2^-53
+  initial_point <- list(
+    alpha = 0,
+    value = 1,
+    gradient = -1 / search_direction,
+    slope = -1,
+    parameters = initial_parameters
+  )
+  values <- c(1, 0.80567502758931364, 0.82119496355298904)
+  slopes <- c(-1, -0.84458565851673484, -0.47348305908963084)
+  callback_alphas <- numeric()
+  callback_parameters <- numeric()
+  evaluate <- function(alpha, calc_gradient = TRUE) {
+    parameters <- project_line_parameters(
+      initial_parameters,
+      alpha,
+      search_direction
+    )
+    parameter_index <- as.integer(round(
+      (initial_parameters - parameters) / parameter_ulp
+    ))
+    callback_alphas <<- c(callback_alphas, alpha)
+    callback_parameters <<- c(callback_parameters, parameters)
+    slope <- slopes[[parameter_index + 1L]]
+    list(
+      alpha = alpha,
+      value = values[[parameter_index + 1L]],
+      gradient = slope / search_direction,
+      slope = slope,
+      parameters = parameters
+    )
+  }
+  search <- make_wolfe_line_search(
+    more_thuente_core,
+    armijo_constant = 0.1,
+    curvature_constant = 0.5,
+    max_evaluations = 10,
+    method_policy = make_more_thuente_policy()
+  )
+
+  result <- search(
+    evaluate,
+    initial_point,
+    initial_alpha = 2,
+    search_direction = search_direction
+  )
+
+  expect_identical(result$termination_reason, "wolfe")
+  expect_identical(result$outcome, "wolfe")
+  expect_identical(result$function_evaluations, 2L)
+  expect_equal(callback_alphas, c(2, 0.53337697837751952))
+  expect_false(any(callback_alphas == result$line_point$alpha))
+  expect_equal(result$line_point$alpha, 1.5013481726483566)
+  expect_equal(result$line_point$parameters, callback_parameters[[1L]])
+  expect_equal(result$line_point$value, values[[3L]])
+  expect_equal(result$line_point$slope, slopes[[3L]])
+})

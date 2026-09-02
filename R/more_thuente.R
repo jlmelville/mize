@@ -22,7 +22,8 @@ more_thuente_core <- function(
     initial_point = initial_point,
     initial_alpha = initial_alpha,
     condition_policy = condition_policy,
-    policy = method_policy
+    policy = method_policy,
+    search_direction = search_direction
   )
 }
 
@@ -90,7 +91,8 @@ run_more_thuente_search <- function(
   initial_point,
   initial_alpha,
   condition_policy,
-  policy
+  policy,
+  search_direction = NULL
 ) {
   state <- initialize_more_thuente_search_state(
     initial_point = initial_point,
@@ -103,6 +105,13 @@ run_more_thuente_search <- function(
 
   armijo_slope <- condition_policy$armijo_constant * initial_point$slope
   evaluator_state <- environment(evaluator)
+  parameter_projection_witness <- if (
+    isTRUE(evaluator_state$parameter_projection_witness_initialized)
+  ) {
+    evaluator_state$parameter_projection_witness
+  } else {
+    NULL
+  }
   previous_transition_is_valid <- TRUE
 
   repeat {
@@ -110,16 +119,81 @@ run_more_thuente_search <- function(
     state$next_trial_alpha <- max(state$next_trial_alpha, policy$alpha_min)
     state$next_trial_alpha <- min(state$next_trial_alpha, policy$alpha_max)
 
-    recovered <- recover_finite_line_point(
-      evaluator = evaluator,
-      alpha = state$next_trial_alpha,
-      min_alpha = trial_bounds$lower,
-      max_evaluations = Inf
-    )
+    if (state$is_bracketed) {
+      proposal_is_definitely_novel <- FALSE
+      if (
+        !is.null(parameter_projection_witness) &&
+          parameter_projection_witness$index <=
+            length(state$reference_endpoint$parameters) &&
+          parameter_projection_witness$index <=
+            length(state$other_endpoint$parameters)
+      ) {
+        witness_index <- parameter_projection_witness$index
+        projected_witness <- parameter_projection_witness$initial_parameter +
+          state$next_trial_alpha * parameter_projection_witness$direction
+        proposal_is_definitely_novel <- is.finite(projected_witness) &&
+          projected_witness !=
+            state$reference_endpoint$parameters[[witness_index]] &&
+          projected_witness != state$other_endpoint$parameters[[witness_index]]
+      }
+      if (proposal_is_definitely_novel) {
+        recovered <- recover_finite_line_point(
+          evaluator,
+          state$next_trial_alpha,
+          min_alpha = state$next_trial_alpha,
+          max_evaluations = 1
+        )
+        if (recovered$succeeded) {
+          recovered$accepted <- FALSE
+          recovered$termination_reason <- NULL
+        } else {
+          recovered <- continue_bracketed_line_recovery(
+            evaluator = evaluator,
+            recovery = recovered,
+            failed_alpha = state$next_trial_alpha,
+            min_alpha = trial_bounds$lower,
+            first_endpoint = state$reference_endpoint,
+            second_endpoint = state$other_endpoint,
+            initial_point = initial_point,
+            condition_policy = condition_policy,
+            search_direction = search_direction,
+            max_evaluations = Inf
+          )
+        }
+      } else {
+        recovered <- recover_bracketed_line_point(
+          evaluator = evaluator,
+          alpha = state$next_trial_alpha,
+          min_alpha = trial_bounds$lower,
+          first_endpoint = state$reference_endpoint,
+          second_endpoint = state$other_endpoint,
+          initial_point = initial_point,
+          condition_policy = condition_policy,
+          search_direction = search_direction,
+          max_evaluations = Inf
+        )
+      }
+    } else {
+      recovered <- recover_finite_line_point(
+        evaluator = evaluator,
+        alpha = state$next_trial_alpha,
+        min_alpha = trial_bounds$lower,
+        max_evaluations = Inf
+      )
+      recovered$accepted <- FALSE
+      recovered$termination_reason <- NULL
+    }
+    if (isTRUE(recovered$accepted)) {
+      return(make_line_search_core_result("wolfe", recovered$line_point))
+    }
+    if (!is.null(recovered$termination_reason)) {
+      return(make_line_search_core_result(recovered$termination_reason))
+    }
     if (!recovered$succeeded) {
       return(make_line_search_core_result("nonfinite_recovery"))
     }
     trial_point <- recovered$line_point
+    state$next_trial_alpha <- trial_point$alpha
 
     termination_reason <- classify_more_thuente_termination(
       state = state,

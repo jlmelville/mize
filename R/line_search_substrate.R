@@ -46,6 +46,257 @@ wolfe_trial_point_is_usable <- function(line_point) {
     !is.null(line_point$parameters)
 }
 
+project_line_parameters <- function(parameters, alpha, search_direction) {
+  parameters + (alpha * search_direction)
+}
+
+line_parameters_are_identical <- function(first, second) {
+  line_numeric_vector_is_finite(first) &&
+    line_numeric_vector_is_finite(second) &&
+    line_parameters_have_same_values(first, second)
+}
+
+line_numeric_vector_is_finite <- function(parameters) {
+  is.numeric(parameters) &&
+    is.null(dim(parameters)) &&
+    all(is.finite(parameters))
+}
+
+line_parameters_have_same_values <- function(first, second) {
+  if (
+    !is.numeric(first) ||
+      !is.numeric(second) ||
+      length(first) != length(second)
+  ) {
+    return(FALSE)
+  }
+  if (
+    identical(typeof(first), typeof(second)) &&
+      is.null(attributes(first)) &&
+      is.null(attributes(second))
+  ) {
+    return(identical(first, second))
+  }
+  isTRUE(all(first == second))
+}
+
+line_parameter_mapping_is_available <- function(
+  initial_parameters,
+  search_direction,
+  first_endpoint,
+  second_endpoint
+) {
+  vectors <- list(
+    initial_parameters,
+    search_direction,
+    first_endpoint$parameters,
+    second_endpoint$parameters
+  )
+  vector_lengths <- vapply(vectors, length, integer(1L))
+  vectors_are_conformable <- all(vapply(
+    vectors,
+    line_numeric_vector_is_finite,
+    logical(1L)
+  )) &&
+    length(unique(vector_lengths)) == 1L
+  endpoint_alphas_are_finite <- is_finite_numeric(first_endpoint$alpha) &&
+    is_finite_numeric(second_endpoint$alpha)
+  if (!vectors_are_conformable || !endpoint_alphas_are_finite) {
+    return(FALSE)
+  }
+
+  first_projection <- project_line_parameters(
+    initial_parameters,
+    first_endpoint$alpha,
+    search_direction
+  )
+  second_projection <- project_line_parameters(
+    initial_parameters,
+    second_endpoint$alpha,
+    search_direction
+  )
+  line_parameters_have_same_values(
+    first_projection,
+    first_endpoint$parameters
+  ) &&
+    line_parameters_have_same_values(
+      second_projection,
+      second_endpoint$parameters
+    )
+}
+
+line_search_midpoint <- function(lower_alpha, upper_alpha) {
+  midpoint <- lower_alpha + (upper_alpha - lower_alpha) / 2
+  if (!isTRUE(is.finite(midpoint))) {
+    midpoint <- lower_alpha / 2 + upper_alpha / 2
+  }
+  if (
+    !isTRUE(is.finite(midpoint)) ||
+      !isTRUE(midpoint > lower_alpha) ||
+      !isTRUE(midpoint < upper_alpha)
+  ) {
+    return(NULL)
+  }
+  midpoint
+}
+
+find_novel_bracketed_line_parameters <- function(
+  first_endpoint,
+  second_endpoint,
+  initial_parameters,
+  search_direction
+) {
+  if (first_endpoint$alpha <= second_endpoint$alpha) {
+    lower_endpoint <- first_endpoint
+    upper_endpoint <- second_endpoint
+  } else {
+    lower_endpoint <- second_endpoint
+    upper_endpoint <- first_endpoint
+  }
+  lower_alpha <- lower_endpoint$alpha
+  upper_alpha <- upper_endpoint$alpha
+
+  repeat {
+    midpoint <- line_search_midpoint(lower_alpha, upper_alpha)
+    if (is.null(midpoint)) {
+      return(NULL)
+    }
+    midpoint_parameters <- project_line_parameters(
+      initial_parameters,
+      midpoint,
+      search_direction
+    )
+    if (
+      line_parameters_have_same_values(
+        midpoint_parameters,
+        lower_endpoint$parameters
+      )
+    ) {
+      lower_alpha <- midpoint
+    } else if (
+      line_parameters_have_same_values(
+        midpoint_parameters,
+        upper_endpoint$parameters
+      )
+    ) {
+      upper_alpha <- midpoint
+    } else {
+      return(list(alpha = midpoint, parameters = midpoint_parameters))
+    }
+  }
+}
+
+bracketed_line_parameters_are_exhausted <- function(
+  first_endpoint,
+  second_endpoint,
+  initial_parameters,
+  search_direction
+) {
+  line_parameter_mapping_is_available(
+    initial_parameters,
+    search_direction,
+    first_endpoint,
+    second_endpoint
+  ) &&
+    is.null(find_novel_bracketed_line_parameters(
+      first_endpoint,
+      second_endpoint,
+      initial_parameters,
+      search_direction
+    ))
+}
+
+make_condition_only_line_point <- function(alpha, parameters, endpoint) {
+  list(
+    alpha = alpha,
+    value = endpoint$value,
+    gradient = endpoint$gradient,
+    slope = endpoint$slope,
+    parameters = parameters
+  )
+}
+
+admit_bracketed_line_alpha <- function(
+  alpha,
+  first_endpoint,
+  second_endpoint,
+  initial_parameters,
+  search_direction
+) {
+  unchecked <- list(
+    status = "unchecked",
+    alpha = alpha,
+    parameters = NULL,
+    matching_endpoint = NULL,
+    condition_point = NULL,
+    replacement = NULL,
+    exhausted = FALSE
+  )
+  if (
+    !is_finite_numeric(alpha) ||
+      !wolfe_trial_point_is_usable(first_endpoint) ||
+      !wolfe_trial_point_is_usable(second_endpoint) ||
+      !line_parameter_mapping_is_available(
+        initial_parameters,
+        search_direction,
+        first_endpoint,
+        second_endpoint
+      )
+  ) {
+    return(unchecked)
+  }
+
+  parameters <- project_line_parameters(
+    initial_parameters,
+    alpha,
+    search_direction
+  )
+  matches <- c(
+    line_parameters_have_same_values(parameters, first_endpoint$parameters),
+    line_parameters_have_same_values(parameters, second_endpoint$parameters)
+  )
+  if (!any(matches)) {
+    return(list(
+      status = "novel",
+      alpha = alpha,
+      parameters = parameters,
+      matching_endpoint = NULL,
+      condition_point = NULL,
+      replacement = NULL,
+      exhausted = FALSE
+    ))
+  }
+
+  matching_index <- which(matches)
+  if (length(matching_index) > 1L) {
+    alpha_distances <- abs(c(
+      first_endpoint$alpha - alpha,
+      second_endpoint$alpha - alpha
+    ))
+    matching_index <- matching_index[[which.min(alpha_distances[matches])]]
+  } else {
+    matching_index <- matching_index[[1L]]
+  }
+  matching_endpoint <- if (matching_index == 1L) {
+    first_endpoint
+  } else {
+    second_endpoint
+  }
+  list(
+    status = "collision",
+    alpha = alpha,
+    parameters = parameters,
+    matching_endpoint = if (matching_index == 1L) "first" else "second",
+    condition_point = make_condition_only_line_point(
+      alpha,
+      parameters,
+      matching_endpoint
+    ),
+    replacement = NULL,
+    exhausted = NULL
+  )
+}
+
 make_line_evaluator <- function(
   evaluate_line,
   initial_point = NULL,
@@ -56,6 +307,8 @@ make_line_evaluator <- function(
   }
   evaluation_count <- 0L
   best_decreasing_point <- NULL
+  parameter_projection_witness_initialized <- FALSE
+  parameter_projection_witness <- NULL
   evaluator <- function(alpha, calc_gradient = TRUE) {
     if (evaluation_count >= max_evaluations) {
       stop("line evaluator budget exhausted")
@@ -65,6 +318,320 @@ make_line_evaluator <- function(
     validate_wolfe_trial_point(line_point)
   }
   evaluator
+}
+
+initialize_line_evaluator_parameter_witness <- function(
+  evaluator,
+  initial_point,
+  search_direction
+) {
+  evaluator_state <- environment(evaluator)
+  initial_parameters <- initial_point$parameters
+  witness_is_available <-
+    line_numeric_vector_is_finite(initial_parameters) &&
+    line_numeric_vector_is_finite(search_direction) &&
+    length(initial_parameters) == length(search_direction) &&
+    length(search_direction) > 0L &&
+    any(search_direction != 0)
+  witness <- NULL
+  if (witness_is_available) {
+    witness_index <- which.max(abs(search_direction))
+    witness <- list(
+      index = witness_index,
+      initial_parameter = initial_parameters[[witness_index]],
+      direction = search_direction[[witness_index]]
+    )
+  }
+  evaluator_state$parameter_projection_witness_initialized <- TRUE
+  evaluator_state$parameter_projection_witness <- witness
+  invisible(witness)
+}
+
+bracketed_line_proposal_is_definitely_novel <- function(
+  evaluator,
+  alpha,
+  first_endpoint,
+  second_endpoint
+) {
+  evaluator_state <- environment(evaluator)
+  if (!isTRUE(evaluator_state$parameter_projection_witness_initialized)) {
+    return(FALSE)
+  }
+  witness <- evaluator_state$parameter_projection_witness
+  if (is.null(witness)) {
+    return(FALSE)
+  }
+  witness_index <- witness$index
+  if (
+    witness_index > length(first_endpoint$parameters) ||
+      witness_index > length(second_endpoint$parameters)
+  ) {
+    return(FALSE)
+  }
+  projected_witness <- witness$initial_parameter + alpha * witness$direction
+  isTRUE(is.finite(projected_witness)) &&
+    projected_witness != first_endpoint$parameters[[witness_index]] &&
+    projected_witness != second_endpoint$parameters[[witness_index]]
+}
+
+continue_bracketed_line_recovery <- function(
+  evaluator,
+  recovery,
+  failed_alpha,
+  min_alpha,
+  first_endpoint,
+  second_endpoint,
+  initial_point,
+  condition_policy,
+  search_direction,
+  max_evaluations
+) {
+  current_parameters <- project_line_parameters(
+    initial_point$parameters,
+    failed_alpha,
+    search_direction
+  )
+  callback_mapping_is_consistent <-
+    !is.null(recovery$line_point) &&
+    line_parameters_have_same_values(
+      current_parameters,
+      recovery$line_point$parameters
+    )
+  next_alpha <- line_search_midpoint(min_alpha, failed_alpha)
+  if (!callback_mapping_is_consistent || is.null(next_alpha)) {
+    recovery$accepted <- FALSE
+    recovery$termination_reason <- NULL
+    return(recovery)
+  }
+  remaining_evaluations <- if (is.finite(max_evaluations)) {
+    max(0, max_evaluations - 1)
+  } else {
+    max_evaluations
+  }
+  recover_bracketed_line_point_slow(
+    evaluator = evaluator,
+    alpha = next_alpha,
+    min_alpha = min_alpha,
+    first_endpoint = first_endpoint,
+    second_endpoint = second_endpoint,
+    initial_point = initial_point,
+    condition_policy = condition_policy,
+    search_direction = search_direction,
+    max_evaluations = remaining_evaluations,
+    initial_nonfinite_recovery = recovery,
+    initial_nonfinite_alpha = failed_alpha,
+    initial_nonfinite_parameters = current_parameters
+  )
+}
+
+recover_bracketed_line_point <- function(
+  evaluator,
+  alpha,
+  min_alpha,
+  first_endpoint,
+  second_endpoint,
+  initial_point,
+  condition_policy,
+  search_direction,
+  max_evaluations = 20
+) {
+  evaluator_state <- environment(evaluator)
+  final_evaluation_count <- min(
+    evaluator_state$max_evaluations,
+    evaluator_state$evaluation_count + max_evaluations
+  )
+  witness_initialized <-
+    evaluator_state$parameter_projection_witness_initialized
+  if (isTRUE(witness_initialized)) {
+    witness <- evaluator_state$parameter_projection_witness
+    if (is.null(witness)) {
+      recovery <- recover_finite_line_point(
+        evaluator,
+        alpha,
+        min_alpha = min_alpha,
+        max_evaluations = max_evaluations
+      )
+      recovery$accepted <- FALSE
+      recovery$termination_reason <- NULL
+      return(recovery)
+    }
+    if (
+      bracketed_line_proposal_is_definitely_novel(
+        evaluator,
+        alpha,
+        first_endpoint,
+        second_endpoint
+      )
+    ) {
+      recovery <- recover_finite_line_point(
+        evaluator,
+        alpha,
+        min_alpha = alpha,
+        max_evaluations = 1
+      )
+      if (recovery$succeeded) {
+        recovery$accepted <- FALSE
+        recovery$termination_reason <- NULL
+        return(recovery)
+      }
+      return(continue_bracketed_line_recovery(
+        evaluator = evaluator,
+        recovery = recovery,
+        failed_alpha = alpha,
+        min_alpha = min_alpha,
+        first_endpoint = first_endpoint,
+        second_endpoint = second_endpoint,
+        initial_point = initial_point,
+        condition_policy = condition_policy,
+        search_direction = search_direction,
+        max_evaluations = final_evaluation_count -
+          evaluator_state$evaluation_count +
+          1
+      ))
+    }
+  }
+
+  recover_bracketed_line_point_slow(
+    evaluator = evaluator,
+    alpha = alpha,
+    min_alpha = min_alpha,
+    first_endpoint = first_endpoint,
+    second_endpoint = second_endpoint,
+    initial_point = initial_point,
+    condition_policy = condition_policy,
+    search_direction = search_direction,
+    max_evaluations = max_evaluations
+  )
+}
+
+recover_bracketed_line_point_slow <- function(
+  evaluator,
+  alpha,
+  min_alpha,
+  first_endpoint,
+  second_endpoint,
+  initial_point,
+  condition_policy,
+  search_direction,
+  max_evaluations,
+  initial_nonfinite_recovery = NULL,
+  initial_nonfinite_alpha = NULL,
+  initial_nonfinite_parameters = NULL
+) {
+  evaluator_state <- environment(evaluator)
+  final_evaluation_count <- min(
+    evaluator_state$max_evaluations,
+    evaluator_state$evaluation_count + max_evaluations
+  )
+  if (first_endpoint$alpha <= second_endpoint$alpha) {
+    resolution_lower_endpoint <- first_endpoint
+    resolution_upper_endpoint <- second_endpoint
+  } else {
+    resolution_lower_endpoint <- second_endpoint
+    resolution_upper_endpoint <- first_endpoint
+  }
+  recovering_nonfinite_point <- !is.null(initial_nonfinite_recovery)
+  last_recovery <- initial_nonfinite_recovery
+  if (recovering_nonfinite_point) {
+    resolution_upper_endpoint <- list(
+      alpha = initial_nonfinite_alpha,
+      parameters = initial_nonfinite_parameters
+    )
+  }
+  current_alpha <- alpha
+
+  repeat {
+    admission <- admit_bracketed_line_alpha(
+      alpha = current_alpha,
+      first_endpoint = first_endpoint,
+      second_endpoint = second_endpoint,
+      initial_parameters = initial_point$parameters,
+      search_direction = search_direction
+    )
+    if (identical(admission$status, "unchecked")) {
+      recovery <- recover_finite_line_point(
+        evaluator,
+        current_alpha,
+        min_alpha = min_alpha,
+        max_evaluations = final_evaluation_count -
+          evaluator_state$evaluation_count
+      )
+      recovery$accepted <- FALSE
+      recovery$termination_reason <- NULL
+      return(recovery)
+    }
+    if (identical(admission$status, "collision")) {
+      if (condition_policy$wolfe(initial_point, admission$condition_point)) {
+        return(list(
+          line_point = admission$condition_point,
+          succeeded = TRUE,
+          accepted = TRUE,
+          termination_reason = "wolfe"
+        ))
+      }
+      replacement <- find_novel_bracketed_line_parameters(
+        resolution_lower_endpoint,
+        resolution_upper_endpoint,
+        initial_point$parameters,
+        search_direction
+      )
+      if (is.null(replacement)) {
+        if (recovering_nonfinite_point) {
+          last_recovery$accepted <- FALSE
+          last_recovery$termination_reason <- NULL
+          return(last_recovery)
+        }
+        return(list(
+          line_point = NULL,
+          succeeded = FALSE,
+          accepted = FALSE,
+          termination_reason = "rounding_stagnation"
+        ))
+      }
+      current_alpha <- replacement$alpha
+      current_parameters <- replacement$parameters
+    } else {
+      current_alpha <- admission$alpha
+      current_parameters <- admission$parameters
+    }
+
+    if (evaluator_state$evaluation_count >= final_evaluation_count) {
+      return(list(
+        line_point = NULL,
+        succeeded = FALSE,
+        accepted = FALSE,
+        termination_reason = NULL
+      ))
+    }
+    recovery <- recover_finite_line_point(
+      evaluator,
+      current_alpha,
+      min_alpha = current_alpha,
+      max_evaluations = 1
+    )
+    if (recovery$succeeded) {
+      recovery$accepted <- FALSE
+      recovery$termination_reason <- NULL
+      return(recovery)
+    }
+    recovering_nonfinite_point <- TRUE
+    last_recovery <- recovery
+
+    resolution_upper_endpoint <- list(
+      alpha = current_alpha,
+      parameters = current_parameters
+    )
+    next_alpha <- line_search_midpoint(
+      resolution_lower_endpoint$alpha,
+      resolution_upper_endpoint$alpha
+    )
+    if (is.null(next_alpha)) {
+      recovery$accepted <- FALSE
+      recovery$termination_reason <- NULL
+      return(recovery)
+    }
+    current_alpha <- next_alpha
+  }
 }
 
 make_line_condition_policy <- function(
@@ -194,6 +761,11 @@ make_wolfe_line_search <- function(
     evaluator_state$initial_point <- initial_point
     evaluator_state$evaluation_count <- 0L
     evaluator_state$best_decreasing_point <- NULL
+    initialize_line_evaluator_parameter_witness(
+      evaluator,
+      initial_point,
+      search_direction
+    )
 
     if (evaluation_limit <= 0) {
       core_result <- make_line_search_core_result("budget_exhausted")

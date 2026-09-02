@@ -706,15 +706,15 @@ test_that("max_fg with DBD", {
 
 test_that("local line-search exhaustion is not reported as convergence", {
   # This starts at the reported minimum, but its finite-precision gradient
-  # still requests a descent search. The local search exhausts its allowance
-  # without finding a usable step.
+  # still requests a descent search. The local search proves that its bracket
+  # cannot realize a new parameter vector before using its full allowance.
   res <- mize(c(3, 0.5), tricky_fg(), method = "SD", ls_max_fn = 20)
   expect_equal(res$terminate$what, "line_search_failed")
-  expect_equal(res$terminate$val, "budget_exhausted")
+  expect_equal(res$terminate$val, "rounding_stagnation")
   expect_equal(res$status, "failed")
   expect_false(res$converged)
-  expect_equal(res$nf, 21)
-  expect_equal(res$ng, 21)
+  expect_equal(res$nf, 17)
+  expect_equal(res$ng, 17)
   expect_equal(res$f, 0, tolerance = 1e-3)
 })
 

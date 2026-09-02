@@ -84,7 +84,8 @@ run_hager_zhang_search <- function(
     evaluator = evaluator,
     approximate_decrease_tolerance = approximate_decrease_tolerance,
     condition_policy = condition_policy,
-    method_policy = method_policy
+    method_policy = method_policy,
+    search_direction = search_direction
   )
   bracket <- bracket_result$bracket
   if (!is.null(bracket_result$accepted_point)) {
@@ -116,12 +117,21 @@ run_hager_zhang_search <- function(
       return(make_line_search_core_result("progress_failure"))
     }
 
-    recovery <- recover_finite_line_point(
+    recovery <- recover_hager_zhang_bracketed_point(
       evaluator = evaluator,
       alpha = proposed_alpha,
-      min_alpha = hager_zhang_bracket_lower_alpha(previous_bracket),
+      bracket = previous_bracket,
+      initial_point = initial_point,
+      condition_policy = condition_policy,
+      search_direction = search_direction,
       max_evaluations = Inf
     )
+    if (isTRUE(recovery$accepted)) {
+      return(make_line_search_core_result("wolfe", recovery$line_point))
+    }
+    if (!is.null(recovery$termination_reason)) {
+      return(make_line_search_core_result(recovery$termination_reason))
+    }
     if (!isTRUE(recovery$succeeded)) {
       return(make_line_search_core_result("nonfinite_recovery"))
     }
@@ -141,7 +151,8 @@ run_hager_zhang_search <- function(
       evaluator = evaluator,
       approximate_decrease_tolerance = approximate_decrease_tolerance,
       condition_policy = condition_policy,
-      method_policy = method_policy
+      method_policy = method_policy,
+      search_direction = search_direction
     )
     bracket <- secant_result$bracket
     if (!is.null(secant_result$accepted_point)) {
@@ -176,12 +187,21 @@ run_hager_zhang_search <- function(
         return(make_line_search_core_result("progress_failure"))
       }
 
-      recovery <- recover_finite_line_point(
+      recovery <- recover_hager_zhang_bracketed_point(
         evaluator = evaluator,
         alpha = midpoint_alpha,
-        min_alpha = hager_zhang_bracket_lower_alpha(bracket),
+        bracket = bracket,
+        initial_point = initial_point,
+        condition_policy = condition_policy,
+        search_direction = search_direction,
         max_evaluations = Inf
       )
+      if (isTRUE(recovery$accepted)) {
+        return(make_line_search_core_result("wolfe", recovery$line_point))
+      }
+      if (!is.null(recovery$termination_reason)) {
+        return(make_line_search_core_result(recovery$termination_reason))
+      }
       if (!isTRUE(recovery$succeeded)) {
         return(make_line_search_core_result("nonfinite_recovery"))
       }
@@ -194,7 +214,8 @@ run_hager_zhang_search <- function(
         evaluator = evaluator,
         approximate_decrease_tolerance = approximate_decrease_tolerance,
         condition_policy = condition_policy,
-        method_policy = method_policy
+        method_policy = method_policy,
+        search_direction = search_direction
       )
       bracket <- update_result$bracket
       if (!is.null(update_result$accepted_point)) {
@@ -222,7 +243,8 @@ find_hager_zhang_bracket <- function(
   evaluator,
   approximate_decrease_tolerance,
   condition_policy,
-  method_policy
+  method_policy,
+  search_direction = NULL
 ) {
   previous_point <- initial_point
   penultimate_point <- initial_point
@@ -257,7 +279,8 @@ find_hager_zhang_bracket <- function(
         evaluator = evaluator,
         approximate_decrease_tolerance = approximate_decrease_tolerance,
         condition_policy = condition_policy,
-        method_policy = method_policy
+        method_policy = method_policy,
+        search_direction = search_direction
       ))
     }
 
@@ -307,7 +330,8 @@ update_hager_zhang_bracket <- function(
   evaluator,
   approximate_decrease_tolerance,
   condition_policy,
-  method_policy
+  method_policy,
+  search_direction = NULL
 ) {
   if (
     wolfe_trial_point_is_usable(trial_point) &&
@@ -355,7 +379,8 @@ update_hager_zhang_bracket <- function(
     evaluator = evaluator,
     approximate_decrease_tolerance = approximate_decrease_tolerance,
     condition_policy = condition_policy,
-    method_policy = method_policy
+    method_policy = method_policy,
+    search_direction = search_direction
   )
 }
 
@@ -388,16 +413,29 @@ bisect_hager_zhang_bracket <- function(
   evaluator,
   approximate_decrease_tolerance,
   condition_policy,
-  method_policy
+  method_policy,
+  search_direction = NULL
 ) {
   current_bracket <- bracket
 
   repeat {
     if (hager_zhang_bracket_is_small(current_bracket, method_policy)) {
+      termination_reason <- if (
+        bracketed_line_parameters_are_exhausted(
+          current_bracket$lower_endpoint,
+          current_bracket$upper_endpoint,
+          initial_point$parameters,
+          search_direction
+        )
+      ) {
+        "rounding_stagnation"
+      } else {
+        "relative_interval_tolerance"
+      }
       return(make_hager_zhang_bracket_result(
         current_bracket,
         FALSE,
-        "relative_interval_tolerance"
+        termination_reason
       ))
     }
     if (!hager_zhang_budget_available(evaluator)) {
@@ -426,12 +464,29 @@ bisect_hager_zhang_bracket <- function(
       ))
     }
 
-    recovery <- recover_finite_line_point(
+    recovery <- recover_hager_zhang_bracketed_point(
       evaluator = evaluator,
       alpha = proposed_alpha,
-      min_alpha = lower_alpha,
+      bracket = current_bracket,
+      initial_point = initial_point,
+      condition_policy = condition_policy,
+      search_direction = search_direction,
       max_evaluations = Inf
     )
+    if (isTRUE(recovery$accepted)) {
+      return(make_hager_zhang_bracket_result(
+        current_bracket,
+        TRUE,
+        accepted_point = recovery$line_point
+      ))
+    }
+    if (!is.null(recovery$termination_reason)) {
+      return(make_hager_zhang_bracket_result(
+        current_bracket,
+        FALSE,
+        recovery$termination_reason
+      ))
+    }
     if (!isTRUE(recovery$succeeded)) {
       return(make_hager_zhang_bracket_result(
         current_bracket,
@@ -469,7 +524,8 @@ refine_hager_zhang_bracket_with_secants <- function(
   evaluator,
   approximate_decrease_tolerance,
   condition_policy,
-  method_policy
+  method_policy,
+  search_direction = NULL
 ) {
   first_update <- update_hager_zhang_bracket(
     bracket = bracket,
@@ -478,7 +534,8 @@ refine_hager_zhang_bracket_with_secants <- function(
     evaluator = evaluator,
     approximate_decrease_tolerance = approximate_decrease_tolerance,
     condition_policy = condition_policy,
-    method_policy = method_policy
+    method_policy = method_policy,
+    search_direction = search_direction
   )
   if (!is.null(first_update$accepted_point) || !first_update$succeeded) {
     return(first_update)
@@ -518,12 +575,29 @@ refine_hager_zhang_bracket_with_secants <- function(
     ))
   }
 
-  recovery <- recover_finite_line_point(
+  recovery <- recover_hager_zhang_bracketed_point(
     evaluator = evaluator,
     alpha = second_secant_alpha,
-    min_alpha = hager_zhang_bracket_lower_alpha(updated_bracket),
+    bracket = updated_bracket,
+    initial_point = initial_point,
+    condition_policy = condition_policy,
+    search_direction = search_direction,
     max_evaluations = Inf
   )
+  if (isTRUE(recovery$accepted)) {
+    return(make_hager_zhang_bracket_result(
+      updated_bracket,
+      TRUE,
+      accepted_point = recovery$line_point
+    ))
+  }
+  if (!is.null(recovery$termination_reason)) {
+    return(make_hager_zhang_bracket_result(
+      updated_bracket,
+      FALSE,
+      recovery$termination_reason
+    ))
+  }
   if (!isTRUE(recovery$succeeded)) {
     return(make_hager_zhang_bracket_result(
       updated_bracket,
@@ -539,9 +613,82 @@ refine_hager_zhang_bracket_with_secants <- function(
     evaluator = evaluator,
     approximate_decrease_tolerance = approximate_decrease_tolerance,
     condition_policy = condition_policy,
-    method_policy = method_policy
+    method_policy = method_policy,
+    search_direction = search_direction
   )
   second_update
+}
+
+recover_hager_zhang_bracketed_point <- function(
+  evaluator,
+  alpha,
+  bracket,
+  initial_point,
+  condition_policy,
+  search_direction,
+  max_evaluations = Inf
+) {
+  recovery_lower_bound <- hager_zhang_bracket_lower_alpha(bracket)
+  evaluator_state <- environment(evaluator)
+  parameter_projection_witness <- if (
+    isTRUE(evaluator_state$parameter_projection_witness_initialized)
+  ) {
+    evaluator_state$parameter_projection_witness
+  } else {
+    NULL
+  }
+  proposal_is_definitely_novel <- FALSE
+  if (
+    !is.null(parameter_projection_witness) &&
+      parameter_projection_witness$index <=
+        length(bracket$lower_endpoint$parameters) &&
+      parameter_projection_witness$index <=
+        length(bracket$upper_endpoint$parameters)
+  ) {
+    witness_index <- parameter_projection_witness$index
+    projected_witness <- parameter_projection_witness$initial_parameter +
+      alpha * parameter_projection_witness$direction
+    proposal_is_definitely_novel <- is.finite(projected_witness) &&
+      projected_witness != bracket$lower_endpoint$parameters[[witness_index]] &&
+      projected_witness != bracket$upper_endpoint$parameters[[witness_index]]
+  }
+  if (proposal_is_definitely_novel) {
+    recovery <- recover_finite_line_point(
+      evaluator,
+      alpha,
+      min_alpha = alpha,
+      max_evaluations = 1
+    )
+    if (recovery$succeeded) {
+      recovery$accepted <- FALSE
+      recovery$termination_reason <- NULL
+      return(recovery)
+    }
+    return(continue_bracketed_line_recovery(
+      evaluator = evaluator,
+      recovery = recovery,
+      failed_alpha = alpha,
+      min_alpha = recovery_lower_bound,
+      first_endpoint = bracket$lower_endpoint,
+      second_endpoint = bracket$upper_endpoint,
+      initial_point = initial_point,
+      condition_policy = condition_policy,
+      search_direction = search_direction,
+      max_evaluations = max_evaluations
+    ))
+  }
+
+  recover_bracketed_line_point(
+    evaluator = evaluator,
+    alpha = alpha,
+    min_alpha = recovery_lower_bound,
+    first_endpoint = bracket$lower_endpoint,
+    second_endpoint = bracket$upper_endpoint,
+    initial_point = initial_point,
+    condition_policy = condition_policy,
+    search_direction = search_direction,
+    max_evaluations = max_evaluations
+  )
 }
 
 propose_hager_zhang_secant_alpha <- function(first_point, second_point) {
