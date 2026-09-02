@@ -333,7 +333,7 @@ knitr::kable(summarize_runs(nag_runs), digits = 6)
 
 | Run | Best objective | Last objective | Function callbacks | Gradient callbacks | Status | Termination |
 |:---|---:|---:|---:|---:|:---|:---|
-| q = 0 | 1.054056 | 6.055306 | 1030 | 1029 | budget_exhausted | max_iter |
+| q = 0 | 1.054056 | 6.055306 | 994 | 993 | budget_exhausted | max_iter |
 | q = 0.001 | 1.147505 | 2.765938 | 835 | 834 | budget_exhausted | max_iter |
 
 ``` r
