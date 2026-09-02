@@ -56,16 +56,31 @@ bold_driver <- function(
     },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
       pm <- stage$direction$value
+      sub_stage$alpha_init <- sub_stage$value
+      sub_stage$ls_nf <- 0L
+      sub_stage$ls_ng <- 0L
+      sub_stage$ls_reason <- NULL
+      sub_stage$ls_outcome <- NULL
+      if (has_gr_curr(opt, iter)) {
+        sub_stage$slope_init <- dot(opt$cache$gr_curr, pm)
+      } else {
+        sub_stage$slope_init <- NULL
+      }
 
       # Optionally use the gradient if it's available to give up early
       # if we're not going downhill
+      if (isTRUE(all(pm == 0))) {
+        sub_stage$value <- 0
+        return(list(opt = opt, sub_stage = sub_stage))
+      }
       if (
-        isTRUE(all(pm == 0)) ||
-          stage$type == "gradient_descent" &&
-            has_gr_curr(opt, iter) &&
-            dot(opt$cache$gr_curr, pm) > 0
+        stage$type == "gradient_descent" &&
+          has_gr_curr(opt, iter) &&
+          dot(opt$cache$gr_curr, pm) > 0
       ) {
         sub_stage$value <- 0
+        sub_stage$ls_reason <- "non_descent_direction"
+        sub_stage$ls_outcome <- "no_step"
         return(list(opt = opt, sub_stage = sub_stage))
       }
 
@@ -82,6 +97,7 @@ bold_driver <- function(
           sub_stage$value <- 0
           return(list(opt = opt, sub_stage = sub_stage))
         }
+        sub_stage$ls_nf <- sub_stage$ls_nf + 1L
         f0 <- opt$fn
         remaining_fn <- remaining_fn - 1
       }
@@ -89,45 +105,79 @@ bold_driver <- function(
       alpha <- sub_stage$value
       accepted <- FALSE
       last_fn <- NULL
+      previous_parameters <- NULL
+      termination_reason <- "budget_exhausted"
       while (remaining_fn > 0) {
-        para <- par + pm * alpha
+        para <- project_line_parameters(par, alpha, pm)
+        if (line_parameters_have_same_values(para, par)) {
+          termination_reason <- "rounding_stagnation"
+          break
+        }
+        if (
+          !is.null(previous_parameters) &&
+            line_parameters_have_same_values(para, previous_parameters)
+        ) {
+          alpha_new <- sclamp(
+            sub_stage$dec_fn(alpha),
+            min = sub_stage$min_value,
+            max = sub_stage$max_value
+          )
+          if (identical(alpha_new, alpha)) {
+            termination_reason <- "step_size_floor"
+            break
+          }
+          alpha <- alpha_new
+          next
+        }
         opt <- calc_fn(opt, para, fg$fn)
         if (!is.null(opt$terminate)) {
           sub_stage$value <- 0
           return(list(opt = opt, sub_stage = sub_stage))
         }
+        sub_stage$ls_nf <- sub_stage$ls_nf + 1L
         remaining_fn <- remaining_fn - 1
         last_fn <- opt$fn
+        previous_parameters <- para
 
         if (is.finite(last_fn) && isTRUE(last_fn < f0)) {
           accepted <- TRUE
+          termination_reason <- "objective_decrease"
+          break
+        }
+        if (remaining_fn <= 0) {
+          termination_reason <- "budget_exhausted"
           break
         }
         if (alpha <= sub_stage$min_value) {
+          termination_reason <- if (is.finite(last_fn)) {
+            "step_size_floor"
+          } else {
+            "nonfinite_trial"
+          }
           break
         }
-        alpha <- sclamp(
+        alpha_new <- sclamp(
           sub_stage$dec_fn(alpha),
           min = sub_stage$min_value,
           max = sub_stage$max_value
         )
+        if (identical(alpha_new, alpha)) {
+          termination_reason <- "step_size_floor"
+          break
+        }
+        alpha <- alpha_new
       }
 
       if (!accepted) {
-        if (!is.null(last_fn) && !is.finite(last_fn)) {
-          message(
-            stage$type,
-            " ",
-            sub_stage$name,
-            " non finite cost found at iter ",
-            iter
-          )
-        }
         sub_stage$value <- 0
+        sub_stage$ls_reason <- termination_reason
+        sub_stage$ls_outcome <- "no_step"
         return(list(opt = opt, sub_stage = sub_stage))
       }
 
       sub_stage$value <- alpha
+      sub_stage$ls_reason <- termination_reason
+      sub_stage$ls_outcome <- "objective_decrease"
       if (is_last_stage(opt, stage)) {
         opt <- set_fn_new(opt, last_fn, iter)
       }

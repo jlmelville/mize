@@ -299,6 +299,52 @@ test_that("public Wolfe diagnostics expose parameter-space exhaustion", {
   }
 })
 
+test_that("Bold Driver reports parameter-space exhaustion without retries", {
+  calls <- new.env(parent = emptyenv())
+  calls$fn <- 0L
+  calls$gr <- 0L
+  fg <- list(
+    fn = function(x) {
+      calls$fn <- calls$fn + 1L
+      x
+    },
+    gr = function(x) {
+      calls$gr <- calls$gr + 1L
+      1
+    }
+  )
+
+  result <- mize(
+    par = 1e16,
+    fg = fg,
+    method = "SD",
+    line_search = "Bold Driver",
+    max_iter = 5,
+    abs_tol = 0,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = 1e-6,
+    step_tol = NULL,
+    store_progress = TRUE
+  )
+  final_progress <- result$progress[nrow(result$progress), , drop = FALSE]
+
+  expect_identical(result$par, 1e16)
+  expect_equal(result$iter, 1)
+  expect_identical(result$terminate$what, "line_search_failed")
+  expect_identical(result$terminate$val, "rounding_stagnation")
+  expect_identical(result$status, "failed")
+  expect_false(result$converged)
+  expect_identical(final_progress$ls_reason, "rounding_stagnation")
+  expect_identical(final_progress$ls_outcome, "no_step")
+  expect_equal(final_progress$alpha_init, 1)
+  expect_equal(final_progress$slope_init, -1)
+  expect_equal(final_progress$ls_nf, 0)
+  expect_equal(final_progress$ls_ng, 0)
+  expect_identical(calls$fn, 2L)
+  expect_identical(calls$gr, 1L)
+})
+
 test_that("summary callbacks retain global budget precedence over no-step", {
   calls <- new.env(parent = emptyenv())
   calls$fn <- 0L
