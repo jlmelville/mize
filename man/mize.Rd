@@ -562,8 +562,8 @@ previously found step size by \code{step_up}.
 
 \section{Momentum}{
 
-For \code{method} \code{"Momentum"}, momentum schemes can be accessed
-through the momentum arguments:
+Momentum controls apply to \code{method = "Momentum"} and to any other method
+given a \code{mom_schedule}:
 \itemize{
 \item \code{mom_type}: Momentum type, either \code{"classical"} or
 \code{"nesterov"} (case insensitive, can be abbreviated). Using
@@ -649,12 +649,13 @@ Line searches may add these diagnostic columns:
 \item \code{alpha_init}: Initial step length used by the line search after
 initialization and safeguards.
 \item \code{slope_init}: Directional derivative at the start of the search.
-\item \code{ls_reason}: Why the line search stopped, such as \code{"wolfe"},
-\code{"armijo"}, or \code{"budget_exhausted"}.
+\item \code{ls_reason}: Why the line search stopped, such as \code{"wolfe"}, \code{"armijo"},
+\code{"objective_decrease"}, \code{"budget_exhausted"}, or
+\code{"rounding_stagnation"}.
 \item \code{ls_outcome}: Kind of point ultimately selected: \code{"wolfe"}, \code{"armijo"},
-\code{"improving_fallback"}, or \code{"no_step"}. This is independent of
-\code{ls_reason}; for example, an exhausted search can still return an evaluated
-improving point.
+\code{"objective_decrease"}, \code{"improving_fallback"}, or \code{"no_step"}. This is
+independent of \code{ls_reason}; for example, an exhausted search can still
+return an evaluated improving point.
 \item \code{ls_nf} and \code{ls_ng}: Function and gradient callbacks owned by that outer
 line search, excluding its cached starting point. An objective-only
 Hager-Zhang initializer probe is included in \code{ls_nf}.

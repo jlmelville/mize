@@ -231,8 +231,8 @@
 #' previously found step size by `step_up`.
 #'
 #' @section Momentum:
-#' For `method` `"Momentum"`, momentum schemes can be accessed
-#' through the momentum arguments:
+#' Momentum controls apply to `method = "Momentum"` and to any other method
+#' given a `mom_schedule`:
 #'
 #'
 #' * `mom_type`: Momentum type, either `"classical"` or
@@ -313,12 +313,13 @@
 #' * `alpha_init`: Initial step length used by the line search after
 #'   initialization and safeguards.
 #' * `slope_init`: Directional derivative at the start of the search.
-#' * `ls_reason`: Why the line search stopped, such as `"wolfe"`,
-#'   `"armijo"`, or `"budget_exhausted"`.
+#' * `ls_reason`: Why the line search stopped, such as `"wolfe"`, `"armijo"`,
+#'   `"objective_decrease"`, `"budget_exhausted"`, or
+#'   `"rounding_stagnation"`.
 #' * `ls_outcome`: Kind of point ultimately selected: `"wolfe"`, `"armijo"`,
-#'   `"improving_fallback"`, or `"no_step"`. This is independent of
-#'   `ls_reason`; for example, an exhausted search can still return an evaluated
-#'   improving point.
+#'   `"objective_decrease"`, `"improving_fallback"`, or `"no_step"`. This is
+#'   independent of `ls_reason`; for example, an exhausted search can still
+#'   return an evaluated improving point.
 #' * `ls_nf` and `ls_ng`: Function and gradient callbacks owned by that outer
 #'   line search, excluding its cached starting point. An objective-only
 #'   Hager-Zhang initializer probe is included in `ls_nf`.
