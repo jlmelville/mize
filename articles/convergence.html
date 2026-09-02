@@ -546,17 +546,142 @@ be an integer multiple of it; otherwise <code>mize</code> uses
 <div class="section level2">
 <h2 id="best-and-last-results">Best and last results<a class="anchor" aria-label="anchor" href="#best-and-last-results"></a>
 </h2>
-<p><code>mize</code> returns explicit best-versus-last fields:
-<code>best_par</code> and <code>best_f</code> name the best observed
-result, while <code>last_par</code> and <code>last_f</code> describe the
-final optimizer state. The traditional <code>par</code> and
-<code>f</code> fields currently match the best result.</p>
+<p>Stopping and point selection answer different questions. A tolerance,
+limit, or failure decides when a run ends. When objective values are
+available for best-result tracking, <code>mize</code> returns the
+observed optimizer state with the lowest objective, even if the stopping
+event occurred at a later state.</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Question</th>
+<th align="left">Fields</th>
+<th align="left">Interpretation</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Which point is the optimization result?</td>
+<td align="left">
+<code>par</code>, <code>f</code>
+</td>
+<td align="left">The returned best point and its objective</td>
+</tr>
+<tr class="even">
+<td align="left">Which names state that choice explicitly?</td>
+<td align="left">
+<code>best_par</code>, <code>best_f</code>
+</td>
+<td align="left">Aliases for <code>par</code> and <code>f</code>
+</td>
+</tr>
+<tr class="odd">
+<td align="left">Which point ended the optimizer loop?</td>
+<td align="left">
+<code>last_par</code>, <code>last_f</code>
+</td>
+<td align="left">The final optimizer state before any best-result
+restoration</td>
+</tr>
+<tr class="even">
+<td align="left">Why did the run end?</td>
+<td align="left">
+<code>status</code>, <code>converged</code>,
+<code>message</code>, <code>terminate</code>
+</td>
+<td align="left">The stopping event; if detected before restoration, it
+is associated with the last state or transition</td>
+</tr>
+<tr class="odd">
+<td align="left">Where are returned gradient norms evaluated?</td>
+<td align="left">
+<code>g2n</code>, <code>ginfn</code>
+</td>
+<td align="left">At <code>par</code>, not necessarily at
+<code>last_par</code>
+</td>
+</tr>
+</tbody>
+</table>
+<p>When objective tracking is active, use <code>par</code> or
+<code>best_par</code> for the lowest observed objective. Use
+<code>last_par</code> when you need the parameters associated with the
+terminal optimizer state. If no objective value establishes best-result
+tracking, <code>mize</code> may instead compare observed infinity norms
+of the gradient.</p>
+<p>The following constructed run makes the distinction visible. Its
+constant step moves from a lower objective to a stationary point with a
+higher objective. The gradient tolerance stops the run at the stationary
+point, but <code>mize</code> returns the lower-objective starting
+point.</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">separating_fg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  fn <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">-</span><span class="fl">3</span> <span class="op">*</span> <span class="va">x</span><span class="op">^</span><span class="fl">3</span> <span class="op">+</span> <span class="fl">5</span> <span class="op">*</span> <span class="va">x</span><span class="op">^</span><span class="fl">2</span> <span class="op">-</span> <span class="va">x</span>,</span>
+<span>  gr <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">-</span><span class="fl">9</span> <span class="op">*</span> <span class="va">x</span><span class="op">^</span><span class="fl">2</span> <span class="op">+</span> <span class="fl">10</span> <span class="op">*</span> <span class="va">x</span> <span class="op">-</span> <span class="fl">1</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">separated_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mize.html">mize</a></span><span class="op">(</span></span>
+<span>  <span class="fl">0</span>,</span>
+<span>  <span class="va">separating_fg</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"SD"</span>,</span>
+<span>  line_search <span class="op">=</span> <span class="st">"constant"</span>,</span>
+<span>  step0 <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  max_iter <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  abs_tol <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  rel_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  grad_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  ginf_tol <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  step_tol <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  store_progress <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">point_comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  Point <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Returned best"</span>, <span class="st">"Terminal"</span><span class="op">)</span>,</span>
+<span>  Parameter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">separated_result</span><span class="op">$</span><span class="va">best_par</span>, <span class="va">separated_result</span><span class="op">$</span><span class="va">last_par</span><span class="op">)</span>,</span>
+<span>  Objective <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">separated_result</span><span class="op">$</span><span class="va">best_f</span>, <span class="va">separated_result</span><span class="op">$</span><span class="va">last_f</span><span class="op">)</span>,</span>
+<span>  `Gradient infinity norm` <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>    <span class="va">separated_result</span><span class="op">$</span><span class="va">ginfn</span>,</span>
+<span>    <span class="va">separated_result</span><span class="op">$</span><span class="va">terminate</span><span class="op">$</span><span class="va">val</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  check.names <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="va">point_comparison</span>, align <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"l"</span>, <span class="st">"r"</span>, <span class="st">"r"</span>, <span class="st">"r"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<table class="table">
+<thead><tr class="header">
+<th align="left">Point</th>
+<th align="right">Parameter</th>
+<th align="right">Objective</th>
+<th align="right">Gradient infinity norm</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Returned best</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td align="left">Terminal</td>
+<td align="right">1</td>
+<td align="right">1</td>
+<td align="right">0</td>
+</tr>
+</tbody>
+</table>
+<p>Here <code>terminate$val = 0</code> is the gradient norm that
+satisfied <code>ginf_tol</code> at <code>last_par = 1</code>. The
+returned <code>ginfn = 1</code> is evaluated at <code>par = 0</code>.
+These values describe different points, so they do not conflict.</p>
 <p>Cached function or gradient information can make the best and last
-results differ even with every tolerance disabled. A hard callback
-budget can also prevent a final observation, leaving an objective field
-absent or <code>last_f</code> as <code>NA</code>. The named fields
-identify the returned points; stopping settings alone leave them
-ambiguous.</p>
+results differ even when every tolerance is disabled. A hard callback
+budget can also prevent a final observation. In that case, an objective
+result field can be absent, and <code>last_f</code> can be
+<code>NA</code> when <code>last_par</code> differs from
+<code>par</code>. Check that the required field is present and
+non-missing before using it programmatically.</p>
 </div>
 <div class="section level2">
 <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a>

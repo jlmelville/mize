@@ -290,7 +290,12 @@ Bold driver accepts the first tested point with a lower objective,
 reduces failed proposals by `step_down`, and initializes the next
 iteration by multiplying the last accepted step by `step_up`. Its first
 proposal is 1; `step0`, `c1`, `c2`, and `step_up_fun` do not configure
-that proposal. `ls_max_fn` is its local callback limit.
+that proposal. `ls_max_fn` is its local callback limit. Stored progress
+reports `objective_decrease` when it accepts a point and `no_step` with
+the reason when it cannot make a usable change. A zero Bold Driver
+sub-step does not cancel a nonzero update from a later momentum stage;
+it becomes a line-search failure only when the complete optimizer step
+is also zero.
 
 For Wolfe and backtracking searches, `ls_max_fn`, `ls_max_gr`, and
 `ls_max_fg` limit callbacks within one outer line search. The optimizer
@@ -490,10 +495,12 @@ dbd_res <- mize(
 ```
 
 If a momentum schedule is supplied with DBD, `dbd_weight` is ignored and
-the momentum update supplies the history. DBD’s step calculation is
-gradient-based, although function-based convergence criteria and
-best-result reporting may still request objective evaluations. Budget
-explicitly for the observations selected by the convergence controls.
+the momentum update supplies the history. `mom_type` selects classical
+or Nesterov update ordering, as it does for `method = "Momentum"`. DBD’s
+step calculation is gradient-based, although function-based convergence
+criteria and best-result reporting may still request objective
+evaluations. Budget explicitly for the observations selected by the
+convergence controls.
 
 ### Adaptive restart
 

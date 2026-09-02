@@ -420,11 +420,11 @@ does not independently request objective or gradient calculations. See the
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list with components:</p><ul><li><p><code>par</code>: Optimized parameters. Normally, this is the best set of
-parameters seen during optimization, i.e. the set that produced the minimum
-function value. This requires that convergence checking with is carried out,
-including function evaluation where necessary. See the 'Convergence'
-section for details.</p></li>
+    <p>A list with components:</p><ul><li><p><code>par</code>: Returned parameters. When objective values are available for
+best-result tracking, this is an observed optimizer state with the lowest
+objective. If objective values never establish the comparison, <code>mize()</code> may
+instead use the smallest observed infinity norm of the gradient. See the
+'Convergence' section for details.</p></li>
 <li><p><code>nf</code>: Total number of function evaluations carried out. This
 includes any extra evaluations required for convergence calculations. Also,
 a function evaluation may be attempted to calculate the value of <code>f</code>
@@ -446,11 +446,10 @@ not contribute to <code>nh</code> or <code>nhi</code>.</p></li>
 <li><p><code>f</code>: Value of the function at the returned value of <code>par</code>. This component
 is absent when the value is unavailable under the hard-budget behavior
 described in the 'Convergence' section.</p></li>
-<li><p><code>best_par</code>: The best parameters returned by <code>mize()</code>. This is
-currently the same value as <code>par</code>, and is provided so callers can use an
-explicit best-vs-last naming convention.</p></li>
-<li><p><code>best_f</code>: Value of the function at <code>best_par</code>. This is currently
-the same value as <code>f</code>, and is absent under the same budget condition.</p></li>
+<li><p><code>best_par</code>: Explicit alias for <code>par</code>, provided so callers can use a
+best-versus-last naming convention.</p></li>
+<li><p><code>best_f</code>: Value of the function at <code>best_par</code>. This is the same value as
+<code>f</code> and is absent under the same budget condition.</p></li>
 <li><p><code>last_par</code>: Parameters from the last optimizer state before any final
 best-result restoration. This is the same as <code>par</code> unless <code>mize()</code> returns
 an earlier best point.</p></li>
@@ -466,9 +465,9 @@ of the gradient vector, evaluated at the returned value of <code>par</code>.
 Calculated only if <code>ginf_tol</code> is non-null.</p></li>
 <li><p><code>iter</code>: The number of iterations the optimization was carried
 out for.</p></li>
-<li><p><code>terminate</code>: List containing items: <code>what</code>, indicating what
-convergence criterion was met, and <code>val</code> specifying the value at
-convergence. See the 'Convergence' section for more details.</p></li>
+<li><p><code>terminate</code>: List containing <code>what</code>, which identifies the termination
+condition, and <code>val</code>, which records its observed value or diagnostic detail.
+See the 'Convergence' section for more details.</p></li>
 <li><p><code>converged</code>: Logical value indicating whether <code>terminate$what</code> is one of
 the tolerance-based convergence criteria.</p></li>
 <li><p><code>status</code>: Short string classifying the termination reason. One of
@@ -478,7 +477,9 @@ the tolerance-based convergence criteria.</p></li>
 method-specific diagnostics. Only present if <code>store_progress</code> is set to
 <code>TRUE</code>. See the 'Progress' section. Could get quite large if the
 optimization is long and progress is stored regularly.</p></li>
-</ul></div>
+</ul><p>Run <code><a href="../articles/convergence.html">vignette("convergence")</a></code> for a worked example of choosing between the
+best and last result fields.</p>
+    </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>The function to be optimized should be passed as a list to the <code>fg</code>
@@ -691,8 +692,8 @@ previously found step size by <code>step_up</code>.</p>
     <h2 id="momentum">Momentum<a class="anchor" aria-label="anchor" href="#momentum"></a></h2>
 
 
-<p>For <code>method</code> <code>"Momentum"</code>, momentum schemes can be accessed
-through the momentum arguments:</p><ul><li><p><code>mom_type</code>: Momentum type, either <code>"classical"</code> or
+<p>Momentum controls apply to <code>method = "Momentum"</code> and to any other method
+given a <code>mom_schedule</code>:</p><ul><li><p><code>mom_type</code>: Momentum type, either <code>"classical"</code> or
 <code>"nesterov"</code> (case insensitive, can be abbreviated). Using
 <code>"nesterov"</code> applies the momentum step before the
 gradient descent as suggested by Sutskever, emulating the behavior of the
@@ -761,12 +762,13 @@ calculation request needs them.</p>
 <p>Line searches may add these diagnostic columns:</p><ul><li><p><code>alpha_init</code>: Initial step length used by the line search after
 initialization and safeguards.</p></li>
 <li><p><code>slope_init</code>: Directional derivative at the start of the search.</p></li>
-<li><p><code>ls_reason</code>: Why the line search stopped, such as <code>"wolfe"</code>,
-<code>"armijo"</code>, or <code>"budget_exhausted"</code>.</p></li>
+<li><p><code>ls_reason</code>: Why the line search stopped, such as <code>"wolfe"</code>, <code>"armijo"</code>,
+<code>"objective_decrease"</code>, <code>"budget_exhausted"</code>, or
+<code>"rounding_stagnation"</code>.</p></li>
 <li><p><code>ls_outcome</code>: Kind of point ultimately selected: <code>"wolfe"</code>, <code>"armijo"</code>,
-<code>"improving_fallback"</code>, or <code>"no_step"</code>. This is independent of
-<code>ls_reason</code>; for example, an exhausted search can still return an evaluated
-improving point.</p></li>
+<code>"objective_decrease"</code>, <code>"improving_fallback"</code>, or <code>"no_step"</code>. This is
+independent of <code>ls_reason</code>; for example, an exhausted search can still
+return an evaluated improving point.</p></li>
 <li><p><code>ls_nf</code> and <code>ls_ng</code>: Function and gradient callbacks owned by that outer
 line search, excluding its cached starting point. An objective-only
 Hager-Zhang initializer probe is included in <code>ls_nf</code>.</p></li>
@@ -800,6 +802,13 @@ those tolerance exits, <code>"budget_exhausted"</code> for <code>"max_iter"</cod
 <code>"max_gr"</code>, or <code>"max_fg"</code>, <code>"failed"</code> for <code>"par_inf"</code>, <code>"fn_inf"</code>,
 <code>"gr_inf"</code>, or <code>"line_search_failed"</code>, and <code>"terminated"</code> for any other
 termination reason.</p>
+<p>Point selection is separate from stopping. When objective values are
+available for best-result tracking, <code>par</code> and <code>best_par</code> identify an observed
+optimizer state with the lowest observed objective, while <code>last_par</code>
+identifies the final state before any best-result restoration. If a stopping
+condition was detected before restoration, <code>terminate</code>, <code>status</code>, and
+<code>converged</code> describe that stopping event. In contrast, <code>f</code>, <code>g2n</code>, and
+<code>ginfn</code> describe the returned <code>par</code>.</p>
 <p>The following controls and runtime conditions determine stopping:</p><ul><li><p><code>max_iter</code>: Maximum number of iterations to calculate. Reaching
 this limit is indicated by <code>terminate$what</code> being <code>"max_iter"</code>.</p></li>
 <li><p><code>max_fn</code>: Hard maximum number of function evaluations allowed.

@@ -578,7 +578,11 @@ next iteration by multiplying the last accepted step by
 <code>step_up</code>. Its first proposal is 1; <code>step0</code>,
 <code>c1</code>, <code>c2</code>, and <code>step_up_fun</code> do not
 configure that proposal. <code>ls_max_fn</code> is its local callback
-limit.</p>
+limit. Stored progress reports <code>objective_decrease</code> when it
+accepts a point and <code>no_step</code> with the reason when it cannot
+make a usable change. A zero Bold Driver sub-step does not cancel a
+nonzero update from a later momentum stage; it becomes a line-search
+failure only when the complete optimizer step is also zero.</p>
 <p>For Wolfe and backtracking searches, <code>ls_max_fn</code>,
 <code>ls_max_gr</code>, and <code>ls_max_fg</code> limit callbacks
 within one outer line search. The optimizer budgets <code>max_fn</code>,
@@ -878,11 +882,13 @@ evidence.</p>
 <span>  max_iter <span class="op">=</span> <span class="fl">10</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>If a momentum schedule is supplied with DBD, <code>dbd_weight</code>
-is ignored and the momentum update supplies the history. DBD’s step
-calculation is gradient-based, although function-based convergence
-criteria and best-result reporting may still request objective
-evaluations. Budget explicitly for the observations selected by the
-convergence controls.</p>
+is ignored and the momentum update supplies the history.
+<code>mom_type</code> selects classical or Nesterov update ordering, as
+it does for <code>method = "Momentum"</code>. DBD’s step calculation is
+gradient-based, although function-based convergence criteria and
+best-result reporting may still request objective evaluations. Budget
+explicitly for the observations selected by the convergence
+controls.</p>
 </div>
 <div class="section level3">
 <h3 id="adaptive-restart">Adaptive restart<a class="anchor" aria-label="anchor" href="#adaptive-restart"></a>

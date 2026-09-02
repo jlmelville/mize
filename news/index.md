@@ -68,7 +68,12 @@ pathological conditions are encountered) and observability.
   new parameter vector.
 - A line search that selects no usable step and produces no complete
   optimizer transition now reports `line_search_failed` instead of
-  tolerance convergence.
+  tolerance convergence. Bold Driver now follows this contract, reports
+  line-search diagnostics, and avoids callbacks at trial step lengths
+  that reproduce an evaluated parameter vector.
+- `mom_type = "nesterov"` now applies to momentum schedules attached to
+  methods other than `"Momentum"`, including DBD. These configurations
+  previously used classical momentum silently.
 
 ## mize 0.2.5
 
