@@ -271,7 +271,8 @@ line_search <- function(
       sub_stage$ls_ng <- NULL
 
       search_direction <- stage$direction$value
-      if (norm2(search_direction) < .Machine$double.eps) {
+      # Only an exactly zero direction stays zero for every finite alpha.
+      if (isTRUE(all(search_direction == 0))) {
         sub_stage$value <- 0
         if (is_last_stage(opt, stage) && has_fn_curr(opt, iter)) {
           opt <- set_fn_new(opt, opt$cache$fn_curr, iter)
@@ -714,7 +715,8 @@ propose_slope_ratio_alpha <- function(
 ) {
   # NB the p vector must be a descent direction or the directional
   # derivative will be positive => a negative initial step size!
-  slope_ratio <- previous_slope / (initial_point$slope + eps)
+  # An absolute offset can reverse the sign of a small descent slope.
+  slope_ratio <- previous_slope / initial_point$slope
   proposed_alpha <- previous_alpha * slope_ratio
   max(proposed_alpha, eps)
 }

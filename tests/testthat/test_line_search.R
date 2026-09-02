@@ -372,6 +372,70 @@ test_that("shared Wolfe core boundary preserves result and callback types", {
   expect_identical(result$termination_reason, "wolfe")
 })
 
+test_that("the Wolfe wrapper scales sub-epsilon nonzero directions", {
+  evaluated_parameters <- numeric()
+  fg <- list(
+    fn = function(parameters) {
+      evaluated_parameters <<- c(evaluated_parameters, parameters)
+      parameters
+    },
+    gr = function(parameters) 1
+  )
+  opt <- make_mize(
+    method = "SD",
+    line_search = "More-Thuente",
+    par = 0,
+    fg = fg
+  )
+  opt$cache <- list(
+    fn_curr = 0,
+    fn_curr_iter = 1,
+    gr_curr = 1,
+    gr_curr_iter = 1
+  )
+
+  direction <- -.Machine$double.eps / 2
+  previous_alpha <- 2
+  previous_slope <- -1
+  expected_alpha <- previous_alpha * previous_slope / direction
+  stage <- opt$stages$gradient_descent
+  stage$direction$value <- direction
+  backend_called <- FALSE
+  step_size <- line_search(
+    search_line = function(evaluate_line, initial_alpha, ...) {
+      backend_called <<- TRUE
+      list(
+        line_point = evaluate_line(initial_alpha),
+        function_evaluations = 1L,
+        gradient_evaluations = 1L,
+        outcome = "wolfe",
+        termination_reason = "wolfe"
+      )
+    },
+    name = "test",
+    initializer = "slope ratio"
+  )
+  step_size$value <- previous_alpha
+  step_size$previous_slope <- previous_slope
+
+  result <- step_size$calculate(
+    opt,
+    stage,
+    step_size,
+    par = 0,
+    fg = fg,
+    iter = 1
+  )
+
+  expect_true(backend_called)
+  expect_identical(evaluated_parameters, -2)
+  expect_equal(
+    c(result$opt$counts$fn, result$opt$counts$gr),
+    c(1, 1)
+  )
+  expect_identical(result$sub_stage$value, expected_alpha)
+})
+
 test_that("line-search backends share one explicit callable protocol", {
   expected <- c(
     "evaluate_line",
