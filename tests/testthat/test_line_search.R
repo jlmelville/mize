@@ -1,4 +1,4 @@
-test_that("line evaluator validates, recovers, accounts, and tracks decrease", {
+test_that("shared line evaluator validates, recovers, and accounts", {
   initial_point <- list(
     alpha = 0,
     value = 4,

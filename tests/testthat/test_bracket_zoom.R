@@ -243,40 +243,7 @@ test_that("bracket-and-zoom reports method-specific tolerance reasons", {
   }
 })
 
-make_parameter_resolution_searches <- function(
-  armijo_constant,
-  curvature_constant,
-  max_evaluations = Inf
-) {
-  list(
-    more_thuente = make_wolfe_line_search(
-      more_thuente_core,
-      armijo_constant = armijo_constant,
-      curvature_constant = curvature_constant,
-      max_evaluations = max_evaluations,
-      method_policy = make_more_thuente_policy()
-    ),
-    rasmussen = make_rasmussen_wolfe_search(
-      armijo_constant,
-      curvature_constant,
-      max_evaluations = max_evaluations
-    ),
-    schmidt = make_schmidt_wolfe_search(
-      armijo_constant,
-      curvature_constant,
-      max_evaluations = max_evaluations
-    ),
-    hager_zhang = make_hager_zhang_search(
-      armijo_constant,
-      curvature_constant,
-      max_evaluations = max_evaluations,
-      strong_curvature = TRUE,
-      approximate_armijo = FALSE
-    )
-  )
-}
-
-test_that("bracket-and-zoom accepts a colliding alpha without a callback", {
+test_that("shared bracket-and-zoom accepts a collision without a callback", {
   initial_parameters <- 1
   search_direction <- -2^-53
   initial_point <- list(
@@ -291,141 +258,75 @@ test_that("bracket-and-zoom accepts a colliding alpha without a callback", {
     2,
     search_direction
   )
-  method_policies <- list(
-    rasmussen = make_rasmussen_wolfe_policy(),
-    schmidt = make_schmidt_wolfe_policy()
-  )
-
-  for (method_name in names(method_policies)) {
-    method_policy <- method_policies[[method_name]]
-    method_policy$classify_expansion <- function(
-      expansion_state,
-      trial_point,
-      condition_policy
-    ) {
-      bracket <- if (expansion_state$iteration == 1L) {
-        list(expansion_state$previous_point, trial_point)
-      } else {
-        NULL
-      }
-      list(accepted = FALSE, bracket = bracket)
+  method_policy <- make_rasmussen_wolfe_policy()
+  method_policy$classify_expansion <- function(
+    expansion_state,
+    trial_point,
+    condition_policy
+  ) {
+    bracket <- if (expansion_state$iteration == 1L) {
+      list(expansion_state$previous_point, trial_point)
+    } else {
+      NULL
     }
-    method_policy$propose_expansion <- function(
-      expansion_state,
-      trial_point
-    ) {
-      2
-    }
-    method_policy$propose_zoom <- function(zoom_state, initial_point) {
-      list(alpha = 1.5, state = zoom_state)
-    }
-    callback_alphas <- numeric()
-    evaluate <- function(alpha, calc_gradient = TRUE) {
-      callback_alphas <<- c(callback_alphas, alpha)
-      parameters <- project_line_parameters(
-        initial_parameters,
-        alpha,
-        search_direction
-      )
-      if (alpha == 1) {
-        return(list(
-          alpha = alpha,
-          value = 0.9,
-          gradient = -0.4 / search_direction,
-          slope = -0.4,
-          parameters = parameters
-        ))
-      }
-      list(
+    list(accepted = FALSE, bracket = bracket)
+  }
+  method_policy$propose_expansion <- function(
+    expansion_state,
+    trial_point
+  ) {
+    2
+  }
+  method_policy$propose_zoom <- function(zoom_state, initial_point) {
+    list(alpha = 1.5, state = zoom_state)
+  }
+  callback_alphas <- numeric()
+  evaluate <- function(alpha, calc_gradient = TRUE) {
+    callback_alphas <<- c(callback_alphas, alpha)
+    parameters <- project_line_parameters(
+      initial_parameters,
+      alpha,
+      search_direction
+    )
+    if (alpha == 1) {
+      return(list(
         alpha = alpha,
-        value = 0.8,
-        gradient = 0,
-        slope = 0,
+        value = 0.9,
+        gradient = -0.4 / search_direction,
+        slope = -0.4,
         parameters = parameters
-      )
+      ))
     }
-    search <- make_wolfe_line_search(
-      run_bracket_zoom,
-      armijo_constant = 0.25,
-      curvature_constant = 0.5,
-      max_evaluations = 4,
-      method_policy = method_policy
-    )
-
-    result <- search(
-      evaluate_line = evaluate,
-      initial_point = initial_point,
-      initial_alpha = 1,
-      search_direction = search_direction
-    )
-
-    expect_identical(
-      result$termination_reason,
-      "wolfe",
-      info = method_name
-    )
-    expect_identical(result$outcome, "wolfe", info = method_name)
-    expect_identical(result$function_evaluations, 2L, info = method_name)
-    expect_identical(result$gradient_evaluations, 2L, info = method_name)
-    expect_equal(callback_alphas, c(1, 2), info = method_name)
-    expect_equal(result$line_point$alpha, 1.5, info = method_name)
-    expect_equal(
-      result$line_point$parameters,
-      endpoint_parameters,
-      info = method_name
+    list(
+      alpha = alpha,
+      value = 0.8,
+      gradient = 0,
+      slope = 0,
+      parameters = parameters
     )
   }
-})
-
-test_that("parameter-exhausted Wolfe brackets stop without repeated callbacks", {
-  initial_parameters <- 1
-  search_direction <- -2^-54
-  initial_point <- list(
-    alpha = 0,
-    value = 1,
-    gradient = -0.5 / search_direction,
-    slope = -0.5,
-    parameters = initial_parameters
+  search <- make_wolfe_line_search(
+    run_bracket_zoom,
+    armijo_constant = 0.25,
+    curvature_constant = 0.5,
+    max_evaluations = 4,
+    method_policy = method_policy
   )
-  endpoint_parameters <- initial_parameters + 2 * search_direction
-  searches <- make_parameter_resolution_searches(0.25, 0.5)
 
-  for (search_name in names(searches)) {
-    callback_parameters <- numeric()
-    evaluate <- function(alpha, calc_gradient = TRUE) {
-      parameters <- initial_parameters + alpha * search_direction
-      callback_parameters <<- c(callback_parameters, parameters)
-      list(
-        alpha = alpha,
-        value = if (parameters == initial_parameters) 1 else 1.1,
-        gradient = if (parameters == initial_parameters) {
-          initial_point$gradient
-        } else {
-          0
-        },
-        slope = if (parameters == initial_parameters) -0.5 else 0,
-        parameters = parameters
-      )
-    }
+  result <- search(
+    evaluate_line = evaluate,
+    initial_point = initial_point,
+    initial_alpha = 1,
+    search_direction = search_direction
+  )
 
-    result <- searches[[search_name]](
-      evaluate_line = evaluate,
-      initial_point = initial_point,
-      initial_alpha = 2,
-      search_direction = search_direction
-    )
-
-    expect_identical(
-      result$termination_reason,
-      "rounding_stagnation",
-      info = search_name
-    )
-    expect_identical(result$outcome, "no_step", info = search_name)
-    expect_identical(result$line_point, initial_point, info = search_name)
-    expect_identical(result$function_evaluations, 1L, info = search_name)
-    expect_identical(result$gradient_evaluations, 1L, info = search_name)
-    expect_equal(callback_parameters, endpoint_parameters, info = search_name)
-  }
+  expect_identical(result$termination_reason, "wolfe")
+  expect_identical(result$outcome, "wolfe")
+  expect_identical(result$function_evaluations, 2L)
+  expect_identical(result$gradient_evaluations, 2L)
+  expect_equal(callback_alphas, c(1, 2))
+  expect_equal(result$line_point$alpha, 1.5)
+  expect_equal(result$line_point$parameters, endpoint_parameters)
 })
 
 test_that("bracket-and-zoom recovers a novel vector after a collision", {

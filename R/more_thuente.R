@@ -1,6 +1,6 @@
 # More'-Thuente Line Search
 #
-# Adapter from the shared Wolfe substrate to the More-Thuente transition.
+# Adapter from the shared Wolfe helpers to the More-Thuente transition.
 # @references
 # More, J. J., & Thuente, D. J. (1994).
 # Line search algorithms with guaranteed sufficient decrease.

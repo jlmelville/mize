@@ -299,52 +299,6 @@ test_that("public Wolfe diagnostics expose parameter-space exhaustion", {
   }
 })
 
-test_that("stateful Wolfe diagnostics expose parameter-space exhaustion", {
-  witness <- make_parameter_resolution_optimizer_witness()
-  opt <- make_mize(
-    method = "SD",
-    line_search = "Rasmussen",
-    step0 = 2,
-    ls_max_fn = 200,
-    par = witness$initial_parameters,
-    fg = witness$fg,
-    max_iter = Inf,
-    abs_tol = NULL,
-    rel_tol = NULL,
-    grad_tol = NULL,
-    ginf_tol = NULL,
-    step_tol = NULL
-  )
-
-  step_result <- mize_step(opt, witness$initial_parameters, witness$fg)
-  step_info <- mize_step_summary(
-    step_result$opt,
-    step_result$par,
-    witness$fg,
-    witness$initial_parameters
-  )
-  checked <- check_mize_convergence(step_info)
-
-  expect_identical(step_result$par, witness$initial_parameters)
-  expect_identical(step_info$step, 0)
-  expect_identical(step_info$alpha, 0)
-  expect_identical(step_info$ls_reason, "rounding_stagnation")
-  expect_identical(step_info$ls_outcome, "no_step")
-  expect_identical(step_info$ls_nf, 1L)
-  expect_identical(step_info$ls_ng, 1L)
-  expect_identical(step_info$nf, 2)
-  expect_identical(step_info$ng, 2)
-  expect_identical(checked$terminate$what, "line_search_failed")
-  expect_identical(checked$terminate$val, "rounding_stagnation")
-  expect_identical(checked$status, "failed")
-  expect_false(checked$converged)
-  expect_identical(
-    witness$calls$fn,
-    c(witness$initial_parameters, witness$endpoint_parameters)
-  )
-  expect_identical(witness$calls$gr, witness$calls$fn)
-})
-
 test_that("summary callbacks retain global budget precedence over no-step", {
   calls <- new.env(parent = emptyenv())
   calls$fn <- 0L

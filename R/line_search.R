@@ -1,4 +1,4 @@
-# Common private substrate for Wolfe line searches.
+# Shared private helpers for Wolfe line searches.
 
 validate_line_point_structure <- function(line_point) {
   if (!is.list(line_point)) {
