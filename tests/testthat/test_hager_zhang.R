@@ -15,6 +15,27 @@ make_hager_zhang_trial_point <- function(alpha, value, slope) {
   )
 }
 
+make_hager_zhang_projection_fixture <- function(search_direction) {
+  initial_parameters <- 1
+  list(
+    initial_parameters = initial_parameters,
+    search_direction = search_direction,
+    point = function(alpha, value, slope) {
+      list(
+        alpha = alpha,
+        value = value,
+        slope = slope,
+        gradient = slope / search_direction,
+        parameters = project_line_parameters(
+          initial_parameters,
+          alpha,
+          search_direction
+        )
+      )
+    }
+  )
+}
+
 run_hager_zhang_oracle <- function(
   fg,
   x,
@@ -412,26 +433,9 @@ test_that("Hager-Zhang accepts a colliding secant alpha from endpoint data", {
 })
 
 test_that("Hager-Zhang bisection stops at parameter exhaustion", {
-  initial_parameters <- 1
-  search_direction <- -2^-54
-  initial_point <- list(
-    alpha = 0,
-    value = 1,
-    gradient = -0.5 / search_direction,
-    slope = -0.5,
-    parameters = initial_parameters
-  )
-  upper_endpoint <- list(
-    alpha = 2,
-    value = 1.1,
-    gradient = 0,
-    slope = 0,
-    parameters = project_line_parameters(
-      initial_parameters,
-      2,
-      search_direction
-    )
-  )
+  fixture <- make_hager_zhang_projection_fixture(-2^-54)
+  initial_point <- fixture$point(alpha = 0, value = 1, slope = -0.5)
+  upper_endpoint <- fixture$point(alpha = 2, value = 1.1, slope = 0)
   evaluator <- make_line_evaluator(
     function(alpha, calc_gradient = TRUE) {
       stop("parameter-exhausted bisection must not invoke the callback")
@@ -449,7 +453,7 @@ test_that("Hager-Zhang bisection stops at parameter exhaustion", {
     method_policy = make_hager_zhang_policy(
       relative_interval_tolerance = 1
     ),
-    search_direction = search_direction
+    search_direction = fixture$search_direction
   )
 
   expect_false(result$succeeded)
@@ -461,27 +465,41 @@ test_that("Hager-Zhang bisection stops at parameter exhaustion", {
   )
 })
 
+test_that("Hager-Zhang bisection gives a consumed budget precedence", {
+  fixture <- make_hager_zhang_projection_fixture(-2^-53)
+  initial_point <- fixture$point(alpha = 0, value = 1, slope = -1)
+  upper_endpoint <- fixture$point(alpha = 2, value = 2, slope = 1)
+  evaluator <- make_line_evaluator(
+    function(alpha, calc_gradient = TRUE) {
+      fixture$point(alpha, value = 0.9, slope = -0.5)
+    },
+    initial_point = initial_point,
+    max_evaluations = 1
+  )
+
+  result <- bisect_hager_zhang_bracket(
+    bracket = make_hager_zhang_bracket(initial_point, upper_endpoint),
+    initial_point = initial_point,
+    evaluator = evaluator,
+    approximate_decrease_tolerance = 0,
+    condition_policy = make_line_condition_policy(0.1, 0.1),
+    method_policy = make_hager_zhang_policy(
+      relative_interval_tolerance = 0.5
+    ),
+    search_direction = fixture$search_direction
+  )
+
+  expect_false(result$succeeded)
+  expect_identical(result$termination_reason, "budget_exhausted")
+  expect_identical(environment(evaluator)$evaluation_count, 1L)
+  expect_equal(result$bracket$lower_endpoint$alpha, 1)
+  expect_equal(result$bracket$upper_endpoint$alpha, 2)
+})
+
 test_that("Hager-Zhang keeps interval tolerance when a new vector is reachable", {
-  initial_parameters <- 1
-  search_direction <- -2^-52
-  initial_point <- list(
-    alpha = 0,
-    value = 1,
-    gradient = -1 / search_direction,
-    slope = -1,
-    parameters = initial_parameters
-  )
-  upper_endpoint <- list(
-    alpha = 2,
-    value = 2,
-    gradient = 1 / search_direction,
-    slope = 1,
-    parameters = project_line_parameters(
-      initial_parameters,
-      2,
-      search_direction
-    )
-  )
+  fixture <- make_hager_zhang_projection_fixture(-2^-52)
+  initial_point <- fixture$point(alpha = 0, value = 1, slope = -1)
+  upper_endpoint <- fixture$point(alpha = 2, value = 2, slope = 1)
   evaluator <- make_line_evaluator(
     function(alpha, calc_gradient = TRUE) {
       stop("interval tolerance must stop before another callback")
@@ -499,12 +517,43 @@ test_that("Hager-Zhang keeps interval tolerance when a new vector is reachable",
     method_policy = make_hager_zhang_policy(
       relative_interval_tolerance = 1
     ),
-    search_direction = search_direction
+    search_direction = fixture$search_direction
   )
 
   expect_false(result$succeeded)
   expect_identical(result$termination_reason, "relative_interval_tolerance")
   expect_identical(environment(evaluator)$evaluation_count, 0L)
+})
+
+test_that("Hager-Zhang classifies an exhausted small main-loop bracket", {
+  fixture <- make_hager_zhang_projection_fixture(-2^-52)
+  initial_point <- fixture$point(alpha = 0, value = 1, slope = -1)
+  callback_alphas <- numeric()
+  evaluate <- function(alpha, calc_gradient = TRUE) {
+    callback_alphas <<- c(callback_alphas, alpha)
+    fixture$point(alpha, value = 2, slope = 1)
+  }
+
+  result <- make_hager_zhang_search(
+    armijo_constant = 0.1,
+    curvature_constant = 0.1,
+    max_evaluations = 5,
+    strong_curvature = TRUE,
+    approximate_armijo = FALSE,
+    method_policy = make_hager_zhang_policy(
+      relative_interval_tolerance = 1
+    )
+  )(
+    evaluate_line = evaluate,
+    initial_point = initial_point,
+    initial_alpha = 1,
+    search_direction = fixture$search_direction
+  )
+
+  expect_equal(callback_alphas, c(1, 0.5))
+  expect_identical(result$function_evaluations, 2L)
+  expect_identical(result$gradient_evaluations, 2L)
+  expect_identical(result$termination_reason, "rounding_stagnation")
 })
 
 test_that("Hager-Zhang safely handles a nonfinite second secant trial", {

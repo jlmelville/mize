@@ -610,7 +610,7 @@ test_that("bracketed nonfinite recovery neither repeats nor changes its reason",
 
   recovery <- recover_bracketed_line_point(
     evaluator = evaluator,
-    alpha = 2,
+    alpha = 0.7,
     min_alpha = 0,
     first_endpoint = initial_point,
     second_endpoint = upper_point,
@@ -622,10 +622,9 @@ test_that("bracketed nonfinite recovery neither repeats nor changes its reason",
 
   expect_false(recovery$succeeded)
   expect_null(recovery$termination_reason)
-  expect_gt(length(callback_parameters), 0L)
-  expect_identical(
-    length(unique(callback_parameters)),
-    length(callback_parameters)
+  expect_equal(
+    callback_parameters,
+    project_line_parameters(initial_parameters, 0.7, search_direction)
   )
 })
 

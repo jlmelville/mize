@@ -560,6 +560,16 @@ recover_bracketed_line_point_slow <- function(
       recovery$termination_reason <- NULL
       return(recovery)
     }
+    collides_with_resolution_boundary <-
+      identical(admission$status, "novel") &&
+      (line_parameters_have_same_values(
+        admission$parameters,
+        resolution_lower_endpoint$parameters
+      ) ||
+        line_parameters_have_same_values(
+          admission$parameters,
+          resolution_upper_endpoint$parameters
+        ))
     if (identical(admission$status, "collision")) {
       if (condition_policy$wolfe(initial_point, admission$condition_point)) {
         return(list(
@@ -569,6 +579,11 @@ recover_bracketed_line_point_slow <- function(
           termination_reason = "wolfe"
         ))
       }
+    }
+    if (
+      identical(admission$status, "collision") ||
+        collides_with_resolution_boundary
+    ) {
       replacement <- find_novel_bracketed_line_parameters(
         resolution_lower_endpoint,
         resolution_upper_endpoint,

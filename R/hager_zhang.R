@@ -172,7 +172,13 @@ run_hager_zhang_search <- function(
     previous_width <- hager_zhang_bracket_width(previous_bracket)
     current_width <- hager_zhang_bracket_width(bracket)
     if (hager_zhang_bracket_is_small(bracket, method_policy)) {
-      return(make_line_search_core_result("relative_interval_tolerance"))
+      return(make_line_search_core_result(
+        hager_zhang_small_bracket_termination_reason(
+          bracket,
+          initial_point,
+          search_direction
+        )
+      ))
     }
 
     if (
@@ -419,30 +425,22 @@ bisect_hager_zhang_bracket <- function(
   current_bracket <- bracket
 
   repeat {
-    if (hager_zhang_bracket_is_small(current_bracket, method_policy)) {
-      termination_reason <- if (
-        bracketed_line_parameters_are_exhausted(
-          current_bracket$lower_endpoint,
-          current_bracket$upper_endpoint,
-          initial_point$parameters,
-          search_direction
-        )
-      ) {
-        "rounding_stagnation"
-      } else {
-        "relative_interval_tolerance"
-      }
-      return(make_hager_zhang_bracket_result(
-        current_bracket,
-        FALSE,
-        termination_reason
-      ))
-    }
     if (!hager_zhang_budget_available(evaluator)) {
       return(make_hager_zhang_bracket_result(
         current_bracket,
         FALSE,
         "budget_exhausted"
+      ))
+    }
+    if (hager_zhang_bracket_is_small(current_bracket, method_policy)) {
+      return(make_hager_zhang_bracket_result(
+        current_bracket,
+        FALSE,
+        hager_zhang_small_bracket_termination_reason(
+          current_bracket,
+          initial_point,
+          search_direction
+        )
       ))
     }
 
@@ -740,6 +738,25 @@ hager_zhang_bracket_is_small <- function(bracket, method_policy) {
   hager_zhang_bracket_width(bracket) <=
     method_policy$relative_interval_tolerance *
       hager_zhang_bracket_upper_alpha(bracket)
+}
+
+hager_zhang_small_bracket_termination_reason <- function(
+  bracket,
+  initial_point,
+  search_direction
+) {
+  if (
+    bracketed_line_parameters_are_exhausted(
+      bracket$lower_endpoint,
+      bracket$upper_endpoint,
+      initial_point$parameters,
+      search_direction
+    )
+  ) {
+    "rounding_stagnation"
+  } else {
+    "relative_interval_tolerance"
+  }
 }
 
 hager_zhang_alpha_is_in_bracket <- function(bracket, alpha) {
