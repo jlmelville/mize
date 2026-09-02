@@ -251,6 +251,38 @@ test_that("BFGS and L-BFGS directions are descent after accepted curvature", {
   }
 })
 
+test_that("scale_hess controls SR1 after the first quasi-Newton update", {
+  fg <- list(
+    fn = function(x) 0.5 * (x[1]^2 + 10 * x[2]^2),
+    gr = function(x) c(x[1], 10 * x[2])
+  )
+  run_sr1 <- function(scale_hess, max_iter) {
+    mize(
+      c(1, 1),
+      fg,
+      method = "SR1",
+      line_search = "constant",
+      step0 = 0.05,
+      scale_hess = scale_hess,
+      max_iter = max_iter,
+      check_conv_every = NULL,
+      abs_tol = NULL,
+      rel_tol = NULL,
+      grad_tol = NULL,
+      ginf_tol = NULL,
+      step_tol = NULL
+    )
+  }
+
+  scaled_first <- run_sr1(scale_hess = TRUE, max_iter = 1)
+  unscaled_first <- run_sr1(scale_hess = FALSE, max_iter = 1)
+  expect_equal(scaled_first$par, unscaled_first$par)
+
+  scaled_second <- run_sr1(scale_hess = TRUE, max_iter = 2)
+  unscaled_second <- run_sr1(scale_hess = FALSE, max_iter = 2)
+  expect_gt(max(abs(scaled_second$par - unscaled_second$par)), 1e-6)
+})
+
 test_that("combined fg functions match separate function and gradient", {
   expect_fg_consistent(rosenbrock_fg, c(-0.7, 0.8))
   expect_fg_consistent(make_spd_quadratic(), c(0.25, -1.5, 2))

@@ -160,11 +160,11 @@ mize_validate_initial_par <- function(par) {
 #' @param norm_direction If `TRUE`, then the steepest descent direction is
 #'   normalized to unit length. Useful for adaptive step size methods where the
 #'   previous step size is used to initialize the next iteration.
-#' @param scale_hess if `TRUE`, the approximation to the inverse Hessian is
-#'   scaled according to the method described by Nocedal and Wright
-#'   (approximating an eigenvalue). Applies only to the methods `BFGS`
-#'   (where the scaling is applied only during the first step) and `L-BFGS`
-#'   (where the scaling is applied during every iteration). Ignored otherwise.
+#' @param scale_hess If `TRUE`, scale the initial inverse-Hessian approximation
+#'   using the heuristic described by Nocedal and Wright. BFGS and SR1 apply the
+#'   scaling before the first quasi-Newton update if it has positive curvature;
+#'   L-BFGS applies it at every iteration with stored curvature history. Ignored
+#'   otherwise.
 #' @param memory The number of updates to store if using the `L-BFGS`
 #'   method. Ignored otherwise. Must be a positive integer.
 #' @param cg_update Type of update to use for the `"CG"` method. For
