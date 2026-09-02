@@ -354,8 +354,7 @@ lbfgs_guess <- function(
     if (!is.null(rho) && !is.null(ym) && scale_inverse) {
       # Eqn 7.20 in Nocedal & Wright
       gamma <- 1 / (rho * (dot(ym) + eps))
-      hm <- rep(gamma, length(ym))
-      pm <- hm * qm
+      pm <- gamma * qm
     } else {
       # Effectively H = I
       # This will happen on the first iteration
