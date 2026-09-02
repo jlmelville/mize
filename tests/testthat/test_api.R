@@ -433,11 +433,11 @@ test_that("bold driver SD and nesterov momentum", {
     grad_tol = 1e-5
   )
 
-  expect_equal(res$nf, 12)
+  expect_equal(res$nf, 13)
   expect_equal(res$ng, 5)
-  expect_equal(res$f, 4.38, tolerance = 1e-3)
-  expect_equal(res$g2n, 23.21, tolerance = 1e-3)
-  expect_equal(res$par, c(-1.006, 1.071), tolerance = 1e-3)
+  expect_equal(res$f, 4.16, tolerance = 1e-3)
+  expect_equal(res$g2n, 9.70, tolerance = 1e-3)
+  expect_equal(res$par, c(-1.035, 1.058), tolerance = 1e-3)
 })
 
 test_that("Delta bar delta adaptive learning rate and nesterov momentum", {
@@ -457,9 +457,9 @@ test_that("Delta bar delta adaptive learning rate and nesterov momentum", {
 
   expect_equal(res$nf, 1)
   expect_equal(res$ng, 4)
-  expect_equal(res$f, 4.84, tolerance = 1e-3)
-  expect_equal(res$g2n, 37.85, tolerance = 1e-3)
-  expect_equal(res$par, c(-0.993, 1.079), tolerance = 1e-3)
+  expect_equal(res$f, 4.13, tolerance = 1e-3)
+  expect_equal(res$g2n, 4.66, tolerance = 1e-3)
+  expect_equal(res$par, c(-1.024, 1.066), tolerance = 1e-3)
 })
 
 test_that("Terminates semi-gracefully if function value is non-finite", {

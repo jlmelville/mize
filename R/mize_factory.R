@@ -866,7 +866,11 @@ make_mize <- function(
   }
   mom_type <- match.arg(tolower(mom_type), c("classical", "nesterov"))
 
-  mom_direction <- momentum_direction()
+  mom_direction <- if (mom_type == "nesterov") {
+    nesterov_momentum_direction()
+  } else {
+    momentum_direction()
+  }
   static_zero_momentum <- FALSE
 
   if (method == "nag") {
@@ -878,9 +882,6 @@ make_mize <- function(
     mom_direction <- nesterov_momentum_direction()
   } else if (method == "momentum") {
     # Default momentum values
-    if (mom_type == "nesterov") {
-      mom_direction <- nesterov_momentum_direction()
-    }
     if (is.null(mom_schedule)) {
       mom_schedule <- 0.9
     }
