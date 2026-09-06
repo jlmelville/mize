@@ -668,10 +668,8 @@ interpolation for subsequent iterations.</p>
 curvature condition and the approximate Armijo condition (i.e. approximate
 Wolfe conditions). The default step size initialization methods are those
 used by Hager and Zhang (2006) in the description of CG_DESCENT.</p>
-<p>If the <code>"DBD"</code> is used for the optimization <code>"method"</code>, then the
-<code>line_search</code> parameter is ignored, because this method controls both
-the direction of the search and the step size simultaneously. The following
-parameters can be used to control the step size:</p><ul><li><p><code>step_up</code>: The amount by which to increase the step size in a
+<p>With <code>method = "DBD"</code>, <code>line_search</code> is ignored because DBD controls both the search direction
+and the step size. The following parameters control its coordinatewise step sizes:</p><ul><li><p><code>step_up</code>: The amount by which to increase the step size in a
 direction where the current step size is deemed to be too short. This
 should be a positive scalar.</p></li>
 <li><p><code>step_down</code>: The amount by which to decrease the step size in a
@@ -755,6 +753,10 @@ momentum coefficient <code>mu</code>. The four cumulative count columns are alwa
 present; <code>nh</code> and <code>nhi</code> are zero when no Hessian or inverse-Hessian callback
 has been accepted. Other columns are included only when their owning method
 or calculation supplies them.</p>
+<p><code>alpha</code> describes the selected gradient descent sub-step; <code>step</code> measures the
+complete parameter update, including momentum. For Bold Driver, <code>alpha</code> is
+zero when no gradient step was selected. See <code><a href="mize_step_summary.html">mize_step_summary()</a></code> for the
+diagnostic field definitions.</p>
 <p><code>store_progress</code> controls retention of these observations. It does not by
 itself force objective or gradient calculations; those callbacks run only
 when the optimization method, convergence criteria, or another explicit

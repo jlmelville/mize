@@ -95,7 +95,13 @@ with the separate `fn` and `gr` functions at `par`.
 The finite-difference step for each coordinate is
 `abs_eps + rel_eps * pmax(abs(par), 1)`. Central differences are usually
 more accurate and use twice as many function evaluations as forward
-differences.
+differences. Each required perturbed coordinate must be finite and
+representably distinct from its original value. An unusable perturbation
+raises an error identifying the coordinate; the checker does not enlarge
+the requested step. Callback results must have the same scalar or vector
+shape as in
+[`mize()`](https://jlmelville.github.io/mize/reference/mize.md) and must
+contain only finite values.
 
 ## See also
 

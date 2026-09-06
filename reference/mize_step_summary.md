@@ -70,7 +70,10 @@ or calculation did not supply a value are omitted.
 - `step`: Size of the step between `par_old` and `par`, if `par_old` is
   provided.
 
-- `alpha`: Step length of the gradient descent part of the step.
+- `alpha`: Step length selected for the completed gradient descent
+  sub-step. Zero means that sub-step selected no movement; a later
+  momentum stage can still produce a nonzero complete `step`. Before the
+  first step, this is the initialized step length, if available.
 
 - `mu`: Momentum coefficient for this iteration.
 

@@ -683,10 +683,9 @@ approximate Wolfe conditions). The default step size initialization
 methods are those used by Hager and Zhang (2006) in the description of
 CG_DESCENT.
 
-If the `"DBD"` is used for the optimization `"method"`, then the
-`line_search` parameter is ignored, because this method controls both
-the direction of the search and the step size simultaneously. The
-following parameters can be used to control the step size:
+With `method = "DBD"`, `line_search` is ignored because DBD controls
+both the search direction and the step size. The following parameters
+control its coordinatewise step sizes:
 
 - `step_up`: The amount by which to increase the step size in a
   direction where the current step size is deemed to be too short. This
@@ -790,6 +789,12 @@ the information available at each stored iteration. Common columns are
 columns are always present; `nh` and `nhi` are zero when no Hessian or
 inverse-Hessian callback has been accepted. Other columns are included
 only when their owning method or calculation supplies them.
+
+`alpha` describes the selected gradient descent sub-step; `step`
+measures the complete parameter update, including momentum. For Bold
+Driver, `alpha` is zero when no gradient step was selected. See
+[`mize_step_summary()`](https://jlmelville.github.io/mize/reference/mize_step_summary.md)
+for the diagnostic field definitions.
 
 `store_progress` controls retention of these observations. It does not
 by itself force objective or gradient calculations; those callbacks run

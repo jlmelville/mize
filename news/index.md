@@ -2,8 +2,8 @@
 
 ## mize 0.3.0
 
-This release improves optimizer robustness (mainly bug fixes when
-pathological conditions are encountered) and observability.
+This release improves optimizer robustness, input validation, and
+progress diagnostics.
 
 ### New features
 
@@ -27,6 +27,21 @@ pathological conditions are encountered) and observability.
 
 ### Bug fixes and minor improvements
 
+- BFGS and SR1 now accept one-dimensional inverse-Hessian vectors
+  consistently with equivalent one-by-one matrices.
+- The `cg_update = "HZ+"` safeguard now uses Euclidean norms as
+  specified by its formula. This correction can change optimization
+  trajectories and iteration counts.
+- [`check_mize_gradient()`](https://jlmelville.github.io/mize/reference/check_mize_gradient.md)
+  rejects unrepresentable or non-finite coordinate perturbations and
+  dimensioned callback results instead of reporting misleading agreement
+  or flattening matrices.
+- Gradient norms and step lengths avoid intermediate overflow and
+  underflow when the Euclidean norm is representable. CG falls back to
+  steepest descent when its direction update produces unusable
+  arithmetic or fails to give a descent direction.
+- `store_progress = TRUE` has lower time and allocation costs on long
+  runs.
 - Classical Momentum with numeric `mom_schedule = 0`, and NAG with the
   `"nsconvex"` schedule, `nest_q = 1`, and `nest_convex_approx = FALSE`,
   no longer make redundant function and gradient calls. In these
@@ -71,6 +86,10 @@ pathological conditions are encountered) and observability.
   tolerance convergence. Bold Driver now follows this contract, reports
   line-search diagnostics, and avoids callbacks at trial step lengths
   that reproduce an evaluated parameter vector.
+- Bold Driver’s `alpha` diagnostic reports the selected gradient step
+  length, and is zero when no gradient step was selected. Its
+  `ls_max_fn = 0` limit is handled consistently whether progress is
+  stored.
 - `mom_type = "nesterov"` now applies to momentum schedules attached to
   methods other than `"Momentum"`, including DBD. These configurations
   previously used classical momentum silently.

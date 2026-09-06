@@ -145,8 +145,9 @@ make_mize(
 - step_down:
 
   Multiplier to reduce the step size by if using the `"DBD"` method or
-  the `"bold"`. Can also be used with the `"back"` line search method,
-  but is optional. Should be a positive value less than 1.
+  the `"bold"` line search. Can also be used with the `"back"` line
+  search method, but is optional. Should be a positive value less than
+  1.
 
 - dbd_weight:
 

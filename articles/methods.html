@@ -417,24 +417,24 @@ gradient callbacks owned by that outer search.</p>
 <tr class="even">
 <td align="left">0.1</td>
 <td align="right">2</td>
-<td align="left">0.002945</td>
-<td align="left">0.002945</td>
+<td align="left">0.002405</td>
+<td align="left">0.002405</td>
 <td align="left">wolfe / wolfe</td>
 <td align="left">2 / 1</td>
 </tr>
 <tr class="odd">
 <td align="left">0.1</td>
 <td align="right">3</td>
-<td align="left">1.245</td>
-<td align="left">0.07751</td>
+<td align="left">1.857</td>
+<td align="left">0.09192</td>
 <td align="left">wolfe / wolfe</td>
 <td align="left">6 / 5</td>
 </tr>
 <tr class="even">
 <td align="left">0.1</td>
 <td align="right">4</td>
-<td align="left">0.155</td>
-<td align="left">0.001196</td>
+<td align="left">0.1838</td>
+<td align="left">0.001197</td>
 <td align="left">wolfe / wolfe</td>
 <td align="left">6 / 5</td>
 </tr>
@@ -578,11 +578,14 @@ next iteration by multiplying the last accepted step by
 <code>step_up</code>. Its first proposal is 1; <code>step0</code>,
 <code>c1</code>, <code>c2</code>, and <code>step_up_fun</code> do not
 configure that proposal. <code>ls_max_fn</code> is its local callback
-limit. Stored progress reports <code>objective_decrease</code> when it
-accepts a point and <code>no_step</code> with the reason when it cannot
-make a usable change. A zero Bold Driver sub-step does not cancel a
-nonzero update from a later momentum stage; it becomes a line-search
-failure only when the complete optimizer step is also zero.</p>
+limit. In stored progress and <code><a href="../reference/mize_step_summary.html">mize_step_summary()</a></code>,
+<code>alpha</code> is the step length selected for the completed
+gradient step. The outcome is <code>objective_decrease</code> when a
+point is accepted, or <code>no_step</code> with <code>alpha = 0</code>
+when no movement is selected. A zero Bold Driver sub-step does not
+cancel a nonzero update from a later momentum stage; it becomes a
+line-search failure only when the complete optimizer step is also
+zero.</p>
 <p>For Wolfe and backtracking searches, <code>ls_max_fn</code>,
 <code>ls_max_gr</code>, and <code>ls_max_fg</code> limit callbacks
 within one outer line search. The optimizer budgets <code>max_fn</code>,

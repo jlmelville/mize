@@ -181,9 +181,9 @@ knitr::kable(c2_display)
 | c2 | Iteration | Proposed alpha | Selected alpha | Reason / outcome | Local work (fn / gr) |
 |:---|---:|:---|:---|:---|:---|
 | 0.1 | 1 | 1.844e-05 | 0.0007904 | wolfe / wolfe | 4 / 4 |
-| 0.1 | 2 | 0.002945 | 0.002945 | wolfe / wolfe | 2 / 1 |
-| 0.1 | 3 | 1.245 | 0.07751 | wolfe / wolfe | 6 / 5 |
-| 0.1 | 4 | 0.155 | 0.001196 | wolfe / wolfe | 6 / 5 |
+| 0.1 | 2 | 0.002405 | 0.002405 | wolfe / wolfe | 2 / 1 |
+| 0.1 | 3 | 1.857 | 0.09192 | wolfe / wolfe | 6 / 5 |
+| 0.1 | 4 | 0.1838 | 0.001197 | wolfe / wolfe | 6 / 5 |
 | 0.5 | 1 | 1.844e-05 | 0.0003873 | wolfe / wolfe | 3 / 3 |
 | 0.5 | 2 | 0.0003956 | 0.0003956 | wolfe / wolfe | 2 / 1 |
 | 0.5 | 3 | 0.000479 | 0.000479 | wolfe / wolfe | 2 / 1 |
@@ -290,9 +290,12 @@ Bold driver accepts the first tested point with a lower objective,
 reduces failed proposals by `step_down`, and initializes the next
 iteration by multiplying the last accepted step by `step_up`. Its first
 proposal is 1; `step0`, `c1`, `c2`, and `step_up_fun` do not configure
-that proposal. `ls_max_fn` is its local callback limit. Stored progress
-reports `objective_decrease` when it accepts a point and `no_step` with
-the reason when it cannot make a usable change. A zero Bold Driver
+that proposal. `ls_max_fn` is its local callback limit. In stored
+progress and
+[`mize_step_summary()`](https://jlmelville.github.io/mize/reference/mize_step_summary.md),
+`alpha` is the step length selected for the completed gradient step. The
+outcome is `objective_decrease` when a point is accepted, or `no_step`
+with `alpha = 0` when no movement is selected. A zero Bold Driver
 sub-step does not cancel a nonzero update from a later momentum stage;
 it becomes a line-search failure only when the complete optimizer step
 is also zero.

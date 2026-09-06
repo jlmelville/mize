@@ -115,7 +115,10 @@ counts).</p></li>
 <li><p><code>nhi</code>: Number of accepted inverse-Hessian callback evaluations so far.</p></li>
 <li><p><code>step</code>: Size of the step between <code>par_old</code> and <code>par</code>,
 if <code>par_old</code> is provided.</p></li>
-<li><p><code>alpha</code>: Step length of the gradient descent part of the step.</p></li>
+<li><p><code>alpha</code>: Step length selected for the completed gradient descent sub-step.
+Zero means that sub-step selected no movement; a later momentum stage can
+still produce a nonzero complete <code>step</code>. Before the first step, this is the
+initialized step length, if available.</p></li>
 <li><p><code>mu</code>: Momentum coefficient for this iteration.</p></li>
 <li><p><code>alpha_init</code>: Initial line-search step length after safeguards.</p></li>
 <li><p><code>slope_init</code>: Directional derivative at the start of the line search.</p></li>
