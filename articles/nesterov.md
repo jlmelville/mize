@@ -220,11 +220,12 @@ to shift the momentum schedule along with the iteration numbers. With
 constant momentum, that’s one less thing to worry about.
 
 There you have it: this looks just like the classical momentum update,
-except that the gradient is calculated after the momentum update. Hence,
-one can do NAG by simply reversing the order in which the update is
-usually carried out: do the momentum stage first, update the parameters,
-and then do the gradient descent part. Just like Sutskever said you
-could.
+except that the gradient is calculated at \\\phi_t + \mu\_{t-1}v_t\\,
+after the momentum update. Classical momentum would evaluate it at
+\\\phi_t\\. Hence, one can do NAG by simply reversing the order in which
+the update is usually carried out: do the momentum stage first, update
+the parameters, and then do the gradient descent part. Just like
+Sutskever said you could.
 
 ## Bengio Nesterov Momentum
 
@@ -260,22 +261,25 @@ iteration. Instead of \\\phi\_{t+1} - \phi\_{t} = v\_{t+1}\\, define:
 (the ‘b’ is for Bengio). Our goal now is to end up with an expression
 that is defined using \\\theta_t\\ (no \\\phi_t\\ allowed) and \\b_t\\.
 
+I’ll use \\s_t\\ as shorthand for the gradient step:
+
+\\ s_t = -\varepsilon_t \nabla f\left(\theta_t\right). \\
+
+The negative sign and the learning rate are both part of \\s_t\\.
+
 Now we are going to go back to using the original NAG expression so to
 help you scrub all the shifts in \\t\\ from your mind here is the
 expression again:
 
-\\ \phi\_{t+1} = \theta_t - \varepsilon_t \nabla f\left(\theta_t \right)
-\\ \theta\_{t+1} = \phi\_{t+1} + \mu_t\left(\phi\_{t+1} - \phi\_{t}
-\right) \\ Start by replacing all uses of \\\phi\_{t+1}\\ in the second
-equation with the definition in terms of \\\theta_t\\ given in the first
-equation:
+\\ \phi\_{t+1} = \theta_t + s_t \\ \theta\_{t+1} = \phi\_{t+1} +
+\mu_t\left(\phi\_{t+1} - \phi\_{t} \right) \\ Start by replacing all
+uses of \\\phi\_{t+1}\\ in the second equation with the definition in
+terms of \\\theta_t\\ given in the first equation:
 
-\\ \begin{equation} \begin{split} \theta\_{t+1} & = \theta_t -
-\varepsilon_t \nabla f\left(\theta_t \right) + \mu_t \left( \theta_t -
-\varepsilon_t \nabla f\left(\theta_t \right) - \phi\_{t} \right) \\ & =
-\left(1 + \mu_t \right) \theta_t - \left(1 + \mu_t \right) \varepsilon_t
-\nabla f\left(\theta_t \right) - \mu_t \phi_t \end{split} \end{equation}
-\\
+\\ \begin{equation} \begin{split} \theta\_{t+1} & = \theta_t + s_t +
+\mu_t \left( \theta_t + s_t - \phi\_{t} \right) \\ & = \left(1 + \mu_t
+\right) \theta_t + \left(1 + \mu_t \right) s_t - \mu_t \phi_t
+\end{split} \end{equation} \\
 
 So far, so unpromising. Time to get \\b_t\\ involved. Remember how we
 defined:
@@ -292,17 +296,15 @@ Let’s shift everything back one iteration:
 And now substitute for \\\phi_t\\ in the last term in our NAG update:
 
 \\ \begin{equation} \begin{split} \theta\_{t+1} & = \left(1 + \mu_t
-\right) \theta_t - \left(1 + \mu_t \right) \varepsilon_t \nabla
-f\left(\theta_t \right) - \mu_t \phi_t \\ & = \left(1 + \mu_t \right)
-\theta_t - \left(1 + \mu_t \right) \varepsilon_t \nabla f\left(\theta_t
-\right) - \mu\_{t} \theta_t + \mu\_{t-1} \mu_t b_t \end{split}
-\end{equation} \\
+\right) \theta_t + \left(1 + \mu_t \right) s_t - \mu_t \phi_t \\ & =
+\left(1 + \mu_t \right) \theta_t + \left(1 + \mu_t \right) s_t -
+\mu\_{t} \theta_t + \mu\_{t-1} \mu_t b_t \end{split} \end{equation} \\
 
 The final step is to gather together the \\\theta_t\\ terms and the
 result is:
 
-\\ \theta\_{t+1} = \theta_t + \mu\_{t-1} \mu_t b_t - \left(1 + \mu_t
-\right) \varepsilon_t \nabla f\left(\theta_t \right) \\
+\\ \theta\_{t+1} = \theta_t + \mu\_{t-1} \mu_t b_t + \left(1 + \mu_t
+\right) s_t \\
 
 Ta da. There it is, just like in the paper, subject to the differences
 in symbols and when the iteration ticks over from \\t\\ to \\t+1\\ and
@@ -329,43 +331,37 @@ coefficients lined up. This will occupy us for quite a while later on.
 
 ## An Alternative Expression for NAG
 
-Let’s go back to the original formulation of NAG and now instead of
-making \\\theta\\ the variables after gradient descent, we’ll put them
-where \\y\\ was originally used. The variables after gradient descent
-I’ll refer to as \\\phi\\.
+Let’s return to the two stages of NAG, keeping our original notation:
+\\\phi\_{t+1}\\ is the position after gradient descent, and
+\\\theta\_{t+1}\\ is the position after the momentum stage. This time
+we’ll write the update in terms of the actual displacement of
+\\\theta\\, rather than the Bengio buffer.
 
-\\\phi_t = \theta_t - \varepsilon_t \nabla f\left(\theta_t \right)\\
+\\\phi\_{t+1} = \theta_t + s_t\\
 
-\\\theta\_{t+1} = \phi_t + \mu_t\left(\phi_t - \phi\_{t-1} \right)\\
+\\\theta\_{t+1} = \phi\_{t+1} + \mu_t\left(\phi\_{t+1} - \phi_t
+\right)\\
 
 Now, let’s just write out the momentum stage in terms of \\\theta\\,
 substituting \\\phi\\ wherever we find it:
 
-\\ \theta\_{t+1} = \theta_t - \varepsilon_t \nabla f\left(\theta_t
-\right) + \mu_t \left\[\theta_t - \varepsilon_t \nabla f\left(\theta_t
-\right) - \theta\_{t-1} + \varepsilon\_{t-1} \nabla f\left(\theta\_{t-1}
-\right) \right\] \\
+\\ \theta\_{t+1} = \theta_t + s_t + \mu_t \left\[\theta_t + s_t -
+\theta\_{t-1} - s\_{t-1}\right\] \\
 
 Rearranging:
 
-\\ \theta\_{t+1} = \theta_t + \mu_t \left\[\theta_t - \theta\_{t-1} +
-\varepsilon\_{t-1} \nabla f\left(\theta\_{t-1} \right) - \varepsilon_t
-\nabla f\left(\theta_t \right) \right\] - \varepsilon_t \nabla
-f\left(\theta_t \right) \\
+\\ \theta\_{t+1} = \theta_t + \mu_t \left\[\theta_t - \theta\_{t-1} -
+s\_{t-1} + s_t\right\] + s_t \\
 
 Finally, we can substitute in \\v_t\\ for the first two terms in the
 square brackets, to give:
 
-\\ \theta\_{t+1} = \theta_t + \mu_t \left\[v_t + \varepsilon\_{t-1}
-\nabla f\left(\theta\_{t-1} \right) - \varepsilon_t \nabla
-f\left(\theta_t \right) \right\] - \varepsilon_t \nabla f\left(\theta_t
-\right) \\
+\\ \theta\_{t+1} = \theta_t + \mu_t \left\[v_t - s\_{t-1} +
+s_t\right\] + s_t \\
 
 with velocity:
 
-\\ v\_{t+1} = \mu_t \left\[v_t + \varepsilon\_{t-1} \nabla
-f\left(\theta\_{t-1} \right) - \varepsilon_t \nabla f\left(\theta_t
-\right) \right\] - \varepsilon_t \nabla f\left(\theta_t \right) \\
+\\ v\_{t+1} = \mu_t \left\[v_t - s\_{t-1} + s_t\right\] + s_t \\
 
 This looks a lot like the classical momentum expression, but with the
 velocity vector modified to first remove the contribution of the
@@ -377,44 +373,36 @@ of “lookahead” with the gradient descent.
 You could also choose to expand the velocity expression to make it look
 a bit like the Bengio formulation:
 
-\\ v\_{t+1} = \mu_t \left\[v_t + \varepsilon\_{t-1} \nabla
-f\left(\theta\_{t-1} \right) \right\] - \left(1 + \mu_t\right)
-\varepsilon_t \nabla f\left(\theta_t \right) \\
+\\ v\_{t+1} = \mu_t \left\[v_t - s\_{t-1}\right\] + \left(1 +
+\mu_t\right) s_t \\
 
 but as this version can’t be expressed as the classical momentum form
 with different coefficients, the way the Bengio formulation can be, it
 probably doesn’t gain you anything in terms of implementation, except
 you can expand it and rearrange it further to give:
 
-\\ v\_{t+1} = \mu_t v_t - \varepsilon\_{t} \nabla f\left(\theta\_{t}
-\right) + \mu_t \left\[ \varepsilon\_{t-1} \nabla f
-\left(\theta\_{t-1}\right) - \varepsilon\_{t} \nabla f
-\left(\theta\_{t}\right) \right\] \\ which now resembles the classical
-momentum expression with an extra momentum term. I haven’t found a
-definitive reference for this expression, or what, if any, extra insight
-it provides, but user ‘denis’ uses this expression in an [answer on the
-Cross Validated Stack
-Exchange](https://stats.stackexchange.com/a/233430), and refers to the
-third form as “gradient momentum”. Another way to look at this is to say
-that the third term reduces the contribution of the classical momentum
-component of the update and increases the contribution of the gradient
-descent, with the degree of weighting controlled by \\\mu\_{t}\\.
+\\ v\_{t+1} = \mu_t v_t + s_t + \mu_t\left\[s_t - s\_{t-1}\right\] \\
+which now resembles classical momentum with an extra correction term.
+For a fixed learning rate, this is the form in equation (1.4) of [Shi
+and
+co-workers](https://link.springer.com/article/10.1007/s10107-021-01681-8),
+who call the extra term a “gradient correction”. User ‘denis’ also uses
+this expression in an [answer on the Cross Validated Stack
+Exchange](https://stats.stackexchange.com/a/233430), calling it
+“gradient momentum”. I’ll use “gradient correction” here.
 
 *December 25 2025*: Here’s a possible insight into the meaning of the
-gradient term. If we write the gradient step as \\s_t = -\varepsilon_t
-\nabla f\left(\theta_t\right)\\, then the NAG update is:
+gradient correction.
 
-\\ v\_{t+1} = \mu_t v_t + s\_{t} + \mu_t \left\[ s_t - s\_{t-1} \right\]
-\\
-
-The last term is then the change in the gradient step. When the steps
-are similar in both direction and size, \\s_t - s\_{t-1} \approx 0\\,
-and the update looks a lot like classical momentum. But consider a steep
-ravine where we are bouncing from one side to the other. If the step
-roughly reverses each iteration, \\s_t \approx -s\_{t-1}\\, the last
-term becomes approximately \\2\mu_t s_t\\. This gives the current
-gradient step more say in where we go next. Remember that \\s_t\\
-includes the learning rate, so changing that will also affect this term.
+The correction is the change in the gradient step, scaled by \\\mu_t\\.
+When the steps are similar in both direction and size, \\s_t - s\_{t-1}
+\approx 0\\, the update looks a lot like classical momentum. But
+consider a steep ravine where we are bouncing from one side to the
+other. If the step roughly reverses each iteration, \\s_t \approx
+-s\_{t-1}\\, the last term becomes approximately \\2\mu_t s_t\\. This
+gives the current gradient step more say in where we go next. Remember
+that \\s_t\\ includes the learning rate, so changing that will also
+affect this term.
 
 ### What happens on a quadratic?
 
@@ -467,48 +455,15 @@ to unified momentum.
 
 ## Unified Momentum
 
-*December 12 2021*: Previously in this section I wrote down an
-expression I called “generalized” momentum. This was a bad choice of
-words because there is already a concept in physics called generalized
-momentum, which is nothing to do with this. Fortunately, in 2018 [Zou
-and co-workers](https://arxiv.org/abs/1808.03408) published a paper with
-the same expression and called it “unified stochastic momentum”. So
-let’s call it “unified momentum” instead.
+The earliest example of unified momentum I’ve found is in a 2016 paper
+by [Yang, Lin and Li](https://arxiv.org/abs/1604.03257).
 
 The idea is to introduce an extra parameter, \\\lambda_t\\, that lets us
 choose how much of the gradient step correction to use:
 
-\\ v\_{t+1} = \mu_t v_t - \varepsilon\_{t} \nabla f\left(\theta\_{t}
-\right) + \lambda_t \mu_t \left\[ \varepsilon\_{t-1} \nabla f
-\left(\theta\_{t-1}\right) - \varepsilon\_{t} \nabla f
-\left(\theta\_{t}\right) \right\] \\ Setting \\\lambda_t = 0\\ gives
-classical momentum and \\\lambda_t = 1\\ gives NAG. The Zou paper calls
-\\\lambda\\ the “interpolation factor”. The stochastic bit in their name
-comes from using stochastic gradients; we can use the same expression
-with ordinary gradients too.
-
-In 2020, [Ziyin and co-workers](https://arxiv.org/abs/2002.04839) gave a
-similar expression, but didn’t give it a catchy name. I’d like to find
-the earliest use of this interpolation. Perhaps it’s just incredibly
-obvious?
-
-From the look of the expression, it seems that a major downside of this
-expression is that calculating the parameters for iteration \\t+1\\
-requires storage of information from not only iteration \\t\\ but from
-iteration \\t-1\\ too. But you don’t necessarily have to do any extra
-storage with an implementation that used this version of NAG. At the end
-of an iteration, when saving the velocity vector for the next iteration,
-you change:
-
-\\v\_{t-1} \leftarrow v_t\\ to:
-
-\\v\_{t-1} \leftarrow v_t + \varepsilon\_{t} \nabla f\left(\theta_t
-\right)\\
-
-and then when calculating the momentum term, change:
-
-\\\mu_t v_t\\ to: \\\mu_t \left\[v_t - \varepsilon\_{t} \nabla
-f\left(\theta_t \right)\right\]\\
+\\ v\_{t+1} = \mu_t v_t + s_t + \lambda_t\mu_t(s_t-s\_{t-1}) \\ Setting
+\\\lambda_t = 0\\ gives classical momentum and \\\lambda_t = 1\\ gives
+NAG.
 
 For our one-parameter quadratic, the same substitution we used above
 gives:
@@ -519,6 +474,39 @@ f'(\theta_t). \\
 So \\\lambda\\ controls how much the curvature changes the momentum
 coefficient.
 
+### Storing the NAG update
+
+The gradient correction seems to require storing the previous gradient
+step as well as the velocity. For NAG, where \\\lambda_t=1\\, we can
+combine them into one saved vector:
+
+\\ r_t = v_t - s\_{t-1}. \\
+
+This has a meaning in terms of the positions we’ve already defined.
+Since \\\phi_t=\theta\_{t-1}+s\_{t-1}\\, after a completed update we
+have:
+
+\\ \begin{aligned} r_t &= (\theta_t-\theta\_{t-1})-s\_{t-1} \\ &=
+\theta_t-\phi_t \\ &= \mu\_{t-1}b_t. \end{aligned} \\
+
+So the saved vector is the gap between the gradient descent and momentum
+positions. Substituting \\v_t-s\_{t-1}=r_t\\ into the NAG update gives
+\\v\_{t+1}=s_t+\mu_t(r_t+s_t)\\. Removing \\s_t\\ to prepare the saved
+vector for the next iteration leaves us with:
+
+\\ \begin{aligned} s_t &= -\varepsilon_t\nabla f(\theta_t), \\ r\_{t+1}
+&= \mu_t(r_t+s_t), \\ \theta\_{t+1} &= \theta_t+s_t+r\_{t+1}.
+\end{aligned} \\
+
+Only \\r_t\\ needs to persist alongside the parameters; the actual
+displacement is \\v\_{t+1}=s_t+r\_{t+1}\\. These equations also work
+when the learning rate or momentum changes.
+
+Start with \\r_0=0\\, corresponding to \\\theta_0=\phi_0\\. The first
+displacement is then \\(1+\mu_0)s_0\\. Setting \\\mu_0=0\\ gives an
+ordinary gradient step; using nonzero momentum gives a longer first
+step. We’ll return to that choice when we unroll the updates.
+
 ## Unrolling NAG and Classical Momentum
 
 As a way to understand the difference between classical momentum and
@@ -526,21 +514,14 @@ NAG, let’s write out the first few steps of the optimization,
 substituting in the recursive definitions with the previous step, and
 see what emerges.
 
-Because I have finally got tired of writing out \\\varepsilon_t \nabla
-f\left(\theta_t \right)\\ all over the place (and it’s visually
-distracting), let’s define:
-
-\\ -\varepsilon_t \nabla f\left(\theta_t \right) \equiv s_t \\
-
-to represent the gradient step. Note that this includes the negative
-sign and the learning rate. Also, I am going to assume that the momentum
-is constant, to save on some more notational clutter.
+I’ll assume that the momentum is constant, so we can write \\\mu\\
+without a subscript.
 
 Initial coordinates are at \\\theta_0\\.
 
 ### Classical Momentum
 
-Using the slightly briefer symbols, the classical momentum update is:
+With constant momentum, the classical momentum update is:
 
 \\ \theta\_{t+1} = \theta_t + s_t + \mu v_t \\
 
@@ -673,6 +654,12 @@ That’s the same sum as classical momentum. NAG has shifted some weight
 from the older steps to the current one, while keeping the total the
 same.
 
+Dividing the newest coefficient by this sum gives a long-history weight
+of \\1-\mu\\ for classical momentum and \\(1+\mu)(1-\mu)=1-\mu^2\\ for
+NAG. At \\\mu=0.9\\, that’s 10% versus 19%. The four-step examples below
+have much less history to share the weight with, so their percentages
+are larger.
+
 The regularity of the difference between classical momentum and NAG
 weights suggest that there should be a way to express the NAG update in
 terms of a classical momentum update. See the section on ‘Dozat Nesterov
@@ -680,7 +667,7 @@ momentum’ below for more on that.
 
 Let’s write some R code to generate a table to compare how the relative
 weights turn out between CM and NAG at different values of \\\mu\\.
-We’ll normalize the contributions so they sum to 1.
+We’ll normalize the coefficients so they sum to 1.
 
 ``` r
 
@@ -753,7 +740,7 @@ knitr::kable(mumat(nag_zero_start_weights), digits = 4)
 | 0.99 | 0.5050 | 0.2487 | 0.2462 |   0 |
 
 For the four steps shown here, at high momentum CM puts around 25–30% of
-the weight on the current step, compared with 45–50% for NAG and 50–55%
+the weight on the current step, compared with 41–46% for NAG and 50–55%
 for NAG with the short first step. That’s quite a shift in emphasis,
 even after just four iterations.
 
@@ -896,6 +883,41 @@ With \\\lambda=0\\, we get \\\nu\_{\mathrm{QHM}}=1\\, which is classical
 momentum. With \\\lambda=1\\, we get \\\nu\_{\mathrm{QHM}}=\mu\\, which
 is NAG. So letting \\\lambda\\ run from 0 to 1 takes us along the part
 of QHM between classical momentum and NAG.
+
+### Where the learning rate lives
+
+There’s another implementation detail that changes the weighting of
+history: does an old gradient keep the learning rate it had when we
+calculated it, or does today’s learning rate rescale its contribution?
+To isolate that question, keep \\\mu\\ fixed and write \\g_t=\nabla
+f(\theta_t)\\.
+
+Our buffer stores gradient steps, including their learning rates:
+
+\\ \begin{aligned} b\_{t+1} &= \mu b_t-\varepsilon_t g_t, \\
+\theta\_{t+1} &= \theta_t-\varepsilon_t g_t+\mu b\_{t+1}. \end{aligned}
+\\
+
+Alternatively, we can store the gradients in a buffer \\B_t\\, and apply
+the learning rate when we update the parameters:
+
+\\ \begin{aligned} B\_{t+1} &= \mu B_t+g_t, \\ \theta\_{t+1} &=
+\theta_t-\varepsilon_t(g_t+\mu B\_{t+1}). \end{aligned} \\
+
+With a constant learning rate and both buffers starting at zero,
+\\b_t=-\varepsilon B_t\\ makes the updates equivalent. With a changing
+learning rate, the first version preserves the old learning rates inside
+its accumulated steps, while the second applies the current rate to the
+whole gradient history. They can therefore give different results under
+the same learning-rate schedule.
+
+These are both used in practice:
+[Keras](https://keras.io/api/optimizers/sgd/) documents the first
+convention, while
+[PyTorch](https://docs.pytorch.org/docs/stable/generated/torch.optim.SGD.html)
+documents the second and notes the difference for Nesterov momentum too.
+We’re comparing just the momentum updates here, with no weight decay or
+dampening.
 
 ## NAG in practice
 
@@ -1124,14 +1146,12 @@ momentum.
 mnag <- function(par, fn, gr, lr, mu, max_iter = 10) {
   fs <- rep(0, max_iter)
 
-  v <- rep(0, length(par))
+  r <- rep(0, length(par))
   for (i in 1:max_iter) {
     g <- gr(par)
-    v <- mu * (v - lr * g) - lr * g
-    par <- par + v
-
-    # setup v for the next iteration by removing the old gradient contribution
-    v <- v + lr * g
+    s <- -lr * g
+    r <- mu * (r + s)
+    par <- par + s + r
 
     # store results
     f <- fn(par)
@@ -1143,8 +1163,7 @@ mnag <- function(par, fn, gr, lr, mu, max_iter = 10) {
 ```
 
 Finally, here is your humble author’s expression for NAG, written as a
-momentum-style update. Effectively this is Zou and co-worker’s unified
-momentum, with the interpolation factor set to 1 to give NAG. To
+momentum-style update. This is unified momentum with \\\lambda=1\\. To
 differentiate from the Sutskever and Bengio versions of NAG, I’ll refer
 to it as momentum-NAG or mNAG.
 
@@ -1409,14 +1428,12 @@ update. I chose the latter.
 mnagc <- function(par, fn, gr, lr, mu, max_iter = 10) {
   fs <- rep(0, max_iter)
 
-  v <- rep(0, length(par))
+  r <- rep(0, length(par))
   for (i in 1:max_iter) {
     g <- gr(par)
-    v <- (ifelse(i == 1, 0, mu) * (v - lr * g)) - lr * g
-    par <- par + v
-
-    # setup v for the next iteration by removing the old gradient contribution
-    v <- v + lr * g
+    s <- -lr * g
+    r <- ifelse(i == 1, 0, mu) * (r + s)
+    par <- par + s + r
 
     # store results
     f <- fn(par)
@@ -1529,4 +1546,6 @@ same objective, starting point, learning rate and momentum can give you
 different outputs from each version, as we managed quite successfully
 above. Getting them to agree means lining up the first momentum
 coefficients, the stored vectors and the stage where we take the result.
-Having done that, we can finally get the numbers to confirm the algebra.
+With a changing learning rate, we also need to check whether the buffer
+stores gradients or scaled steps. Having done that, we can finally get
+the numbers to confirm the algebra.
