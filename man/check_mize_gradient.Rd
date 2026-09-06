@@ -67,6 +67,11 @@ The finite-difference step for each coordinate is
 \code{abs_eps + rel_eps * pmax(abs(par), 1)}. Central differences are usually
 more accurate and use twice as many function evaluations as forward
 differences.
+Each required perturbed coordinate must be finite and representably distinct
+from its original value. An unusable perturbation raises an error identifying
+the coordinate; the checker does not enlarge the requested step. Callback
+results must have the same scalar or vector shape as in \code{\link[=mize]{mize()}} and must
+contain only finite values.
 }
 \examples{
 rb_fg <- list(

@@ -1,63 +1,66 @@
 # mize 0.3.0
 
-This release improves optimizer robustness (mainly bug fixes when pathological
-conditions are encountered) and observability.
+This release improves optimizer robustness, input validation, and progress diagnostics.
 
 ## New features
 
-* New function: `check_mize_gradient()`, which compares an analytic gradient
-with a finite-difference approximation.
-* `mize()` now returns status fields: `converged`, `status`, and `message`, plus
-explicit best/last result fields (`best_par`, `best_f`, `last_par`, and
-`last_f`).
-* `mize()`, `mize_step()`, `mize_step_summary()`, and stored progress now report
-accepted Hessian and inverse-Hessian callback counts as `nh` and `nhi`.
-* With `store_progress = TRUE`, `mize()` now exposes optional line-search
-reason, selected-point provenance, local callback counts, initial scale, and
-exact-Newton direction provenance.
+* New function: `check_mize_gradient()`, which compares an analytic gradient with a
+  finite-difference approximation.
+* `mize()` now returns status fields: `converged`, `status`, and `message`, plus explicit best/last
+  result fields (`best_par`, `best_f`, `last_par`, and `last_f`).
+* `mize()`, `mize_step()`, `mize_step_summary()`, and stored progress now report accepted Hessian
+  and inverse-Hessian callback counts as `nh` and `nhi`.
+* With `store_progress = TRUE`, `mize()` now exposes optional line-search reason, selected-point
+  provenance, local callback counts, initial scale, and exact-Newton direction provenance.
 
 ## Bug fixes and minor improvements
 
-* Classical Momentum with numeric `mom_schedule = 0`, and NAG with the
-`"nsconvex"` schedule, `nest_q = 1`, and `nest_convex_approx = FALSE`, no longer
-make redundant function and gradient calls. In these configurations, `restart`
-is ignored and progress no longer includes `mu`.
-* DBD now returns structured `fn_inf` or `gr_inf` failures when a later
-objective or gradient is non-finite, and `par_inf` if an update would produce
-non-finite parameters. Such an update is rolled back before callbacks can
-observe it. DBD also validates its initial step controls and safeguards named
-initial-step estimates using the current parameter scale.
-* Momentum schedules now reject malformed or non-finite configured values and
-function results. The `"ramp"` and `"switch"` schedules require numeric
-`mom_init` and `mom_final` values, and adaptive restart safely rejects
-non-finite comparisons instead of raising a control-flow error.
-* Stateful optimization now handles lifecycle dependencies consistently, and
-global function and gradient evaluation limits are enforced across optimizer
-and line-search callbacks, including truncated Newton inner iterations.
-* Optimizer inputs and objective, gradient, Hessian, and inverse-Hessian
-callback results now receive consistent early validation and clearer errors.
-* Quasi-Newton updates and exact-Newton directions now use safer fallbacks when
-curvature information or Hessian factorization is unsuitable.
-* NEWTON and L-BFGS now preserve plain vector parameters across multiple
-iterations when a supplied inverse-Hessian callback returns a full matrix.
-* Wolfe line searches now require an explicitly numeric `step0` to be a
-positive finite scalar; string initializers are unchanged.
-* Line searches using weak Wolfe curvature now accept equality at the
-curvature boundary. The optional Hager-Zhang initializer probe now counts
-toward the line search's local function and combined evaluation limits.
-Hager-Zhang initializer arithmetic also safely handles non-finite values and
-uses the specified Euclidean gradient norm.
-* Bracketed Wolfe line searches now avoid repeated objective and gradient
-callbacks when floating-point step changes cannot produce a new parameter
-vector.
-* A line search that selects no usable step and produces no complete optimizer
-transition now reports `line_search_failed` instead of tolerance convergence.
-Bold Driver now follows this contract, reports line-search diagnostics, and
-avoids callbacks at trial step lengths that reproduce an evaluated parameter
-vector.
-* `mom_type = "nesterov"` now applies to momentum schedules attached to methods
-other than `"Momentum"`, including DBD. These configurations previously used
-classical momentum silently.
+* BFGS and SR1 now accept one-dimensional inverse-Hessian vectors consistently with equivalent
+  one-by-one matrices.
+* The `cg_update = "HZ+"` safeguard now uses Euclidean norms as specified by its formula. This
+  correction can change optimization trajectories and iteration counts.
+* `check_mize_gradient()` rejects unrepresentable or non-finite coordinate perturbations and
+  dimensioned callback results instead of reporting misleading agreement or flattening matrices.
+* Gradient norms and step lengths avoid intermediate overflow and underflow when the Euclidean norm
+  is representable. CG falls back to steepest descent when its direction update produces unusable
+  arithmetic or fails to give a descent direction.
+* `store_progress = TRUE` has lower time and allocation costs on long runs.
+* Classical Momentum with numeric `mom_schedule = 0`, and NAG with the `"nsconvex"` schedule,
+  `nest_q = 1`, and `nest_convex_approx = FALSE`, no longer make redundant function and gradient
+  calls. In these configurations, `restart` is ignored and progress no longer includes `mu`.
+* DBD now returns structured `fn_inf` or `gr_inf` failures when a later objective or gradient is
+  non-finite, and `par_inf` if an update would produce non-finite parameters. Such an update is
+  rolled back before callbacks can observe it. DBD also validates its initial step controls and
+  safeguards named initial-step estimates using the current parameter scale.
+* Momentum schedules now reject malformed or non-finite configured values and function results. The
+  `"ramp"` and `"switch"` schedules require numeric `mom_init` and `mom_final` values, and adaptive
+  restart safely rejects non-finite comparisons instead of raising a control-flow error.
+* Stateful optimization now handles lifecycle dependencies consistently, and global function and
+  gradient evaluation limits are enforced across optimizer and line-search callbacks, including
+  truncated Newton inner iterations.
+* Optimizer inputs and objective, gradient, Hessian, and inverse-Hessian callback results now
+  receive consistent early validation and clearer errors.
+* Quasi-Newton updates and exact-Newton directions now use safer fallbacks when curvature
+  information or Hessian factorization is unsuitable.
+* NEWTON and L-BFGS now preserve plain vector parameters across multiple iterations when a supplied
+  inverse-Hessian callback returns a full matrix.
+* Wolfe line searches now require an explicitly numeric `step0` to be a positive finite scalar;
+  string initializers are unchanged.
+* Line searches using weak Wolfe curvature now accept equality at the curvature boundary. The
+  optional Hager-Zhang initializer probe now counts toward the line search's local function and
+  combined evaluation limits. Hager-Zhang initializer arithmetic also safely handles non-finite
+  values and uses the specified Euclidean gradient norm.
+* Bracketed Wolfe line searches now avoid repeated objective and gradient callbacks when
+  floating-point step changes cannot produce a new parameter vector.
+* A line search that selects no usable step and produces no complete optimizer transition now
+  reports `line_search_failed` instead of tolerance convergence. Bold Driver now follows this
+  contract, reports line-search diagnostics, and avoids callbacks at trial step lengths that
+  reproduce an evaluated parameter vector.
+* Bold Driver's `alpha` diagnostic reports the selected gradient step length, and is zero when no
+  gradient step was selected. Its `ls_max_fn = 0` limit is handled consistently whether progress is
+  stored.
+* `mom_type = "nesterov"` now applies to momentum schedules attached to methods other than
+  `"Momentum"`, including DBD. These configurations previously used classical momentum silently.
 
 # mize 0.2.5
 

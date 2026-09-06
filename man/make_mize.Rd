@@ -114,7 +114,7 @@ step size method or the \code{"DBD"} method.}
 with \code{step_up}) or \code{"+"} (to add).}
 
 \item{step_down}{Multiplier to reduce the step size by if using the
-\code{"DBD"} method or the \code{"bold"}. Can also be used with the
+\code{"DBD"} method or the \code{"bold"} line search. Can also be used with the
 \code{"back"} line search method, but is optional. Should be a positive
 value less than 1.}
 

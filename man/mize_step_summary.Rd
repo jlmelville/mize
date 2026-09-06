@@ -43,7 +43,10 @@ counts).
 \item \code{nhi}: Number of accepted inverse-Hessian callback evaluations so far.
 \item \code{step}: Size of the step between \code{par_old} and \code{par},
 if \code{par_old} is provided.
-\item \code{alpha}: Step length of the gradient descent part of the step.
+\item \code{alpha}: Step length selected for the completed gradient descent sub-step.
+Zero means that sub-step selected no movement; a later momentum stage can
+still produce a nonzero complete \code{step}. Before the first step, this is the
+initialized step length, if available.
 \item \code{mu}: Momentum coefficient for this iteration.
 \item \code{alpha_init}: Initial line-search step length after safeguards.
 \item \code{slope_init}: Directional derivative at the start of the line search.

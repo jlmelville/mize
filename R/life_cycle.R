@@ -1,6 +1,24 @@
 # Life Cycle ------------------------------------------------------
-# Various internals for registering functions that should fire during certain
-# points of the optimization. You don't want to look to closely at any of this.
+# Maintainer state contract:
+# - make_mize() constructs stages and registers their hooks. mize_init() resets
+#   iteration state and caches and runs initialization hooks; lifetime callback
+#   counts persist across reinitialization.
+# - mize_step() runs before-step hooks, then each stage's before/during/after
+#   hooks in order. A stage calculates its direction before its step size.
+#   Eager updates let later stages observe preceding parameter changes.
+# - Hooks return opt, stage, or sub_stage components; dispatchers merge these
+#   back into the optimizer. Cache values are usable only with their matching
+#   iteration markers. Termination short-circuits further lifecycle hooks.
+# - Validation accepts or rolls back the complete update before after-step
+#   hooks prepare recurrence history and proposals for the next iteration.
+#   A zero gradient sub-step can coexist with a realized momentum update.
+# - mize_step_summary() runs after this transition. Bold Driver's step_size$value
+#   then holds the next proposal; completed_value preserves the selected alpha
+#   (zero if no step was selected). Summary alpha describes that sub-step, while
+#   summary step measures the complete parameter displacement. Keep diagnostics
+#   about completed work separate from fields mutated to prepare future work.
+# - Summary calls may evaluate callbacks and update caches/counters. Stateful
+#   callers must retain summary$opt before checking convergence or stepping again.
 
 # Calls all hooks registered with the phase firing this event
 life_cycle_hook <- function(phase, advice_type, opt, par, fg, iter, ...) {

@@ -12,6 +12,11 @@
 #' `abs_eps + rel_eps * pmax(abs(par), 1)`. Central differences are usually
 #' more accurate and use twice as many function evaluations as forward
 #' differences.
+#' Each required perturbed coordinate must be finite and representably distinct
+#' from its original value. An unusable perturbation raises an error identifying
+#' the coordinate; the checker does not enlarge the requested step. Callback
+#' results must have the same scalar or vector shape as in [mize()] and must
+#' contain only finite values.
 #'
 #' @param fg Function and gradient list. See the documentation of [mize()].
 #' @param par Parameter vector where the gradient should be checked.
@@ -171,14 +176,16 @@ mize_gradient_abs_eps <- function(abs_eps) {
 }
 
 mize_scalar_result <- function(value, label) {
-  if (!is.numeric(value) || length(value) != 1 || !is.finite(value)) {
+  value <- mize_validate_objective_result(value, label)
+  if (!is.finite(value)) {
     stop(label, " must return a finite numeric scalar", call. = FALSE)
   }
   as.numeric(value)
 }
 
 mize_gradient_result <- function(value, n, label) {
-  if (!is.numeric(value) || length(value) != n || any(!is.finite(value))) {
+  value <- mize_validate_gradient_result(value, n, label)
+  if (any(!is.finite(value))) {
     stop(
       label,
       " must return a finite numeric vector with length matching par",
@@ -194,14 +201,31 @@ mize_fd_gradient <- function(par, fn, f0, step, method, ...) {
   for (i in seq_along(par)) {
     par_plus <- par
     par_plus[i] <- par_plus[i] + step[i]
+    par_minus <- par
+    if (method == "central") {
+      par_minus[i] <- par_minus[i] - step[i]
+    }
+    if (
+      !is.finite(step[i]) ||
+        (method == "central" && !is.finite(2 * step[i])) ||
+        !is.finite(par_plus[i]) ||
+        par_plus[i] == par[i] ||
+        (method == "central" &&
+          (!is.finite(par_minus[i]) || par_minus[i] == par[i]))
+    ) {
+      stop(
+        "Unusable finite-difference perturbation at coordinate ",
+        i,
+        ": probes must be finite and distinct from par",
+        call. = FALSE
+      )
+    }
     fplus <- mize_scalar_result(
       fn(par_plus, ...),
       paste0("fg$fn(par + step)[", i, "]")
     )
 
     if (method == "central") {
-      par_minus <- par
-      par_minus[i] <- par_minus[i] - step[i]
       fminus <- mize_scalar_result(
         fn(par_minus, ...),
         paste0("fg$fn(par - step)[", i, "]")
@@ -209,6 +233,13 @@ mize_fd_gradient <- function(par, fn, f0, step, method, ...) {
       fd[i] <- (fplus - fminus) / (2 * step[i])
     } else {
       fd[i] <- (fplus - f0) / step[i]
+    }
+    if (!is.finite(fd[i])) {
+      stop(
+        "Unusable finite-difference arithmetic at coordinate ",
+        i,
+        call. = FALSE
+      )
     }
   }
 

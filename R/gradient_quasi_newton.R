@@ -122,7 +122,7 @@ bfgs_direction <- function(eps = .Machine$double.eps, scale_inverse = FALSE) {
           # Allow for just a vector to be passed, representing a diagonal
           # approximation to the Hessian inverse. But we'll store it as the
           # full matrix.
-          hm <- diag(hm)
+          hm <- diag(hm, nrow = n, ncol = n)
         }
         sub_stage$hm <- hm
       } else {
@@ -232,7 +232,7 @@ sr1_direction <- function(
           # Allow for just a vector to be passed, representing a diagonal
           # approximation to the Hessian inverse. But we'll store it as the
           # full matrix.
-          hm <- diag(hm)
+          hm <- diag(hm, nrow = n, ncol = n)
         }
         sub_stage$hm <- hm
       } else {

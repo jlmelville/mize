@@ -18,7 +18,11 @@ norm1 <- function(v) {
 
 # l2 (Euclidean) norm of a vector
 norm2 <- function(v) {
-  sqrt(dot(v))
+  scale <- max(abs(v), 0)
+  if (!is.finite(scale) || scale == 0) {
+    return(scale)
+  }
+  scale * sqrt(sum((v / scale)^2))
 }
 
 # Infinity norm of a vector
@@ -32,7 +36,7 @@ normalize <- function(v) {
   if (l < .Machine$double.eps) {
     v
   } else {
-    v / norm2(v)
+    v / l
   }
 }
 

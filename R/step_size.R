@@ -52,11 +52,13 @@ bold_driver <- function(
         opt$eager_update <- TRUE
       }
       sub_stage$value <- sub_stage$init_value
+      sub_stage$completed_value <- NULL
       list(opt = opt, sub_stage = sub_stage)
     },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
       pm <- stage$direction$value
       sub_stage$alpha_init <- sub_stage$value
+      sub_stage$completed_value <- 0
       sub_stage$ls_nf <- 0L
       sub_stage$ls_ng <- 0L
       sub_stage$ls_reason <- NULL
@@ -90,6 +92,8 @@ bold_driver <- function(
       } else {
         if (remaining_fn <= 0) {
           sub_stage$value <- 0
+          sub_stage$ls_reason <- "budget_exhausted"
+          sub_stage$ls_outcome <- "no_step"
           return(list(opt = opt, sub_stage = sub_stage))
         }
         opt <- calc_fn(opt, par, fg$fn)
@@ -176,6 +180,7 @@ bold_driver <- function(
       }
 
       sub_stage$value <- alpha
+      sub_stage$completed_value <- alpha
       sub_stage$ls_reason <- termination_reason
       sub_stage$ls_outcome <- "objective_decrease"
       if (is_last_stage(opt, stage)) {

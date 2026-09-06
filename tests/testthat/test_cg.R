@@ -135,9 +135,9 @@ test_that("CG with different updates", {
   )
   expect_equal(res$nf, 19)
   expect_equal(res$ng, 19)
-  expect_equal(res$f, 2.487, tolerance = 1e-3)
-  expect_equal(res$g2n, 16.750, tolerance = 1e-3)
-  expect_equal(res$par, c(-0.407, 0.237), tolerance = 1e-3)
+  expect_equal(res$f, 2.377, tolerance = 1e-3)
+  expect_equal(res$g2n, 14.363, tolerance = 1e-3)
+  expect_equal(res$par, c(-0.413, 0.232), tolerance = 1e-3)
 
   res <- mize(
     rb0,

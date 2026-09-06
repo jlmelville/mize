@@ -79,25 +79,16 @@ newton_direction <- function(try_safe_chol = FALSE) {
 # A Partial Hessian approach: calculates the Cholesky decomposition of the
 # Hessian (or some approximation) on the first iteration only. Future steps
 # solve using this Hessian and the current gradient.
-partial_hessian_direction <- function(hessian_every = 0) {
+partial_hessian_direction <- function() {
   make_direction(list(
     init = function(opt, stage, sub_stage, par, fg, iter) {
-      if (hessian_every == 0) {
-        curvature <- calc_hs(opt, par, fg$hs, allow_vector = FALSE)
-        opt <- curvature$opt
-        hm <- curvature$value
-        sub_stage$rm <- chol(hm)
-      }
+      curvature <- calc_hs(opt, par, fg$hs, allow_vector = FALSE)
+      opt <- curvature$opt
+      hm <- curvature$value
+      sub_stage$rm <- chol(hm)
       list(opt = opt, sub_stage = sub_stage)
     },
     calculate = function(opt, stage, sub_stage, par, fg, iter) {
-      if (hessian_every > 0 && iter %% hessian_every == 0) {
-        curvature <- calc_hs(opt, par, fg$hs, allow_vector = FALSE)
-        opt <- curvature$opt
-        hm <- curvature$value
-        sub_stage$rm <- chol(hm)
-      }
-
       gm <- get_gr_curr(opt, iter)
       rm <- sub_stage$rm
       pm <- hessian_solve(rm, gm)

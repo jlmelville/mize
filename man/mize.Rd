@@ -535,10 +535,8 @@ curvature condition and the approximate Armijo condition (i.e. approximate
 Wolfe conditions). The default step size initialization methods are those
 used by Hager and Zhang (2006) in the description of CG_DESCENT.
 
-If the \code{"DBD"} is used for the optimization \code{"method"}, then the
-\code{line_search} parameter is ignored, because this method controls both
-the direction of the search and the step size simultaneously. The following
-parameters can be used to control the step size:
+With \code{method = "DBD"}, \code{line_search} is ignored because DBD controls both the search direction
+and the step size. The following parameters control its coordinatewise step sizes:
 \itemize{
 \item \code{step_up}: The amount by which to increase the step size in a
 direction where the current step size is deemed to be too short. This
@@ -638,6 +636,11 @@ momentum coefficient \code{mu}. The four cumulative count columns are always
 present; \code{nh} and \code{nhi} are zero when no Hessian or inverse-Hessian callback
 has been accepted. Other columns are included only when their owning method
 or calculation supplies them.
+
+\code{alpha} describes the selected gradient descent sub-step; \code{step} measures the
+complete parameter update, including momentum. For Bold Driver, \code{alpha} is
+zero when no gradient step was selected. See \code{\link[=mize_step_summary]{mize_step_summary()}} for the
+diagnostic field definitions.
 
 \code{store_progress} controls retention of these observations. It does not by
 itself force objective or gradient calculations; those callbacks run only

@@ -234,26 +234,3 @@ test_that("curvature callback failures preserve errors and attempted counts", {
     expect_equal(witness$counts(), c(hs = 0, hi = 1), info = case_name)
   }
 })
-
-test_that("private periodic PHESS refreshes use native accounting", {
-  # The refresh cadence is private. This protects the public invariant that
-  # every accepted curvature callback in production source is counted once.
-  witness <- make_curvature_count_witness("hs", diag(2))
-  direction <- partial_hessian_direction(hessian_every = 1)
-  opt <- list(
-    cache = list(gr_curr = c(1, -1), gr_curr_iter = 1),
-    counts = make_counts()
-  )
-
-  result <- direction$calculate(
-    opt,
-    stage = list(),
-    sub_stage = direction,
-    par = c(1, -1),
-    fg = witness$fg,
-    iter = 1
-  )
-
-  expect_equal(result$opt$counts[c("hs", "hi")], list(hs = 1, hi = 0))
-  expect_equal(witness$counts(), c(hs = 1, hi = 0))
-})

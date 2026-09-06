@@ -200,7 +200,7 @@ mize_validate_initial_par <- function(par) {
 #'   `step_up`. Can be one of `"*"` (to multiply the current step size
 #'   with `step_up`) or `"+"` (to add).
 #' @param step_down Multiplier to reduce the step size by if using the
-#'   `"DBD"` method or the `"bold"`. Can also be used with the
+#'   `"DBD"` method or the `"bold"` line search. Can also be used with the
 #'   `"back"` line search method, but is optional. Should be a positive
 #'   value less than 1.
 #' @param dbd_weight Numeric weighting value used by the `"DBD"` method only,

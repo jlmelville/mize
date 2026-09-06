@@ -340,9 +340,9 @@ test_that("HZ CG with HZ LS", {
 
   expect_equal(res$nf, 10)
   expect_equal(res$ng, 8)
-  expect_equal(res$f, 4.09, tolerance = 1e-3)
-  expect_equal(res$g2n, 1.789, tolerance = 1e-3)
-  expect_equal(res$par, c(-1.020, 1.050), tolerance = 1e-3)
+  expect_equal(res$f, 4.108, tolerance = 1e-3)
+  expect_equal(res$g2n, 1.7795, tolerance = 1e-3)
+  expect_equal(res$par, c(-1.0251, 1.0590), tolerance = 1e-3)
 })
 
 

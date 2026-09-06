@@ -85,7 +85,7 @@ opt_loop <- function(
     )
   }
 
-  progress <- data.frame()
+  progress <- if (store_progress) make_progress() else NULL
   step_info <- NULL
   last_reported_iter <- NULL
 
@@ -94,7 +94,7 @@ opt_loop <- function(
     opt <- step_info$opt
     opt <- check_mize_summary_observations(step_info)
     if (store_progress) {
-      progress <- update_progress(step_info, progress)
+      progress$add(step_info)
     }
     if (verbose) {
       opt_report(step_info, print_time = TRUE, print_par = FALSE)
@@ -165,7 +165,7 @@ opt_loop <- function(
         }
 
         if (store_progress && iter %% log_every == 0) {
-          progress <- update_progress(step_info, progress)
+          progress$add(step_info)
         }
         if (verbose && iter %% log_every == 0) {
           opt_report(step_info, print_time = TRUE, print_par = FALSE)
@@ -285,12 +285,12 @@ opt_loop <- function(
   if (verbose && !identical(last_reported_iter, iter)) {
     opt_report(step_info, print_time = TRUE, print_par = FALSE)
   }
-  if (store_progress && !(as.character(iter) %in% rownames(progress))) {
-    progress <- update_progress(step_info, progress)
+  if (store_progress && !progress$has_iteration(iter)) {
+    progress$add(step_info)
   }
 
   if (store_progress) {
-    step_info$progress <- progress
+    step_info$progress <- progress$finish()
   }
 
   step_info$opt <- opt
@@ -382,8 +382,13 @@ opt_report <- function(
   message(msg)
 }
 
-# Transfers data from the result object to the progress data frame
-update_progress <- function(step_info, progress) {
+# Accumulate only summary fields. Closures own the buffers and update their
+# bindings directly, avoiding copies when passing a growing buffer to a helper.
+make_progress <- function() {
+  rows <- vector("list", 128)
+  iterations <- numeric(128)
+  used <- 0L
+  column_names <- character()
   categorical_names <- c("ls_reason", "ls_outcome", "direction_reason")
   possible_names <- c(
     "f",
@@ -402,34 +407,47 @@ update_progress <- function(step_info, progress) {
     "ls_ng",
     categorical_names
   )
-  missing_value <- function(name) {
-    if (name %in% categorical_names) NA_character_ else NA_real_
-  }
-  new_names <- Filter(
-    function(x) {
-      !is.null(step_info[[x]])
+  list(
+    add = function(step_info) {
+      new_names <- Filter(
+        function(name) !is.null(step_info[[name]]),
+        possible_names
+      )
+      column_names <<- union(column_names, new_names)
+      used <<- used + 1L
+      if (used > length(rows)) {
+        length(rows) <<- 2 * length(rows)
+        length(iterations) <<- length(rows)
+      }
+      rows[[used]] <<- step_info[new_names]
+      iterations[used] <<- step_info$iter
+      invisible(NULL)
     },
-    possible_names
-  )
-  res_names <- union(colnames(progress), new_names)
-
-  progress_row <- lapply(res_names, function(name) {
-    value <- step_info[[name]]
-    if (is.null(value)) missing_value(name) else value
-  })
-  names(progress_row) <- res_names
-  if (nrow(progress) == 0) {
-    progress <- as.data.frame(progress_row)
-  } else {
-    for (name in setdiff(res_names, colnames(progress))) {
-      progress[[name]] <- rep(missing_value(name), nrow(progress))
+    has_iteration = function(iter) {
+      iter %in% iterations[seq_len(used)]
+    },
+    finish = function() {
+      if (used == 0L) {
+        return(data.frame())
+      }
+      used_rows <- rows[seq_len(used)]
+      columns <- lapply(column_names, function(name) {
+        missing <- if (name %in% categorical_names) NA_character_ else NA_real_
+        unlist(
+          lapply(used_rows, function(row) {
+            value <- row[[name]]
+            if (is.null(value)) missing else value
+          }),
+          use.names = FALSE
+        )
+      })
+      names(columns) <- column_names
+      as.data.frame(
+        columns,
+        row.names = as.character(iterations[seq_len(used)])
+      )
     }
-    progress <- rbind(progress, progress_row)
-  }
-
-  colnames(progress) <- res_names
-  rownames(progress)[nrow(progress)] <- step_info$iter
-  progress
+  )
 }
 
 # Constructor -------------------------------------------------------------

@@ -908,30 +908,6 @@ test_that("PHESS rejects malformed Hessians at first consumption", {
   }
 })
 
-test_that("periodic PHESS validates each refreshed Hessian once", {
-  # hessian_every is private and make_mize() uses the initial-only default.
-  # This direct probe protects the otherwise unreachable refresh boundary.
-  asymmetric <- matrix(c(1, 0, 0.25, 1), nrow = 2)
-  witness <- curvature_validation_witness("hs", asymmetric)
-  direction <- partial_hessian_direction(hessian_every = 1)
-  opt <- list(cache = list(gr_curr = c(1, -1), gr_curr_iter = 1))
-
-  expect_callback_validation_error(
-    function() {
-      direction$calculate(
-        opt,
-        stage = list(),
-        sub_stage = direction,
-        par = c(1, -1),
-        fg = witness$fg,
-        iter = 1
-      )
-    },
-    "fg\\$hs\\(par\\).*symmetric"
-  )
-  expect_identical(witness$counts(), c(hs = 1L, hi = 0L))
-})
-
 test_that("initial parameters are validated before callbacks", {
   bad_pars <- list(
     character = "bad",

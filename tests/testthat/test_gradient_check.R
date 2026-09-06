@@ -110,3 +110,91 @@ test_that("check_mize_gradient validates public inputs", {
     "rel_eps must be a positive finite numeric scalar"
   )
 })
+
+test_that("gradient checking rejects unusable coordinate perturbations", {
+  calls <- 0L
+  fg <- list(
+    fn = function(x) {
+      calls <<- calls + 1L
+      sum(x)
+    },
+    gr = function(x) rep(0, length(x))
+  )
+  for (method in c("forward", "central")) {
+    calls <- 0L
+    expect_error(
+      check_mize_gradient(
+        fg,
+        c(0, 1),
+        method = method,
+        rel_eps = .Machine$double.xmin
+      ),
+      "coordinate 2"
+    )
+    expect_equal(calls, if (method == "central") 3L else 2L)
+    expect_error(
+      check_mize_gradient(
+        fg,
+        .Machine$double.xmax,
+        method = method,
+        rel_eps = 1
+      ),
+      "coordinate 1"
+    )
+  }
+  # At -1 the positive side moves, but the negative side rounds back to -1.
+  calls <- 0L
+  expect_error(
+    check_mize_gradient(fg, -1, rel_eps = .Machine$double.eps / 2),
+    "coordinate 1"
+  )
+  expect_equal(calls, 1L)
+  # The step calculation itself can overflow before either probe is formed.
+  expect_error(
+    check_mize_gradient(fg, 2, rel_eps = .Machine$double.xmax),
+    "coordinate 1"
+  )
+})
+
+test_that("gradient checking rejects unusable difference arithmetic", {
+  # Finite probes alone do not make an overflowing central denominator usable.
+  fg <- list(fn = function(x) x * 1e-200, gr = function(x) 0)
+  expect_error(check_mize_gradient(fg, 0, rel_eps = 1e308), "coordinate 1")
+  for (method in c("forward", "central")) {
+    fg <- list(
+      fn = function(x) if (x > 0) 1e308 else -1e308,
+      gr = function(x) 0
+    )
+    expect_error(
+      check_mize_gradient(fg, 0, method = method, rel_eps = 1),
+      "arithmetic at coordinate 1"
+    )
+  }
+})
+
+test_that("gradient checking shares optimizer callback shape contracts", {
+  for (component in c("fn", "gr", "combined_fn", "combined_gr")) {
+    fg <- list(fn = function(x) sum(x^2), gr = function(x) 2 * x)
+    if (component == "fn") fg$fn <- function(x) matrix(sum(x^2), 1)
+    if (component == "gr") fg$gr <- function(x) matrix(2 * x, 1)
+    if (component == "combined_fn") {
+      fg$fg <- function(x) list(fn = array(sum(x^2), 1), gr = 2 * x)
+    }
+    if (component == "combined_gr") {
+      fg$fg <- function(x) list(fn = sum(x^2), gr = array(2 * x, length(x)))
+    }
+    expect_error(
+      check_mize_gradient(fg, c(1, 2)),
+      "no dimensions",
+      info = component
+    )
+  }
+  expect_error(
+    check_mize_gradient(list(fn = function(x) Inf, gr = function(x) x), 1),
+    "finite"
+  )
+  expect_error(
+    check_mize_gradient(list(fn = function(x) sum(x), gr = function(x) Inf), 1),
+    "finite"
+  )
+})

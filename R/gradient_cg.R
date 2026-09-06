@@ -62,11 +62,14 @@ cg_direction <- function(
           wm = wm,
           preconditioner = precondition_fn
         )
-        pm <- pm + (beta * pm_old)
-        descent <- dot(gm, pm)
-        if (descent >= 0) {
-          # message("Next CG direction is not a descent direction, resetting to SD")
+        if (!is.finite(beta)) {
           pm <- -gm
+        } else {
+          pm <- pm + (beta * pm_old)
+          descent <- dot(gm, pm)
+          if (any(!is.finite(pm)) || !is.finite(descent) || descent >= 0) {
+            pm <- -gm
+          }
         }
       }
 
@@ -329,7 +332,7 @@ hz_plus_update <- function(
     preconditioner = preconditioner
   )
   eta <- 0.01
-  eta_k <- -1 / (dot(pm_old) * min(eta, dot(gm_old)))
+  eta_k <- -1 / (norm2(pm_old) * min(eta, norm2(gm_old)))
   max(eta_k, beta)
 }
 
@@ -358,6 +361,10 @@ prfr_update <- function(
     wm = wm,
     preconditioner = preconditioner
   )
+  if (!is.finite(bpr) || !is.finite(bfr)) {
+    # Let the direction builder restart without comparing NaN coefficients.
+    return(NA_real_)
+  }
   if (bpr < -bfr) {
     beta <- -bfr
   } else if (abs(bpr) <= bfr) {

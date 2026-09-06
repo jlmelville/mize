@@ -55,7 +55,10 @@
 #' * `nhi`: Number of accepted inverse-Hessian callback evaluations so far.
 #' * `step`: Size of the step between `par_old` and `par`,
 #'  if `par_old` is provided.
-#' * `alpha`: Step length of the gradient descent part of the step.
+#' * `alpha`: Step length selected for the completed gradient descent sub-step.
+#'   Zero means that sub-step selected no movement; a later momentum stage can
+#'   still produce a nonzero complete `step`. Before the first step, this is the
+#'   initialized step length, if available.
 #' * `mu`: Momentum coefficient for this iteration.
 #' * `alpha_init`: Initial line-search step length after safeguards.
 #' * `slope_init`: Directional derivative at the start of the line search.
@@ -196,11 +199,13 @@ mize_step_summary <- function(
   }
 
   alpha <- 0
-  if (!is.null(opt$stages[["gradient_descent"]]$step_size$value)) {
-    alpha <- norm2(opt$stages[["gradient_descent"]]$step_size$value)
-    if (is.null(alpha)) {
-      alpha <- 0
-    }
+  gradient_step_size <- opt$stages[["gradient_descent"]]$step_size
+  alpha_value <- gradient_step_size$completed_value
+  if (is.null(alpha_value)) {
+    alpha_value <- gradient_step_size$value
+  }
+  if (!is.null(alpha_value)) {
+    alpha <- norm2(alpha_value)
   }
 
   res <- list(
