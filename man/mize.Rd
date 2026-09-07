@@ -450,7 +450,8 @@ A constant step size reduction can be used by specifying a value for
 is used then only function evaluations are carried out and no extra
 gradient calculations are made.
 \item \code{"Bold Driver"} carries out a back tracking line search until a
-reduction in the function value is found.
+reduction in the function value is found. For this method, \code{step0} must be a positive finite
+numeric scalar or \code{NULL} (the default), which uses an initial step size of 1.
 \item \code{"Constant"} uses a constant line search, the value of which
 should be provided with \code{step0}. Note that this value will be
 multiplied by the magnitude of the direction vector used in the gradient

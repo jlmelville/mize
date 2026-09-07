@@ -687,6 +687,10 @@ make_mize <- function(
         mize_validate_positive_numeric(step_next_init, "step_next_init")
       }
     } else if (line_search == "bold driver") {
+      if (is.null(step0)) {
+        step0 <- 1
+      }
+      mize_validate_positive_numeric(step0, "step0")
       mize_validate_positive_numeric(step_up, "step_up")
       if (!is.null(step_down)) {
         mize_validate_range(step_down, "step_down", 0, 1)
@@ -807,6 +811,7 @@ make_mize <- function(
       "bold driver" = bold_driver(
         inc_mult = step_up,
         dec_mult = step_down,
+        init_step_size = step0,
         max_fn = ls_max_fn
       ),
       constant = constant_step_size(value = step0),

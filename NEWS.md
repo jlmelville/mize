@@ -15,6 +15,8 @@ This release improves optimizer robustness, input validation, and progress diagn
 
 ## Bug fixes and minor improvements
 
+* Bold Driver now honors `step0` instead of always starting at 1. It requires a positive finite
+  numeric scalar, with `NULL` retaining the default of 1.
 * BFGS and SR1 now accept one-dimensional inverse-Hessian vectors consistently with equivalent
   one-by-one matrices.
 * The `cg_update = "HZ+"` safeguard now uses Euclidean norms as specified by its formula. This
