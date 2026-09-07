@@ -65,7 +65,8 @@
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-and-minor-improvements-0-3-0">Bug fixes and minor improvements<a class="anchor" aria-label="anchor" href="#bug-fixes-and-minor-improvements-0-3-0"></a></h3>
-<ul><li>BFGS and SR1 now accept one-dimensional inverse-Hessian vectors consistently with equivalent one-by-one matrices.</li>
+<ul><li>Bold Driver now honors <code>step0</code> instead of always starting at 1. It requires a positive finite numeric scalar, with <code>NULL</code> retaining the default of 1.</li>
+<li>BFGS and SR1 now accept one-dimensional inverse-Hessian vectors consistently with equivalent one-by-one matrices.</li>
 <li>The <code>cg_update = "HZ+"</code> safeguard now uses Euclidean norms as specified by its formula. This correction can change optimization trajectories and iteration counts.</li>
 <li>
 <code><a href="../reference/check_mize_gradient.html">check_mize_gradient()</a></code> rejects unrepresentable or non-finite coordinate perturbations and dimensioned callback results instead of reporting misleading agreement or flattening matrices.</li>

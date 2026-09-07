@@ -591,7 +591,9 @@ out:
   and no extra gradient calculations are made.
 
 - `"Bold Driver"` carries out a back tracking line search until a
-  reduction in the function value is found.
+  reduction in the function value is found. For this method, `step0`
+  must be a positive finite numeric scalar or `NULL` (the default),
+  which uses an initial step size of 1.
 
 - `"Constant"` uses a constant line search, the value of which should be
   provided with `step0`. Note that this value will be multiplied by the
