@@ -68,6 +68,7 @@
 <ul><li>Backtracking line searches no longer report <code>line_search_failed</code> prematurely when small steps are needed to reach the requested convergence tolerance.</li>
 <li>Line searches now reuse <code>step0</code> after returning a zero step when <code>step_next_init</code> depends on previous search results. This allows momentum methods to recover on the next iteration.</li>
 <li>Bold Driver now honors <code>step0</code> instead of always starting at 1. It requires a positive finite numeric scalar, with <code>NULL</code> retaining the default of 1.</li>
+<li>Bold Driver now accepts step sizes below its former minimum, avoiding premature line-search failures when smaller steps are needed. After a zero or rejected gradient step, the next search starts with a positive step size so gradient descent can resume after a momentum update.</li>
 <li>BFGS and SR1 now accept one-dimensional inverse-Hessian vectors consistently with equivalent one-by-one matrices.</li>
 <li>The <code>cg_update = "HZ+"</code> safeguard now uses Euclidean norms as specified by its formula. This correction can change optimization trajectories and iteration counts.</li>
 <li>

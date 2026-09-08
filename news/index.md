@@ -36,6 +36,10 @@ progress diagnostics.
 - Bold Driver now honors `step0` instead of always starting at 1. It
   requires a positive finite numeric scalar, with `NULL` retaining the
   default of 1.
+- Bold Driver now accepts step sizes below its former minimum, avoiding
+  premature line-search failures when smaller steps are needed. After a
+  zero or rejected gradient step, the next search starts with a positive
+  step size so gradient descent can resume after a momentum update.
 - BFGS and SR1 now accept one-dimensional inverse-Hessian vectors
   consistently with equivalent one-by-one matrices.
 - The `cg_update = "HZ+"` safeguard now uses Euclidean norms as
