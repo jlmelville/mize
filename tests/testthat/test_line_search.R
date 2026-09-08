@@ -436,6 +436,149 @@ test_that("the Wolfe wrapper scales sub-epsilon nonzero directions", {
   expect_identical(result$sub_stage$value, expected_alpha)
 })
 
+test_that("named line-search initializers ignore a zero selected step", {
+  fg <- list(
+    fn = function(parameters) sum(parameters^2),
+    gr = function(parameters) 2 * parameters
+  )
+  opt <- make_mize(
+    method = "SD",
+    line_search = "More-Thuente",
+    par = 1,
+    fg = fg
+  )
+  opt$cache <- list(
+    fn_curr = 1,
+    fn_curr_iter = 1,
+    gr_curr = 2,
+    gr_curr_iter = 1
+  )
+  stage <- opt$stages$gradient_descent
+  stage$direction$value <- -2
+
+  for (initializer in c("slope ratio", "quadratic", "hz")) {
+    for (max_alpha_mult in c(Inf, 2)) {
+      observed_alpha <- NULL
+      search <- line_search(
+        search_line = function(evaluate_line, initial_alpha, ...) {
+          observed_alpha <<- initial_alpha
+          list(
+            line_point = evaluate_line(initial_alpha),
+            function_evaluations = 1L,
+            gradient_evaluations = 1L,
+            outcome = "wolfe",
+            termination_reason = "wolfe"
+          )
+        },
+        name = "test",
+        initializer = initializer,
+        initial_step_length = 0.25,
+        max_alpha_mult = max_alpha_mult
+      )
+      search$value <- 0
+      search$previous_slope <- -8
+      search$previous_value <- 2
+
+      result <- search$calculate(
+        opt,
+        stage,
+        search,
+        par = 1,
+        fg = fg,
+        iter = 1
+      )
+      info <- paste(initializer, max_alpha_mult)
+
+      expect_identical(observed_alpha, 0.25, info = info)
+      expect_identical(result$sub_stage$alpha_init, 0.25, info = info)
+      # Hager-Zhang's extra function evaluation is unnecessary without a previous nonzero step.
+      expect_identical(result$sub_stage$ls_nf, 1L, info = info)
+    }
+  }
+})
+
+test_that("numeric line-search initialization keeps its value after a zero step", {
+  fg <- list(
+    fn = function(parameters) sum(parameters^2),
+    gr = function(parameters) 2 * parameters
+  )
+  opt <- make_mize(
+    method = "SD",
+    line_search = "More-Thuente",
+    par = 1,
+    fg = fg
+  )
+  opt$cache <- list(
+    fn_curr = 1,
+    fn_curr_iter = 1,
+    gr_curr = 2,
+    gr_curr_iter = 1
+  )
+  stage <- opt$stages$gradient_descent
+  stage$direction$value <- -2
+
+  calculate_alpha <- function(previous_alpha, initializer, max_alpha_mult) {
+    observed_alpha <- NULL
+    search <- line_search(
+      search_line = function(evaluate_line, initial_alpha, ...) {
+        observed_alpha <<- initial_alpha
+        list(
+          line_point = evaluate_line(initial_alpha),
+          function_evaluations = 1L,
+          gradient_evaluations = 1L,
+          outcome = "wolfe",
+          termination_reason = "wolfe"
+        )
+      },
+      name = "test",
+      initializer = initializer,
+      initial_step_length = 0.25,
+      max_alpha_mult = max_alpha_mult
+    )
+    search$value <- previous_alpha
+    search$calculate(opt, stage, search, par = 1, fg = fg, iter = 1)
+    observed_alpha
+  }
+
+  expect_identical(calculate_alpha(0, 0.75, Inf), 0.75)
+  expect_identical(calculate_alpha(0, 0.75, 2), 0.75)
+  expect_identical(calculate_alpha(0.5, 10, 2), 1)
+})
+
+test_that("backtracking reinitializes when momentum moves after a failed search", {
+  hessian <- diag(c(1, 2))
+  fg <- list(
+    fn = function(x) drop(0.5 * crossprod(x, hessian %*% x)),
+    gr = function(x) as.vector(hessian %*% x)
+  )
+  step0 <- 1 / sqrt(10)
+
+  result <- mize(
+    par = rep(sqrt(8), 2),
+    fg = fg,
+    method = "MOM",
+    line_search = "backtracking",
+    step0 = step0,
+    step_next_init = "slope ratio",
+    step_down = 0.5,
+    mom_schedule = 0.9,
+    ls_max_fn = 1,
+    max_iter = 3,
+    abs_tol = NULL,
+    rel_tol = NULL,
+    grad_tol = NULL,
+    ginf_tol = NULL,
+    step_tol = NULL,
+    store_progress = TRUE
+  )
+
+  expect_identical(result$progress$ls_outcome[[3L]], "no_step")
+  expect_identical(result$progress$alpha[[3L]], 0)
+  expect_true(result$progress$step[[3L]] > 0)
+  expect_identical(result$progress$alpha_init[[4L]], step0)
+  expect_identical(result$progress$ls_outcome[[4L]], "armijo")
+})
+
 test_that("line-search backends share one explicit callable protocol", {
   expected <- c(
     "evaluate_line",

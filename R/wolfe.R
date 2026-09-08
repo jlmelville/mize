@@ -339,10 +339,13 @@ line_search <- function(
 
       proposed_initial_alpha <- 0
       probe_function_evaluations <- 0L
+      previous_alpha_is_zero <- !is.null(previous_alpha) &&
+        isTRUE(previous_alpha == 0)
       if (is.numeric(initializer)) {
         proposed_initial_alpha <- initializer
       } else if (
         initializer == "slope ratio" &&
+          !previous_alpha_is_zero &&
           !is.null(sub_stage$previous_slope)
       ) {
         # described on p59 of Nocedal and Wright
@@ -354,6 +357,7 @@ line_search <- function(
         )
       } else if (
         initializer == "quadratic" &&
+          !previous_alpha_is_zero &&
           !is.null(sub_stage$previous_value)
       ) {
         # quadratic interpolation
@@ -362,7 +366,11 @@ line_search <- function(
           initial_point,
           try_newton_step = try_newton_step
         )
-      } else if (initializer == "hz" && !is.null(previous_alpha)) {
+      } else if (
+        initializer == "hz" &&
+          !previous_alpha_is_zero &&
+          !is.null(previous_alpha)
+      ) {
         probe_is_affordable <-
           remaining_function_evaluations >= 2 &&
           remaining_gradient_evaluations >= 1 &&
@@ -386,6 +394,7 @@ line_search <- function(
       # Prevent the next step initial guess being too large
       if (
         !is.null(previous_alpha) &&
+          !previous_alpha_is_zero &&
           isTRUE(proposed_initial_alpha / previous_alpha > max_alpha_mult)
       ) {
         proposed_initial_alpha <- previous_alpha * max_alpha_mult

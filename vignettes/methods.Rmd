@@ -270,13 +270,15 @@ $\phi'(0) = g^T p$.
 
 </details>
 
-After the first iteration, `step_next_init` can use a slope ratio, quadratic
-interpolation, the Hager-Zhang `"hz"` rule, or a fixed positive number. The
-Hager-Zhang rule may make one objective-only probe to fit a quadratic. It does
-so only when a previous step exists and both the local line-search budgets and
-the remaining hard budgets leave room for the probe and a subsequent search.
-Otherwise it falls back to an enlarged, safeguarded version of the previous
-step. A probe is included in `ls_nf`.
+After the first iteration, `step_next_init` can use a slope ratio, quadratic interpolation, the
+Hager-Zhang `"hz"` rule, or a fixed positive number. If the previous search returned a zero step,
+the named rules use `step0` again. This matters for momentum methods, which can move the parameters
+even when the gradient search fails and so continue to another iteration.
+
+With a previous nonzero step, the Hager-Zhang rule may make one objective-only probe to fit a
+quadratic. It does so only when both the local line-search budgets and the remaining hard budgets
+leave room for the probe and a subsequent search. Otherwise it falls back to an enlarged,
+safeguarded version of the previous step. A probe is included in `ls_nf`.
 
 `try_newton_step` adjusts a calculated proposal upward, at most to the natural
 unit step of 1. Its current default is `TRUE` for `"NEWTON"`, `"PHESS"`,

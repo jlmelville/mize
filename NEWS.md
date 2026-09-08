@@ -15,6 +15,10 @@ This release improves optimizer robustness, input validation, and progress diagn
 
 ## Bug fixes and minor improvements
 
+* Backtracking line searches no longer report `line_search_failed` prematurely when small steps are
+  needed to reach the requested convergence tolerance.
+* Line searches now reuse `step0` after returning a zero step when `step_next_init` depends on
+  previous search results. This allows momentum methods to recover on the next iteration.
 * Bold Driver now honors `step0` instead of always starting at 1. It requires a positive finite
   numeric scalar, with `NULL` retaining the default of 1.
 * BFGS and SR1 now accept one-dimensional inverse-Hessian vectors consistently with equivalent

@@ -243,8 +243,7 @@ process_schmidt_zoom_trial <- function(
 make_schmidt_armijo_search <- function(
   armijo_constant = 0.05,
   step_down = NULL,
-  max_evaluations = Inf,
-  parameter_tolerance = 1e-9
+  max_evaluations = Inf
 ) {
   fixed_reduction_factor <- step_down
   evaluates_gradient <- is.null(fixed_reduction_factor)
@@ -289,8 +288,7 @@ make_schmidt_armijo_search <- function(
       armijo_constant = armijo_constant,
       fixed_reduction_factor = fixed_reduction_factor,
       max_evaluations = evaluation_limit,
-      direction_scale = norm_inf(search_direction),
-      parameter_tolerance = parameter_tolerance
+      search_direction = search_direction
     )
   }
 }
@@ -302,17 +300,32 @@ run_schmidt_armijo_search <- function(
   armijo_constant,
   fixed_reduction_factor,
   max_evaluations,
-  direction_scale,
-  parameter_tolerance
+  search_direction
 ) {
   evaluates_gradient <- is.null(fixed_reduction_factor)
   function_evaluations <- 0L
   gradient_evaluations <- 0L
   best_decreasing_point <- NULL
   trial_alpha <- initial_alpha
-  is_initial_trial <- TRUE
 
   repeat {
+    if (
+      line_numeric_vector_is_finite(initial_point$parameters) &&
+        line_numeric_vector_is_finite(search_direction) &&
+        length(initial_point$parameters) == length(search_direction) &&
+        line_parameters_have_same_values(
+          project_line_parameters(
+            initial_point$parameters,
+            trial_alpha,
+            search_direction
+          ),
+          initial_point$parameters
+        )
+    ) {
+      termination_reason <- "rounding_stagnation"
+      break
+    }
+
     trial_point <- evaluate_line(
       trial_alpha,
       calc_gradient = evaluates_gradient
@@ -350,13 +363,6 @@ run_schmidt_armijo_search <- function(
       ))
     }
 
-    if (
-      !is_initial_trial &&
-        direction_scale * trial_alpha <= parameter_tolerance
-    ) {
-      termination_reason <- "parameter_tolerance"
-      break
-    }
     if (function_evaluations >= max_evaluations) {
       termination_reason <- "budget_exhausted"
       break
@@ -367,11 +373,19 @@ run_schmidt_armijo_search <- function(
       trial_point = trial_point,
       fixed_reduction_factor = fixed_reduction_factor
     )
-    trial_alpha <- safeguard_schmidt_armijo_alpha(
+    next_trial_alpha <- safeguard_schmidt_armijo_alpha(
       proposed_alpha,
       previous_alpha = trial_alpha
     )
-    is_initial_trial <- FALSE
+    if (
+      !isTRUE(is.finite(next_trial_alpha)) ||
+        !isTRUE(next_trial_alpha > 0) ||
+        !isTRUE(next_trial_alpha < trial_alpha)
+    ) {
+      termination_reason <- "rounding_stagnation"
+      break
+    }
+    trial_alpha <- next_trial_alpha
   }
 
   if (is.null(best_decreasing_point)) {
