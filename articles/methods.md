@@ -228,10 +228,15 @@ gradient \\g\\ and direction \\p\\. Write the directional derivative as
 
 After the first iteration, `step_next_init` can use a slope ratio,
 quadratic interpolation, the Hager-Zhang `"hz"` rule, or a fixed
-positive number. The Hager-Zhang rule may make one objective-only probe
-to fit a quadratic. It does so only when a previous step exists and both
-the local line-search budgets and the remaining hard budgets leave room
-for the probe and a subsequent search. Otherwise it falls back to an
+positive number. If the previous search returned a zero step, the named
+rules use `step0` again. This matters for momentum methods, which can
+move the parameters even when the gradient search fails and so continue
+to another iteration.
+
+With a previous nonzero step, the Hager-Zhang rule may make one
+objective-only probe to fit a quadratic. It does so only when both the
+local line-search budgets and the remaining hard budgets leave room for
+the probe and a subsequent search. Otherwise it falls back to an
 enlarged, safeguarded version of the previous step. A probe is included
 in `ls_nf`.
 
@@ -341,7 +346,7 @@ knitr::kable(summarize_runs(nag_runs), digits = 6)
 
 | Run | Best objective | Last objective | Function callbacks | Gradient callbacks | Status | Termination |
 |:---|---:|---:|---:|---:|:---|:---|
-| q = 0 | 1.054056 | 6.055306 | 994 | 993 | budget_exhausted | max_iter |
+| q = 0 | 1.054056 | 6.041810 | 994 | 993 | budget_exhausted | max_iter |
 | q = 0.001 | 1.147505 | 2.765938 | 835 | 834 | budget_exhausted | max_iter |
 
 ``` r

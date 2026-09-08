@@ -516,12 +516,16 @@ infinity norms of the parameters and gradient, then on the objective and
 squared gradient norm, with a safeguarded fallback.</li>
 </ul></details><p>After the first iteration, <code>step_next_init</code> can use a
 slope ratio, quadratic interpolation, the Hager-Zhang <code>"hz"</code>
-rule, or a fixed positive number. The Hager-Zhang rule may make one
-objective-only probe to fit a quadratic. It does so only when a previous
-step exists and both the local line-search budgets and the remaining
-hard budgets leave room for the probe and a subsequent search. Otherwise
-it falls back to an enlarged, safeguarded version of the previous step.
-A probe is included in <code>ls_nf</code>.</p>
+rule, or a fixed positive number. If the previous search returned a zero
+step, the named rules use <code>step0</code> again. This matters for
+momentum methods, which can move the parameters even when the gradient
+search fails and so continue to another iteration.</p>
+<p>With a previous nonzero step, the Hager-Zhang rule may make one
+objective-only probe to fit a quadratic. It does so only when both the
+local line-search budgets and the remaining hard budgets leave room for
+the probe and a subsequent search. Otherwise it falls back to an
+enlarged, safeguarded version of the previous step. A probe is included
+in <code>ls_nf</code>.</p>
 <p><code>try_newton_step</code> adjusts a calculated proposal upward, at
 most to the natural unit step of 1. Its current default is
 <code>TRUE</code> for <code>"NEWTON"</code>, <code>"PHESS"</code>,
@@ -647,7 +651,7 @@ column.</p>
 <tr class="odd">
 <td align="left">q = 0</td>
 <td align="right">1.054056</td>
-<td align="right">6.055306</td>
+<td align="right">6.041810</td>
 <td align="right">994</td>
 <td align="right">993</td>
 <td align="left">budget_exhausted</td>
