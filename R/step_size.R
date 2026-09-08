@@ -38,7 +38,7 @@ bold_driver <- function(
   inc_fn = partial(`*`, inc_mult),
   dec_fn = partial(`*`, dec_mult),
   init_step_size = 1,
-  min_step_size = sqrt(.Machine$double.eps),
+  min_step_size = 0,
   max_step_size = NULL,
   max_fn = Inf
 ) {
@@ -190,8 +190,12 @@ bold_driver <- function(
     },
     after_step = function(opt, stage, sub_stage, par, fg, iter, par0, update) {
       alpha_old <- sub_stage$value
-      # increase the step size for the next step
-      if (opt$ok) {
+      # A zero completed step must stay zero until its update is consumed.
+      # Retain the positive search proposal so a later stage can move away
+      # from this point without leaving the next gradient search stuck at zero.
+      if (alpha_old == 0) {
+        alpha_new <- sub_stage$alpha_init
+      } else if (opt$ok) {
         alpha_new <- sub_stage$inc_fn(alpha_old)
       } else {
         alpha_new <- alpha_old

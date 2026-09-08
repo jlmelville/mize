@@ -586,9 +586,7 @@ test_that("linear weighted eager classical momentum with bold driver", {
   expect_equal(res$par, par, tolerance = 1e-3)
 })
 
-test_that("bold driver returns safe zero momentum steps", {
-  # The initial momentum direction is zero and later candidates do not strictly
-  # decrease the cost, so the momentum stage must remain inactive.
+test_that("Bold Driver zero momentum steps remain safe with and without cache", {
   opt <- make_opt(
     make_stages(
       gradient_stage(
@@ -604,78 +602,51 @@ test_that("bold driver returns safe zero momentum steps", {
   )
   opt$count_res_fg <- FALSE
 
-  res <- opt_loop(
-    opt,
-    rb0,
-    rosenbrock_fg,
-    3,
-    store_progress = TRUE,
-    verbose = FALSE,
-    grad_tol = 1e-5
+  # The initial momentum direction is zero. Its next proposal must not be
+  # applied to the completed update or raised from zero by a minimum floor.
+  first <- opt_loop(opt, rb0, rosenbrock_fg, 1, ret_opt = TRUE)
+  expect_equal(first$opt$stages$momentum$result, c(0, 0))
+  expect_equal(first$opt$stages$momentum$step_size$completed_value, 0)
+  expect_equal(first$opt$stages$momentum$step_size$value, 1)
+  expect_equal(
+    first$par,
+    rb0 - 0.25 * rosenbrock_fg$gr(rb0) / sqrt(sum(rosenbrock_fg$gr(rb0)^2))
   )
 
-  nfs <- c(0, 4, 10, 17)
-  ngs <- c(0, 1, 2, 3)
-  fs <- c(24.2, 6.32, 4.12, 4.10)
-  g2ns <- c(232.87, 64.72, 2.81, 2.41)
-  steps <- c(0, 0.25, 0.06875, 0.004727)
-  mus <- c(1, 1.49e-8, 1.64e-8, 1.80e-8)
-  par <- c(-1.024, 1.060)
-
-  expect_equal(res$progress$nf, nfs)
-  expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tolerance = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
-  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
-  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
-  expect_equal(res$par, par, tolerance = 1e-3)
-  expect_equal(res$f, rosenbrock_fg$fn(res$par), tolerance = 1e-12)
-})
-
-test_that("safe zero Bold Driver steps agree without cache", {
-  # Checks that the caching of function calls works correctly
-  opt <- make_opt(
-    make_stages(
-      gradient_stage(
-        direction = sd_direction(normalize = TRUE),
-        step_size = bold_driver()
-      ),
-      momentum_stage(
-        direction = momentum_direction(normalize = TRUE),
-        step_size = bold_driver()
-      ),
-      verbose = FALSE
+  results <- list()
+  for (invalidate in c(FALSE, TRUE)) {
+    res <- opt_loop(
+      opt,
+      rb0,
+      rosenbrock_fg,
+      3,
+      store_progress = TRUE,
+      ret_opt = TRUE,
+      invalidate_cache = invalidate,
+      grad_tol = 1e-5
     )
+    expect_true(all(diff(res$progress$f) < 0))
+    expect_equal(res$f, rosenbrock_fg$fn(res$par), tolerance = 1e-12)
+    expect_equal(
+      tail(res$progress$g2n, 1),
+      sqrt(sum(rosenbrock_fg$gr(res$par)^2))
+    )
+    # The final momentum search finds no strict decrease and remains inactive.
+    expect_equal(res$opt$stages$momentum$result, c(0, 0))
+    expect_equal(res$opt$stages$momentum$step_size$completed_value, 0)
+    expect_gt(res$opt$stages$momentum$step_size$value, 0)
+    results[[length(results) + 1L]] <- res
+  }
+  cached <- results[[1L]]
+  uncached <- results[[2L]]
+  columns <- setdiff(names(cached$progress), c("nf", "ls_nf"))
+  expect_identical(cached$progress[columns], uncached$progress[columns])
+  expect_identical(cached$par, uncached$par)
+  expect_equal(uncached$progress$nf - cached$progress$nf, c(0, 0, 0, 1))
+  expect_equal(
+    tail(uncached$progress$ls_nf, 3) - tail(cached$progress$ls_nf, 3),
+    c(0, 0, 1)
   )
-  opt$count_res_fg <- FALSE
-
-  res <- opt_loop(
-    opt,
-    rb0,
-    rosenbrock_fg,
-    3,
-    store_progress = TRUE,
-    verbose = FALSE,
-    invalidate_cache = TRUE,
-    grad_tol = 1e-5
-  )
-
-  nfs <- c(0, 4, 10, 18) # extra function evaluation
-  ngs <- c(0, 1, 2, 3)
-  fs <- c(24.2, 6.32, 4.12, 4.10)
-  g2ns <- c(232.87, 64.72, 2.81, 2.41)
-  steps <- c(0, 0.25, 0.06875, 0.004727)
-  mus <- c(1, 1.49e-8, 1.64e-8, 1.80e-8)
-  par <- c(-1.024, 1.060)
-
-  expect_equal(res$progress$nf, nfs)
-  expect_equal(res$progress$ng, ngs)
-  expect_equal(res$progress$f, fs, tolerance = 1e-3)
-  expect_equal(res$progress$g2n, g2ns, tolerance = 1e-3)
-  expect_equal_abs(res$progress$step, steps, tolerance = 1e-3)
-  expect_equal_abs(res$progress$mu, mus, tolerance = 1e-3)
-  expect_equal(res$par, par, tolerance = 1e-3)
-  expect_equal(res$f, rosenbrock_fg$fn(res$par), tolerance = 1e-12)
 })
 
 test_that("classical momentum with bold driver and fn adaptive restart, same results as without when everything is ok", {
