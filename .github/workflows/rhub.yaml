@@ -59,8 +59,10 @@ jobs:
       image: ${{ matrix.config.container }}
 
     steps:
-      # Pinned to a full-length commit SHA for immutability; Dependabot updates this reference.
-      - uses: r-hub/actions/checkout@cf6c8eff3145ef225104294e6b0c023de4bba9c6 # v1
+      # Use an explicit checkout so package code cannot reuse checkout credentials.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       # Pinned to a full-length commit SHA for immutability; Dependabot updates this reference.
       - uses: r-hub/actions/platform-info@cf6c8eff3145ef225104294e6b0c023de4bba9c6 # v1
         with:
@@ -88,8 +90,10 @@ jobs:
         config: ${{ fromJson(needs.setup.outputs.platforms) }}
 
     steps:
-      # Pinned to a full-length commit SHA for immutability; Dependabot updates this reference.
-      - uses: r-hub/actions/checkout@cf6c8eff3145ef225104294e6b0c023de4bba9c6 # v1
+      # Use an explicit checkout so package code cannot reuse checkout credentials.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       # Pinned to a full-length commit SHA for immutability; Dependabot updates this reference.
       - uses: r-hub/actions/setup-r@cf6c8eff3145ef225104294e6b0c023de4bba9c6 # v1
         with:
