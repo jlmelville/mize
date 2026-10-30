@@ -52,11 +52,6 @@ $$
 s_t \overset{\mathrm{def}}{=} -\varepsilon_t \nabla f(\theta_t)
 $$
 
-Some others will be introduced as I need them. I used equivalence symbol ($\equiv$) for definitions
-on the NAG page, but I thought I would change it up and use $\overset{\mathrm{def}}{=}$ for this
-page, just to see which one looks nicer on the screen. I'm sure I am using them both incorrectly,
-but hopefully the intention comes across.
-
 ## Standard Definitions
 
 ### Classical Momentum
