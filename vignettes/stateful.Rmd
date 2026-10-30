@@ -512,9 +512,8 @@ Keep direct callback calls outside hard-budget workflows.
 ## Checkpoint and resume
 
 Checkpoint the complete caller-owned state needed to continue. Here that means the optimizer and
-parameters, plus the best observation and progress log. The callbacks are ordinary program code and
-are supplied again after restoration. They must describe the same problem: restore any captured data
-or other external state that affects their results too.
+parameters, plus the best observation and progress log. Supply the callbacks again after
+restoration, using the same data.
 
 ```{r checkpoint-and-resume}
 partial <- advance_stateful(
@@ -623,9 +622,7 @@ stopifnot(
 ```
 
 The resumed run reaches the same current and best parameters as the uninterrupted run to numerical
-tolerance, and both agree with the one-shot run. This equivalence depends on preserving the problem
-as well as the complete optimizer state; exact byte-for-byte identity across different R or platform
-builds is not required.
+tolerance, and both agree with the one-shot run.
 
 ## Reinitialization starts a new run
 
