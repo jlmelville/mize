@@ -551,9 +551,8 @@ stopifnot(
 )
 ```
 
-The invariance holds at the objective level. The hidden check below translates,
-rotates, and reflects the returned configuration and verifies that stress is
-unchanged to numerical tolerance.
+The invariance holds at the objective level too: translating, rotating, or reflecting the returned
+configuration leaves its stress unchanged to numerical tolerance.
 
 ```{r assert-stress-invariance, include = FALSE}
 angle <- pi / 3

@@ -167,6 +167,8 @@ learning rate, that latter allowing the extraction of the $\varepsilon$
 out of the various update rules. Don't worry about why the QHM authors
 want to do that for now.
 
+I'll keep $\mu$ and $\nu$ fixed too, and take $\varepsilon > 0$ for this derivation.
+
 Also, I need to introduce a couple of new symbols.
 
 First, we won't be evaluating the gradient of the objective function $f$
@@ -280,7 +282,7 @@ v_{t+1} =
 - \varepsilon \nu m_{t+1}
 $$
 
-and rearrange for $m_{t+1}$:
+and, for $\nu \ne 0$, rearrange for $m_{t+1}$:
 
 $$
 m_{t+1} =
@@ -358,10 +360,10 @@ $$
 + \mu v_t
 $$
 
-Hopefully it is now easier to see that if you subsitute $\nu = \mu$, you
-get damped NAG, and $\nu = 1$ gets you damped classical momentum. With
-$\nu = 0$, when QHM should give us gradient descent, the expression
-looks a little odd as there are still terms that contain $\mu$:
+Hopefully it is now easier to see that if you substitute $\nu = \mu$, you get damped NAG, and
+$\nu = 1$ gets you damped classical momentum. We divided by $\nu$ on the way here, so let's check
+$\nu = 0$ directly. Substituting it into the three-term expression leaves something that looks a
+little odd, as there are still terms that contain $\mu$:
 
 $$
 \theta_{t+1} = \theta_t
@@ -370,8 +372,7 @@ $$
 + \mu v_t
 $$
 
-If you wade through the expressions above, you'll see that $v_t$ can be
-written as:
+For comparison, the original QHM update at the previous iteration gives:
 
 $$
 v_t =
@@ -385,8 +386,8 @@ $$
 \mu v_t = \mu s_{t-1}
 $$
 
-Therfore, for $\nu = 0$, the second and third terms in the three-term
-QHM equation cancel, leaving just gradient descent as expected.
+Therefore, for $\nu = 0$, the second and third terms in the three-term QHM equation cancel, leaving
+just gradient descent as expected. This checks the case that the division by $\nu$ left out.
 
 #### Undamped QHM?
 
@@ -421,7 +422,7 @@ $$
 \theta_4 = \theta_3 + s_3 + \mu v_3
 \\
 \theta_4 = \theta_3 - \varepsilon l_3
-- \mu \left[ - \varepsilon \left( l_2 + \mu l_1 \right) \right]
++ \mu \left[ - \varepsilon \left( l_2 + \mu l_1 \right) \right]
 \\
 \implies v_4 = - \varepsilon \left[ l_3 + \mu \left( l_2 + \mu l_1 \right) \right]
 $$
@@ -434,31 +435,39 @@ motivation to do this for QHM is to write the update as a weighted
 average of gradients so the update can also be seen as a gradient
 estimator in a stochastic gradient descent context.
 
-The other advantage of this is that in terms of translating from the
-un-damped expressions to the damped forms, we can always start with the
-un-damped expression using a momentum coefficient $\mu^*$ and then
-transform into the damped expression by rescaling the contributions from
-the gradient descent and momentum, and then rescaling the learning rate,
-to compensate, i.e.:
+We can also make the connection between damped and undamped classical momentum explicit. Keep
+$0 \leq \mu < 1$ fixed, and use $u_t$ for an undamped buffer of gradients:
 
 $$
-\theta_{t+1} = \theta_t -\varepsilon \left(l_t + \mu^* v_t \right) = \\
-\theta_t -\frac{\varepsilon}{1 + \mu^*} \left[ \left(1 - \mu \right) l_t + \mu v_t \right] = \\
-\theta_t - \left(1 - \mu \right) \varepsilon \left[ \left(1 - \mu \right) l_t + \mu v_t \right]
+u_{t+1} = l_t + \mu u_t
 $$
 
-with
+The damped buffer $m_t$ introduced above uses the same momentum coefficient:
 
 $$
-\mu = \frac{\mu^*}{1 + \mu^*}
+m_{t+1} = (1 - \mu) l_t + \mu m_t
 $$
 
-As noted in the paper, this shrinks the update by a factor of $1 - \mu$
-and this can be compensated by increasing $\varepsilon$ accordingly.
+Starting both buffers at zero gives $m_t = (1 - \mu) u_t$. So we can write the classical momentum
+update in either form:
 
-Note also that the recommended setting of the damped momentum
-coefficient $\mu = 0.999$ in QHM would therefore translate to a very
-large undamped momentum coefficient of $\mu^* = 999$.
+$$
+\begin{aligned}
+\theta_{t+1}
+&= \theta_t - \varepsilon_{\mathrm{undamped}} u_{t+1} \\
+&= \theta_t - \frac{\varepsilon_{\mathrm{undamped}}}{1 - \mu} m_{t+1}
+\end{aligned}
+$$
+
+As noted in the paper, damping shrinks the update by a factor of $1 - \mu$ if we keep the learning
+rate the same. To recover the undamped updates, choose:
+
+$$
+\varepsilon_{\mathrm{damped}} = \frac{\varepsilon_{\mathrm{undamped}}}{1 - \mu}
+$$
+
+The momentum coefficient stays at $\mu$. For example, with $\mu = 0.999$, the damped learning rate
+needs to be 1000 times the undamped learning rate to give the same classical momentum updates.
 
 ### Unified Momentum Again
 
