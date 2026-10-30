@@ -3,7 +3,7 @@ destination: pkgdown-site
 
 template:
   bootstrap: 5
-  math-rendering: mathjax
+  math-rendering: katex
 
 navbar:
   structure:

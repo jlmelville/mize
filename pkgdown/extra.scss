@@ -1,5 +1,5 @@
 // Keep long display equations inside the article column on narrow screens.
-mjx-container[display="true"] {
+.katex-display {
   max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;

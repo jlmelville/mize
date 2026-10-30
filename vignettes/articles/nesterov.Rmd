@@ -185,7 +185,7 @@ $$
 \boxed{\begin{aligned}
 \phi_{t+1} &= \theta_t - \varepsilon_t \nabla f\left(\theta_t \right) \\
 \theta_{t+1} &= \phi_{t+1} + \mu_t\left(\phi_{t+1} - \phi_{t} \right)
-\end{aligned}} \\[0.75em]
+\end{aligned}} \\ [0.75em]
 \boxed{\begin{aligned}
 \phi_{t+2} &= \theta_{t+1} - \varepsilon_{t+1} \nabla f\left(\theta_{t+1} \right) \\
 \theta_{t+2} &= \phi_{t+2} + \mu_{t+1}\left(\phi_{t+2} - \phi_{t+1} \right)
@@ -293,26 +293,22 @@ Start by replacing all uses of $\phi_{t+1}$ in the second equation with the defi
 in terms of $\theta_t$ given in the first equation:
 
 $$
-\begin{equation}
-\begin{split}
+\begin{aligned}
 \theta_{t+1} & = \theta_t + s_t +
   \mu_t \left( \theta_t + s_t - \phi_{t} \right) \\
  & = \left(1 + \mu_t \right) \theta_t
  + \left(1 + \mu_t \right) s_t
   - \mu_t \phi_t
-\end{split}
-\end{equation}
+\end{aligned}
 $$
 
 So far, so unpromising. Time to get $b_t$ involved. Remember how we defined:
 
 $$
-\begin{equation}
-\begin{split}
+\begin{aligned}
 \theta_{t+1} & = \phi_{t+1} + \mu_t\left(\phi_{t+1} - \phi_{t} \right) \\
  & = \phi_{t+1} + \mu_t b_{t+1}
-\end{split}
-\end{equation}
+\end{aligned}
 $$
 
 Let's shift everything back one iteration:
@@ -325,16 +321,14 @@ $$
 And now substitute for $\phi_t$ in the last term in our NAG update:
 
 $$
-\begin{equation}
-\begin{split}
+\begin{aligned}
 \theta_{t+1} & = \left(1 + \mu_t \right) \theta_t
  + \left(1 + \mu_t \right) s_t
   - \mu_t \phi_t \\
  & = \left(1 + \mu_t \right) \theta_t
  + \left(1 + \mu_t \right) s_t
   - \mu_{t} \theta_t + \mu_{t-1} \mu_t b_t
-\end{split}
-\end{equation}
+\end{aligned}
 $$
 
 The final step is to gather together the $\theta_t$ terms and the result is:
@@ -579,8 +573,7 @@ And the first four updates (including steepest descent on the first iteration)
 are as follows:
 
 $$
-\begin{equation}
-\begin{split}
+\begin{aligned}
 \theta_1 & = \theta_0 + s_0 \\
 \\
 \theta_2 & = \theta_1 + s_1 + \mu v_1 \\
@@ -593,8 +586,7 @@ $$
 \theta_4 & = \theta_3 + s_3 + \mu v_3 \\
  & = \theta_3 + s_3 + \mu \left( s_2 + \mu s_1 + \mu^2 s_0 \right)\\
  & = \theta_3 + s_3 + \mu s_2 + \mu^2 s_1 + \mu^3 s_0 \\
-\end{split}
-\end{equation}
+\end{aligned}
 $$
 
 ### NAG
@@ -648,8 +640,7 @@ First, here's the "long" version, using the same nonzero $\mu$ from the start an
 after the momentum stage:
 
 $$
-\begin{equation}
-\begin{split}
+\begin{aligned}
 \theta_1 & = \theta_0 + \left( 1 + \mu \right) s_0 \\
 \\
 \theta_2 & = \theta_1 + \left( 1 + \mu \right) s_1 - \mu s_0 + \mu v_1 \\
@@ -664,8 +655,7 @@ $$
 & = \theta_3 + \left(1 + \mu \right) s_3 - \mu s_2 + \mu \left[ \left(1 + \mu \right) s_2 + \mu^2 s_1 + \mu^3 s_0 \right] \\
 & = \theta_3 + \left(1 + \mu \right) s_3 - \mu s_2 + \mu \left(1 + \mu \right) s_2 + \mu^3 s_1  + \mu^4 s_0 \\
 & = \theta_3 + \left(1 + \mu \right) s_3 + \mu^2 s_2 + \mu^3 s_1 + \mu^4 s_0
-\end{split}
-\end{equation}
+\end{aligned}
 $$
 
 You can see a pattern emerging here at this point, I hope. These are quite
@@ -677,8 +667,7 @@ What happens if we set $\mu_0=0$ and then use the fixed value $\mu$ from the sec
 onwards? We start with the same gradient step as classical momentum. Here's how that plays out:
 
 $$
-\begin{equation}
-\begin{split}
+\begin{aligned}
 \theta_{1} & = \theta_0 + s_0 \\
 \\
 \theta_2 & = \theta_1 + \left( 1 + \mu \right) s_1 - \mu s_0 + \mu v_1 \\
@@ -693,8 +682,7 @@ $$
 & = \theta_3 + \left( 1 + \mu \right) s_3 - \mu s_2 + \mu \left[ \left( 1 + \mu \right) s_2 + \mu^2 s_1 \right] \\
 & = \theta_3 + \left( 1 + \mu \right) s_3 - \mu s_2 + \mu \left( 1 + \mu \right) s_2 + \mu^3 s_1 \\
 & = \theta_3 + \left( 1 + \mu \right) s_3 + \mu^2 s_2 + \mu^3 s_1
-\end{split}
-\end{equation}
+\end{aligned}
 $$
 
 Overall the results aren't that different: nearly all the terms have the same coefficients. But the
@@ -795,8 +783,7 @@ the expressions to lose a lot of readability):
 #### Classical Momentum with a Schedule
 
 $$
-\begin{equation}
-\begin{split}
+\begin{aligned}
 \theta_1 & = \theta_0 + s_0 \\
 \\
 \theta_2 & = \theta_1 + s_1 + \mu_1 v_1 \\
@@ -809,16 +796,14 @@ $$
 \theta_4 & = \theta_3 + s_3 + \mu_3 v_3 \\
  & = \theta_3 + s_3 + \mu_3 \left( s_2 + \mu_2 s_1 + \mu_2 \mu_1 s_0 \right)\\
  & = \theta_3 + s_3 + \mu_3 s_2 + \mu_3 \mu_2 s_1 + \mu_3 \mu_2 \mu_1 s_0 \\
-\end{split}
-\end{equation}
+\end{aligned}
 $$
 Already this is looking pretty gross.
 
 #### NAG with a Momentum Schedule
 
 $$
-\begin{equation}
-\begin{split}
+\begin{aligned}
 \theta_1 & = \theta_0 + \left( 1 + \mu_0 \right) s_0 \\
 \\
 \theta_2 & = \theta_1 + \left( 1 + \mu_1 \right) s_1 - \mu_1 s_0 + \mu_1 v_1 \\
@@ -833,8 +818,7 @@ $$
 & = \theta_3 + \left(1 + \mu_3 \right) s_3 - \mu_3 s_2 + \mu_3 \left[ \left(1 + \mu_2 \right) s_2 + \mu_2 \mu_1 s_1 + \mu_2 \mu_1 \mu_0 s_0 \right] \\
 & = \theta_3 + \left(1 + \mu_3 \right) s_3 - \mu_3 s_2 + \mu_3 \left(1 + \mu_2 \right) s_2 + \mu_3 \mu_2 \mu_1 s_1 + \mu_3 \mu_2 \mu_1 \mu_0 s_0 \\
 & = \theta_3 + \left(1 + \mu_3 \right) s_3 + \mu_3 \mu_2 s_2 + \mu_3 \mu_2 \mu_1 s_1 + \mu_3 \mu_2 \mu_1 \mu_0 s_0
-\end{split}
-\end{equation}
+\end{aligned}
 $$
 
 I can see why I was in no hurry to write all that out in full until now. With a
@@ -862,25 +846,21 @@ momentum](https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ) into the
 that is quite closely related to the Bengio form:
 
 $$
-\begin{equation}
-\begin{split}
+\begin{aligned}
 \theta_{t+1} & = \phi_{t+1} + \mu_{t}\left(\phi_{t+1} - \phi_{t} \right) \\
  & = \phi_{t+1} + \mu_{t} b_{t+1} \\
  & = \theta_{t} + s_{t} + \mu_{t} b_{t+1}
-\end{split}
-\end{equation}
+\end{aligned}
 $$
 Now let us express $b_{t+1}$ recursively in terms of the previous $b_{t}$:
 
 $$
-\begin{equation}
-\begin{split}
+\begin{aligned}
 b_{t+1} & = \phi_{t+1} - \phi_{t} \\
 & = \left(\theta_{t} + s_{t} \right) - \phi_{t} \\
 & = \phi_{t} + \mu_{t-1} \left(\phi_{t} - \phi_{t-1} \right) + s_{t} - \phi_{t} \\
 & = \mu_{t-1} b_{t} + s_{t}
-\end{split}
-\end{equation}
+\end{aligned}
 $$
 This looks just like the classical momentum update, with $b_t$ instead of $m_t$ or $v_t$ and the
 momentum coefficient shifted back one iteration. Let's put the two forms next to each other.
@@ -888,22 +868,18 @@ momentum coefficient shifted back one iteration. Let's put the two forms next to
 Classical momentum looks like:
 
 $$
-\begin{equation}
-\begin{split}
+\begin{aligned}
 m_{t+1} = \mu_t m_{t} + s_{t} \\
 \theta_{t+1} = \theta_{t} + m_{t+1}
-\end{split}
-\end{equation}
+\end{aligned}
 $$
 and NAG looks like:
 
 $$
-\begin{equation}
-\begin{split}
+\begin{aligned}
 b_{t+1} = \mu_{t-1} b_{t} + s_{t} \\
 \theta_{t+1} = \theta_{t} + s_{t} + \mu_{t} b_{t+1}
-\end{split}
-\end{equation}
+\end{aligned}
 $$
 
 So a very similar recursive form for the momentum buffer for both CM and NAG, but using momentum
