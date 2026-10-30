@@ -13,37 +13,33 @@ knitr::opts_chunk$set(echo = TRUE, collapse = TRUE, comment = "#>")
 library(mize)
 ```
 
-Can an optimizer recover a recognizable map of Europe from a table of road
-distances? We will use that problem to explore three parts of the `mize`
-callback interface: capturing fixed data in a closure, checking an analytic
-gradient, and sharing intermediate calculations between the objective and
-gradient.
+Can an optimizer recover a recognizable map of Europe from a table of road distances? We will use
+that problem to explore three parts of the `mize` callback interface: capturing fixed data in a
+closure, checking an analytic gradient, and sharing intermediate calculations between the objective
+and gradient.
 
-`datasets::eurodist` contains road distances in kilometres among 21 European
-cities. We will fit a two-dimensional configuration whose Euclidean distances
-approximate those values. Roads need not follow straight lines, and the cities
-lie on the curved surface of the Earth, so an exact two-dimensional Euclidean
-fit should not be expected.
+`datasets::eurodist` contains road distances in kilometres among 21 European cities. We will fit a
+two-dimensional configuration whose Euclidean distances approximate those values. Roads need not
+follow straight lines, and the cities lie on the curved surface of the Earth, so an exact
+two-dimensional Euclidean fit should not be expected.
 
-This example minimizes raw stress directly. `stats::cmdscale()` follows the
-classical-scaling route and uses a different criterion.
+This example minimizes raw stress directly. `stats::cmdscale()` follows the classical-scaling route
+and uses a different criterion.
 
 ## Stress and its gradient
 
-Let $R = (r_{ij})$ be the target distances and let $D = (d_{ij})$ be the
-Euclidean distances among candidate coordinates $Y$. We minimize raw stress:
+Let $R = (r_{ij})$ be the target distances and let $D = (d_{ij})$ be the Euclidean distances among
+candidate coordinates $Y$. We minimize raw stress:
 
 $$
 C(Y) = \sum_{i < j} (r_{ij} - d_{ij})^2.
 $$
 
-The condition $i < j$ counts each unordered pair once. The matrix
-implementation below instead sums both symmetric triangles, so it multiplies
-that sum by one half. With $n$ objects, the corresponding distance RMSE is
-$\sqrt{C / {n \choose 2}}$ and has the same units as the input distances.
+The condition $i < j$ counts each unordered pair once. The matrix implementation below instead sums
+both symmetric triangles, so it multiplies that sum by one half. With $n$ objects, the corresponding
+distance RMSE is $\sqrt{C / {n \choose 2}}$ and has the same units as the input distances.
 
-For distinct points, the derivative with respect to the coordinates of object
-$i$ is
+For distinct points, the derivative with respect to the coordinates of object $i$ is
 
 $$
 \frac{\partial C}{\partial \mathbf{y}_i} =
@@ -51,16 +47,14 @@ $$
 (\mathbf{y}_i - \mathbf{y}_j).
 $$
 
-> **Implementation note.** Euclidean distance is nondifferentiable when two
-> candidate points coincide. `distance_epsilon` prevents division by zero in
-> the code, although the mathematical derivative remains undefined at an
-> exactly coincident configuration. The gradient check therefore uses a
-> seeded, nondegenerate point.
+> **Implementation note.** Euclidean distance is nondifferentiable when two candidate points
+> coincide. `distance_epsilon` prevents division by zero in the code, although the mathematical
+> derivative remains undefined at an exactly coincident configuration. The gradient check therefore
+> uses a seeded, nondegenerate point.
 
-The callback factory captures the fixed target matrix in a closure. Its
-`prepare()` helper performs the shared conversion from a parameter vector to
-coordinates and pairwise distances. A counter records how often that work is
-performed.
+The callback factory captures the fixed target matrix in a closure. Its `prepare()` helper performs
+the shared conversion from a parameter vector to coordinates and pairwise distances. A counter
+records how often that work is performed.
 
 ```{r callback-factory}
 distance_epsilon <- 1e-10
@@ -128,9 +122,8 @@ make_mmds_callbacks <- function(
 }
 ```
 
-The separate variant supplies `fn` and `gr`. The combined variant also
-supplies `fg`, which lets `mize` request an objective and gradient from one
-prepared configuration.
+The separate variant supplies `fn` and `gr`. The combined variant also supplies `fg`, which lets
+`mize` request an objective and gradient from one prepared configuration.
 
 ```{r seeded-start}
 target_distances <- datasets::eurodist
@@ -146,9 +139,9 @@ combined_callbacks <- make_mmds_callbacks(
 
 ## Validate the gradient
 
-`check_mize_gradient()` compares the analytic gradient with central finite
-differences. Because the combined callback is present, it also checks that
-`fg` agrees with the separate `fn` and `gr` callbacks.
+`check_mize_gradient()` compares the analytic gradient with central finite differences. Because the
+combined callback is present, it also checks that `fg` agrees with the separate `fn` and `gr`
+callbacks.
 
 ```{r gradient-check}
 gradient_check <- check_mize_gradient(
@@ -185,16 +178,15 @@ stopifnot(
 ```
 
 The analytic gradient agrees with the finite-difference approximation to about
-`r format(gradient_check$max_rel_error, digits = 2, scientific = TRUE)` in
-relative terms. At the checked point, the combined callback also reproduces
-the separate objective and gradient to the displayed precision.
+`r format(gradient_check$max_rel_error, digits = 2, scientific = TRUE)` in relative terms. At the
+checked point, the combined callback also reproduces the separate objective and gradient to the
+displayed precision.
 
 ## Optimize with separate and combined callbacks
 
-For this example, we stop when the relative change in stress falls below
-$10^{-8}$. Stress depends on the scale of the supplied distances, which makes a
-relative criterion convenient here. The [Convergence](convergence.html)
-article discusses the other controls.
+For this example, we stop when the relative change in stress falls below $10^{-8}$. Stress depends
+on the scale of the supplied distances, which makes a relative criterion convenient here. The
+[Convergence](convergence.html) article discusses the other controls.
 
 ```{r optimization}
 mmds_controls <- list(
@@ -259,22 +251,18 @@ knitr::kable(
 )
 ```
 
-Both callback forms converge on `rel_tol` from the fixed starting point and
-return the same configuration. They take
-`r combined_result$iter` iterations and reduce pairwise-distance RMSE from
-`r format(round(initial_rmse_km), big.mark = ",")` km to
-`r round(final_rmse_km)` km.
+Both callback forms converge on `rel_tol` from the fixed starting point and return the same
+configuration. They take `r combined_result$iter` iterations and reduce pairwise-distance RMSE from
+`r format(round(initial_rmse_km), big.mark = ",")` km to `r round(final_rmse_km)` km.
 
-`mize` requests the same logical information in both runs. The combined
-callback performs `r unname(preparation_counts["combined"])` distance-matrix
-preparations instead of
-`r unname(preparation_counts["separate"])` because a joint request can reuse
-one prepared configuration. On this small problem, that deterministic count is
-more informative than a wall-clock comparison. Exact callback totals may
-change with line-search details.
+`mize` requests the same logical information in both runs. The combined callback performs
+`r unname(preparation_counts["combined"])` distance-matrix preparations instead of
+`r unname(preparation_counts["separate"])` because a joint request can reuse one prepared
+configuration. On this small problem, that deterministic count is more informative than a wall-clock
+comparison. Exact callback totals may change with line-search details.
 
-Raw stress is nonconvex, so this seeded run demonstrates a reproducible fit
-without claiming that it found the global minimum.
+Raw stress is nonconvex, so this seeded run demonstrates a reproducible fit without claiming that it
+found the global minimum.
 
 ```{r assert-optimization, include = FALSE}
 stopifnot(
@@ -305,22 +293,19 @@ stopifnot(
 
 ## Put the configuration on the map
 
-Distances leave absolute position and orientation unidentified. Adding one
-vector to every point leaves all distances unchanged, as do rotations and
-reflections. A coordinate-only plot therefore cannot tell us where north is,
-but it also leaves a more useful question unanswered: after accounting for
-those arbitrary choices, where does the recovered shape disagree with the
-actual geography?
+Distances leave absolute position and orientation unidentified. Adding one vector to every point
+leaves all distances unchanged, as do rotations and reflections. A coordinate-only plot therefore
+cannot tell us where north is, but it also leaves a more useful question unanswered: after
+accounting for those arbitrary choices, where does the recovered shape disagree with the actual
+geography?
 
-To make that comparison, we use a small geographic reference bundled with the
-article. The map outline and 20 city coordinates come from
-[Natural Earth](https://www.naturalearthdata.com/); the Hook of Holland
-coordinate comes from [GeoNames](https://www.geonames.org/). The source,
-license, and reproduction details are recorded with the data files.
+To make that comparison, we use a small geographic reference bundled with the article. The map
+outline and 20 city coordinates come from [Natural Earth](https://www.naturalearthdata.com/); the
+Hook of Holland coordinate comes from [GeoNames](https://www.geonames.org/). The source, license,
+and reproduction details are recorded with the data files.
 
-The helper below uses an equirectangular projection centred on Europe. Its
-coordinates are approximate kilometres, which is sufficient for a regional
-diagnostic rather than a precision map.
+The helper below uses an equirectangular projection centred on Europe. Its coordinates are
+approximate kilometres, which is sufficient for a regional diagnostic rather than a precision map.
 
 ```{r geographic-reference}
 geography_path <- system.file(
@@ -351,13 +336,12 @@ project_geography <- function(longitude, latitude) {
 }
 ```
 
-The alignment is fitted rather than chosen by eye. It removes translation,
-allows rotation or reflection because handedness is unidentified, and uses one
-uniform scale factor. The scale separates the overall inflation of road
-distances relative to straight-line geography from differences in the
-configuration's shape. It is used only for this geographic comparison; the
-optimizer's returned configuration and raw stress remain unchanged. The
-singular value decomposition finds the least-squares similarity alignment.
+The alignment is fitted rather than chosen by eye. It removes translation, allows rotation or
+reflection because handedness is unidentified, and uses one uniform scale factor. The scale
+separates the overall inflation of road distances relative to straight-line geography from
+differences in the configuration's shape. It is used only for this geographic comparison; the
+optimizer's returned configuration and raw stress remain unchanged. The singular value decomposition
+finds the least-squares similarity alignment.
 
 ```{r align-to-geography}
 center_coordinates <- function(par) {
@@ -406,14 +390,12 @@ geographic_residual_km <- sqrt(rowSums(
 geographic_rmse_km <- sqrt(mean(geographic_residual_km^2))
 ```
 
-The fitted scale factor is `r round(alignment$scale, 3)`, and this fit includes
-a reflection because the optimized configuration's handedness is arbitrary.
-Each orange segment in the map joins a city's geographic location to its
-aligned MDS location. The triangle pattern retains the recovered distance
+The fitted scale factor is `r round(alignment$scale, 3)`, and this fit includes a reflection because
+the optimized configuration's handedness is arbitrary. Each orange segment in the map joins a city's
+geographic location to its aligned MDS location. The triangle pattern retains the recovered distance
 geometry, while the segments make its local errors visible. Their RMSE is about
-`r round(geographic_rmse_km)` km after the global similarity alignment. Long
-segments at Athens and Stockholm, for example, are information that a polished
-but unreferenced coordinate plot would hide.
+`r round(geographic_rmse_km)` km after the global similarity alignment. Long segments at Athens and
+Stockholm, for example, are information that a polished but unreferenced coordinate plot would hide.
 
 ```{r plot-geographic-alignment, echo = FALSE, fig.width = 7, fig.height = 7, fig.alt = sprintf("Map of Europe comparing the geographic and similarity-aligned metric MDS locations of 21 cities. Black open circles mark geographic locations, blue triangles mark aligned MDS locations, and orange segments show pointwise discrepancies; the residual RMSE is about %.0f kilometres.", geographic_rmse_km)}
 map_coordinates <- project_geography(
@@ -585,15 +567,14 @@ relative_invariance_error <- max(
 stopifnot(relative_invariance_error < 1e-12)
 ```
 
-Starting from road distances alone, the optimizer recovers a recognizable
-geometry even though its coordinate frame is arbitrary. The closure and
-combined-callback pattern used here also applies whenever an objective and
-gradient share fixed data or an expensive intermediate calculation; `?mize`
-describes the full callback contract.
+Starting from road distances alone, the optimizer recovers a recognizable geometry even though its
+coordinate frame is arbitrary. The closure and combined-callback pattern used here also applies
+whenever an objective and gradient share fixed data or an expensive intermediate calculation;
+`?mize` describes the full callback contract.
 
 ## See also
 
 - [Getting started](mize.html) introduces callback lists and gradient checks.
 - [Convergence](convergence.html) explains the relative tolerance used here.
-- [Stateful optimization](stateful.html) shows step-by-step integration with
-  retained optimizer state.
+- [Stateful optimization](stateful.html) shows step-by-step integration with retained optimizer
+  state.

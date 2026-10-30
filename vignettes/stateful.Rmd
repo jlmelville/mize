@@ -13,15 +13,14 @@ knitr::opts_chunk$set(echo = TRUE, collapse = TRUE, comment = "#>")
 library(mize)
 ```
 
-A stateful optimizer separates configuration from iteration. You keep the
-current parameters and optimizer state, decide when to advance them, and can
-log, visualize, apply a caller-owned stopping policy, or checkpoint between
-steps.
+A stateful optimizer separates configuration from iteration. You keep the current parameters and
+optimizer state, decide when to advance them, and can log, visualize, apply a caller-owned stopping
+policy, or checkpoint between steps.
 
-This is useful when a single blocking call to `mize()` does not leave enough
-room for application-specific work. The price of that control is that your
-loop owns the lifecycle: it must retain every updated optimizer, check terminal
-state, and treat function and gradient observations as optional.
+This is useful when a single blocking call to `mize()` does not leave enough room for
+application-specific work. The price of that control is that your loop owns the lifecycle: it must
+retain every updated optimizer, check terminal state, and treat function and gradient observations
+as optional.
 
 We will use the two-dimensional Rosenbrock function throughout:
 
@@ -42,8 +41,8 @@ rb0 <- c(-1.2, 1)
 
 ## Why retaining state matters
 
-A tempting workaround with `stats::optim()` is to run a small batch, take its
-parameters, and start another optimizer:
+A tempting workaround with `stats::optim()` is to run a small batch, take its parameters, and start
+another optimizer:
 
 ```{r reinitializing-optim}
 first_batch <- stats::optim(
@@ -63,10 +62,9 @@ second_batch <- stats::optim(
 c(first = first_batch$value, second = second_batch$value)
 ```
 
-The second call starts a new BFGS run. It receives the parameters and discards
-the first run's inverse-Hessian approximation and other transient method state.
-Shorter batches provide more interruptions while throwing away more of the
-information that makes a stateful method effective.
+The second call starts a new BFGS run. It receives the parameters and discards the first run's
+inverse-Hessian approximation and other transient method state. Shorter batches provide more
+interruptions while throwing away more of the information that makes a stateful method effective.
 
 ## The stateful lifecycle
 
@@ -97,19 +95,17 @@ opt <- mize_init(
 )
 ```
 
-Or pass `par` and `fg` to `make_mize()` to initialize immediately. In
-either form, always use the updated `opt` and `par` returned by each step.
-During iteration, retain the optimizer returned by both `mize_step()` and
-`mize_step_summary()`, then pass the summary to `check_mize_convergence()`.
+Or pass `par` and `fg` to `make_mize()` to initialize immediately. In either form, always use the
+updated `opt` and `par` returned by each step. During iteration, retain the optimizer returned by
+both `mize_step()` and `mize_step_summary()`, then pass the summary to `check_mize_convergence()`.
 
 ## Optional observations
 
-`mize_step()` always returns `opt`, `par`, `nf`, `ng`, `nh`, and `nhi`. The
-last four fields are optimizer-lifetime callback counts; `nh` and `nhi` remain
-zero when no Hessian or inverse-Hessian callback has been accepted. The step
-returns `f` or `g` only when that value was calculated at the returned
-parameters. For example, constant-step steepest descent needs a gradient at the
-old parameters but does not observe either value at the new parameters:
+`mize_step()` always returns `opt`, `par`, `nf`, `ng`, `nh`, and `nhi`. The last four fields are
+optimizer-lifetime callback counts; `nh` and `nhi` remain zero when no Hessian or inverse-Hessian
+callback has been accepted. The step returns `f` or `g` only when that value was calculated at the
+returned parameters. For example, constant-step steepest descent needs a gradient at the old
+parameters but does not observe either value at the new parameters:
 
 ```{r optional-observation-witness}
 observation_opt <- make_mize(
@@ -138,20 +134,18 @@ stopifnot(
 )
 ```
 
-Code such as `if (step$f < best_f)` is therefore unsafe. An absent observation
-is normal and leaves the step status unchanged.
+Code such as `if (step$f < best_f)` is therefore unsafe. An absent observation is normal and leaves
+the step status unchanged.
 
 ## A minimal terminal-aware loop
 
-> **Important.** Retain the optimizer returned by both `mize_step()` and
-> `mize_step_summary()`, stop if either operation terminates it, and otherwise
-> call `check_mize_convergence()` after every completed step. This order keeps
-> hard callback budgets and ordinary convergence checks consistent.
+> **Important.** Retain the optimizer returned by both `mize_step()` and `mize_step_summary()`, stop
+> if either operation terminates it, and otherwise call `check_mize_convergence()` after every
+> completed step. This order keeps hard callback budgets and ordinary convergence checks consistent.
 
-The run below has disabled every ordinary numerical tolerance and demonstrates
-only `max_iter`. Its summary therefore sets `calc_fn = FALSE` and
-`calc_gr = FALSE` to avoid requesting observations that the convergence check
-does not need. A loop that enables function- or gradient-based tolerances
+The run below has disabled every ordinary numerical tolerance and demonstrates only `max_iter`. Its
+summary therefore sets `calc_fn = FALSE` and `calc_gr = FALSE` to avoid requesting observations that
+the convergence check does not need. A loop that enables function- or gradient-based tolerances
 should let `mize_step_summary()` request the corresponding observations.
 
 ```{r minimal-loop}
@@ -205,15 +199,14 @@ stopifnot(
 )
 ```
 
-This run deliberately ends at `max_iter = 3`: its status is
-`budget_exhausted`, and `converged` is `FALSE`.
+This run deliberately ends at `max_iter = 3`: its status is `budget_exhausted`, and `converged` is
+`FALSE`.
 
 ## Work safely between steps
 
-The optimizer's stored state describes the current problem and trajectory.
-Reading that state and deciding whether to continue leaves it coherent.
-Changing the problem, the current parameters, or controls that shape stored
-algorithm history begins a new run and should go through `mize_init()`.
+The optimizer's stored state describes the current problem and trajectory. Reading that state and
+deciding whether to continue leaves it coherent. Changing the problem, the current parameters, or
+controls that shape stored algorithm history begins a new run and should go through `mize_init()`.
 
 | Action | Examples | Treatment |
 |:--|:--|:--|
@@ -222,22 +215,20 @@ algorithm history begins a new run and should go through `mize_init()`.
 | Change the parameter state | Replace `par` independently, or change parameter meaning or scale | Reinitialize. |
 | Change trajectory-owning controls | Change method; momentum or restart settings; L-BFGS memory; CG or TN preconditioning; line-search strategy or history-dependent step initialization | Reinitialize. |
 
-Curvature pairs, cached values, momentum, and line-search history all refer to
-the trajectory that produced them. Replacing part of that trajectory while
-retaining the rest can make the state internally inconsistent. Supply stopping
-controls through `make_mize()` or `mize_init()`; this guide does not rely on
-direct mutation of `opt$convergence`.
+Curvature pairs, cached values, momentum, and line-search history all refer to the trajectory that
+produced them. Replacing part of that trajectory while retaining the rest can make the state
+internally inconsistent. Supply stopping controls through `make_mize()` or `mize_init()`; this guide
+does not rely on direct mutation of `opt$convergence`.
 
 ## Deliberate observations and diagnostics
 
-`mize_step_summary()` is where a loop can request observations. Set
-`calc_fn = TRUE` when logging or best-value tracking needs the objective, and
-`calc_gr = TRUE` when gradient norms are needed. The returned optimizer must
-be retained because a requested callback updates the lifetime counts and can
+`mize_step_summary()` is where a loop can request observations. Set `calc_fn = TRUE` when logging or
+best-value tracking needs the objective, and `calc_gr = TRUE` when gradient norms are needed. The
+returned optimizer must be retained because a requested callback updates the lifetime counts and can
 itself terminate at a hard budget.
 
-The summary schema is dynamic. A field is absent when its calculation was not
-requested or its method did not produce it:
+The summary schema is dynamic. A field is absent when its calculation was not requested or its
+method did not produce it:
 
 ```{r summary-schema, echo=FALSE}
 summary_schema <- data.frame(
@@ -267,21 +258,20 @@ summary_schema <- data.frame(
 knitr::kable(summary_schema)
 ```
 
-Line searches may also report initialization diagnostics such as `alpha_init`
-and `slope_init`. See `?mize_step_summary` for the complete field definitions,
-and test optional names before application code relies on them.
+Line searches may also report initialization diagnostics such as `alpha_init` and `slope_init`. See
+`?mize_step_summary` for the complete field definitions, and test optional names before application
+code relies on them.
 
 The monitored loop follows the same lifecycle on every pass:
 
 1. Advance one step and retain its optimizer and parameters.
-2. Stop immediately if the step terminated.
-3. Request the observations needed by caller-owned records, and retain that
-   optimizer too.
-4. Update the best value and append one typed progress record.
-5. Apply the ordinary convergence checks.
+1. Stop immediately if the step terminated.
+1. Request the observations needed by caller-owned records, and retain that optimizer too.
+1. Update the best value and append one typed progress record.
+1. Apply the ordinary convergence checks.
 
-The starting objective is requested through the same budget-aware summary API
-before the first step. The complete helper is available below for copying.
+The starting objective is requested through the same budget-aware summary API before the first step.
+The complete helper is available below for copying.
 
 <details>
 <summary>Complete executable state helpers</summary>
@@ -463,18 +453,17 @@ stopifnot(
 )
 ```
 
-For this BFGS configuration, initialization has not evaluated the objective.
-The first summary therefore consumes one function call and records the
-starting point as the caller-owned best. A repeated request at the same point
-reuses the cached value. Progress remains a list of typed one-row data frames
-until `bind_progress()` prepares it for display; method-specific columns should
-still be tested for presence before application code relies on them.
+For this BFGS configuration, initialization has not evaluated the objective. The first summary
+therefore consumes one function call and records the starting point as the caller-owned best. A
+repeated request at the same point reuses the cached value. Progress remains a list of typed one-row
+data frames until `bind_progress()` prepares it for display; method-specific columns should still be
+tested for presence before application code relies on them.
 
 ### Hard budgets can deny a requested observation
 
-`max_fn` remains hard when `calc_fn = TRUE`. With no function evaluations
-available, initialization records neither a best value nor a progress row, and
-its updated optimizer reports the exhausted budget:
+`max_fn` remains hard when `calc_fn = TRUE`. With no function evaluations available, initialization
+records neither a best value nor a progress row, and its updated optimizer reports the exhausted
+budget:
 
 ```{r exact-function-budget}
 budget_opt <- make_mize(
@@ -516,10 +505,9 @@ stopifnot(
 )
 ```
 
-This is why both initialization and the production loop retain the optimizer
-returned by a summary and guard the requested value. Calling `fg$fn()` directly
-bypasses `mize`'s counters and limits. Keep direct callback calls outside
-hard-budget workflows.
+This is why both initialization and the production loop retain the optimizer returned by a summary
+and guard the requested value. Calling `fg$fn()` directly bypasses `mize`'s counters and limits.
+Keep direct callback calls outside hard-budget workflows.
 
 ## Checkpoint and resume
 
@@ -550,9 +538,8 @@ checkpoint_records_are_typed <- all(vapply(
 resumed <- advance_stateful(resumed, rb_fg)
 ```
 
-To show what preservation buys us, compare the resumed run with both an
-uninterrupted stateful run and a one-shot `mize()` call using the same method
-and termination controls:
+To show what preservation buys us, compare the resumed run with both an uninterrupted stateful run
+and a one-shot `mize()` call using the same method and termination controls:
 
 ```{r compare-lifecycles}
 one_shot <- do.call(
@@ -642,11 +629,10 @@ builds is not required.
 
 ## Reinitialization starts a new run
 
-Calling `mize_init()` on an existing optimizer deliberately starts a new run.
-It resets the iteration counter, terminal fields, caches, and transient
-algorithm state. Function, gradient, Hessian, and inverse-Hessian counts remain
-optimizer-lifetime totals. Initialization may extend those totals when the
-method itself requests curvature; this BFGS example supplies no `hi`, so its
+Calling `mize_init()` on an existing optimizer deliberately starts a new run. It resets the
+iteration counter, terminal fields, caches, and transient algorithm state. Function, gradient,
+Hessian, and inverse-Hessian counts remain optimizer-lifetime totals. Initialization may extend
+those totals when the method itself requests curvature; this BFGS example supplies no `hi`, so its
 counts are unchanged:
 
 ```{r reinitialization-lifecycle}
@@ -675,15 +661,12 @@ stopifnot(
 )
 ```
 
-Use reinitialization when a new run is intended; use serialization when the
-same run must continue. See `?mize_init`, `?mize_step`,
-`?mize_step_summary`, and `?check_mize_convergence` for the complete API.
+Use reinitialization when a new run is intended; use serialization when the same run must continue.
+See `?mize_init`, `?mize_step`, `?mize_step_summary`, and `?check_mize_convergence` for the complete
+API.
 
 ## See also
 
-- [Getting started](mize.html) introduces the one-shot workflow and result
-  contract.
-- [Convergence](convergence.html) explains how to choose and interpret
-  termination controls.
-- [Metric MDS](mmds.html) develops a callback closure suitable for either
-  one-shot or stateful use.
+- [Getting started](mize.html) introduces the one-shot workflow and result contract.
+- [Convergence](convergence.html) explains how to choose and interpret termination controls.
+- [Metric MDS](mmds.html) develops a callback closure suitable for either one-shot or stateful use.
