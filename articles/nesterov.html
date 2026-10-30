@@ -135,8 +135,12 @@ be indicated by a subscript, e.g. <span class="math inline">\theta_t</span>.</p
 that the parameters at iteration <span class="math inline">t+1</span>
 are related to the parameters at iteration <span class="math inline">t</span> by an update that involves the addition of
 a velocity vector, <span class="math inline">v</span>:</p>
-<p><span class="math display">\theta_{t+1} = \theta_t + v_{t+1} \implies
-v_{t+1} = \theta_{t+1} - \theta_t</span></p>
+<p><span class="math display">
+\begin{aligned}
+\theta_{t+1} &amp;= \theta_t + v_{t+1} \\
+v_{t+1} &amp;\overset{\mathrm{def}}{=} \theta_{t+1} - \theta_t
+\end{aligned}
+</span></p>
 <p>This is pretty obvious, but the expressions we will be dealing with
 here use a recursive definition of <span class="math inline">v_t</span>,
 i.e. to usefully define these updates we need to express <span class="math inline">v_t</span> in terms of <span class="math inline">v_{t-1}</span>. The exact expression depends on
@@ -326,7 +330,7 @@ result.</p>
 <p>First, let’s remove the confusion around using <span class="math inline">v</span> as an update vector which isn’t the change
 in the parameters that we are updating each iteration. Instead of <span class="math inline">\phi_{t+1} - \phi_{t} = v_{t+1}</span>, define:</p>
 <p><span class="math display">
-\phi_{t+1} - \phi_{t} = b_{t+1}
+b_{t+1} \overset{\mathrm{def}}{=} \phi_{t+1} - \phi_t
 </span></p>
 <p>(the ‘b’ is for Bengio). Our goal now is to end up with an expression
 that is defined using <span class="math inline">\theta_t</span> (no
@@ -334,7 +338,8 @@ that is defined using <span class="math inline">\theta_t</span> (no
 <p>I’ll use <span class="math inline">s_t</span> as shorthand for the
 gradient step:</p>
 <p><span class="math display">
-s_t = -\varepsilon_t \nabla f\left(\theta_t\right).
+s_t \overset{\mathrm{def}}{=} -\varepsilon_t \nabla
+f\left(\theta_t\right).
 </span></p>
 <p>The negative sign and the learning rate are both part of <span class="math inline">s_t</span>.</p>
 <p>Now we are going to go back to using the original NAG expression so
@@ -1220,8 +1225,8 @@ us along the part of QHM between classical momentum and NAG.</p>
 history: does an old gradient keep the learning rate it had when we
 calculated it, or does today’s learning rate rescale its contribution?
 To isolate that question, keep <span class="math inline">\mu</span>
-fixed and write <span class="math inline">g_t=\nabla
-f(\theta_t)</span>.</p>
+fixed and write <span class="math inline">g_t \overset{\mathrm{def}}{=}
+\nabla f(\theta_t)</span>.</p>
 <p>Our buffer stores gradient steps, including their learning rates:</p>
 <p><span class="math display">
 \begin{aligned}

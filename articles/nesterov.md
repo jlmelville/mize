@@ -64,8 +64,8 @@ the parameters at iteration t+1 are related to the parameters at
 iteration t by an update that involves the addition of a velocity
 vector, v:
 
-\theta\_{t+1} = \theta_t + v\_{t+1} \implies v\_{t+1} = \theta\_{t+1} -
-\theta_t
+\begin{aligned} \theta\_{t+1} &= \theta_t + v\_{t+1} \\ v\_{t+1}
+&\overset{\mathrm{def}}{=} \theta\_{t+1} - \theta_t \end{aligned}
 
 This is pretty obvious, but the expressions we will be dealing with here
 use a recursive definition of v_t, i.e. to usefully define these updates
@@ -246,14 +246,15 @@ First, let’s remove the confusion around using v as an update vector
 which isn’t the change in the parameters that we are updating each
 iteration. Instead of \phi\_{t+1} - \phi\_{t} = v\_{t+1}, define:
 
-\phi\_{t+1} - \phi\_{t} = b\_{t+1}
+b\_{t+1} \overset{\mathrm{def}}{=} \phi\_{t+1} - \phi_t
 
 (the ‘b’ is for Bengio). Our goal now is to end up with an expression
 that is defined using \theta_t (no \phi_t allowed) and b_t.
 
 I’ll use s_t as shorthand for the gradient step:
 
-s_t = -\varepsilon_t \nabla f\left(\theta_t\right).
+s_t \overset{\mathrm{def}}{=} -\varepsilon_t \nabla
+f\left(\theta_t\right).
 
 The negative sign and the learning rate are both part of s_t.
 
@@ -858,8 +859,8 @@ between classical momentum and NAG.
 There’s another implementation detail that changes the weighting of
 history: does an old gradient keep the learning rate it had when we
 calculated it, or does today’s learning rate rescale its contribution?
-To isolate that question, keep \mu fixed and write g_t=\nabla
-f(\theta_t).
+To isolate that question, keep \mu fixed and write g_t
+\overset{\mathrm{def}}{=} \nabla f(\theta_t).
 
 Our buffer stores gradient steps, including their learning rates:
 
