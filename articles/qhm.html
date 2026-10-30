@@ -106,8 +106,8 @@ step size.</li>
 <span class="math inline">f</span>: the cost or loss function to be
 minimized.</li>
 <li>
-<span class="math inline">\nabla f\left(\theta \right)</span>: the
-gradient of the cost function with respect to the parameters.</li>
+<span class="math inline">\nabla f(\theta)</span>: the gradient of
+the cost function with respect to the parameters.</li>
 <li>
 <span class="math inline">\mu</span>: the momentum coefficient.</li>
 <li>
@@ -126,8 +126,7 @@ v_t \overset{\mathrm{def}}{=} \theta_t - \theta_{t-1}
 being used, but that definition always holds. Also, the steepest descent
 step is:</p>
 <p><span class="math display">
-s_t \overset{\mathrm{def}}{=} -\varepsilon_t \nabla f\left(\theta_t
-\right)
+s_t \overset{\mathrm{def}}{=} -\varepsilon_t \nabla f(\theta_t)
 </span></p>
 <p>Some others will be introduced as I need them. I used equivalence
 symbol (<span class="math inline">\equiv</span>) for definitions on the
@@ -148,8 +147,7 @@ both incorrectly, but hopefully the intention comes across.</p>
 <h3 id="nesterov-accelerated-gradient">Nesterov Accelerated Gradient<a class="anchor" aria-label="anchor" href="#nesterov-accelerated-gradient"></a>
 </h3>
 <p><span class="math display">
-\theta_{t+1} = \theta_t + \left(1 + \mu \right) s_t + \mu v_t - \mu
-s_{t-1}
+\theta_{t+1} = \theta_t + (1 + \mu) s_t + \mu v_t - \mu s_{t-1}
 </span></p>
 </div>
 <div class="section level3">
@@ -158,8 +156,8 @@ s_{t-1}
 <p>From the above, it’s pretty easy to come up with a scheme to
 interpolate between CM and NAG:</p>
 <p><span class="math display">
-\theta_{t+1} = \theta_t + \left(1 +  \beta \mu \right) s_t + \mu v_t -
-\beta \mu s_{t-1}
+\theta_{t+1} = \theta_t + (1 + \beta \mu) s_t + \mu v_t - \beta \mu
+s_{t-1}
 </span></p>
 <p>where <span class="math inline">\beta = 0</span> gives CM and <span class="math inline">\beta = 1</span> gives NAG. The earliest publication
 I am aware of that gives this expression is <a href="https://arxiv.org/abs/1808.03408" class="external-link">Zou and co-workers</a> from
@@ -172,13 +170,13 @@ I am aware of that gives this expression is <a href="https://arxiv.org/abs/1808.
 <p>In the <a href="https://arxiv.org/abs/1810.06801" class="external-link">QHM</a> paper, a
 “damped” or “normalized” expression for momentum is given. This
 reweights the expression so that the weighting coefficients of the
-gradient descent and the momentum term sums to one. The idea here is to
+gradient descent and the momentum term sum to one. The idea here is to
 stop the length of the update, <span class="math inline">v_t</span> from
 being dependent on the momentum, i.e. in the above expressions, the more
 momentum you have, the longer the step sizes will be. This confounds any
 analysis of how momentum helps: better direction or just a longer step
 size?</p>
-<p>Damping CM just means weighting the gradient descent by <span class="math inline">(1 - \mu)</span>. For NAG, this requires weighing
+<p>Damping CM just means weighting the gradient descent by <span class="math inline">(1 - \mu)</span>. For NAG, this requires weighting
 <span class="math inline">s_t</span> (and <span class="math inline">s_{t-1}</span>) by <span class="math inline">(1 -
 \mu)</span> in all parts of the expression to take into account that it
 is making a smaller contribution everywhere.</p>
@@ -186,23 +184,22 @@ is making a smaller contribution everywhere.</p>
 <h3 id="damped-classical-momentum">Damped Classical Momentum<a class="anchor" aria-label="anchor" href="#damped-classical-momentum"></a>
 </h3>
 <p><span class="math display">
-\theta_{t+1} = \theta_t + \left(1 - \mu \right) s_t + \mu v_t
+\theta_{t+1} = \theta_t + (1 - \mu) s_t + \mu v_t
 </span></p>
 </div>
 <div class="section level3">
 <h3 id="damped-nesterov-accelerated-gradient">Damped Nesterov Accelerated Gradient<a class="anchor" aria-label="anchor" href="#damped-nesterov-accelerated-gradient"></a>
 </h3>
 <p><span class="math display">
-\theta_{t+1} = \theta_t + \left(1 - \mu^2 \right) s_t
+\theta_{t+1} = \theta_t + (1 - \mu^2) s_t
 + \mu v_t
-- \left(1 - \mu \right) \mu s_{t-1}
+- (1 - \mu) \mu s_{t-1}
 </span></p>
 <p>or:</p>
 <p><span class="math display">
-\theta_{t+1} = \theta_t + \left(1 + \mu \right) \left(1 - \mu \right)
-s_t
+\theta_{t+1} = \theta_t + (1 + \mu) (1 - \mu) s_t
 + \mu v_t
-- \left(1 - \mu \right) \mu s_{t-1}
+- (1 - \mu) \mu s_{t-1}
 </span></p>
 </div>
 <div class="section level3">
@@ -210,9 +207,9 @@ s_t
 </h3>
 <p><span class="math display">
 \theta_{t+1} = \theta_t +
-\left( 1 + \beta \mu \right)\left(1 - \mu \right) s_t
+(1 + \beta \mu)(1 - \mu) s_t
 + \mu v_t
-- \beta \left(1 - \mu \right) \mu s_{t-1}
+- \beta (1 - \mu) \mu s_{t-1}
 </span></p>
 <p>The advantage of the damped expressions is that if you “unroll” an
 expression (with gradient descent on the first step) the update vector
@@ -224,9 +221,9 @@ factors sum to one without any normalization needed.</p>
 </h3>
 <p><span class="math display">
 \theta_{t+1} = \theta_t
-+ \left( 1 - \nu \mu \right ) s_t
++ (1 - \nu \mu) s_t
 + \mu v_t
-- \left( 1 - \nu \right ) \mu s_{t-1}
+- (1 - \nu) \mu s_{t-1}
 </span></p>
 <p><span class="math inline">\nu = 0</span> gives gradient descent,
 <span class="math inline">\nu = 1</span> gives damped classical
@@ -244,6 +241,7 @@ paper expresses it and then rewrite it into the form above. The QHM
 update is in a form that is both “damped” <em>and</em> assumes a
 constant learning rate, that latter allowing the extraction of the <span class="math inline">\varepsilon</span> out of the various update rules.
 Don’t worry about why the QHM authors want to do that for now.</p>
+<p>I’ll keep <span class="math inline">\mu</span> and <span class="math inline">\nu</span> fixed too, and take <span class="math inline">\varepsilon &gt; 0</span> for this derivation.</p>
 <p>Also, I need to introduce a couple of new symbols.</p>
 <p>First, we won’t be evaluating the gradient of the objective function
 <span class="math inline">f</span> anywhere except at <span class="math inline">\theta_t</span>, so let’s define a short-hand to
@@ -253,25 +251,25 @@ It makes perfect sense to me to represent the gradient using the symbol
 and use that to represent the “momentum buffer” (see below). To avoid
 confusion with the notation in the paper I will reluctantly choose a
 different symbol. The QHM authors use <span class="math inline">\nabla
-\hat{L} \left( \theta_t \right)</span> for the gradient of the objective
-function, so let’s define:</p>
+\hat{L} (\theta_t)</span> for the gradient of the objective function, so
+let’s define:</p>
 <p><span class="math display">
-l_t \overset{\mathrm{def}}{=} \nabla f\left(\theta_t \right)
+\ell_t \overset{\mathrm{def}}{=} \nabla f(\theta_t)
 </span></p>
 <p>Second, QHM uses the expression close to the (damped) classical
-momentum update, which is calls the “momentum buffer”. But note that it
+momentum update, which it calls the “momentum buffer”. But note that it
 is <em>not</em> the update vector used in QHM, so we can’t call it <span class="math inline">v_t</span>. The QHM authors refer to this as <span class="math inline">g_t</span>, but I refuse on principle to use this
 notation as I am incapable of not mistaking that for the gradient
 whenever I read it. Instead we’ll call it <span class="math inline">m_t</span> (as in m for momentum):</p>
 <p><span class="math display">
-m_{t+1} = (1 - \mu) l_t + \mu m_t
+m_{t+1} = (1 - \mu) \ell_t + \mu m_t
 </span></p>
 <p>We are now ready to see the QHM update:</p>
 <p><span class="math display">
 \theta_{t+1} = \theta_t
 - \varepsilon
 \left[
-\left( 1 - \nu \right ) l_t
+(1 - \nu) \ell_t
 + \nu m_{t+1}
 \right]
 </span></p>
@@ -290,7 +288,7 @@ immediate result:</p>
 \theta_{t+1} = \theta_t
 - \varepsilon
 \left[
-\left( 1 - \mu \right ) l_t
+(1 - \mu) \ell_t
 + \mu m_{t+1}
 \right]
 </span></p>
@@ -317,8 +315,8 @@ get to:</p>
 \theta_{t+1} = \theta_t
 - \varepsilon
 \left[
-\left( 1 + \mu \right ) \left( 1 - \mu \right ) l_t
-+ \mu^2 m_{t}
+(1 + \mu) (1 - \mu) \ell_t
++ \mu^2 m_t
 \right]
 </span></p>
 <p>That’s closer to the damped NAG result, but there is a conspicuous
@@ -335,26 +333,27 @@ what comes out.</p>
 v_{t+1} =
 - \varepsilon
 \left[
-\left( 1 - \nu \right ) l_t + \nu m_{t+1}
+(1 - \nu) \ell_t + \nu m_{t+1}
 \right]
 </span></p>
 <p>Let’s expand:</p>
 <p><span class="math display">
 v_{t+1} =
-- \varepsilon \left( 1 - \nu \right ) l_t
+- \varepsilon (1 - \nu) \ell_t
 - \varepsilon \nu m_{t+1}
 </span></p>
-<p>and rearrange for <span class="math inline">m_{t+1}</span>:</p>
+<p>and, for <span class="math inline">\nu \ne 0</span>, rearrange for
+<span class="math inline">m_{t+1}</span>:</p>
 <p><span class="math display">
 m_{t+1} =
-- \frac{\left( 1 - \nu \right ) l_t}{\nu}
+- \frac{(1 - \nu) \ell_t}{\nu}
 - \frac{v_{t+1}}{\varepsilon \nu}
 </span></p>
 <p>and then subtract one from each subscript to get an expression for
 <span class="math inline">m_t</span>:</p>
 <p><span class="math display">
 m_t =
-- \frac{\left( 1 - \nu \right ) l_{t-1}}{\nu}
+- \frac{(1 - \nu) \ell_{t-1}}{\nu}
 - \frac{v_t}{\varepsilon \nu}
 </span></p>
 <p>Next, let’s substitute the <span class="math inline">m_{t+1}</span>
@@ -363,18 +362,18 @@ in the QHM update with the momentum buffer update expression:</p>
 \theta_{t+1} = \theta_t
 - \varepsilon
 \left[
-\left( 1 - \nu \right ) l_t
-+ \nu (1 - \mu) l_t
+(1 - \nu) \ell_t
++ \nu (1 - \mu) \ell_t
 + \nu \mu m_t
 \right]
 </span></p>
-<p>and group the <span class="math inline">l_t</span> terms together to
-get:</p>
+<p>and group the <span class="math inline">\ell_t</span> terms together
+to get:</p>
 <p><span class="math display">
 \theta_{t+1} = \theta_t
 - \varepsilon
 \left[
-\left( 1 - \nu \mu \right ) l_t
+(1 - \nu \mu) \ell_t
 + \nu \mu m_t
 \right]
 </span></p>
@@ -383,10 +382,10 @@ get:</p>
 \theta_{t+1} = \theta_t
 - \varepsilon
 \bigg\{
-\left( 1 - \nu \mu \right ) l_t
+(1 - \nu \mu) \ell_t
 + \nu \mu
 \left[
-- \frac{\left( 1 - \nu \right ) l_{t-1}}{\nu}
+- \frac{(1 - \nu) \ell_{t-1}}{\nu}
 - \frac{v_t}{\varepsilon \nu}
 \right]
 \bigg\}
@@ -396,33 +395,35 @@ get:</p>
 \theta_{t+1} = \theta_t
 - \varepsilon
 \left[
-\left( 1 - \nu \mu \right ) l_t
-- \mu \left( 1 - \nu \right ) l_{t-1}
+(1 - \nu \mu) \ell_t
+- \mu (1 - \nu) \ell_{t-1}
 - \mu \frac{v_t}{\varepsilon}
 \right]
 </span></p>
-<p>Finally, let’s expand the bracket, using <span class="math inline">s_t = -\varepsilon l_t</span> to give this
+<p>Finally, let’s expand the bracket, using <span class="math inline">s_t = -\varepsilon \ell_t</span> to give this
 three-term QHM expression:</p>
 <p><span class="math display">
 \theta_{t+1} = \theta_t
-+ \left( 1 - \nu \mu \right ) s_t
-- \mu \left( 1 - \nu \right ) s_{t-1}
++ (1 - \nu \mu) s_t
+- \mu (1 - \nu) s_{t-1}
 + \mu v_t
 </span></p>
-<p>Hopefully it is now easier to see that if you subsitute <span class="math inline">\nu = \mu</span>, you get damped NAG, and <span class="math inline">\nu = 1</span> gets you damped classical momentum.
-With <span class="math inline">\nu = 0</span>, when QHM should give us
-gradient descent, the expression looks a little odd as there are still
-terms that contain <span class="math inline">\mu</span>:</p>
+<p>Hopefully it is now easier to see that if you substitute <span class="math inline">\nu = \mu</span>, you get damped NAG, and <span class="math inline">\nu = 1</span> gets you damped classical momentum.
+We divided by <span class="math inline">\nu</span> on the way here, so
+let’s check <span class="math inline">\nu = 0</span> directly.
+Substituting it into the three-term expression leaves something that
+looks a little odd, as there are still terms that contain <span class="math inline">\mu</span>:</p>
 <p><span class="math display">
 \theta_{t+1} = \theta_t
 + s_t
 - \mu s_{t-1}
 + \mu v_t
 </span></p>
-<p>If you wade through the expressions above, you’ll see that <span class="math inline">v_t</span> can be written as:</p>
+<p>For comparison, the original QHM update at the previous iteration
+gives:</p>
 <p><span class="math display">
 v_t =
-\left( 1 - \nu \right ) s_{t-1}
+(1 - \nu) s_{t-1}
 - \varepsilon \nu m_t
 </span></p>
 <p>And when <span class="math inline">\nu = 0</span> the second term
@@ -430,7 +431,7 @@ disappears so we get:</p>
 <p><span class="math display">
 \mu v_t = \mu s_{t-1}
 </span></p>
-<p>Therfore, for <span class="math inline">\nu = 0</span>, the second
+<p>Therefore, for <span class="math inline">\nu = 0</span>, the second
 and third terms in the three-term QHM equation cancel, leaving just
 gradient descent as expected.</p>
 </div>
@@ -449,57 +450,69 @@ it can’t be done.</p>
 <em>that</em> can be seen by unrolling the classical momentum (undamped
 to be as clear as possible) for a few steps:</p>
 <p><span class="math display">
-\theta_2 = \theta_1 + s_1 \\
-\theta_2 = \theta_1 - \varepsilon l_1 \\
-\implies v_2 = - \varepsilon l_1
+\begin{aligned}
+\theta_2 &amp;= \theta_1 + s_1 \\
+&amp;= \theta_1 - \varepsilon \ell_1 \\
+v_2 &amp;= -\varepsilon \ell_1
+\end{aligned}
 </span></p>
 <p><span class="math display">
-\theta_3 = \theta_2 + s_2 + \mu v_2 \\
-\theta_3 =
-\theta_2 - \varepsilon l_2
-- \mu \varepsilon l_1 \\
-\theta_3 =
-\theta_2 - \varepsilon \left( l_2 + \mu l_1 \right ) \\
-\implies v_3 = - \varepsilon \left( l_2 + \mu l_1 \right)
+\begin{aligned}
+\theta_3 &amp;= \theta_2 + s_2 + \mu v_2 \\
+&amp;= \theta_2 - \varepsilon \ell_2 - \mu \varepsilon \ell_1 \\
+&amp;= \theta_2 - \varepsilon (\ell_2 + \mu \ell_1) \\
+v_3 &amp;= -\varepsilon (\ell_2 + \mu \ell_1)
+\end{aligned}
 </span></p>
 <p><span class="math display">
-\theta_4 = \theta_3 + s_3 + \mu v_3
-\\
-\theta_4 = \theta_3 - \varepsilon l_3
-- \mu \left[ - \varepsilon \left( l_2 + \mu l_1 \right) \right]
-\\
-\implies v_4 = - \varepsilon \left[ l_3 + \mu \left( l_2 + \mu l_1
-\right) \right]
+\begin{aligned}
+\theta_4 &amp;= \theta_3 + s_3 + \mu v_3 \\
+&amp;= \theta_3 - \varepsilon \ell_3
++ \mu \left[-\varepsilon (\ell_2 + \mu \ell_1)\right] \\
+v_4 &amp;= -\varepsilon \left[\ell_3 + \mu (\ell_2 + \mu \ell_1)\right]
+\end{aligned}
 </span></p>
 <p>You can keep writing out the updates, but with a constant <span class="math inline">\varepsilon</span> you can always rearrange so that
-the update is in the form <span class="math inline">v_t = -\varepsilon
-d_t</span> where <span class="math inline">d_t</span> is just the
-direction of the update. This is also true for NAG and the damped
-versions. The motivation to do this for QHM is to write the update as a
-weighted average of gradients so the update can also be seen as a
-gradient estimator in a stochastic gradient descent context.</p>
-<p>The other advantage of this is that in terms of translating from the
-un-damped expressions to the damped forms, we can always start with the
-un-damped expression using a momentum coefficient <span class="math inline">\mu^*</span> and then transform into the damped
-expression by rescaling the contributions from the gradient descent and
-momentum, and then rescaling the learning rate, to compensate, i.e.:</p>
+the update is in the form <span class="math inline">v_{t+1} =
+\varepsilon d_t</span> where <span class="math inline">d_t</span> is
+just the direction of the update. This is also true for NAG and the
+damped versions. The motivation to do this for QHM is to express its
+square-bracketed term as a weighted average of gradients, which can also
+be seen as a gradient estimator in a stochastic gradient descent
+context.</p>
+<p>We can also make the connection between damped and undamped classical
+momentum explicit. Keep <span class="math inline">0 \leq \mu &lt;
+1</span> fixed, and use <span class="math inline">u_t</span> for an
+undamped buffer of gradients:</p>
 <p><span class="math display">
-\theta_{t+1} = \theta_t -\varepsilon \left(l_t + \mu^* v_t \right) = \\
-\theta_t -\frac{\varepsilon}{1 + \mu^*} \left[ \left(1 - \mu \right) l_t
-+ \mu v_t \right] = \\
-\theta_t - \left(1 - \mu \right) \varepsilon \left[ \left(1 - \mu
-\right) l_t + \mu v_t \right]
+u_{t+1} = \ell_t + \mu u_t
 </span></p>
-<p>with</p>
+<p>The damped buffer <span class="math inline">m_t</span> introduced
+above uses the same momentum coefficient:</p>
 <p><span class="math display">
-\mu = \frac{\mu^*}{1 + \mu^*}
+m_{t+1} = (1 - \mu) \ell_t + \mu m_t
 </span></p>
-<p>As noted in the paper, this shrinks the update by a factor of <span class="math inline">1 - \mu</span> and this can be compensated by
-increasing <span class="math inline">\varepsilon</span> accordingly.</p>
-<p>Note also that the recommended setting of the damped momentum
-coefficient <span class="math inline">\mu = 0.999</span> in QHM would
-therefore translate to a very large undamped momentum coefficient of
-<span class="math inline">\mu^* = 999</span>.</p>
+<p>Starting both buffers at zero gives <span class="math inline">m_t =
+(1 - \mu) u_t</span>. So we can write the classical momentum update in
+either form:</p>
+<p><span class="math display">
+\begin{aligned}
+\theta_{t+1}
+&amp;= \theta_t - \varepsilon_{\mathrm{undamped}} u_{t+1} \\
+&amp;= \theta_t - \frac{\varepsilon_{\mathrm{undamped}}}{1 - \mu}
+m_{t+1}
+\end{aligned}
+</span></p>
+<p>As noted in the paper, damping shrinks the update by a factor of
+<span class="math inline">1 - \mu</span> if we keep the learning rate
+the same. To recover the undamped updates, choose:</p>
+<p><span class="math display">
+\varepsilon_{\mathrm{damped}} = \frac{\varepsilon_{\mathrm{undamped}}}{1
+- \mu}
+</span></p>
+<p>The momentum coefficient stays at <span class="math inline">\mu</span>. For example, with <span class="math inline">\mu = 0.999</span>, the damped learning rate needs
+to be 1000 times the undamped learning rate to give the same classical
+momentum updates.</p>
 </div>
 <div class="section level3">
 <h3 id="unified-momentum-again">Unified Momentum Again<a class="anchor" aria-label="anchor" href="#unified-momentum-again"></a>
@@ -511,15 +524,15 @@ rather than just the steepest descent direction and therefore get an
 update that is a weighted average of gradients. To make life easier
 notationally by removing lots of negative signs, here’s one more
 definition, the steepest descent direction: <span class="math inline">p_t \overset{\mathrm{def}}{=} -\nabla
-f\left(\theta_t \right)</span>.</p>
+f(\theta_t)</span>.</p>
 <p>The resulting unified momentum expression below also allows for
 varying pretty much everything at each step: <span class="math inline">\mu</span>, <span class="math inline">\varepsilon</span> and <span class="math inline">\beta</span> although I don’t have any suggestions
 for how you would go about tuning these values:</p>
 <p><span class="math display">
 \theta_{t+1} = \theta_t + \varepsilon_t \left[
-\left( 1 + \beta_t \mu_t \right)\left(1 - \mu_t \right) p_t
+(1 + \beta_t \mu_t)(1 - \mu_t) p_t
 + \mu_t d_{t-1}
-- \beta_{t-1} \left(1 - \mu_{t-1} \right) \mu_t p_{t-1}
+- \beta_{t-1} (1 - \mu_{t-1}) \mu_t p_{t-1}
 \right]
 </span></p>
 </div>
@@ -551,8 +564,7 @@ neural network training</a></li>
 </ul>
 <p>This proposes a decaying momentum (“Demon”) schedule of:</p>
 <p><span class="math display">
-\mu_t = \mu_0  \frac{1 - t / T}{\left( 1 - \mu_0 \right) + \mu_0 \left(
-1 - t/T \right)}
+\mu_t = \mu_0 \frac{1 - t/T}{(1 - \mu_0) + \mu_0(1 - t/T)}
 </span></p>
 <p>where <span class="math inline">\mu_0</span> is the initial momentum
 and <span class="math inline">T</span> is the total number of

@@ -21,8 +21,8 @@ A brief definition of the symbols I use:
 - \theta: the parameters being optimized.
 - \varepsilon: the learning rate or step size.
 - f: the cost or loss function to be minimized.
-- \nabla f\left(\theta \right): the gradient of the cost function with
-  respect to the parameters.
+- \nabla f(\theta): the gradient of the cost function with respect to
+  the parameters.
 - \mu: the momentum coefficient.
 - v: the velocity or update vector.
 - s: the steepest descent step.
@@ -36,8 +36,7 @@ it can be expressed in other ways depending on the type of momentum
 being used, but that definition always holds. Also, the steepest descent
 step is:
 
-s_t \overset{\mathrm{def}}{=} -\varepsilon_t \nabla f\left(\theta_t
-\right)
+s_t \overset{\mathrm{def}}{=} -\varepsilon_t \nabla f(\theta_t)
 
 Some others will be introduced as I need them. I used equivalence symbol
 (\equiv) for definitions on the NAG page, but I thought I would change
@@ -53,16 +52,15 @@ incorrectly, but hopefully the intention comes across.
 
 ### Nesterov Accelerated Gradient
 
-\theta\_{t+1} = \theta_t + \left(1 + \mu \right) s_t + \mu v_t - \mu
-s\_{t-1}
+\theta\_{t+1} = \theta_t + (1 + \mu) s_t + \mu v_t - \mu s\_{t-1}
 
 ### Unified Momentum
 
 From the above, it’s pretty easy to come up with a scheme to interpolate
 between CM and NAG:
 
-\theta\_{t+1} = \theta_t + \left(1 + \beta \mu \right) s_t + \mu v_t -
-\beta \mu s\_{t-1}
+\theta\_{t+1} = \theta_t + (1 + \beta \mu) s_t + \mu v_t - \beta \mu
+s\_{t-1}
 
 where \beta = 0 gives CM and \beta = 1 gives NAG. The earliest
 publication I am aware of that gives this expression is [Zou and
@@ -74,35 +72,35 @@ know of any earlier uses.
 In the [QHM](https://arxiv.org/abs/1810.06801) paper, a “damped” or
 “normalized” expression for momentum is given. This reweights the
 expression so that the weighting coefficients of the gradient descent
-and the momentum term sums to one. The idea here is to stop the length
-of the update, v_t from being dependent on the momentum, i.e. in the
-above expressions, the more momentum you have, the longer the step sizes
-will be. This confounds any analysis of how momentum helps: better
-direction or just a longer step size?
+and the momentum term sum to one. The idea here is to stop the length of
+the update, v_t from being dependent on the momentum, i.e. in the above
+expressions, the more momentum you have, the longer the step sizes will
+be. This confounds any analysis of how momentum helps: better direction
+or just a longer step size?
 
 Damping CM just means weighting the gradient descent by (1 - \mu). For
-NAG, this requires weighing s_t (and s\_{t-1}) by (1 - \mu) in all parts
-of the expression to take into account that it is making a smaller
+NAG, this requires weighting s_t (and s\_{t-1}) by (1 - \mu) in all
+parts of the expression to take into account that it is making a smaller
 contribution everywhere.
 
 ### Damped Classical Momentum
 
-\theta\_{t+1} = \theta_t + \left(1 - \mu \right) s_t + \mu v_t
+\theta\_{t+1} = \theta_t + (1 - \mu) s_t + \mu v_t
 
 ### Damped Nesterov Accelerated Gradient
 
-\theta\_{t+1} = \theta_t + \left(1 - \mu^2 \right) s_t + \mu v_t -
-\left(1 - \mu \right) \mu s\_{t-1}
+\theta\_{t+1} = \theta_t + (1 - \mu^2) s_t + \mu v_t - (1 - \mu) \mu
+s\_{t-1}
 
 or:
 
-\theta\_{t+1} = \theta_t + \left(1 + \mu \right) \left(1 - \mu \right)
-s_t + \mu v_t - \left(1 - \mu \right) \mu s\_{t-1}
+\theta\_{t+1} = \theta_t + (1 + \mu) (1 - \mu) s_t + \mu v_t - (1 - \mu)
+\mu s\_{t-1}
 
 ### Damped Unified Momentum
 
-\theta\_{t+1} = \theta_t + \left( 1 + \beta \mu \right)\left(1 - \mu
-\right) s_t + \mu v_t - \beta \left(1 - \mu \right) \mu s\_{t-1}
+\theta\_{t+1} = \theta_t + (1 + \beta \mu)(1 - \mu) s_t + \mu v_t -
+\beta (1 - \mu) \mu s\_{t-1}
 
 The advantage of the damped expressions is that if you “unroll” an
 expression (with gradient descent on the first step) the update vector
@@ -111,8 +109,8 @@ factors sum to one without any normalization needed.
 
 ### Quasi-Hyperbolic Momentum
 
-\theta\_{t+1} = \theta_t + \left( 1 - \nu \mu \right ) s_t + \mu v_t -
-\left( 1 - \nu \right ) \mu s\_{t-1}
+\theta\_{t+1} = \theta_t + (1 - \nu \mu) s_t + \mu v_t - (1 - \nu) \mu
+s\_{t-1}
 
 \nu = 0 gives gradient descent, \nu = 1 gives damped classical momentum,
 and \nu = \mu gives damped NAG.
@@ -130,6 +128,9 @@ learning rate, that latter allowing the extraction of the \varepsilon
 out of the various update rules. Don’t worry about why the QHM authors
 want to do that for now.
 
+I’ll keep \mu and \nu fixed too, and take \varepsilon \> 0 for this
+derivation.
+
 Also, I need to introduce a couple of new symbols.
 
 First, we won’t be evaluating the gradient of the objective function f
@@ -138,24 +139,24 @@ the gradient at iteration t. It makes perfect sense to me to represent
 the gradient using the symbol g, but the QHM authors had other plans,
 and use that to represent the “momentum buffer” (see below). To avoid
 confusion with the notation in the paper I will reluctantly choose a
-different symbol. The QHM authors use \nabla \hat{L} \left( \theta_t
-\right) for the gradient of the objective function, so let’s define:
+different symbol. The QHM authors use \nabla \hat{L} (\theta_t) for the
+gradient of the objective function, so let’s define:
 
-l_t \overset{\mathrm{def}}{=} \nabla f\left(\theta_t \right)
+\ell_t \overset{\mathrm{def}}{=} \nabla f(\theta_t)
 
 Second, QHM uses the expression close to the (damped) classical momentum
-update, which is calls the “momentum buffer”. But note that it is *not*
+update, which it calls the “momentum buffer”. But note that it is *not*
 the update vector used in QHM, so we can’t call it v_t. The QHM authors
 refer to this as g_t, but I refuse on principle to use this notation as
 I am incapable of not mistaking that for the gradient whenever I read
 it. Instead we’ll call it m_t (as in m for momentum):
 
-m\_{t+1} = (1 - \mu) l_t + \mu m_t
+m\_{t+1} = (1 - \mu) \ell_t + \mu m_t
 
 We are now ready to see the QHM update:
 
-\theta\_{t+1} = \theta_t - \varepsilon \left\[ \left( 1 - \nu \right )
-l_t + \nu m\_{t+1} \right\]
+\theta\_{t+1} = \theta_t - \varepsilon \left\[ (1 - \nu) \ell_t + \nu
+m\_{t+1} \right\]
 
 When \nu = 0, we get back plain old gradient descent. That is quite easy
 to see.
@@ -171,8 +172,8 @@ classical momentum update. That’s also quite easy to see.
 What’s less easy to see is that \nu = \mu gets you damped NAG. I’d like
 to draw your attention to the immediate result:
 
-\theta\_{t+1} = \theta_t - \varepsilon \left\[ \left( 1 - \mu \right )
-l_t + \mu m\_{t+1} \right\]
+\theta\_{t+1} = \theta_t - \varepsilon \left\[ (1 - \mu) \ell_t + \mu
+m\_{t+1} \right\]
 
 The bit in the square brackets has an identical form to the momentum
 buffer except that m\_{t} has been replaced by m\_{t+1}. For some reason
@@ -193,8 +194,8 @@ see equation 11.
 
 Anyway, substituting in m\_{t+1}, we get to:
 
-\theta\_{t+1} = \theta_t - \varepsilon \left\[ \left( 1 + \mu \right )
-\left( 1 - \mu \right ) l_t + \mu^2 m\_{t} \right\]
+\theta\_{t+1} = \theta_t - \varepsilon \left\[ (1 + \mu) (1 - \mu)
+\ell_t + \mu^2 m_t \right\]
 
 That’s closer to the damped NAG result, but there is a conspicuous
 absence of contributions from the gradient step at the previous
@@ -207,70 +208,67 @@ what comes out.
 
 The update vector for QHM is:
 
-v\_{t+1} = - \varepsilon \left\[ \left( 1 - \nu \right ) l_t + \nu
-m\_{t+1} \right\]
+v\_{t+1} = - \varepsilon \left\[ (1 - \nu) \ell_t + \nu m\_{t+1}
+\right\]
 
 Let’s expand:
 
-v\_{t+1} = - \varepsilon \left( 1 - \nu \right ) l_t - \varepsilon \nu
-m\_{t+1}
+v\_{t+1} = - \varepsilon (1 - \nu) \ell_t - \varepsilon \nu m\_{t+1}
 
-and rearrange for m\_{t+1}:
+and, for \nu \ne 0, rearrange for m\_{t+1}:
 
-m\_{t+1} = - \frac{\left( 1 - \nu \right ) l_t}{\nu} -
-\frac{v\_{t+1}}{\varepsilon \nu}
+m\_{t+1} = - \frac{(1 - \nu) \ell_t}{\nu} - \frac{v\_{t+1}}{\varepsilon
+\nu}
 
 and then subtract one from each subscript to get an expression for m_t:
 
-m_t = - \frac{\left( 1 - \nu \right ) l\_{t-1}}{\nu} -
-\frac{v_t}{\varepsilon \nu}
+m_t = - \frac{(1 - \nu) \ell\_{t-1}}{\nu} - \frac{v_t}{\varepsilon \nu}
 
 Next, let’s substitute the m\_{t+1} in the QHM update with the momentum
 buffer update expression:
 
-\theta\_{t+1} = \theta_t - \varepsilon \left\[ \left( 1 - \nu \right )
-l_t + \nu (1 - \mu) l_t + \nu \mu m_t \right\]
+\theta\_{t+1} = \theta_t - \varepsilon \left\[ (1 - \nu) \ell_t + \nu
+(1 - \mu) \ell_t + \nu \mu m_t \right\]
 
-and group the l_t terms together to get:
+and group the \ell_t terms together to get:
 
-\theta\_{t+1} = \theta_t - \varepsilon \left\[ \left( 1 - \nu \mu \right
-) l_t + \nu \mu m_t \right\]
+\theta\_{t+1} = \theta_t - \varepsilon \left\[ (1 - \nu \mu) \ell_t +
+\nu \mu m_t \right\]
 
 Now we can substitute in the expression for m_t we just came up with:
 
-\theta\_{t+1} = \theta_t - \varepsilon \bigg\\ \left( 1 - \nu \mu \right
-) l_t + \nu \mu \left\[ - \frac{\left( 1 - \nu \right ) l\_{t-1}}{\nu} -
+\theta\_{t+1} = \theta_t - \varepsilon \bigg\\ (1 - \nu \mu) \ell_t +
+\nu \mu \left\[ - \frac{(1 - \nu) \ell\_{t-1}}{\nu} -
 \frac{v_t}{\varepsilon \nu} \right\] \bigg\\
 
 to give:
 
-\theta\_{t+1} = \theta_t - \varepsilon \left\[ \left( 1 - \nu \mu \right
-) l_t - \mu \left( 1 - \nu \right ) l\_{t-1} - \mu
-\frac{v_t}{\varepsilon} \right\]
+\theta\_{t+1} = \theta_t - \varepsilon \left\[ (1 - \nu \mu) \ell_t -
+\mu (1 - \nu) \ell\_{t-1} - \mu \frac{v_t}{\varepsilon} \right\]
 
-Finally, let’s expand the bracket, using s_t = -\varepsilon l_t to give
-this three-term QHM expression:
+Finally, let’s expand the bracket, using s_t = -\varepsilon \ell_t to
+give this three-term QHM expression:
 
-\theta\_{t+1} = \theta_t + \left( 1 - \nu \mu \right ) s_t - \mu \left(
-1 - \nu \right ) s\_{t-1} + \mu v_t
+\theta\_{t+1} = \theta_t + (1 - \nu \mu) s_t - \mu (1 - \nu) s\_{t-1} +
+\mu v_t
 
-Hopefully it is now easier to see that if you subsitute \nu = \mu, you
-get damped NAG, and \nu = 1 gets you damped classical momentum. With \nu
-= 0, when QHM should give us gradient descent, the expression looks a
-little odd as there are still terms that contain \mu:
+Hopefully it is now easier to see that if you substitute \nu = \mu, you
+get damped NAG, and \nu = 1 gets you damped classical momentum. We
+divided by \nu on the way here, so let’s check \nu = 0 directly.
+Substituting it into the three-term expression leaves something that
+looks a little odd, as there are still terms that contain \mu:
 
 \theta\_{t+1} = \theta_t + s_t - \mu s\_{t-1} + \mu v_t
 
-If you wade through the expressions above, you’ll see that v_t can be
-written as:
+For comparison, the original QHM update at the previous iteration gives:
 
-v_t = \left( 1 - \nu \right ) s\_{t-1} - \varepsilon \nu m_t
+v_t = (1 - \nu) s\_{t-1} - \varepsilon \nu m_t
 
 And when \nu = 0 the second term disappears so we get:
 
 \mu v_t = \mu s\_{t-1}
 
-Therfore, for \nu = 0, the second and third terms in the three-term QHM
+Therefore, for \nu = 0, the second and third terms in the three-term QHM
 equation cancel, leaving just gradient descent as expected.
 
 #### Undamped QHM?
@@ -286,49 +284,55 @@ QHM goes one step further to also assume a fixed learning rate
 unrolling the classical momentum (undamped to be as clear as possible)
 for a few steps:
 
-\theta_2 = \theta_1 + s_1 \\ \theta_2 = \theta_1 - \varepsilon l_1 \\
-\implies v_2 = - \varepsilon l_1
+\begin{aligned} \theta_2 &= \theta_1 + s_1 \\ &= \theta_1 - \varepsilon
+\ell_1 \\ v_2 &= -\varepsilon \ell_1 \end{aligned}
 
-\theta_3 = \theta_2 + s_2 + \mu v_2 \\ \theta_3 = \theta_2 - \varepsilon
-l_2 - \mu \varepsilon l_1 \\ \theta_3 = \theta_2 - \varepsilon \left(
-l_2 + \mu l_1 \right ) \\ \implies v_3 = - \varepsilon \left( l_2 + \mu
-l_1 \right)
+\begin{aligned} \theta_3 &= \theta_2 + s_2 + \mu v_2 \\ &= \theta_2 -
+\varepsilon \ell_2 - \mu \varepsilon \ell_1 \\ &= \theta_2 - \varepsilon
+(\ell_2 + \mu \ell_1) \\ v_3 &= -\varepsilon (\ell_2 + \mu \ell_1)
+\end{aligned}
 
-\theta_4 = \theta_3 + s_3 + \mu v_3 \\ \theta_4 = \theta_3 - \varepsilon
-l_3 - \mu \left\[ - \varepsilon \left( l_2 + \mu l_1 \right) \right\] \\
-\implies v_4 = - \varepsilon \left\[ l_3 + \mu \left( l_2 + \mu l_1
-\right) \right\]
+\begin{aligned} \theta_4 &= \theta_3 + s_3 + \mu v_3 \\ &= \theta_3 -
+\varepsilon \ell_3 + \mu \left\[-\varepsilon (\ell_2 + \mu
+\ell_1)\right\] \\ v_4 &= -\varepsilon \left\[\ell_3 + \mu (\ell_2 + \mu
+\ell_1)\right\] \end{aligned}
 
 You can keep writing out the updates, but with a constant \varepsilon
-you can always rearrange so that the update is in the form v_t =
--\varepsilon d_t where d_t is just the direction of the update. This is
+you can always rearrange so that the update is in the form v\_{t+1} =
+\varepsilon d_t where d_t is just the direction of the update. This is
 also true for NAG and the damped versions. The motivation to do this for
-QHM is to write the update as a weighted average of gradients so the
-update can also be seen as a gradient estimator in a stochastic gradient
-descent context.
+QHM is to express its square-bracketed term as a weighted average of
+gradients, which can also be seen as a gradient estimator in a
+stochastic gradient descent context.
 
-The other advantage of this is that in terms of translating from the
-un-damped expressions to the damped forms, we can always start with the
-un-damped expression using a momentum coefficient \mu^\* and then
-transform into the damped expression by rescaling the contributions from
-the gradient descent and momentum, and then rescaling the learning rate,
-to compensate, i.e.:
+We can also make the connection between damped and undamped classical
+momentum explicit. Keep 0 \leq \mu \< 1 fixed, and use u_t for an
+undamped buffer of gradients:
 
-\theta\_{t+1} = \theta_t -\varepsilon \left(l_t + \mu^\* v_t \right) =
-\\ \theta_t -\frac{\varepsilon}{1 + \mu^\*} \left\[ \left(1 - \mu
-\right) l_t + \mu v_t \right\] = \\ \theta_t - \left(1 - \mu \right)
-\varepsilon \left\[ \left(1 - \mu \right) l_t + \mu v_t \right\]
+u\_{t+1} = \ell_t + \mu u_t
 
-with
+The damped buffer m_t introduced above uses the same momentum
+coefficient:
 
-\mu = \frac{\mu^\*}{1 + \mu^\*}
+m\_{t+1} = (1 - \mu) \ell_t + \mu m_t
 
-As noted in the paper, this shrinks the update by a factor of 1 - \mu
-and this can be compensated by increasing \varepsilon accordingly.
+Starting both buffers at zero gives m_t = (1 - \mu) u_t. So we can write
+the classical momentum update in either form:
 
-Note also that the recommended setting of the damped momentum
-coefficient \mu = 0.999 in QHM would therefore translate to a very large
-undamped momentum coefficient of \mu^\* = 999.
+\begin{aligned} \theta\_{t+1} &= \theta_t -
+\varepsilon\_{\mathrm{undamped}} u\_{t+1} \\ &= \theta_t -
+\frac{\varepsilon\_{\mathrm{undamped}}}{1 - \mu} m\_{t+1} \end{aligned}
+
+As noted in the paper, damping shrinks the update by a factor of 1 - \mu
+if we keep the learning rate the same. To recover the undamped updates,
+choose:
+
+\varepsilon\_{\mathrm{damped}} =
+\frac{\varepsilon\_{\mathrm{undamped}}}{1 - \mu}
+
+The momentum coefficient stays at \mu. For example, with \mu = 0.999,
+the damped learning rate needs to be 1000 times the undamped learning
+rate to give the same classical momentum updates.
 
 ### Unified Momentum Again
 
@@ -338,16 +342,16 @@ direction of the update (d_t) rather than just the steepest descent
 direction and therefore get an update that is a weighted average of
 gradients. To make life easier notationally by removing lots of negative
 signs, here’s one more definition, the steepest descent direction: p_t
-\overset{\mathrm{def}}{=} -\nabla f\left(\theta_t \right).
+\overset{\mathrm{def}}{=} -\nabla f(\theta_t).
 
 The resulting unified momentum expression below also allows for varying
 pretty much everything at each step: \mu, \varepsilon and \beta although
 I don’t have any suggestions for how you would go about tuning these
 values:
 
-\theta\_{t+1} = \theta_t + \varepsilon_t \left\[ \left( 1 + \beta_t
-\mu_t \right)\left(1 - \mu_t \right) p_t + \mu_t d\_{t-1} - \beta\_{t-1}
-\left(1 - \mu\_{t-1} \right) \mu_t p\_{t-1} \right\]
+\theta\_{t+1} = \theta_t + \varepsilon_t \left\[ (1 + \beta_t \mu_t)(1 -
+\mu_t) p_t + \mu_t d\_{t-1} - \beta\_{t-1} (1 - \mu\_{t-1}) \mu_t
+p\_{t-1} \right\]
 
 ## Sort of Related Ideas
 
@@ -375,8 +379,7 @@ uses the gradient evaluated at the second location.
 
 This proposes a decaying momentum (“Demon”) schedule of:
 
-\mu_t = \mu_0 \frac{1 - t / T}{\left( 1 - \mu_0 \right) + \mu_0 \left(
-1 - t/T \right)}
+\mu_t = \mu_0 \frac{1 - t/T}{(1 - \mu_0) + \mu_0(1 - t/T)}
 
 where \mu_0 is the initial momentum and T is the total number of
 iterations.

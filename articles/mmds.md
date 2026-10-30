@@ -385,9 +385,9 @@ locations, blue triangles mark aligned MDS locations, and orange
 segments show pointwise discrepancies; the residual RMSE is about 269
 kilometres.](mmds_files/figure-html/plot-geographic-alignment-1.png)
 
-The invariance holds at the objective level. The hidden check below
-translates, rotates, and reflects the returned configuration and
-verifies that stress is unchanged to numerical tolerance.
+The invariance holds at the objective level too: translating, rotating,
+or reflecting the returned configuration leaves its stress unchanged to
+numerical tolerance.
 
 Starting from road distances alone, the optimizer recovers a
 recognizable geometry even though its coordinate frame is arbitrary. The

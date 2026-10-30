@@ -477,9 +477,9 @@ Their RMSE is about 269 km after the global similarity alignment. Long
 segments at Athens and Stockholm, for example, are information that a
 polished but unreferenced coordinate plot would hide.</p>
 <p><img src="mmds_files/figure-html/plot-geographic-alignment-1.png" class="r-plt" alt="Map of Europe comparing the geographic and similarity-aligned metric MDS locations of 21 cities. Black open circles mark geographic locations, blue triangles mark aligned MDS locations, and orange segments show pointwise discrepancies; the residual RMSE is about 269 kilometres." width="672"></p>
-<p>The invariance holds at the objective level. The hidden check below
-translates, rotates, and reflects the returned configuration and
-verifies that stress is unchanged to numerical tolerance.</p>
+<p>The invariance holds at the objective level too: translating,
+rotating, or reflecting the returned configuration leaves its stress
+unchanged to numerical tolerance.</p>
 <p>Starting from road distances alone, the optimizer recovers a
 recognizable geometry even though its coordinate frame is arbitrary. The
 closure and combined-callback pattern used here also applies whenever an

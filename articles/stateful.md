@@ -528,8 +528,8 @@ callback calls outside hard-budget workflows.
 
 Checkpoint the complete caller-owned state needed to continue. Here that
 means the optimizer and parameters, plus the best observation and
-progress log. The callbacks are ordinary program code and are supplied
-again after restoration.
+progress log. Supply the callbacks again after restoration, using the
+same data.
 
 ``` r
 
@@ -642,9 +642,7 @@ equivalent <- c(
 
 The resumed run reaches the same current and best parameters as the
 uninterrupted run to numerical tolerance, and both agree with the
-one-shot run. This is the practical guarantee supplied by checkpointing
-the complete optimizer state; exact byte-for-byte identity across
-different R or platform builds is not required.
+one-shot run.
 
 ## Reinitialization starts a new run
 

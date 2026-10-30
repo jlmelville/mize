@@ -725,8 +725,8 @@ limits. Keep direct callback calls outside hard-budget workflows.</p>
 </h2>
 <p>Checkpoint the complete caller-owned state needed to continue. Here
 that means the optimizer and parameters, plus the best observation and
-progress log. The callbacks are ordinary program code and are supplied
-again after restoration.</p>
+progress log. Supply the callbacks again after restoration, using the
+same data.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">partial</span> <span class="op">&lt;-</span> <span class="fu">advance_stateful</span><span class="op">(</span></span>
 <span>  <span class="fu">new_bfgs_state</span><span class="op">(</span><span class="op">)</span>,</span>
@@ -865,9 +865,7 @@ using the same method and termination controls:</p>
 <span><span class="op">)</span></span></code></pre></div>
 <p>The resumed run reaches the same current and best parameters as the
 uninterrupted run to numerical tolerance, and both agree with the
-one-shot run. This is the practical guarantee supplied by checkpointing
-the complete optimizer state; exact byte-for-byte identity across
-different R or platform builds is not required.</p>
+one-shot run.</p>
 </div>
 <div class="section level2">
 <h2 id="reinitialization-starts-a-new-run">Reinitialization starts a new run<a class="anchor" aria-label="anchor" href="#reinitialization-starts-a-new-run"></a>
