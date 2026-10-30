@@ -111,12 +111,12 @@ constant steps ignore those controls, and `ls_max_alpha` and
 
 ### Wolfe conditions and `c2`
 
-For a direction \\p\\, define the line function \\\phi(\alpha) = f(x +
-\alpha p)\\ and assume the initial slope \\\phi'(0) = g(x)^T p\\ is
-negative. Wolfe searches require sufficient decrease and a curvature
-condition. Under the strong curvature condition,
+For a direction p, define the line function \phi(\alpha) = f(x + \alpha
+p) and assume the initial slope \phi'(0) = g(x)^T p is negative. Wolfe
+searches require sufficient decrease and a curvature condition. Under
+the strong curvature condition,
 
-\\ \|\phi'(\alpha)\| \leq c_2 \|\phi'(0)\|. \\
+\|\phi'(\alpha)\| \leq c_2 \|\phi'(0)\|.
 
 A smaller `c2` makes the right-hand side smaller and the condition
 stricter; a larger `c2` makes it looser. The same relationship holds for
@@ -213,14 +213,14 @@ gradient searches default to Rasmussen. A positive finite numeric
 Exact initial-step formulas
 
 On the first outer iteration, the named `step0` choices use the starting
-gradient \\g\\ and direction \\p\\. Write the directional derivative as
-\\\phi'(0) = g^T p\\.
+gradient g and direction p. Write the directional derivative as \phi'(0)
+= g^T p.
 
-- `"rasmussen"`: \\1 / (1 - \phi'(0))\\. For steepest descent, this
-  becomes \\1 / (1 + \lVert g \rVert_2^2)\\.
-- `"scipy"`: \\-\lVert g \rVert_2 / \phi'(0)\\. For steepest descent,
-  where \\p = -g\\, this reduces to \\1 / \lVert g \rVert_2\\.
-- `"schmidt"`: \\1 / \lVert g \rVert_1\\; there is no added 1 in the
+- `"rasmussen"`: 1 / (1 - \phi'(0)). For steepest descent, this becomes
+  1 / (1 + \lVert g \rVert_2^2).
+- `"scipy"`: -\lVert g \rVert_2 / \phi'(0). For steepest descent, where
+  p = -g, this reduces to 1 / \lVert g \rVert_2.
+- `"schmidt"`: 1 / \lVert g \rVert_1; there is no added 1 in the
   denominator.
 - `"hz"`: Hager-Zhang scaling based first on the relative infinity norms
   of the parameters and gradient, then on the objective and squared

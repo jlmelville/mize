@@ -19,23 +19,23 @@ classical-scaling route and uses a different criterion.
 
 ## Stress and its gradient
 
-Let \\R = (r\_{ij})\\ be the target distances and let \\D = (d\_{ij})\\
-be the Euclidean distances among candidate coordinates \\Y\\. We
-minimize raw stress:
+Let R = (r\_{ij}) be the target distances and let D = (d\_{ij}) be the
+Euclidean distances among candidate coordinates Y. We minimize raw
+stress:
 
-\\ C(Y) = \sum\_{i \< j} (r\_{ij} - d\_{ij})^2. \\
+C(Y) = \sum\_{i \< j} (r\_{ij} - d\_{ij})^2.
 
-The condition \\i \< j\\ counts each unordered pair once. The matrix
+The condition i \< j counts each unordered pair once. The matrix
 implementation below instead sums both symmetric triangles, so it
-multiplies that sum by one half. With \\n\\ objects, the corresponding
-distance RMSE is \\\sqrt{C / {n \choose 2}}\\ and has the same units as
-the input distances.
+multiplies that sum by one half. With n objects, the corresponding
+distance RMSE is \sqrt{C / {n \choose 2}} and has the same units as the
+input distances.
 
 For distinct points, the derivative with respect to the coordinates of
-object \\i\\ is
+object i is
 
-\\ \frac{\partial C}{\partial \mathbf{y}\_i} = -2 \sum\_{j \ne i}
-\frac{r\_{ij} - d\_{ij}}{d\_{ij}} (\mathbf{y}\_i - \mathbf{y}\_j). \\
+\frac{\partial C}{\partial \mathbf{y}\_i} = -2 \sum\_{j \ne i}
+\frac{r\_{ij} - d\_{ij}}{d\_{ij}} (\mathbf{y}\_i - \mathbf{y}\_j).
 
 > **Implementation note.** Euclidean distance is nondifferentiable when
 > two candidate points coincide. `distance_epsilon` prevents division by
@@ -177,8 +177,8 @@ displayed precision.
 ## Optimize with separate and combined callbacks
 
 For this example, we stop when the relative change in stress falls below
-\\10^{-8}\\. Stress depends on the scale of the supplied distances,
-which makes a relative criterion convenient here. The
+10^{-8}. Stress depends on the scale of the supplied distances, which
+makes a relative criterion convenient here. The
 [Convergence](https://jlmelville.github.io/mize/articles/convergence.md)
 article discusses the other controls.
 

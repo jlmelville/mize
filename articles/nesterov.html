@@ -6,13 +6,8 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Nesterov Accelerated Gradient and Momentum • mize</title>
-<!-- mathjax math --><script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js" integrity="sha256-MASABpB4tYktI2Oitl4t+78w/lyA+D7b/s9GEP0JOGI=" crossorigin="anonymous"></script><script>
-  window.MathJax = {
-    chtml: {
-      fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
-    }
-  };
-</script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<!-- katex math --><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg" crossorigin="anonymous"></script><script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" integrity="sha384-43gviWU0YVjaDtb/GhzOouOXtZMP/7XUzwPTstBeZFe/+rCMvRwr4yROQP43s0Xk" crossorigin="anonymous" onload="renderMathInElement(document.body);"></script><script src="../katex-auto.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
@@ -114,7 +109,7 @@ straight between the different papers. I will borrow some symbols and
 try and be very clear about what they mean and what each expression
 applies to. Translating between this document and the original papers
 may require mentally transposing some symbols and shifting iteration
-indices from <span class="math inline">\(t\)</span> to <span class="math inline">\(t+1\)</span> or <span class="math inline">\(t-1\)</span>.</p>
+indices from <span class="math inline">t</span> to <span class="math inline">t+1</span> or <span class="math inline">t-1</span>.</p>
 <p>Apart from the Sutskever and Bengio papers linked to above, it’s
 worth checking out the <a href="https://proceedings.mlr.press/v28/sutskever13-supp.pdf" class="external-link">appendix
 to the Sutskever paper (PDF)</a> or the relevant part (chapter 7) of <a href="https://hdl.handle.net/1807/36012" class="external-link">Sutskever’s thesis</a>. For an
@@ -124,38 +119,36 @@ expressions).</p>
 <div class="section level2">
 <h2 id="definitions">Definitions<a class="anchor" aria-label="anchor" href="#definitions"></a>
 </h2>
-<p>The goal is to optimize some parameters, <span class="math inline">\(\theta\)</span>. This is going to involve gradient
+<p>The goal is to optimize some parameters, <span class="math inline">\theta</span>. This is going to involve gradient
 descent, so we will be evaluating the gradient of an objective function
-of those parameters, <span class="math inline">\(\nabla
-f\left(\theta\right)\)</span>, and moving a certain distance in the
+of those parameters, <span class="math inline">\nabla
+f\left(\theta\right)</span>, and moving a certain distance in the
 direction of the negative of the gradient, the distance being related to
-the learning rate, <span class="math inline">\(\varepsilon\)</span>.
-There will also be a momentum term involved, with momentum coefficient
-<span class="math inline">\(\mu\)</span>. The value of the parameters,
-learning rate and momentum at iteration <span class="math inline">\(t\)</span> will be indicated by a subscript,
-e.g. <span class="math inline">\(\theta_t\)</span>.</p>
+the learning rate, <span class="math inline">\varepsilon</span>. There
+will also be a momentum term involved, with momentum coefficient <span class="math inline">\mu</span>. The value of the parameters, learning
+rate and momentum at iteration <span class="math inline">t</span> will
+be indicated by a subscript, e.g. <span class="math inline">\theta_t</span>.</p>
 <div class="section level3">
 <h3 id="the-update-vector">The Update Vector<a class="anchor" aria-label="anchor" href="#the-update-vector"></a>
 </h3>
 <p>A definition which holds across all the methods discussed here is
-that the parameters at iteration <span class="math inline">\(t+1\)</span> are related to the parameters at
-iteration <span class="math inline">\(t\)</span> by an update that
-involves the addition of a velocity vector, <span class="math inline">\(v\)</span>:</p>
-<p><span class="math display">\[\theta_{t+1} = \theta_t + v_{t+1}
-\implies v_{t+1} = \theta_{t+1} - \theta_t\]</span></p>
+that the parameters at iteration <span class="math inline">t+1</span>
+are related to the parameters at iteration <span class="math inline">t</span> by an update that involves the addition of
+a velocity vector, <span class="math inline">v</span>:</p>
+<p><span class="math display">\theta_{t+1} = \theta_t + v_{t+1} \implies
+v_{t+1} = \theta_{t+1} - \theta_t</span></p>
 <p>This is pretty obvious, but the expressions we will be dealing with
-here use a recursive definition of <span class="math inline">\(v_t\)</span>, i.e. to usefully define these
-updates we need to express <span class="math inline">\(v_t\)</span> in
-terms of <span class="math inline">\(v_{t-1}\)</span>. The exact
-expression depends on whether we are using classical momentum or NAG. In
-both cases, it would make sense to label a particular vector as <span class="math inline">\(v_t\)</span>, but due to the similarity in how
-they work, the temptation to substitute the classical momentum recursive
-definition of <span class="math inline">\(v_t\)</span> into an
-expression for NAG is almost overwhelming, and also always wrong.</p>
+here use a recursive definition of <span class="math inline">v_t</span>,
+i.e. to usefully define these updates we need to express <span class="math inline">v_t</span> in terms of <span class="math inline">v_{t-1}</span>. The exact expression depends on
+whether we are using classical momentum or NAG. In both cases, it would
+make sense to label a particular vector as <span class="math inline">v_t</span>, but due to the similarity in how they
+work, the temptation to substitute the classical momentum recursive
+definition of <span class="math inline">v_t</span> into an expression
+for NAG is almost overwhelming, and also always wrong.</p>
 <p>To confuse matters further, some papers (see the Bengio paper for
-example) directly use <span class="math inline">\(v_t\)</span> in
-expressions that update parameters, but where the <span class="math inline">\(v_t\)</span> doesn’t actually apply to the
-parameter being updated.</p>
+example) directly use <span class="math inline">v_t</span> in
+expressions that update parameters, but where the <span class="math inline">v_t</span> doesn’t actually apply to the parameter
+being updated.</p>
 <p>Finally, I’ll try to be strict about names. When I’m referring to the
 original Nesterov Accelerated Gradient, I’ll call that NAG. When I’m
 referring to the versions that recast it as a momentum scheme, I’ll call
@@ -170,27 +163,27 @@ refer to it as “classical” momentum.</p>
 <h2 id="classical-momentum">Classical Momentum<a class="anchor" aria-label="anchor" href="#classical-momentum"></a>
 </h2>
 <p>The classical momentum velocity vector is defined by Bengio as:</p>
-<p><span class="math display">\[
+<p><span class="math display">
 v_t = \mu_{t-1}v_{t-1} - \varepsilon_{t-1}\nabla
 f\left(\theta_{t-1}\right)
-\]</span></p>
-<p>Sutskever gives the same definition but without any <span class="math inline">\(t\)</span> subscript on the velocity vector or the
+</span></p>
+<p>Sutskever gives the same definition but without any <span class="math inline">t</span> subscript on the velocity vector or the
 momentum coefficient.</p>
 <p>We can write out the full update for classical momentum as:</p>
-<p><span class="math display">\[\theta_{t+1} = \theta_t + \mu_t v_t -
-\varepsilon_t \nabla f\left(\theta_t\right)\]</span></p>
+<p><span class="math display">\theta_{t+1} = \theta_t + \mu_t v_t -
+\varepsilon_t \nabla f\left(\theta_t\right)</span></p>
 <p>with velocity:</p>
-<p><span class="math display">\[v_{t+1} = \mu_t v_t - \varepsilon_t
-\nabla f\left(\theta_t \right)\]</span></p>
+<p><span class="math display">v_{t+1} = \mu_t v_t - \varepsilon_t \nabla
+f\left(\theta_t \right)</span></p>
 <p>Later we will want to use the recursive definition of momentum, but
 it won’t be the full update, so we will not be able to define it as
-<span class="math inline">\(v_t\)</span>. In those circumstances, I will
-call the update <span class="math inline">\(m_t\)</span> to avoid
+<span class="math inline">v_t</span>. In those circumstances, I will
+call the update <span class="math inline">m_t</span> to avoid
 confusion:</p>
-<p><span class="math display">\[
+<p><span class="math display">
 m_{t+1} = \mu_t m_t - \varepsilon_t \nabla f\left(\theta_t \right)
-\]</span></p>
-<p>Remember: <span class="math inline">\(v_{t+1} = m_{t+1}\)</span>
+</span></p>
+<p>Remember: <span class="math inline">v_{t+1} = m_{t+1}</span>
 <em>only</em> in the case of classical momentum.</p>
 </div>
 <div class="section level2">
@@ -201,25 +194,27 @@ descent step, followed by something that looks a lot like a momentum
 term, but isn’t exactly the same as that found in classical momentum.
 I’ll call it a “momentum stage” here. If you look at the Sutskever
 paper, It’s important to note that the parameters being minimized by NAG
-are given the symbol <span class="math inline">\(y\)</span>, not <span class="math inline">\(\theta\)</span>. You’ll see that <span class="math inline">\(\theta\)</span> is the symbol for the parameters
-after they’ve been updated by the gradient descent stage, but before the
+are given the symbol <span class="math inline">y</span>, not <span class="math inline">\theta</span>. You’ll see that <span class="math inline">\theta</span> is the symbol for the parameters after
+they’ve been updated by the gradient descent stage, but before the
 momentum stage.</p>
-<p>I’m going to stick with <span class="math inline">\(\theta_t\)</span>
-as the parameters being updated. But we do need to define a symbol that
+<p>I’m going to stick with <span class="math inline">\theta_t</span> as
+the parameters being updated. But we do need to define a symbol that
 accounts for the state of the parameters after the gradient descent
-stage. I’ll go with <span class="math inline">\(\phi_{t+1}\)</span>.
-Whether you consider the intermediate step to be part of iterate <span class="math inline">\(t\)</span> or <span class="math inline">\(t+1\)</span> doesn’t really matter, but different
-papers use different conventions, so you will need to keep track of it
-all or risk getting very confused. In this case I am going with <span class="math inline">\(t+1\)</span> so it’s consistent with any new
-quantities calculated in an iteration (like <span class="math inline">\(v_{t+1}\)</span>).</p>
+stage. I’ll go with <span class="math inline">\phi_{t+1}</span>. Whether
+you consider the intermediate step to be part of iterate <span class="math inline">t</span> or <span class="math inline">t+1</span>
+doesn’t really matter, but different papers use different conventions,
+so you will need to keep track of it all or risk getting very confused.
+In this case I am going with <span class="math inline">t+1</span> so
+it’s consistent with any new quantities calculated in an iteration (like
+<span class="math inline">v_{t+1}</span>).</p>
 <p>Here’s the gradient descent stage:</p>
-<p><span class="math display">\[
+<p><span class="math display">
 \phi_{t+1} = \theta_t - \varepsilon_t \nabla f\left(\theta_t \right)
-\]</span></p>
+</span></p>
 <p>followed by the momentum-like stage:</p>
-<p><span class="math display">\[
+<p><span class="math display">
 \theta_{t+1} = \phi_{t+1} + \mu_t\left(\phi_{t+1} - \phi_{t} \right)
-\]</span></p>
+</span></p>
 <p>That concludes one iteration of NAG. The hard part is choosing the
 learning rate and momentum to get the convergence guarantees that make
 the method attractive. Here I’ll stick to comparing the update
@@ -231,7 +226,7 @@ simple.</p>
 </h2>
 <p>The key idea behind the Sutskever momentum derivation is to shift the
 perspective about which of the parameters we want as the result of the
-iteration, from <span class="math inline">\(\theta\)</span> to <span class="math inline">\(\phi\)</span>. Rather than having the optimization
+iteration, from <span class="math inline">\theta</span> to <span class="math inline">\phi</span>. Rather than having the optimization
 iterations proceed as “gradient descent, momentum (end of iteration 1),
 gradient descent, momentum (end of iteration 2), gradient descent etc.”
 move the boundary of where the iterations end by a half-iteration to get
@@ -244,14 +239,14 @@ from some other arbitrary starting position.</p>
 <p>Perhaps a visualization will help. Here are two full iterations of
 NAG in its standard form, separated by boxes so you can see where one
 iteration ends and the other begins.</p>
-<p><span class="math display">\[
+<p><span class="math display">
 \begin{aligned}
 \boxed{\begin{aligned}
 \phi_{t+1} &amp;= \theta_t - \varepsilon_t \nabla f\left(\theta_t
 \right) \\
 \theta_{t+1} &amp;= \phi_{t+1} + \mu_t\left(\phi_{t+1} - \phi_{t}
 \right)
-\end{aligned}} \\[0.75em]
+\end{aligned}} \\ [0.75em]
 \boxed{\begin{aligned}
 \phi_{t+2} &amp;= \theta_{t+1} - \varepsilon_{t+1} \nabla
 f\left(\theta_{t+1} \right) \\
@@ -259,11 +254,11 @@ f\left(\theta_{t+1} \right) \\
 \right)
 \end{aligned}}
 \end{aligned}
-\]</span></p>
+</span></p>
 <p>The Sutskever derivation says shift the boundaries of the iteration
 so that it starts one stage later. This is the same four equations as
 above, but with a box showing the new definition of the iteration:</p>
-<p><span class="math display">\[
+<p><span class="math display">
 \begin{gathered}
 \phi_{t+1} = \theta_t - \varepsilon_t \nabla f\left(\theta_t \right) \\
 \boxed{\begin{aligned}
@@ -275,30 +270,30 @@ f\left(\theta_{t+1} \right)
 \theta_{t+2} = \phi_{t+2} + \mu_{t+1}\left(\phi_{t+2} - \phi_{t+1}
 \right)
 \end{gathered}
-\]</span></p>
+</span></p>
 <p>Now that the definition of where we start and finish each iteration
 has changed, let’s shift all the indices in the box back one step. That
-includes the momentum coefficient, which becomes <span class="math inline">\(\mu_{t-1}\)</span>:</p>
-<p><span class="math display">\[
+includes the momentum coefficient, which becomes <span class="math inline">\mu_{t-1}</span>:</p>
+<p><span class="math display">
 \theta_t = \phi_t + \mu_{t-1}\left(\phi_t - \phi_{t-1} \right) \\
 \phi_{t+1} = \theta_t - \varepsilon_t \nabla f\left(\theta_t \right)
-\]</span></p>
-<p>Then because our update is now in terms of <span class="math inline">\(\phi\)</span> rather than <span class="math inline">\(\theta\)</span>, we can label <span class="math inline">\(\phi_t - \phi_{t-1}\)</span> as <span class="math inline">\(v_t\)</span>. The lookahead point is then:</p>
-<p><span class="math display">\[
+</span></p>
+<p>Then because our update is now in terms of <span class="math inline">\phi</span> rather than <span class="math inline">\theta</span>, we can label <span class="math inline">\phi_t - \phi_{t-1}</span> as <span class="math inline">v_t</span>. The lookahead point is then:</p>
+<p><span class="math display">
 \theta_t = \phi_t + \mu_{t-1} v_t
-\]</span></p>
-<p>And we can now substitute that definition of <span class="math inline">\(\theta_t\)</span> into the gradient stage, which
-lets us write this half-shifted NAG iteration in one line:</p>
-<p><span class="math display">\[
+</span></p>
+<p>And we can now substitute that definition of <span class="math inline">\theta_t</span> into the gradient stage, which lets
+us write this half-shifted NAG iteration in one line:</p>
+<p><span class="math display">
 \phi_{t+1} = \phi_t + \mu_{t-1} v_t
 - \varepsilon_t \nabla f\left(\phi_t + \mu_{t-1} v_t \right)
-\]</span></p>
-<p>If you are comparing this with a version that uses <span class="math inline">\(\mu_t\)</span>, remember to shift the momentum
+</span></p>
+<p>If you are comparing this with a version that uses <span class="math inline">\mu_t</span>, remember to shift the momentum
 schedule along with the iteration numbers. With constant momentum,
 that’s one less thing to worry about.</p>
 <p>There you have it: this looks just like the classical momentum
-update, except that the gradient is calculated at <span class="math inline">\(\phi_t + \mu_{t-1}v_t\)</span>, after the momentum
-update. Classical momentum would evaluate it at <span class="math inline">\(\phi_t\)</span>. Hence, one can do NAG by simply
+update, except that the gradient is calculated at <span class="math inline">\phi_t + \mu_{t-1}v_t</span>, after the momentum
+update. Classical momentum would evaluate it at <span class="math inline">\phi_t</span>. Hence, one can do NAG by simply
 reversing the order in which the update is usually carried out: do the
 momentum stage first, update the parameters, and then do the gradient
 descent part. Just like Sutskever said you could.</p>
@@ -308,19 +303,18 @@ descent part. Just like Sutskever said you could.</p>
 </h2>
 <p>I found working through the Bengio version of Nesterov momentum a bit
 brain-breaking. It starts from the Sutskever definition and then defines
-a new variable, <span class="math inline">\(\Theta\)</span>, which
+a new variable, <span class="math inline">\Theta</span>, which
 represents the parameters after the momentum update. But that just moves
 us one half-step forward in the iteration, so we are back to doing
 things in the original NAG way: gradient descent then momentum-style
-update. So their paper’s <span class="math inline">\(\Theta\)</span> is
-the same as our <span class="math inline">\(\theta\)</span>. Its
-explanation of “committing to the ‘peekedahead’ parameters” and then
-“backtracking by the same amount before each update”, also never landed
-with me (this is a reflection on my mental capacity, not the paper).
-Finally, it expresses the update in terms of <span class="math inline">\(v\)</span>, but that’s still the the update in
-terms of the difference in <span class="math inline">\(\phi\)</span>,
-not <span class="math inline">\(\theta\)</span>. Unlike this document it
-also uses <span class="math inline">\(t-1\)</span> and <span class="math inline">\(t\)</span> to index the parameters that are being
+update. So their paper’s <span class="math inline">\Theta</span> is the
+same as our <span class="math inline">\theta</span>. Its explanation of
+“committing to the ‘peekedahead’ parameters” and then “backtracking by
+the same amount before each update”, also never landed with me (this is
+a reflection on my mental capacity, not the paper). Finally, it
+expresses the update in terms of <span class="math inline">v</span>, but
+that’s still the the update in terms of the difference in <span class="math inline">\phi</span>, not <span class="math inline">\theta</span>. Unlike this document it also uses
+<span class="math inline">t-1</span> and <span class="math inline">t</span> to index the parameters that are being
 updated, so you will have to remember to add or subtract 1 from the
 subscripts when looking between here and the paper, but that’s the least
 of your problems honestly.</p>
@@ -329,91 +323,83 @@ brain, even though I can follow the individual steps and get the right
 expression. So I will show you how to arrange the standard NAG
 expressions into their form, rather than starting from the Sutskever
 result.</p>
-<p>First, let’s remove the confusion around using <span class="math inline">\(v\)</span> as an update vector which isn’t the
-change in the parameters that we are updating each iteration. Instead of
-<span class="math inline">\(\phi_{t+1} - \phi_{t} = v_{t+1}\)</span>,
-define:</p>
-<p><span class="math display">\[
+<p>First, let’s remove the confusion around using <span class="math inline">v</span> as an update vector which isn’t the change
+in the parameters that we are updating each iteration. Instead of <span class="math inline">\phi_{t+1} - \phi_{t} = v_{t+1}</span>, define:</p>
+<p><span class="math display">
 \phi_{t+1} - \phi_{t} = b_{t+1}
-\]</span></p>
+</span></p>
 <p>(the ‘b’ is for Bengio). Our goal now is to end up with an expression
-that is defined using <span class="math inline">\(\theta_t\)</span> (no
-<span class="math inline">\(\phi_t\)</span> allowed) and <span class="math inline">\(b_t\)</span>.</p>
-<p>I’ll use <span class="math inline">\(s_t\)</span> as shorthand for
-the gradient step:</p>
-<p><span class="math display">\[
+that is defined using <span class="math inline">\theta_t</span> (no
+<span class="math inline">\phi_t</span> allowed) and <span class="math inline">b_t</span>.</p>
+<p>I’ll use <span class="math inline">s_t</span> as shorthand for the
+gradient step:</p>
+<p><span class="math display">
 s_t = -\varepsilon_t \nabla f\left(\theta_t\right).
-\]</span></p>
-<p>The negative sign and the learning rate are both part of <span class="math inline">\(s_t\)</span>.</p>
+</span></p>
+<p>The negative sign and the learning rate are both part of <span class="math inline">s_t</span>.</p>
 <p>Now we are going to go back to using the original NAG expression so
-to help you scrub all the shifts in <span class="math inline">\(t\)</span> from your mind here is the expression
-again:</p>
-<p><span class="math display">\[
+to help you scrub all the shifts in <span class="math inline">t</span>
+from your mind here is the expression again:</p>
+<p><span class="math display">
 \phi_{t+1} = \theta_t + s_t \\
 \theta_{t+1} = \phi_{t+1} + \mu_t\left(\phi_{t+1} - \phi_{t} \right)
-\]</span> Start by replacing all uses of <span class="math inline">\(\phi_{t+1}\)</span> in the second equation with
-the definition in terms of <span class="math inline">\(\theta_t\)</span>
-given in the first equation:</p>
-<p><span class="math display">\[
-\begin{equation}
-\begin{split}
+</span> Start by replacing all uses of <span class="math inline">\phi_{t+1}</span> in the second equation with the
+definition in terms of <span class="math inline">\theta_t</span> given
+in the first equation:</p>
+<p><span class="math display">
+\begin{aligned}
 \theta_{t+1} &amp; = \theta_t + s_t +
   \mu_t \left( \theta_t + s_t - \phi_{t} \right) \\
 &amp; = \left(1 + \mu_t \right) \theta_t
 + \left(1 + \mu_t \right) s_t
   - \mu_t \phi_t
-\end{split}
-\end{equation}
-\]</span></p>
-<p>So far, so unpromising. Time to get <span class="math inline">\(b_t\)</span> involved. Remember how we
-defined:</p>
-<p><span class="math display">\[
-\begin{equation}
-\begin{split}
+\end{aligned}
+</span></p>
+<p>So far, so unpromising. Time to get <span class="math inline">b_t</span> involved. Remember how we defined:</p>
+<p><span class="math display">
+\begin{aligned}
 \theta_{t+1} &amp; = \phi_{t+1} + \mu_t\left(\phi_{t+1} - \phi_{t}
 \right) \\
 &amp; = \phi_{t+1} + \mu_t b_{t+1}
-\end{split}
-\end{equation}
-\]</span></p>
+\end{aligned}
+</span></p>
 <p>Let’s shift everything back one iteration:</p>
-<p><span class="math display">\[
+<p><span class="math display">
 \theta_{t} = \phi_{t} + \mu_{t-1} b_{t} \\
 \implies  \phi_{t} = \theta_{t} - \mu_{t-1} b_{t}
-\]</span></p>
-<p>And now substitute for <span class="math inline">\(\phi_t\)</span> in
-the last term in our NAG update:</p>
-<p><span class="math display">\[
-\begin{equation}
-\begin{split}
+</span></p>
+<p>And now substitute for <span class="math inline">\phi_t</span> in the
+last term in our NAG update:</p>
+<p><span class="math display">
+\begin{aligned}
 \theta_{t+1} &amp; = \left(1 + \mu_t \right) \theta_t
 + \left(1 + \mu_t \right) s_t
   - \mu_t \phi_t \\
 &amp; = \left(1 + \mu_t \right) \theta_t
 + \left(1 + \mu_t \right) s_t
   - \mu_{t} \theta_t + \mu_{t-1} \mu_t b_t
-\end{split}
-\end{equation}
-\]</span></p>
-<p>The final step is to gather together the <span class="math inline">\(\theta_t\)</span> terms and the result is:</p>
-<p><span class="math display">\[
+\end{aligned}
+</span></p>
+<p>The final step is to gather together the <span class="math inline">\theta_t</span> terms and the result is:</p>
+<p><span class="math display">
 \theta_{t+1} = \theta_t + \mu_{t-1} \mu_t b_t
 + \left(1 + \mu_t \right) s_t
-\]</span></p>
+</span></p>
 <p>Ta da. There it is, just like in the paper, subject to the
-differences in symbols and when the iteration ticks over from <span class="math inline">\(t\)</span> to <span class="math inline">\(t+1\)</span> and so on.</p>
+differences in symbols and when the iteration ticks over from <span class="math inline">t</span> to <span class="math inline">t+1</span> and
+so on.</p>
 <p>The advantage of this expression for the Nesterov momentum is that it
 doesn’t require calculating a gradient at a non-standard position, and
 only requires a modification to the coefficients used to calculate the
 velocity, which is probably an easier change to make to an existing
 codebase which already uses classical momentum. However, because this
-expression is recursive on <span class="math inline">\(b_t\)</span>
-rather than the update vector <span class="math inline">\(v_t\)</span>,
-you will need to remember to store a different vector than you would
-with classical momentum. It’s not really clear to me whether that is an
-easy or hard thing to do with most optimization code bases vs having to
-make code changes to calculate the gradient at a different location than
-the current parameter vector, as you have to do with the Sutskever
+expression is recursive on <span class="math inline">b_t</span> rather
+than the update vector <span class="math inline">v_t</span>, you will
+need to remember to store a different vector than you would with
+classical momentum. It’s not really clear to me whether that is an easy
+or hard thing to do with most optimization code bases vs having to make
+code changes to calculate the gradient at a different location than the
+current parameter vector, as you have to do with the Sutskever
 version.</p>
 <p>You should also remember that Bengio gives us the parameters after
 the momentum stage, while Sutskever gives us the parameters after
@@ -426,33 +412,32 @@ quite a while later on.</p>
 <h2 id="an-alternative-expression-for-nag">An Alternative Expression for NAG<a class="anchor" aria-label="anchor" href="#an-alternative-expression-for-nag"></a>
 </h2>
 <p>Let’s return to the two stages of NAG, keeping our original notation:
-<span class="math inline">\(\phi_{t+1}\)</span> is the position after
-gradient descent, and <span class="math inline">\(\theta_{t+1}\)</span>
-is the position after the momentum stage. This time we’ll write the
-update in terms of the actual displacement of <span class="math inline">\(\theta\)</span>, rather than the Bengio
-buffer.</p>
-<p><span class="math display">\[\phi_{t+1} = \theta_t + s_t\]</span></p>
-<p><span class="math display">\[\theta_{t+1} = \phi_{t+1} +
-\mu_t\left(\phi_{t+1} - \phi_t \right)\]</span></p>
-<p>Now, let’s just write out the momentum stage in terms of <span class="math inline">\(\theta\)</span>, substituting <span class="math inline">\(\phi\)</span> wherever we find it:</p>
-<p><span class="math display">\[
+<span class="math inline">\phi_{t+1}</span> is the position after
+gradient descent, and <span class="math inline">\theta_{t+1}</span> is
+the position after the momentum stage. This time we’ll write the update
+in terms of the actual displacement of <span class="math inline">\theta</span>, rather than the Bengio buffer.</p>
+<p><span class="math display">\phi_{t+1} = \theta_t + s_t</span></p>
+<p><span class="math display">\theta_{t+1} = \phi_{t+1} +
+\mu_t\left(\phi_{t+1} - \phi_t \right)</span></p>
+<p>Now, let’s just write out the momentum stage in terms of <span class="math inline">\theta</span>, substituting <span class="math inline">\phi</span> wherever we find it:</p>
+<p><span class="math display">
 \theta_{t+1} = \theta_t + s_t
 + \mu_t \left[\theta_t + s_t - \theta_{t-1} - s_{t-1}\right]
-\]</span></p>
+</span></p>
 <p>Rearranging:</p>
-<p><span class="math display">\[
+<p><span class="math display">
 \theta_{t+1} = \theta_t
 + \mu_t \left[\theta_t - \theta_{t-1} - s_{t-1} + s_t\right] + s_t
-\]</span></p>
-<p>Finally, we can substitute in <span class="math inline">\(v_t\)</span> for the first two terms in the square
-brackets, to give:</p>
-<p><span class="math display">\[
+</span></p>
+<p>Finally, we can substitute in <span class="math inline">v_t</span>
+for the first two terms in the square brackets, to give:</p>
+<p><span class="math display">
 \theta_{t+1} = \theta_t + \mu_t \left[v_t - s_{t-1} + s_t\right] + s_t
-\]</span></p>
+</span></p>
 <p>with velocity:</p>
-<p><span class="math display">\[
+<p><span class="math display">
 v_{t+1} = \mu_t \left[v_t - s_{t-1} + s_t\right] + s_t
-\]</span></p>
+</span></p>
 <p>This looks a lot like the classical momentum expression, but with the
 velocity vector modified to first remove the contribution of the
 gradient descent from the previous iteration, and replace it with the
@@ -461,79 +446,78 @@ an interesting insight into the idea of the Nesterov momentum using a
 form of “lookahead” with the gradient descent.</p>
 <p>You could also choose to expand the velocity expression to make it
 look a bit like the Bengio formulation:</p>
-<p><span class="math display">\[
+<p><span class="math display">
 v_{t+1} = \mu_t \left[v_t - s_{t-1}\right] + \left(1 + \mu_t\right) s_t
-\]</span></p>
+</span></p>
 <p>but as this version can’t be expressed as the classical momentum form
 with different coefficients, the way the Bengio formulation can be, it
 probably doesn’t gain you anything in terms of implementation, except
 you can expand it and rearrange it further to give:</p>
-<p><span class="math display">\[
+<p><span class="math display">
 v_{t+1} = \mu_t v_t + s_t + \mu_t\left[s_t - s_{t-1}\right]
-\]</span> which now resembles classical momentum with an extra
-correction term. For a fixed learning rate, this is the form in equation
-(1.4) of <a href="https://link.springer.com/article/10.1007/s10107-021-01681-8" class="external-link">Shi
+</span> which now resembles classical momentum with an extra correction
+term. For a fixed learning rate, this is the form in equation (1.4) of
+<a href="https://link.springer.com/article/10.1007/s10107-021-01681-8" class="external-link">Shi
 and co-workers</a>, who call the extra term a “gradient correction”.
 User ‘denis’ also uses this expression in an <a href="https://stats.stackexchange.com/a/233430" class="external-link">answer on the Cross
 Validated Stack Exchange</a>, calling it “gradient momentum”. I’ll use
 “gradient correction” here.</p>
 <p><em>December 25 2025</em>: Here’s a possible insight into the meaning
 of the gradient correction.</p>
-<p>The correction is the change in the gradient step, scaled by <span class="math inline">\(\mu_t\)</span>. When the steps are similar in both
-direction and size, <span class="math inline">\(s_t - s_{t-1} \approx
-0\)</span>, the update looks a lot like classical momentum. But consider
-a steep ravine where we are bouncing from one side to the other. If the
-step roughly reverses each iteration, <span class="math inline">\(s_t
-\approx -s_{t-1}\)</span>, the last term becomes approximately <span class="math inline">\(2\mu_t s_t\)</span>. This gives the current
-gradient step more say in where we go next. Remember that <span class="math inline">\(s_t\)</span> includes the learning rate, so
-changing that will also affect this term.</p>
+<p>The correction is the change in the gradient step, scaled by <span class="math inline">\mu_t</span>. When the steps are similar in both
+direction and size, <span class="math inline">s_t - s_{t-1} \approx
+0</span>, the update looks a lot like classical momentum. But consider a
+steep ravine where we are bouncing from one side to the other. If the
+step roughly reverses each iteration, <span class="math inline">s_t
+\approx -s_{t-1}</span>, the last term becomes approximately <span class="math inline">2\mu_t s_t</span>. This gives the current gradient
+step more say in where we go next. Remember that <span class="math inline">s_t</span> includes the learning rate, so changing
+that will also affect this term.</p>
 <div class="section level3">
 <h3 id="what-happens-on-a-quadratic">What happens on a quadratic?<a class="anchor" aria-label="anchor" href="#what-happens-on-a-quadratic"></a>
 </h3>
 <p>Let’s start with just one parameter, so our quadratic objective is an
 ordinary function:</p>
-<p><span class="math display">\[
+<p><span class="math display">
 f(\theta) = \frac{1}{2}a\theta^2 + c\theta.
-\]</span></p>
-<p>Here <span class="math inline">\(a\)</span> and <span class="math inline">\(c\)</span> are constants. Taking the derivative
+</span></p>
+<p>Here <span class="math inline">a</span> and <span class="math inline">c</span> are constants. Taking the derivative
 gives:</p>
-<p><span class="math display">\[
+<p><span class="math display">
 f'(\theta) = a\theta + c.
-\]</span></p>
-<p>The gradient symbol <span class="math inline">\(\nabla f\)</span>
-we’ve been using is just this derivative when there is only one
-parameter. So the difference between the gradients at two successive
-positions is:</p>
-<p><span class="math display">\[
+</span></p>
+<p>The gradient symbol <span class="math inline">\nabla f</span> we’ve
+been using is just this derivative when there is only one parameter. So
+the difference between the gradients at two successive positions is:</p>
+<p><span class="math display">
 \begin{aligned}
 f'(\theta_t) - f'(\theta_{t-1})
 &amp;= (a\theta_t + c) - (a\theta_{t-1} + c) \\
 &amp;= a(\theta_t - \theta_{t-1}) \\
 &amp;= a v_t.
 \end{aligned}
-\]</span></p>
-<p>The last line uses our definition of the velocity, <span class="math inline">\(v_t = \theta_t - \theta_{t-1}\)</span>. With a
-fixed learning rate, <span class="math inline">\(s_t = -\varepsilon
-f'(\theta_t)\)</span>, so:</p>
-<p><span class="math display">\[
+</span></p>
+<p>The last line uses our definition of the velocity, <span class="math inline">v_t = \theta_t - \theta_{t-1}</span>. With a fixed
+learning rate, <span class="math inline">s_t = -\varepsilon
+f'(\theta_t)</span>, so:</p>
+<p><span class="math display">
 s_t - s_{t-1} = -\varepsilon\left[f'(\theta_t) -
 f'(\theta_{t-1})\right]
 = -\varepsilon a v_t.
-\]</span></p>
-<p>Now keep the momentum coefficient <span class="math inline">\(\mu\)</span> fixed too, and substitute into our
-NAG expression:</p>
-<p><span class="math display">\[
+</span></p>
+<p>Now keep the momentum coefficient <span class="math inline">\mu</span> fixed too, and substitute into our NAG
+expression:</p>
+<p><span class="math display">
 \begin{aligned}
 v_{t+1} &amp;= \mu v_t + s_t + \mu(s_t - s_{t-1}) \\
 &amp;= \mu v_t - \varepsilon f'(\theta_t) - \mu\varepsilon a v_t \\
 &amp;= \mu(1 - \varepsilon a)v_t - \varepsilon f'(\theta_t).
 \end{aligned}
-\]</span></p>
+</span></p>
 <p>This looks like classical momentum with a momentum coefficient of
-<span class="math inline">\(\mu(1-\varepsilon a)\)</span>. And <span class="math inline">\(a=f''(\theta)\)</span> is the curvature of
-our quadratic. NAG keeps nearly all its momentum where the curvature is
+<span class="math inline">\mu(1-\varepsilon a)</span>. And <span class="math inline">a=f''(\theta)</span> is the curvature of our
+quadratic. NAG keeps nearly all its momentum where the curvature is
 close to zero, and reduces it as the positive curvature increases,
-reaching zero at <span class="math inline">\(\varepsilon a=1\)</span>.
+reaching zero at <span class="math inline">\varepsilon a=1</span>.
 Beyond that, the momentum contribution reverses direction. Negative
 curvature increases the momentum instead.</p>
 <p>This result generalizes to quadratic objectives with multiple
@@ -549,61 +533,60 @@ us to unified momentum.</p>
 <p>The earliest example of unified momentum I’ve found is in a 2016
 paper by <a href="https://arxiv.org/abs/1604.03257" class="external-link">Yang, Lin and
 Li</a>.</p>
-<p>The idea is to introduce an extra parameter, <span class="math inline">\(\lambda_t\)</span>, that lets us choose how much
-of the gradient step correction to use:</p>
-<p><span class="math display">\[
+<p>The idea is to introduce an extra parameter, <span class="math inline">\lambda_t</span>, that lets us choose how much of
+the gradient step correction to use:</p>
+<p><span class="math display">
 v_{t+1} = \mu_t v_t + s_t + \lambda_t\mu_t(s_t-s_{t-1})
-\]</span> Setting <span class="math inline">\(\lambda_t = 0\)</span>
-gives classical momentum and <span class="math inline">\(\lambda_t =
-1\)</span> gives NAG.</p>
+</span> Setting <span class="math inline">\lambda_t = 0</span> gives
+classical momentum and <span class="math inline">\lambda_t = 1</span>
+gives NAG.</p>
 <p>For our one-parameter quadratic, the same substitution we used above
 gives:</p>
-<p><span class="math display">\[
+<p><span class="math display">
 v_{t+1} = \mu(1 - \lambda\varepsilon a)v_t - \varepsilon
 f'(\theta_t).
-\]</span></p>
-<p>So <span class="math inline">\(\lambda\)</span> controls how much the
+</span></p>
+<p>So <span class="math inline">\lambda</span> controls how much the
 curvature changes the momentum coefficient.</p>
 <div class="section level3">
 <h3 id="storing-the-nag-update">Storing the NAG update<a class="anchor" aria-label="anchor" href="#storing-the-nag-update"></a>
 </h3>
 <p>The gradient correction seems to require storing the previous
-gradient step as well as the velocity. For NAG, where <span class="math inline">\(\lambda_t=1\)</span>, we can combine them into one
+gradient step as well as the velocity. For NAG, where <span class="math inline">\lambda_t=1</span>, we can combine them into one
 saved vector:</p>
-<p><span class="math display">\[
+<p><span class="math display">
 r_t = v_t - s_{t-1}.
-\]</span></p>
+</span></p>
 <p>This has a meaning in terms of the positions we’ve already defined.
-Since <span class="math inline">\(\phi_t=\theta_{t-1}+s_{t-1}\)</span>,
+Since <span class="math inline">\phi_t=\theta_{t-1}+s_{t-1}</span>,
 after a completed update we have:</p>
-<p><span class="math display">\[
+<p><span class="math display">
 \begin{aligned}
 r_t &amp;= (\theta_t-\theta_{t-1})-s_{t-1} \\
 &amp;= \theta_t-\phi_t \\
 &amp;= \mu_{t-1}b_t.
 \end{aligned}
-\]</span></p>
+</span></p>
 <p>So the saved vector is the gap between the gradient descent and
-momentum positions. Substituting <span class="math inline">\(v_t-s_{t-1}=r_t\)</span> into the NAG update gives
-<span class="math inline">\(v_{t+1}=s_t+\mu_t(r_t+s_t)\)</span>.
-Removing <span class="math inline">\(s_t\)</span> to prepare the saved
-vector for the next iteration leaves us with:</p>
-<p><span class="math display">\[
+momentum positions. Substituting <span class="math inline">v_t-s_{t-1}=r_t</span> into the NAG update gives
+<span class="math inline">v_{t+1}=s_t+\mu_t(r_t+s_t)</span>. Removing
+<span class="math inline">s_t</span> to prepare the saved vector for the
+next iteration leaves us with:</p>
+<p><span class="math display">
 \begin{aligned}
 s_t &amp;= -\varepsilon_t\nabla f(\theta_t), \\
 r_{t+1} &amp;= \mu_t(r_t+s_t), \\
 \theta_{t+1} &amp;= \theta_t+s_t+r_{t+1}.
 \end{aligned}
-\]</span></p>
-<p>Only <span class="math inline">\(r_t\)</span> needs to persist
-alongside the parameters; the actual displacement is <span class="math inline">\(v_{t+1}=s_t+r_{t+1}\)</span>. These equations also
+</span></p>
+<p>Only <span class="math inline">r_t</span> needs to persist alongside
+the parameters; the actual displacement is <span class="math inline">v_{t+1}=s_t+r_{t+1}</span>. These equations also
 work when the learning rate or momentum changes.</p>
-<p>Start with <span class="math inline">\(r_0=0\)</span>, corresponding
-to <span class="math inline">\(\theta_0=\phi_0\)</span>. The first
-displacement is then <span class="math inline">\((1+\mu_0)s_0\)</span>.
-Setting <span class="math inline">\(\mu_0=0\)</span> gives an ordinary
-gradient step; using nonzero momentum gives a longer first step. We’ll
-return to that choice when we unroll the updates.</p>
+<p>Start with <span class="math inline">r_0=0</span>, corresponding to
+<span class="math inline">\theta_0=\phi_0</span>. The first displacement
+is then <span class="math inline">(1+\mu_0)s_0</span>. Setting <span class="math inline">\mu_0=0</span> gives an ordinary gradient step;
+using nonzero momentum gives a longer first step. We’ll return to that
+choice when we unroll the updates.</p>
 </div>
 </div>
 <div class="section level2">
@@ -613,20 +596,19 @@ return to that choice when we unroll the updates.</p>
 NAG, let’s write out the first few steps of the optimization,
 substituting in the recursive definitions with the previous step, and
 see what emerges.</p>
-<p>I’ll assume that the momentum is constant, so we can write <span class="math inline">\(\mu\)</span> without a subscript.</p>
-<p>Initial coordinates are at <span class="math inline">\(\theta_0\)</span>.</p>
+<p>I’ll assume that the momentum is constant, so we can write <span class="math inline">\mu</span> without a subscript.</p>
+<p>Initial coordinates are at <span class="math inline">\theta_0</span>.</p>
 <div class="section level3">
 <h3 id="classical-momentum-1">Classical Momentum<a class="anchor" aria-label="anchor" href="#classical-momentum-1"></a>
 </h3>
 <p>With constant momentum, the classical momentum update is:</p>
-<p><span class="math display">\[
+<p><span class="math display">
 \theta_{t+1} = \theta_t + s_t + \mu v_t
-\]</span></p>
+</span></p>
 <p>And the first four updates (including steepest descent on the first
 iteration) are as follows:</p>
-<p><span class="math display">\[
-\begin{equation}
-\begin{split}
+<p><span class="math display">
+\begin{aligned}
 \theta_1 &amp; = \theta_0 + s_0 \\
 \\
 \theta_2 &amp; = \theta_1 + s_1 + \mu v_1 \\
@@ -639,27 +621,26 @@ iteration) are as follows:</p>
 \theta_4 &amp; = \theta_3 + s_3 + \mu v_3 \\
 &amp; = \theta_3 + s_3 + \mu \left( s_2 + \mu s_1 + \mu^2 s_0 \right)\\
 &amp; = \theta_3 + s_3 + \mu s_2 + \mu^2 s_1 + \mu^3 s_0 \\
-\end{split}
-\end{equation}
-\]</span></p>
+\end{aligned}
+</span></p>
 </div>
 <div class="section level3">
 <h3 id="nag-1">NAG<a class="anchor" aria-label="anchor" href="#nag-1"></a>
 </h3>
 <p>We’ll use this straight-forward expression for NAG:</p>
-<p><span class="math display">\[
+<p><span class="math display">
 \theta_{t+1} = \theta_t + s_t
 + \mu \left(\theta_t + s_t
 - \theta_{t-1} - s_{t-1}
 \right)
-\]</span></p>
+</span></p>
 <p>with just this bit of re-arranging so terms are all grouped together
-and the <span class="math inline">\(v_t\)</span> is at the end, which
-makes it easier to follow the substitution of <span class="math inline">\(v_t\)</span>:</p>
-<p><span class="math display">\[
+and the <span class="math inline">v_t</span> is at the end, which makes
+it easier to follow the substitution of <span class="math inline">v_t</span>:</p>
+<p><span class="math display">
 \theta_{t+1} = \theta_t + \left(1 + \mu \right) s_t - \mu s_{t-1} + \mu
 v_t
-\]</span></p>
+</span></p>
 <div class="section level4">
 <h4 id="the-first-step">The first step<a class="anchor" aria-label="anchor" href="#the-first-step"></a>
 </h4>
@@ -667,31 +648,30 @@ v_t
 the first step is new.</p>
 <p>Like classical momentum, we have no previous directions to draw on
 for the first step. So let’s start both sets of parameters at the same
-place, <span class="math inline">\(\theta_0=\phi_0\)</span>, and see
-what happens. The gradient stage gives us:</p>
-<p><span class="math display">\[
+place, <span class="math inline">\theta_0=\phi_0</span>, and see what
+happens. The gradient stage gives us:</p>
+<p><span class="math display">
 \phi_1 = \theta_0 + s_0,
-\]</span></p>
+</span></p>
 <p>and then the momentum stage gives us:</p>
-<p><span class="math display">\[
+<p><span class="math display">
 \theta_1 = \phi_1 + \mu_0(\phi_1-\phi_0)
 = \theta_0 + (1+\mu_0)s_0.
-\]</span></p>
-<p>There’s the longer first step: with nonzero momentum, we move <span class="math inline">\((1+\mu_0)\)</span> times as far along the negative
+</span></p>
+<p>There’s the longer first step: with nonzero momentum, we move <span class="math inline">(1+\mu_0)</span> times as far along the negative
 gradient. The momentum stage already has something to work with, because
-<span class="math inline">\(\phi_1-\phi_0\)</span> is the gradient step
-we just took.</p>
-<p>If we set <span class="math inline">\(\mu_0=0\)</span>, the two
-stages finish at the same point and we get the same first step as
-classical momentum. This is what the schedule in the <a href="https://proceedings.mlr.press/v28/sutskever13-supp.pdf" class="external-link">Sutskever
+<span class="math inline">\phi_1-\phi_0</span> is the gradient step we
+just took.</p>
+<p>If we set <span class="math inline">\mu_0=0</span>, the two stages
+finish at the same point and we get the same first step as classical
+momentum. This is what the schedule in the <a href="https://proceedings.mlr.press/v28/sutskever13-supp.pdf" class="external-link">Sutskever
 supplement</a> does. We’ll look at both choices, because this apparently
 minor detail will turn up again when we try to get the code to
 agree.</p>
-<p>First, here’s the “long” version, using the same nonzero <span class="math inline">\(\mu\)</span> from the start and taking our results
+<p>First, here’s the “long” version, using the same nonzero <span class="math inline">\mu</span> from the start and taking our results
 after the momentum stage:</p>
-<p><span class="math display">\[
-\begin{equation}
-\begin{split}
+<p><span class="math display">
+\begin{aligned}
 \theta_1 &amp; = \theta_0 + \left( 1 + \mu \right) s_0 \\
 \\
 \theta_2 &amp; = \theta_1 + \left( 1 + \mu \right) s_1 - \mu s_0 + \mu
@@ -714,9 +694,8 @@ v_3 \\
 \mu \right) s_2 + \mu^3 s_1  + \mu^4 s_0 \\
 &amp; = \theta_3 + \left(1 + \mu \right) s_3 + \mu^2 s_2 + \mu^3 s_1 +
 \mu^4 s_0
-\end{split}
-\end{equation}
-\]</span></p>
+\end{aligned}
+</span></p>
 <p>You can see a pattern emerging here at this point, I hope. These are
 quite similar in form compared to the classical momentum.</p>
 </div>
@@ -724,13 +703,12 @@ quite similar in form compared to the classical momentum.</p>
 <div class="section level3">
 <h3 id="nag-with-a-short-first-step">NAG with a “short” first step<a class="anchor" aria-label="anchor" href="#nag-with-a-short-first-step"></a>
 </h3>
-<p>What happens if we set <span class="math inline">\(\mu_0=0\)</span>
-and then use the fixed value <span class="math inline">\(\mu\)</span>
-from the second iteration onwards? We start with the same gradient step
-as classical momentum. Here’s how that plays out:</p>
-<p><span class="math display">\[
-\begin{equation}
-\begin{split}
+<p>What happens if we set <span class="math inline">\mu_0=0</span> and
+then use the fixed value <span class="math inline">\mu</span> from the
+second iteration onwards? We start with the same gradient step as
+classical momentum. Here’s how that plays out:</p>
+<p><span class="math display">
+\begin{aligned}
 \theta_{1} &amp; = \theta_0 + s_0 \\
 \\
 \theta_2 &amp; = \theta_1 + \left( 1 + \mu \right) s_1 - \mu s_0 + \mu
@@ -751,15 +729,14 @@ v_3 \\
 &amp; = \theta_3 + \left( 1 + \mu \right) s_3 - \mu s_2 + \mu \left( 1 +
 \mu \right) s_2 + \mu^3 s_1 \\
 &amp; = \theta_3 + \left( 1 + \mu \right) s_3 + \mu^2 s_2 + \mu^3 s_1
-\end{split}
-\end{equation}
-\]</span></p>
+\end{aligned}
+</span></p>
 <p>Overall the results aren’t that different: nearly all the terms have
-the same coefficients. But the <span class="math inline">\(s_0\)</span>
+the same coefficients. But the <span class="math inline">s_0</span>
 terms cancel out of the second update, and once they’re gone, they’re
-gone for good. The first gradient still got us to <span class="math inline">\(\theta_1\)</span>, of course; we just stop adding
-a contribution from it in later updates. And the second update is <span class="math inline">\((1+\mu)s_1\)</span>, so the “long” gradient step
-has turned up again, one iteration later.</p>
+gone for good. The first gradient still got us to <span class="math inline">\theta_1</span>, of course; we just stop adding a
+contribution from it in later updates. And the second update is <span class="math inline">(1+\mu)s_1</span>, so the “long” gradient step has
+turned up again, one iteration later.</p>
 <div class="section level4">
 <h4 id="relative-weights">Relative Weights<a class="anchor" aria-label="anchor" href="#relative-weights"></a>
 </h4>
@@ -775,65 +752,65 @@ point, the methods weight the current and previous gradient steps:</p>
 </colgroup>
 <thead><tr class="header">
 <th align="center">Momentum Type</th>
-<th align="center"><span class="math inline">\(s_3\)</span></th>
-<th align="center"><span class="math inline">\(s_2\)</span></th>
-<th align="center"><span class="math inline">\(s_1\)</span></th>
-<th align="center"><span class="math inline">\(s_0\)</span></th>
+<th align="center"><span class="math inline">s_3</span></th>
+<th align="center"><span class="math inline">s_2</span></th>
+<th align="center"><span class="math inline">s_1</span></th>
+<th align="center"><span class="math inline">s_0</span></th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td align="center">Classical</td>
 <td align="center">1</td>
-<td align="center"><span class="math inline">\(\mu\)</span></td>
-<td align="center"><span class="math inline">\(\mu^2\)</span></td>
-<td align="center"><span class="math inline">\(\mu^3\)</span></td>
+<td align="center"><span class="math inline">\mu</span></td>
+<td align="center"><span class="math inline">\mu^2</span></td>
+<td align="center"><span class="math inline">\mu^3</span></td>
 </tr>
 <tr class="even">
-<td align="center">NAG, fixed <span class="math inline">\(\mu\)</span>
-from step 0</td>
-<td align="center">1 + <span class="math inline">\(\mu\)</span>
+<td align="center">NAG, fixed <span class="math inline">\mu</span> from
+step 0</td>
+<td align="center">1 + <span class="math inline">\mu</span>
 </td>
-<td align="center"><span class="math inline">\(\mu^2\)</span></td>
-<td align="center"><span class="math inline">\(\mu^3\)</span></td>
-<td align="center"><span class="math inline">\(\mu^4\)</span></td>
+<td align="center"><span class="math inline">\mu^2</span></td>
+<td align="center"><span class="math inline">\mu^3</span></td>
+<td align="center"><span class="math inline">\mu^4</span></td>
 </tr>
 <tr class="odd">
-<td align="center">NAG, <span class="math inline">\(\mu_0=0\)</span>
+<td align="center">NAG, <span class="math inline">\mu_0=0</span>
 startup</td>
-<td align="center">1 + <span class="math inline">\(\mu\)</span>
+<td align="center">1 + <span class="math inline">\mu</span>
 </td>
-<td align="center"><span class="math inline">\(\mu^2\)</span></td>
-<td align="center"><span class="math inline">\(\mu^3\)</span></td>
+<td align="center"><span class="math inline">\mu^2</span></td>
+<td align="center"><span class="math inline">\mu^3</span></td>
 <td align="center">0</td>
 </tr>
 </tbody>
 </table>
-<p>With fixed <span class="math inline">\(\mu\)</span>, NAG gives the
+<p>With fixed <span class="math inline">\mu</span>, NAG gives the
 current gradient step more weight and multiplies the coefficients of all
-the older steps by an extra factor of <span class="math inline">\(\mu\)</span>. After that, the weights decay at the
-same rate for both methods: each older step gets another factor of <span class="math inline">\(\mu\)</span>.</p>
-<p>There’s a nice bit of bookkeeping here too. For <span class="math inline">\(0\leq\mu&lt;1\)</span>, if we keep adding older
-terms, the NAG weights sum to:</p>
-<p><span class="math display">\[
+the older steps by an extra factor of <span class="math inline">\mu</span>. After that, the weights decay at the
+same rate for both methods: each older step gets another factor of <span class="math inline">\mu</span>.</p>
+<p>There’s a nice bit of bookkeeping here too. For <span class="math inline">0\leq\mu&lt;1</span>, if we keep adding older terms,
+the NAG weights sum to:</p>
+<p><span class="math display">
 1 + \mu + \frac{\mu^2}{1-\mu} = \frac{1}{1-\mu}.
-\]</span></p>
+</span></p>
 <p>That’s the same sum as classical momentum. NAG has shifted some
 weight from the older steps to the current one, while keeping the total
 the same.</p>
 <p>Dividing the newest coefficient by this sum gives a long-history
-weight of <span class="math inline">\(1-\mu\)</span> for classical
-momentum and <span class="math inline">\((1+\mu)(1-\mu)=1-\mu^2\)</span>
-for NAG. At <span class="math inline">\(\mu=0.9\)</span>, that’s 10%
-versus 19%. The four-step examples below have much less history to share
-the weight with, so their percentages are larger.</p>
+weight of <span class="math inline">1-\mu</span> for classical momentum
+and <span class="math inline">(1+\mu)(1-\mu)=1-\mu^2</span> for NAG. At
+<span class="math inline">\mu=0.9</span>, that’s 10% versus 19%. The
+four-step examples below have much less history to share the weight
+with, so their percentages are larger.</p>
 <p>The regularity of the difference between classical momentum and NAG
 weights suggest that there should be a way to express the NAG update in
 terms of a classical momentum update. See the section on ‘Dozat Nesterov
 momentum’ below for more on that.</p>
 <p>Let’s write some R code to generate a table to compare how the
 relative weights turn out between CM and NAG at different values of
-<span class="math inline">\(\mu\)</span>. We’ll normalize the
-coefficients so they sum to 1.</p>
+<span class="math inline">\mu</span>. We’ll normalize the coefficients
+so they sum to 1.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cm_weights</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">mu</span><span class="op">)</span> <span class="op">{</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">mu</span>, <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span>, <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span><span class="op">)</span> <span class="op">}</span></span>
 <span></span>
@@ -973,7 +950,7 @@ coefficients so they sum to 1.</p>
 </table>
 </div>
 <div class="section level4">
-<h4 id="nag-weights-with-mu_00-startup">NAG weights with <span class="math inline">\(\mu_0=0\)</span>
+<h4 id="nag-weights-with-mu_00-startup">NAG weights with <span class="math inline">\mu_0=0</span>
 startup<a class="anchor" aria-label="anchor" href="#nag-weights-with-mu_00-startup"></a>
 </h4>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
@@ -1040,18 +1017,17 @@ emphasis, even after just four iterations.</p>
 <div class="section level3">
 <h3 id="unrolling-with-a-momentum-schedule">Unrolling with a momentum schedule<a class="anchor" aria-label="anchor" href="#unrolling-with-a-momentum-schedule"></a>
 </h3>
-<p>I kept <span class="math inline">\(\mu\)</span> constant in the
-unrolling expressions so far to keep things neat and to highlight some
-similarities between CM and NAG. But what if we want <span class="math inline">\(\mu\)</span> to vary with iteration? In our
+<p>I kept <span class="math inline">\mu</span> constant in the unrolling
+expressions so far to keep things neat and to highlight some
+similarities between CM and NAG. But what if we want <span class="math inline">\mu</span> to vary with iteration? In our
 derivations of Nesterov momentum schemes we have explicitly accounted
-for <span class="math inline">\(\mu_t\)</span> so let’s take a look (and
+for <span class="math inline">\mu_t</span> so let’s take a look (and
 brace ourselves for the expressions to lose a lot of readability):</p>
 <div class="section level4">
 <h4 id="classical-momentum-with-a-schedule">Classical Momentum with a Schedule<a class="anchor" aria-label="anchor" href="#classical-momentum-with-a-schedule"></a>
 </h4>
-<p><span class="math display">\[
-\begin{equation}
-\begin{split}
+<p><span class="math display">
+\begin{aligned}
 \theta_1 &amp; = \theta_0 + s_0 \\
 \\
 \theta_2 &amp; = \theta_1 + s_1 + \mu_1 v_1 \\
@@ -1066,16 +1042,14 @@ brace ourselves for the expressions to lose a lot of readability):</p>
 \right)\\
 &amp; = \theta_3 + s_3 + \mu_3 s_2 + \mu_3 \mu_2 s_1 + \mu_3 \mu_2 \mu_1
 s_0 \\
-\end{split}
-\end{equation}
-\]</span> Already this is looking pretty gross.</p>
+\end{aligned}
+</span> Already this is looking pretty gross.</p>
 </div>
 <div class="section level4">
 <h4 id="nag-with-a-momentum-schedule">NAG with a Momentum Schedule<a class="anchor" aria-label="anchor" href="#nag-with-a-momentum-schedule"></a>
 </h4>
-<p><span class="math display">\[
-\begin{equation}
-\begin{split}
+<p><span class="math display">
+\begin{aligned}
 \theta_1 &amp; = \theta_0 + \left( 1 + \mu_0 \right) s_0 \\
 \\
 \theta_2 &amp; = \theta_1 + \left( 1 + \mu_1 \right) s_1 - \mu_1 s_0 +
@@ -1101,15 +1075,14 @@ s_0 \right] \\
 \mu_0 s_0 \\
 &amp; = \theta_3 + \left(1 + \mu_3 \right) s_3 + \mu_3 \mu_2 s_2 + \mu_3
 \mu_2 \mu_1 s_1 + \mu_3 \mu_2 \mu_1 \mu_0 s_0
-\end{split}
-\end{equation}
-\]</span></p>
+\end{aligned}
+</span></p>
 <p>I can see why I was in no hurry to write all that out in full until
-now. With a <span class="math inline">\(\mu_0=0\)</span> startup, the
-<span class="math inline">\(s_0\)</span> term vanishes after the first
-returned point, just as in the constant-<span class="math inline">\(\mu\)</span> calculation above.</p>
+now. With a <span class="math inline">\mu_0=0</span> startup, the <span class="math inline">s_0</span> term vanishes after the first returned
+point, just as in the constant-<span class="math inline">\mu</span>
+calculation above.</p>
 <p>Here’s a comparison of the weights applied to the different gradient
-steps at <span class="math inline">\(\theta_4\)</span>:</p>
+steps at <span class="math inline">\theta_4</span>:</p>
 <table class="table">
 <colgroup>
 <col width="17%">
@@ -1120,36 +1093,34 @@ steps at <span class="math inline">\(\theta_4\)</span>:</p>
 </colgroup>
 <thead><tr class="header">
 <th align="center">Momentum Type</th>
-<th align="left"><span class="math inline">\(s_3\)</span></th>
-<th align="left"><span class="math inline">\(s_2\)</span></th>
-<th align="left"><span class="math inline">\(s_1\)</span></th>
-<th align="left"><span class="math inline">\(s_0\)</span></th>
+<th align="left"><span class="math inline">s_3</span></th>
+<th align="left"><span class="math inline">s_2</span></th>
+<th align="left"><span class="math inline">s_1</span></th>
+<th align="left"><span class="math inline">s_0</span></th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td align="center">Classical</td>
 <td align="left">1</td>
-<td align="left"><span class="math inline">\(\mu_3\)</span></td>
-<td align="left"><span class="math inline">\(\mu_3 \mu_2\)</span></td>
-<td align="left"><span class="math inline">\(\mu_3 \mu_2
-\mu_1\)</span></td>
+<td align="left"><span class="math inline">\mu_3</span></td>
+<td align="left"><span class="math inline">\mu_3 \mu_2</span></td>
+<td align="left"><span class="math inline">\mu_3 \mu_2 \mu_1</span></td>
 </tr>
 <tr class="even">
 <td align="center">NAG</td>
-<td align="left">1 + <span class="math inline">\(\mu_3\)</span>
+<td align="left">1 + <span class="math inline">\mu_3</span>
 </td>
-<td align="left"><span class="math inline">\(\mu_3 \mu_2\)</span></td>
-<td align="left"><span class="math inline">\(\mu_3 \mu_2
-\mu_1\)</span></td>
-<td align="left"><span class="math inline">\(\mu_3 \mu_2 \mu_1
-\mu_0\)</span></td>
+<td align="left"><span class="math inline">\mu_3 \mu_2</span></td>
+<td align="left"><span class="math inline">\mu_3 \mu_2 \mu_1</span></td>
+<td align="left"><span class="math inline">\mu_3 \mu_2 \mu_1
+\mu_0</span></td>
 </tr>
 </tbody>
 </table>
 <p>Now the momentum is not constant at each iteration, we see a more
 complex relationship between the CM and NAG weights. There definitely
 doesn’t seem to be a simple re-weighting that could map from CM to NAG
-here: each gradient needs re-weighting by a different <span class="math inline">\(\mu_t\)</span>.</p>
+here: each gradient needs re-weighting by a different <span class="math inline">\mu_t</span>.</p>
 </div>
 </div>
 </div>
@@ -1160,46 +1131,39 @@ here: each gradient needs re-weighting by a different <span class="math inline">
 integrating Nesterov momentum</a> into the <a href="https://arxiv.org/abs/1412.6980" class="external-link">Adam</a> gives a slightly
 different expression, that is quite closely related to the Bengio
 form:</p>
-<p><span class="math display">\[
-\begin{equation}
-\begin{split}
+<p><span class="math display">
+\begin{aligned}
 \theta_{t+1} &amp; = \phi_{t+1} + \mu_{t}\left(\phi_{t+1} - \phi_{t}
 \right) \\
 &amp; = \phi_{t+1} + \mu_{t} b_{t+1} \\
 &amp; = \theta_{t} + s_{t} + \mu_{t} b_{t+1}
-\end{split}
-\end{equation}
-\]</span> Now let us express <span class="math inline">\(b_{t+1}\)</span> recursively in terms of the
-previous <span class="math inline">\(b_{t}\)</span>:</p>
-<p><span class="math display">\[
-\begin{equation}
-\begin{split}
+\end{aligned}
+</span> Now let us express <span class="math inline">b_{t+1}</span>
+recursively in terms of the previous <span class="math inline">b_{t}</span>:</p>
+<p><span class="math display">
+\begin{aligned}
 b_{t+1} &amp; = \phi_{t+1} - \phi_{t} \\
 &amp; = \left(\theta_{t} + s_{t} \right) - \phi_{t} \\
 &amp; = \phi_{t} + \mu_{t-1} \left(\phi_{t} - \phi_{t-1} \right) + s_{t}
 - \phi_{t} \\
 &amp; = \mu_{t-1} b_{t} + s_{t}
-\end{split}
-\end{equation}
-\]</span> This looks just like the classical momentum update, with <span class="math inline">\(b_t\)</span> instead of <span class="math inline">\(m_t\)</span> or <span class="math inline">\(v_t\)</span> and the momentum coefficient shifted
-back one iteration. Let’s put the two forms next to each other.</p>
+\end{aligned}
+</span> This looks just like the classical momentum update, with <span class="math inline">b_t</span> instead of <span class="math inline">m_t</span> or <span class="math inline">v_t</span>
+and the momentum coefficient shifted back one iteration. Let’s put the
+two forms next to each other.</p>
 <p>Classical momentum looks like:</p>
-<p><span class="math display">\[
-\begin{equation}
-\begin{split}
+<p><span class="math display">
+\begin{aligned}
 m_{t+1} = \mu_t m_{t} + s_{t} \\
 \theta_{t+1} = \theta_{t} + m_{t+1}
-\end{split}
-\end{equation}
-\]</span> and NAG looks like:</p>
-<p><span class="math display">\[
-\begin{equation}
-\begin{split}
+\end{aligned}
+</span> and NAG looks like:</p>
+<p><span class="math display">
+\begin{aligned}
 b_{t+1} = \mu_{t-1} b_{t} + s_{t} \\
 \theta_{t+1} = \theta_{t} + s_{t} + \mu_{t} b_{t+1}
-\end{split}
-\end{equation}
-\]</span></p>
+\end{aligned}
+</span></p>
 <p>So a very similar recursive form for the momentum buffer for both CM
 and NAG, but using momentum from a different time step, and then a
 different velocity vector for the update. The Dozat paper shifts the
@@ -1214,42 +1178,40 @@ step also turns up in <a href="https://arxiv.org/abs/1810.06801" class="external
 (QHM)</a>, introduced by Ma and Yarats in 2018. I wrote some extra <a href="https://jlmelville.github.io/mize/articles/qhm.html">notes on
 QHM</a> for my own benefit, but we can make the connection here with the
 expressions we already have.</p>
-<p>With fixed momentum, the buffer <span class="math inline">\(b_t\)</span> above follows the classical momentum
-recurrence:</p>
-<p><span class="math display">\[
+<p>With fixed momentum, the buffer <span class="math inline">b_t</span>
+above follows the classical momentum recurrence:</p>
+<p><span class="math display">
 b_{t+1} = \mu b_t + s_t.
-\]</span></p>
+</span></p>
 <p>Now recall <a href="#unified-momentum">unified momentum</a>. Keeping
-<span class="math inline">\(\mu\)</span>, <span class="math inline">\(\varepsilon\)</span> and <span class="math inline">\(\lambda\)</span> fixed, with <span class="math inline">\(0\leq\mu&lt;1\)</span>, its update is:</p>
-<p><span class="math display">\[
+<span class="math inline">\mu</span>, <span class="math inline">\varepsilon</span> and <span class="math inline">\lambda</span> fixed, with <span class="math inline">0\leq\mu&lt;1</span>, its update is:</p>
+<p><span class="math display">
 v_{t+1} = \mu v_t + s_t + \lambda\mu(s_t - s_{t-1})
-\]</span></p>
-<p>Starting with <span class="math inline">\(v_0=b_0=s_{-1}=0\)</span>,
-a bit of substitution gives the following expression, which you can
-check by induction:</p>
-<p><span class="math display">\[
+</span></p>
+<p>Starting with <span class="math inline">v_0=b_0=s_{-1}=0</span>, a
+bit of substitution gives the following expression, which you can check
+by induction:</p>
+<p><span class="math display">
 \boxed{
 v_{t+1} = \lambda s_t
 + \left[1 - \lambda(1 - \mu)\right]b_{t+1}.
 }
-\]</span></p>
-<p>Setting <span class="math inline">\(\lambda=1\)</span> gives <span class="math inline">\(v_{t+1}=s_t+\mu b_{t+1}\)</span>, exactly the
-Dozat update above. Setting <span class="math inline">\(\lambda=0\)</span> gives <span class="math inline">\(v_{t+1}=b_{t+1}\)</span>, the classical momentum
+</span></p>
+<p>Setting <span class="math inline">\lambda=1</span> gives <span class="math inline">v_{t+1}=s_t+\mu b_{t+1}</span>, exactly the Dozat
+update above. Setting <span class="math inline">\lambda=0</span> gives
+<span class="math inline">v_{t+1}=b_{t+1}</span>, the classical momentum
 update.</p>
-<p>QHM normalizes its momentum buffer by a factor of <span class="math inline">\(1-\mu\)</span>, which means we also need to
-rescale the learning rate. Translating into the QHM paper’s symbols
-gives:</p>
-<p><span class="math display">\[
+<p>QHM normalizes its momentum buffer by a factor of <span class="math inline">1-\mu</span>, which means we also need to rescale
+the learning rate. Translating into the QHM paper’s symbols gives:</p>
+<p><span class="math display">
 \beta_{\mathrm{QHM}} = \mu, \qquad
 \nu_{\mathrm{QHM}} = 1 - \lambda(1 - \mu), \qquad
 \alpha_{\mathrm{QHM}} = \frac{\varepsilon}{1 - \mu}.
-\]</span></p>
-<p>With <span class="math inline">\(\lambda=0\)</span>, we get <span class="math inline">\(\nu_{\mathrm{QHM}}=1\)</span>, which is classical
-momentum. With <span class="math inline">\(\lambda=1\)</span>, we get
-<span class="math inline">\(\nu_{\mathrm{QHM}}=\mu\)</span>, which is
-NAG. So letting <span class="math inline">\(\lambda\)</span> run from 0
-to 1 takes us along the part of QHM between classical momentum and
-NAG.</p>
+</span></p>
+<p>With <span class="math inline">\lambda=0</span>, we get <span class="math inline">\nu_{\mathrm{QHM}}=1</span>, which is classical
+momentum. With <span class="math inline">\lambda=1</span>, we get <span class="math inline">\nu_{\mathrm{QHM}}=\mu</span>, which is NAG. So
+letting <span class="math inline">\lambda</span> run from 0 to 1 takes
+us along the part of QHM between classical momentum and NAG.</p>
 </div>
 <div class="section level3">
 <h3 id="where-the-learning-rate-lives">Where the learning rate lives<a class="anchor" aria-label="anchor" href="#where-the-learning-rate-lives"></a>
@@ -1257,29 +1219,29 @@ NAG.</p>
 <p>There’s another implementation detail that changes the weighting of
 history: does an old gradient keep the learning rate it had when we
 calculated it, or does today’s learning rate rescale its contribution?
-To isolate that question, keep <span class="math inline">\(\mu\)</span>
-fixed and write <span class="math inline">\(g_t=\nabla
-f(\theta_t)\)</span>.</p>
+To isolate that question, keep <span class="math inline">\mu</span>
+fixed and write <span class="math inline">g_t=\nabla
+f(\theta_t)</span>.</p>
 <p>Our buffer stores gradient steps, including their learning rates:</p>
-<p><span class="math display">\[
+<p><span class="math display">
 \begin{aligned}
 b_{t+1} &amp;= \mu b_t-\varepsilon_t g_t, \\
 \theta_{t+1} &amp;= \theta_t-\varepsilon_t g_t+\mu b_{t+1}.
 \end{aligned}
-\]</span></p>
-<p>Alternatively, we can store the gradients in a buffer <span class="math inline">\(B_t\)</span>, and apply the learning rate when we
+</span></p>
+<p>Alternatively, we can store the gradients in a buffer <span class="math inline">B_t</span>, and apply the learning rate when we
 update the parameters:</p>
-<p><span class="math display">\[
+<p><span class="math display">
 \begin{aligned}
 B_{t+1} &amp;= \mu B_t+g_t, \\
 \theta_{t+1} &amp;= \theta_t-\varepsilon_t(g_t+\mu B_{t+1}).
 \end{aligned}
-\]</span></p>
+</span></p>
 <p>With a constant learning rate and both buffers starting at zero,
-<span class="math inline">\(b_t=-\varepsilon B_t\)</span> makes the
-updates equivalent. With a changing learning rate, the first version
-preserves the old learning rates inside its accumulated steps, while the
-second applies the current rate to the whole gradient history. They can
+<span class="math inline">b_t=-\varepsilon B_t</span> makes the updates
+equivalent. With a changing learning rate, the first version preserves
+the old learning rates inside its accumulated steps, while the second
+applies the current rate to the whole gradient history. They can
 therefore give different results under the same learning-rate
 schedule.</p>
 <p>These are both used in practice: <a href="https://keras.io/api/optimizers/sgd/" class="external-link">Keras</a> documents the
@@ -1456,9 +1418,9 @@ demonstrate the different methods are in fact equivalent.</p>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>par <span class="op">=</span> <span class="va">par</span>, f <span class="op">=</span> <span class="va">f</span>, fs <span class="op">=</span> <span class="va">fs</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>Because this implementation uses constant momentum, we can replace
-<span class="math inline">\(\mu_{t-1}\mu_t\)</span> with <span class="math inline">\(\mu^2\)</span>. Easy enough, until we decide to
-start momentum at zero: on the next iteration, the product is still
-zero, while <span class="math inline">\(\mu^2\)</span> isn’t. That’s the
+<span class="math inline">\mu_{t-1}\mu_t</span> with <span class="math inline">\mu^2</span>. Easy enough, until we decide to start
+momentum at zero: on the next iteration, the product is still zero,
+while <span class="math inline">\mu^2</span> isn’t. That’s the
 difference between some momentum and no momentum. We shall return to
 this point later.</p>
 </div>
@@ -1519,7 +1481,7 @@ momentum.</p>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>par <span class="op">=</span> <span class="va">par</span>, f <span class="op">=</span> <span class="va">f</span>, fs <span class="op">=</span> <span class="va">fs</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>Finally, here is your humble author’s expression for NAG, written as
-a momentum-style update. This is unified momentum with <span class="math inline">\(\lambda=1\)</span>. To differentiate from the
+a momentum-style update. This is unified momentum with <span class="math inline">\lambda=1</span>. To differentiate from the
 Sutskever and Bengio versions of NAG, I’ll refer to it as momentum-NAG
 or mNAG.</p>
 </div>
@@ -1659,20 +1621,21 @@ iteration result is from the gradient descent stage, and the Bengio
 result comes from the momentum stage. But if we put the momentum results
 from the Sutskever formulation up, we can see that they are the same as
 the Bengio result, but behind by one iteration, i.e. the Bengio result
-at iteration <span class="math inline">\(t\)</span> matches the
-Sutskever momentum stage result at <span class="math inline">\(t+1\)</span>. The mNAG column uses the alternative
-derivation above and matches the Bengio results. Hurrah.</p>
+at iteration <span class="math inline">t</span> matches the Sutskever
+momentum stage result at <span class="math inline">t+1</span>. The mNAG
+column uses the alternative derivation above and matches the Bengio
+results. Hurrah.</p>
 <p><em>18 December 2021</em> The results for Dozat’s version of Nesterov
 momentum have also been added. As expected, it matches the Bengio and
 mNAG results. Not much else to say about it so it won’t appear in any
 further discussion.</p>
 <p>However, none of these results match the vanilla <code>nag</code>
 implementation. A clue to what’s going on is in the first row: NAG and
-CM have the same result, because setting <span class="math inline">\(\mu_0=0\)</span> in <code>nag</code> gives us the
-same initial gradient step. Sutskever also stops after gradient descent
-on its first iteration. The Bengio, Dozat and mNAG routines take the
-“long” first step, and even Sutskever parts company with
-<code>nag</code> on the next iteration.</p>
+CM have the same result, because setting <span class="math inline">\mu_0=0</span> in <code>nag</code> gives us the same
+initial gradient step. Sutskever also stops after gradient descent on
+its first iteration. The Bengio, Dozat and mNAG routines take the “long”
+first step, and even Sutskever parts company with <code>nag</code> on
+the next iteration.</p>
 <p>We’ll get back to this, but let’s just make sure these observations
 hold up at the end of the table too.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
@@ -1782,9 +1745,9 @@ the start.</li>
 others end after the momentum stage.</li>
 </ul>
 <p>For the first point, the Bengio, Dozat and mNAG routines give us
-<span class="math inline">\(\theta_0+(1+\mu)s_0\)</span>, even with
-their momentum buffers starting at zero. This is the “long” first step
-we met when unrolling the updates.</p>
+<span class="math inline">\theta_0+(1+\mu)s_0</span>, even with their
+momentum buffers starting at zero. This is the “long” first step we met
+when unrolling the updates.</p>
 <p>What about the Sutskever formulation? Let’s think about the chain of
 parameter updates that actually take place over the first few
 iterations:</p>
@@ -1809,7 +1772,7 @@ don’t agree.</p>
 <p>We’ve spent quite a lot of effort showing that these expressions are
 equivalent, so it would be nice to get the same numbers out of them.
 Let’s give them all the same start as our <code>nag</code> routine, with
-<span class="math inline">\(\mu_0=0\)</span>, and compare the results at
+<span class="math inline">\mu_0=0</span>, and compare the results at
 matching stages.</p>
 <div class="section level3">
 <h3 id="sutskever-formulation-with-matched-startup">Sutskever formulation with matched startup<a class="anchor" aria-label="anchor" href="#sutskever-formulation-with-matched-startup"></a>
@@ -1889,11 +1852,11 @@ stages in a row that should sync us up with <code>nag</code>.</p>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>par <span class="op">=</span> <span class="va">par</span>, f <span class="op">=</span> <span class="va">f</span>, fs <span class="op">=</span> <span class="va">fs</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>Getting the Bengio formulation to agree takes a bit more work than
-you might think. With <span class="math inline">\(\mu_0=0\)</span>, the
-product <span class="math inline">\(\mu_0\mu_1\)</span> is zero on the
-second iteration, so our convenient replacement by <span class="math inline">\(\mu^2\)</span> breaks down. We can’t just set
+you might think. With <span class="math inline">\mu_0=0</span>, the
+product <span class="math inline">\mu_0\mu_1</span> is zero on the
+second iteration, so our convenient replacement by <span class="math inline">\mu^2</span> breaks down. We can’t just set
 <code>mu</code> to zero for that whole iteration either, because we
-still need the nonzero value in <span class="math inline">\(1+\mu_1\)</span>.</p>
+still need the nonzero value in <span class="math inline">1+\mu_1</span>.</p>
 <p>We could start storing the previous momentum coefficient, even though
 I chose constant momentum to keep things simple. Or we can leave the
 buffer at zero during the first iteration, which gets us the same next
