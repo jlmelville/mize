@@ -175,8 +175,12 @@ test_that("gradient checking rejects unusable difference arithmetic", {
 test_that("gradient checking shares optimizer callback shape contracts", {
   for (component in c("fn", "gr", "combined_fn", "combined_gr")) {
     fg <- list(fn = function(x) sum(x^2), gr = function(x) 2 * x)
-    if (component == "fn") fg$fn <- function(x) matrix(sum(x^2), 1)
-    if (component == "gr") fg$gr <- function(x) matrix(2 * x, 1)
+    if (component == "fn") {
+      fg$fn <- function(x) matrix(sum(x^2), 1)
+    }
+    if (component == "gr") {
+      fg$gr <- function(x) matrix(2 * x, 1)
+    }
     if (component == "combined_fn") {
       fg$fg <- function(x) list(fn = array(sum(x^2), 1), gr = 2 * x)
     }

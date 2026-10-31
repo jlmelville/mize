@@ -4,8 +4,12 @@ test_that("progress preserves late columns, types and missing observations", {
   progress <- make_progress()
   for (i in 0:299) {
     row <- list(iter = i * 2L, nf = i, step = 0.5)
-    if (i > 0) row$ls_reason <- "wolfe"
-    if (i == 2) row$f <- 3
+    if (i > 0) {
+      row$ls_reason <- "wolfe"
+    }
+    if (i == 2) {
+      row$f <- 3
+    }
     progress$add(row)
   }
   frame <- progress$finish()
