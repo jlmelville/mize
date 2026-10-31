@@ -10,7 +10,7 @@ This is a feature and maintenance release.
 * Fedora 44 (on R-hub), R-devel 4.7.0, GCC 16.2.1, ATLAS 3.10 and MKL 2025.3
 * local Windows 11 build, R 4.6.2
 * Windows Server 2025 (on GitHub Actions), R 4.5.3 and R 4.6.2
-* Windows Server 2022 (on Win-builder), R-devel (2026-08-27 r90452, UCRT),
+* Windows Server 2022 (on Win-builder), R-devel (2026-10-30 r90805, UCRT),
   GCC 14.3.0
 * local macOS Tahoe, R 4.6.2
 * macOS Tahoe 26 (on GitHub Actions), R 4.6.2
