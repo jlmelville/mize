@@ -2,6 +2,8 @@
 
 ## mize 0.3.0
 
+CRAN release: 2026-10-31
+
 This release improves optimizer robustness, input validation, and
 progress diagnostics.
 
