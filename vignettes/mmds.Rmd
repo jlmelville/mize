@@ -153,8 +153,7 @@ gradient_summary <- data.frame(
   max_abs_error = gradient_check$max_abs_error,
   max_rel_error = gradient_check$max_rel_error,
   fg_fn_abs_error = gradient_check$fg_consistency$fn$abs_error,
-  fg_gr_max_abs_error =
-    gradient_check$fg_consistency$gr$max_abs_error
+  fg_gr_max_abs_error = gradient_check$fg_consistency$gr$max_abs_error
 )
 knitr::kable(
   signif(gradient_summary, digits = 4),
@@ -268,11 +267,14 @@ found the global minimum.
 stopifnot(
   all(vapply(results, `[[`, character(1), "status") == "converged"),
   all(vapply(results, `[[`, logical(1), "converged")),
-  all(vapply(
-    results,
-    function(result) result$terminate$what,
-    character(1)
-  ) == "rel_tol"),
+  all(
+    vapply(
+      results,
+      function(result) result$terminate$what,
+      character(1)
+    ) ==
+      "rel_tol"
+  ),
   all(vapply(results, `[[`, numeric(1), "f") < initial_stress),
   isTRUE(all.equal(
     separate_result$par,
@@ -328,10 +330,13 @@ project_geography <- function(longitude, latitude) {
   degrees_to_radians <- pi / 180
 
   cbind(
-    x = earth_radius_km * cos(reference_latitude * degrees_to_radians) *
-      (longitude - reference_longitude) * degrees_to_radians,
+    x = earth_radius_km *
+      cos(reference_latitude * degrees_to_radians) *
+      (longitude - reference_longitude) *
+      degrees_to_radians,
     y = earth_radius_km *
-      (latitude - reference_latitude) * degrees_to_radians
+      (latitude - reference_latitude) *
+      degrees_to_radians
   )
 }
 ```
@@ -480,8 +485,27 @@ graphics::points(
   cex = 0.75
 )
 label_positions <- c(
-  4, 2, 1, 2, 2, 4, 4, 4, 2, 4, 2,
-  2, 2, 2, 4, 4, 4, 2, 4, 4, 4
+  4,
+  2,
+  1,
+  2,
+  2,
+  4,
+  4,
+  4,
+  2,
+  4,
+  2,
+  2,
+  2,
+  2,
+  4,
+  4,
+  4,
+  2,
+  4,
+  4,
+  4
 )
 graphics::text(
   geographic_coordinates[, 1],
@@ -563,7 +587,8 @@ invariant_stress <- vapply(
 )
 relative_invariance_error <- max(
   abs(invariant_stress - combined_result$f)
-) / max(1, abs(combined_result$f))
+) /
+  max(1, abs(combined_result$f))
 stopifnot(relative_invariance_error < 1e-12)
 ```
 

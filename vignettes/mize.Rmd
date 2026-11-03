@@ -139,7 +139,11 @@ res[c("converged", "terminate")]
 ```{r assert-result, include=FALSE}
 initial_f <- rb_fg$fn(rb0)
 convergence_reasons <- c(
-  "abs_tol", "rel_tol", "grad_tol", "ginf_tol", "step_tol"
+  "abs_tol",
+  "rel_tol",
+  "grad_tol",
+  "ginf_tol",
+  "step_tol"
 )
 
 stopifnot(
