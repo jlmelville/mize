@@ -834,11 +834,17 @@ relative weights turn out between CM and NAG at different values of
 <span class="math inline">\mu</span>. We’ll normalize the coefficients
 so they sum to 1.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">cm_weights</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">mu</span><span class="op">)</span> <span class="op">{</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">mu</span>, <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span>, <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span><span class="op">)</span> <span class="op">}</span></span>
+<code class="sourceCode R"><span><span class="va">cm_weights</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">mu</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">mu</span>, <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span>, <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">nag_zero_start_weights</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">mu</span><span class="op">)</span> <span class="op">{</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span> <span class="op">+</span> <span class="va">mu</span>, <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span>, <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span>, <span class="fl">0</span><span class="op">)</span> <span class="op">}</span></span>
+<span><span class="va">nag_zero_start_weights</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">mu</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span> <span class="op">+</span> <span class="va">mu</span>, <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span>, <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span>, <span class="fl">0</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">nag_weights</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">mu</span><span class="op">)</span> <span class="op">{</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span> <span class="op">+</span> <span class="va">mu</span>, <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span>, <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span>, <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span><span class="op">)</span> <span class="op">}</span></span>
+<span><span class="va">nag_weights</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">mu</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span> <span class="op">+</span> <span class="va">mu</span>, <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span>, <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span>, <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
 <span></span>
 <span></span>
 <span><span class="va">mumat</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">wfun</span>, <span class="va">mus</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">0.25</span>, <span class="fl">0.5</span>, <span class="fl">0.75</span>, <span class="fl">0.9</span>, <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
@@ -1519,14 +1525,15 @@ point:</p>
 <span><span class="va">fn</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">x1</span> <span class="op">&lt;-</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span></span>
 <span>  <span class="va">x2</span> <span class="op">&lt;-</span> <span class="va">x</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span></span>
-<span>  <span class="fl">100</span> <span class="op">*</span> <span class="op">(</span><span class="va">x2</span> <span class="op">-</span> <span class="va">x1</span> <span class="op">*</span> <span class="va">x1</span><span class="op">)</span> <span class="op">^</span> <span class="fl">2</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="va">x1</span><span class="op">)</span> <span class="op">^</span> <span class="fl">2</span></span>
+<span>  <span class="fl">100</span> <span class="op">*</span> <span class="op">(</span><span class="va">x2</span> <span class="op">-</span> <span class="va">x1</span> <span class="op">*</span> <span class="va">x1</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="va">x1</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span></span>
 <span><span class="op">}</span></span>
 <span><span class="va">gr</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">x1</span> <span class="op">&lt;-</span> <span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span></span>
 <span>  <span class="va">x2</span> <span class="op">&lt;-</span> <span class="va">x</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
 <span>    <span class="op">-</span><span class="fl">400</span> <span class="op">*</span> <span class="va">x1</span> <span class="op">*</span> <span class="op">(</span><span class="va">x2</span> <span class="op">-</span> <span class="va">x1</span> <span class="op">*</span> <span class="va">x1</span><span class="op">)</span> <span class="op">-</span> <span class="fl">2</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="va">x1</span><span class="op">)</span>,</span>
-<span>    <span class="fl">200</span> <span class="op">*</span>      <span class="op">(</span><span class="va">x2</span> <span class="op">-</span> <span class="va">x1</span> <span class="op">*</span> <span class="va">x1</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="fl">200</span> <span class="op">*</span> <span class="op">(</span><span class="va">x2</span> <span class="op">-</span> <span class="va">x1</span> <span class="op">*</span> <span class="va">x1</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>Let’s run the optimizers for 100 iterations. The point here is not
 whether we get really amazing optimization (we don’t), but whether the
@@ -1546,19 +1553,27 @@ routine.</p>
 <span></span>
 <span><span class="va">cm_opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/grDevices/cm.html" class="external-link">cm</a></span><span class="op">(</span><span class="va">par</span>, <span class="va">fn</span>, <span class="va">gr</span>, <span class="va">lr</span>, <span class="va">mu</span>, <span class="va">max_iter</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">sbnag_df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>Bengio <span class="op">=</span> <span class="va">bnag_opt</span><span class="op">$</span><span class="va">fs</span>,</span>
-<span>                 Sutskever <span class="op">=</span> <span class="va">snag_opt</span><span class="op">$</span><span class="va">fs</span>,</span>
-<span>                 <span class="st">"Suts Mom"</span> <span class="op">=</span> <span class="va">snag_opt</span><span class="op">$</span><span class="va">mu_fs</span>,</span>
-<span>                 <span class="st">"NAG"</span> <span class="op">=</span> <span class="va">nag_opt</span><span class="op">$</span><span class="va">fs</span>,</span>
-<span>                 <span class="st">"mNAG"</span> <span class="op">=</span> <span class="va">mnag_opt</span><span class="op">$</span><span class="va">fs</span>,</span>
-<span>                 <span class="st">"Dozat"</span> <span class="op">=</span> <span class="va">dnag_opt</span><span class="op">$</span><span class="va">fs</span>,</span>
-<span>                 <span class="st">"CM"</span> <span class="op">=</span> <span class="va">cm_opt</span><span class="op">$</span><span class="va">fs</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">sbnag_df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  Bengio <span class="op">=</span> <span class="va">bnag_opt</span><span class="op">$</span><span class="va">fs</span>,</span>
+<span>  Sutskever <span class="op">=</span> <span class="va">snag_opt</span><span class="op">$</span><span class="va">fs</span>,</span>
+<span>  <span class="st">"Suts Mom"</span> <span class="op">=</span> <span class="va">snag_opt</span><span class="op">$</span><span class="va">mu_fs</span>,</span>
+<span>  <span class="st">"NAG"</span> <span class="op">=</span> <span class="va">nag_opt</span><span class="op">$</span><span class="va">fs</span>,</span>
+<span>  <span class="st">"mNAG"</span> <span class="op">=</span> <span class="va">mnag_opt</span><span class="op">$</span><span class="va">fs</span>,</span>
+<span>  <span class="st">"Dozat"</span> <span class="op">=</span> <span class="va">dnag_opt</span><span class="op">$</span><span class="va">fs</span>,</span>
+<span>  <span class="st">"CM"</span> <span class="op">=</span> <span class="va">cm_opt</span><span class="op">$</span><span class="va">fs</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 <p>Let’s have a look at the first few iteration results:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">sbnag_df</span><span class="op">)</span>, caption <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span></span>
-<span>  <span class="st">"First few evaluations of NAG implementations, with lr = "</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC</a></span><span class="op">(</span><span class="va">lr</span><span class="op">)</span>, <span class="st">"mu = "</span>, <span class="fu"><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC</a></span><span class="op">(</span><span class="va">mu</span><span class="op">)</span>,</span>
-<span>  collapse <span class="op">=</span> <span class="st">" "</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">sbnag_df</span><span class="op">)</span>,</span>
+<span>  caption <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span></span>
+<span>    <span class="st">"First few evaluations of NAG implementations, with lr = "</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC</a></span><span class="op">(</span><span class="va">lr</span><span class="op">)</span>,</span>
+<span>    <span class="st">"mu = "</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC</a></span><span class="op">(</span><span class="va">mu</span><span class="op">)</span>,</span>
+<span>    collapse <span class="op">=</span> <span class="st">" "</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 <table class="table">
 <caption>First few evaluations of NAG implementations, with lr = 0.001
 mu = 0.95</caption>
@@ -1661,10 +1676,16 @@ the next iteration.</p>
 <p>We’ll get back to this, but let’s just make sure these observations
 hold up at the end of the table too.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">tail</a></span><span class="op">(</span><span class="va">sbnag_df</span><span class="op">)</span>, caption <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span></span>
-<span>  <span class="st">"Last few evaluations of NAG implementations, with lr = "</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC</a></span><span class="op">(</span><span class="va">lr</span><span class="op">)</span>, <span class="st">"mu = "</span>, <span class="fu"><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC</a></span><span class="op">(</span><span class="va">mu</span><span class="op">)</span>,</span>
-<span>  collapse <span class="op">=</span> <span class="st">" "</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">tail</a></span><span class="op">(</span><span class="va">sbnag_df</span><span class="op">)</span>,</span>
+<span>  caption <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span></span>
+<span>    <span class="st">"Last few evaluations of NAG implementations, with lr = "</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC</a></span><span class="op">(</span><span class="va">lr</span><span class="op">)</span>,</span>
+<span>    <span class="st">"mu = "</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC</a></span><span class="op">(</span><span class="va">mu</span><span class="op">)</span>,</span>
+<span>    collapse <span class="op">=</span> <span class="st">" "</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 <table class="table">
 <caption>Last few evaluations of NAG implementations, with lr = 0.001 mu
 = 0.95</caption>
@@ -1860,8 +1881,7 @@ stages in a row that should sync us up with <code>nag</code>.</p>
 <span>    <span class="va">g</span> <span class="op">&lt;-</span> <span class="fu">gr</span><span class="op">(</span><span class="va">par</span><span class="op">)</span></span>
 <span>    <span class="kw">if</span> <span class="op">(</span><span class="va">i</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span> <span class="op">{</span></span>
 <span>      <span class="va">par</span> <span class="op">&lt;-</span> <span class="va">par</span> <span class="op">-</span> <span class="va">lr</span> <span class="op">*</span> <span class="va">g</span></span>
-<span>    <span class="op">}</span></span>
-<span>    <span class="kw">else</span> <span class="op">{</span></span>
+<span>    <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
 <span>      <span class="va">par</span> <span class="op">&lt;-</span> <span class="va">par</span> <span class="op">+</span> <span class="op">(</span><span class="va">mu</span> <span class="op">*</span> <span class="va">mu</span> <span class="op">*</span> <span class="va">v</span><span class="op">)</span> <span class="op">-</span> <span class="op">(</span><span class="op">(</span><span class="fl">1</span> <span class="op">+</span> <span class="va">mu</span><span class="op">)</span> <span class="op">*</span> <span class="va">lr</span> <span class="op">*</span> <span class="va">g</span><span class="op">)</span></span>
 <span>      <span class="va">v</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="va">mu</span> <span class="op">*</span> <span class="va">v</span><span class="op">)</span> <span class="op">-</span> <span class="op">(</span><span class="va">lr</span> <span class="op">*</span> <span class="va">g</span><span class="op">)</span></span>
 <span>    <span class="op">}</span></span>
@@ -1922,18 +1942,26 @@ so we can compare directly to the Bengio result.</p>
 <span><span class="va">snagc_opt</span> <span class="op">&lt;-</span> <span class="fu">snagc</span><span class="op">(</span><span class="va">par</span>, <span class="va">fn</span>, <span class="va">gr</span>, <span class="va">lr</span>, <span class="va">mu</span>, <span class="va">max_iter</span>, wait <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">bnagc_opt</span> <span class="op">&lt;-</span> <span class="fu">bnagc</span><span class="op">(</span><span class="va">par</span>, <span class="va">fn</span>, <span class="va">gr</span>, <span class="va">lr</span>, <span class="va">mu</span>, <span class="va">max_iter</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">ncdf</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>cBengio <span class="op">=</span> <span class="va">bnagc_opt</span><span class="op">$</span><span class="va">fs</span>,</span>
-<span>                 cSutskever <span class="op">=</span> <span class="va">snagc_opt</span><span class="op">$</span><span class="va">fs</span>,</span>
-<span>                 <span class="st">"Suts Mom"</span> <span class="op">=</span> <span class="va">snagc_opt</span><span class="op">$</span><span class="va">mu_fs</span>,</span>
-<span>                 NAG <span class="op">=</span> <span class="va">nag_opt</span><span class="op">$</span><span class="va">fs</span>,</span>
-<span>                 cmNAG <span class="op">=</span> <span class="va">mnagc_opt</span><span class="op">$</span><span class="va">fs</span>,</span>
-<span>                 <span class="st">"NAG gd"</span> <span class="op">=</span> <span class="va">nag_opt</span><span class="op">$</span><span class="va">gd_fs</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">ncdf</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  cBengio <span class="op">=</span> <span class="va">bnagc_opt</span><span class="op">$</span><span class="va">fs</span>,</span>
+<span>  cSutskever <span class="op">=</span> <span class="va">snagc_opt</span><span class="op">$</span><span class="va">fs</span>,</span>
+<span>  <span class="st">"Suts Mom"</span> <span class="op">=</span> <span class="va">snagc_opt</span><span class="op">$</span><span class="va">mu_fs</span>,</span>
+<span>  NAG <span class="op">=</span> <span class="va">nag_opt</span><span class="op">$</span><span class="va">fs</span>,</span>
+<span>  cmNAG <span class="op">=</span> <span class="va">mnagc_opt</span><span class="op">$</span><span class="va">fs</span>,</span>
+<span>  <span class="st">"NAG gd"</span> <span class="op">=</span> <span class="va">nag_opt</span><span class="op">$</span><span class="va">gd_fs</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 <p>Let’s have a look at the first few iteration results:</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">ncdf</span><span class="op">)</span>, caption <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span></span>
-<span>  <span class="st">"First few evaluations of matched-state NAG implementations, with lr = "</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC</a></span><span class="op">(</span><span class="va">lr</span><span class="op">)</span>, <span class="st">"mu = "</span>, <span class="fu"><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC</a></span><span class="op">(</span><span class="va">mu</span><span class="op">)</span>,</span>
-<span>  collapse <span class="op">=</span> <span class="st">" "</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">ncdf</span><span class="op">)</span>,</span>
+<span>  caption <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span></span>
+<span>    <span class="st">"First few evaluations of matched-state NAG implementations, with lr = "</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC</a></span><span class="op">(</span><span class="va">lr</span><span class="op">)</span>,</span>
+<span>    <span class="st">"mu = "</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC</a></span><span class="op">(</span><span class="va">mu</span><span class="op">)</span>,</span>
+<span>    collapse <span class="op">=</span> <span class="st">" "</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 <table class="table">
 <caption>First few evaluations of matched-state NAG implementations,
 with lr = 0.001 mu = 0.95</caption>
@@ -2006,10 +2034,16 @@ Everything is lining up at last.</p>
 <p>And let’s take a look at the final few iterations, just to make sure
 everything still holds up:</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">tail</a></span><span class="op">(</span><span class="va">ncdf</span><span class="op">)</span>, caption <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span></span>
-<span>  <span class="st">"Last few evaluations of matched-state NAG implementations, with lr = "</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC</a></span><span class="op">(</span><span class="va">lr</span><span class="op">)</span>, <span class="st">"mu = "</span>, <span class="fu"><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC</a></span><span class="op">(</span><span class="va">mu</span><span class="op">)</span>,</span>
-<span>  collapse <span class="op">=</span> <span class="st">" "</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">tail</a></span><span class="op">(</span><span class="va">ncdf</span><span class="op">)</span>,</span>
+<span>  caption <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span></span>
+<span>    <span class="st">"Last few evaluations of matched-state NAG implementations, with lr = "</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC</a></span><span class="op">(</span><span class="va">lr</span><span class="op">)</span>,</span>
+<span>    <span class="st">"mu = "</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/formatc.html" class="external-link">formatC</a></span><span class="op">(</span><span class="va">mu</span><span class="op">)</span>,</span>
+<span>    collapse <span class="op">=</span> <span class="st">" "</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 <table class="table">
 <caption>Last few evaluations of matched-state NAG implementations, with
 lr = 0.001 mu = 0.95</caption>

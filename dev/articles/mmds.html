@@ -237,8 +237,7 @@ present, it also checks that <code>fg</code> agrees with the separate
 <span>  max_abs_error <span class="op">=</span> <span class="va">gradient_check</span><span class="op">$</span><span class="va">max_abs_error</span>,</span>
 <span>  max_rel_error <span class="op">=</span> <span class="va">gradient_check</span><span class="op">$</span><span class="va">max_rel_error</span>,</span>
 <span>  fg_fn_abs_error <span class="op">=</span> <span class="va">gradient_check</span><span class="op">$</span><span class="va">fg_consistency</span><span class="op">$</span><span class="va">fn</span><span class="op">$</span><span class="va">abs_error</span>,</span>
-<span>  fg_gr_max_abs_error <span class="op">=</span></span>
-<span>    <span class="va">gradient_check</span><span class="op">$</span><span class="va">fg_consistency</span><span class="op">$</span><span class="va">gr</span><span class="op">$</span><span class="va">max_abs_error</span></span>
+<span>  fg_gr_max_abs_error <span class="op">=</span> <span class="va">gradient_check</span><span class="op">$</span><span class="va">fg_consistency</span><span class="op">$</span><span class="va">gr</span><span class="op">$</span><span class="va">max_abs_error</span></span>
 <span><span class="op">)</span></span>
 <span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">signif</a></span><span class="op">(</span><span class="va">gradient_summary</span>, digits <span class="op">=</span> <span class="fl">4</span><span class="op">)</span>,</span>
@@ -426,10 +425,13 @@ for a regional diagnostic rather than a precision map.</p>
 <span>  <span class="va">degrees_to_radians</span> <span class="op">&lt;-</span> <span class="va">pi</span> <span class="op">/</span> <span class="fl">180</span></span>
 <span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span></span>
-<span>    x <span class="op">=</span> <span class="va">earth_radius_km</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">cos</a></span><span class="op">(</span><span class="va">reference_latitude</span> <span class="op">*</span> <span class="va">degrees_to_radians</span><span class="op">)</span> <span class="op">*</span></span>
-<span>      <span class="op">(</span><span class="va">longitude</span> <span class="op">-</span> <span class="va">reference_longitude</span><span class="op">)</span> <span class="op">*</span> <span class="va">degrees_to_radians</span>,</span>
+<span>    x <span class="op">=</span> <span class="va">earth_radius_km</span> <span class="op">*</span></span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">cos</a></span><span class="op">(</span><span class="va">reference_latitude</span> <span class="op">*</span> <span class="va">degrees_to_radians</span><span class="op">)</span> <span class="op">*</span></span>
+<span>      <span class="op">(</span><span class="va">longitude</span> <span class="op">-</span> <span class="va">reference_longitude</span><span class="op">)</span> <span class="op">*</span></span>
+<span>      <span class="va">degrees_to_radians</span>,</span>
 <span>    y <span class="op">=</span> <span class="va">earth_radius_km</span> <span class="op">*</span></span>
-<span>      <span class="op">(</span><span class="va">latitude</span> <span class="op">-</span> <span class="va">reference_latitude</span><span class="op">)</span> <span class="op">*</span> <span class="va">degrees_to_radians</span></span>
+<span>      <span class="op">(</span><span class="va">latitude</span> <span class="op">-</span> <span class="va">reference_latitude</span><span class="op">)</span> <span class="op">*</span></span>
+<span>      <span class="va">degrees_to_radians</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>The alignment is fitted rather than chosen by eye. It removes

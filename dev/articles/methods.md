@@ -151,19 +151,30 @@ c2_runs <- lapply(c(`0.1` = 0.1, `0.5` = 0.5), function(c2_value) {
   )
 })
 
-c2_diagnostics <- do.call(rbind, lapply(seq_along(c2_runs), function(i) {
-  progress <- c2_runs[[i]]$progress
-  progress <- progress[!is.na(progress$ls_reason), , drop = FALSE]
-  data.frame(
-    `c2` = names(c2_runs)[i],
-    Iteration = seq_len(nrow(progress)),
-    `Proposed alpha` = progress$alpha_init,
-    `Selected alpha` = progress$alpha,
-    `Reason / outcome` = paste(progress$ls_reason, progress$ls_outcome, sep = " / "),
-    `Local work (fn / gr)` = paste(progress$ls_nf, progress$ls_ng, sep = " / "),
-    check.names = FALSE
-  )
-}))
+c2_diagnostics <- do.call(
+  rbind,
+  lapply(seq_along(c2_runs), function(i) {
+    progress <- c2_runs[[i]]$progress
+    progress <- progress[!is.na(progress$ls_reason), , drop = FALSE]
+    data.frame(
+      `c2` = names(c2_runs)[i],
+      Iteration = seq_len(nrow(progress)),
+      `Proposed alpha` = progress$alpha_init,
+      `Selected alpha` = progress$alpha,
+      `Reason / outcome` = paste(
+        progress$ls_reason,
+        progress$ls_outcome,
+        sep = " / "
+      ),
+      `Local work (fn / gr)` = paste(
+        progress$ls_nf,
+        progress$ls_ng,
+        sep = " / "
+      ),
+      check.names = FALSE
+    )
+  })
+)
 rownames(c2_diagnostics) <- NULL
 c2_display <- c2_diagnostics
 c2_display[["Proposed alpha"]] <- formatC(

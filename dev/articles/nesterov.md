@@ -646,11 +646,17 @@ normalize the coefficients so they sum to 1.
 
 ``` r
 
-cm_weights <- function(mu) { c(1, mu, mu * mu, mu * mu * mu) }
+cm_weights <- function(mu) {
+  c(1, mu, mu * mu, mu * mu * mu)
+}
 
-nag_zero_start_weights <- function(mu) { c(1 + mu, mu * mu, mu * mu * mu, 0) }
+nag_zero_start_weights <- function(mu) {
+  c(1 + mu, mu * mu, mu * mu * mu, 0)
+}
 
-nag_weights <- function(mu) { c(1 + mu, mu * mu, mu * mu * mu, mu * mu * mu * mu) }
+nag_weights <- function(mu) {
+  c(1 + mu, mu * mu, mu * mu * mu, mu * mu * mu * mu)
+}
 
 
 mumat <- function(wfun, mus = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.99)) {
@@ -1148,14 +1154,15 @@ par <- c(-1.2, 1)
 fn <- function(x) {
   x1 <- x[1]
   x2 <- x[2]
-  100 * (x2 - x1 * x1) ^ 2 + (1 - x1) ^ 2
+  100 * (x2 - x1 * x1)^2 + (1 - x1)^2
 }
 gr <- function(x) {
   x1 <- x[1]
   x2 <- x[2]
   c(
     -400 * x1 * (x2 - x1 * x1) - 2 * (1 - x1),
-    200 *      (x2 - x1 * x1))
+    200 * (x2 - x1 * x1)
+  )
 }
 ```
 
@@ -1178,23 +1185,31 @@ dnag_opt <- dnag(par, fn, gr, lr, mu, max_iter)
 
 cm_opt <- cm(par, fn, gr, lr, mu, max_iter)
 
-sbnag_df <- data.frame(Bengio = bnag_opt$fs,
-                 Sutskever = snag_opt$fs,
-                 "Suts Mom" = snag_opt$mu_fs,
-                 "NAG" = nag_opt$fs,
-                 "mNAG" = mnag_opt$fs,
-                 "Dozat" = dnag_opt$fs,
-                 "CM" = cm_opt$fs)
+sbnag_df <- data.frame(
+  Bengio = bnag_opt$fs,
+  Sutskever = snag_opt$fs,
+  "Suts Mom" = snag_opt$mu_fs,
+  "NAG" = nag_opt$fs,
+  "mNAG" = mnag_opt$fs,
+  "Dozat" = dnag_opt$fs,
+  "CM" = cm_opt$fs
+)
 ```
 
 Let’s have a look at the first few iteration results:
 
 ``` r
 
-knitr::kable(head(sbnag_df), caption = paste(
-  "First few evaluations of NAG implementations, with lr = ",
-  formatC(lr), "mu = ", formatC(mu),
-  collapse = " "))
+knitr::kable(
+  head(sbnag_df),
+  caption = paste(
+    "First few evaluations of NAG implementations, with lr = ",
+    formatC(lr),
+    "mu = ",
+    formatC(mu),
+    collapse = " "
+  )
+)
 ```
 
 |    Bengio | Sutskever |  Suts.Mom |      NAG |      mNAG |     Dozat |        CM |
@@ -1236,10 +1251,16 @@ up at the end of the table too.
 
 ``` r
 
-knitr::kable(tail(sbnag_df), caption = paste(
-  "Last few evaluations of NAG implementations, with lr = ",
-  formatC(lr), "mu = ", formatC(mu),
-  collapse = " "))
+knitr::kable(
+  tail(sbnag_df),
+  caption = paste(
+    "Last few evaluations of NAG implementations, with lr = ",
+    formatC(lr),
+    "mu = ",
+    formatC(mu),
+    collapse = " "
+  )
+)
 ```
 
 |     |    Bengio | Sutskever |  Suts.Mom |       NAG |      mNAG |     Dozat |        CM |
@@ -1363,8 +1384,7 @@ bnagc <- function(par, fn, gr, lr, mu, max_iter = 10) {
     g <- gr(par)
     if (i == 1) {
       par <- par - lr * g
-    }
-    else {
+    } else {
       par <- par + (mu * mu * v) - ((1 + mu) * lr * g)
       v <- (mu * v) - (lr * g)
     }
@@ -1430,22 +1450,30 @@ mnagc_opt <- mnagc(par, fn, gr, lr, mu, max_iter)
 snagc_opt <- snagc(par, fn, gr, lr, mu, max_iter, wait = 1)
 bnagc_opt <- bnagc(par, fn, gr, lr, mu, max_iter)
 
-ncdf <- data.frame(cBengio = bnagc_opt$fs,
-                 cSutskever = snagc_opt$fs,
-                 "Suts Mom" = snagc_opt$mu_fs,
-                 NAG = nag_opt$fs,
-                 cmNAG = mnagc_opt$fs,
-                 "NAG gd" = nag_opt$gd_fs)
+ncdf <- data.frame(
+  cBengio = bnagc_opt$fs,
+  cSutskever = snagc_opt$fs,
+  "Suts Mom" = snagc_opt$mu_fs,
+  NAG = nag_opt$fs,
+  cmNAG = mnagc_opt$fs,
+  "NAG gd" = nag_opt$gd_fs
+)
 ```
 
 Let’s have a look at the first few iteration results:
 
 ``` r
 
-knitr::kable(head(ncdf), caption = paste(
-  "First few evaluations of matched-state NAG implementations, with lr = ",
-  formatC(lr), "mu = ", formatC(mu),
-  collapse = " "))
+knitr::kable(
+  head(ncdf),
+  caption = paste(
+    "First few evaluations of matched-state NAG implementations, with lr = ",
+    formatC(lr),
+    "mu = ",
+    formatC(mu),
+    collapse = " "
+  )
+)
 ```
 
 |  cBengio | cSutskever |  Suts.Mom |      NAG |    cmNAG |   NAG.gd |
@@ -1473,10 +1501,16 @@ everything still holds up:
 
 ``` r
 
-knitr::kable(tail(ncdf), caption = paste(
-  "Last few evaluations of matched-state NAG implementations, with lr = ",
-  formatC(lr), "mu = ", formatC(mu),
-  collapse = " "))
+knitr::kable(
+  tail(ncdf),
+  caption = paste(
+    "Last few evaluations of matched-state NAG implementations, with lr = ",
+    formatC(lr),
+    "mu = ",
+    formatC(mu),
+    collapse = " "
+  )
+)
 ```
 
 |     |   cBengio | cSutskever |  Suts.Mom |       NAG |     cmNAG |    NAG.gd |

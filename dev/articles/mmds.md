@@ -150,8 +150,7 @@ gradient_summary <- data.frame(
   max_abs_error = gradient_check$max_abs_error,
   max_rel_error = gradient_check$max_rel_error,
   fg_fn_abs_error = gradient_check$fg_consistency$fn$abs_error,
-  fg_gr_max_abs_error =
-    gradient_check$fg_consistency$gr$max_abs_error
+  fg_gr_max_abs_error = gradient_check$fg_consistency$gr$max_abs_error
 )
 knitr::kable(
   signif(gradient_summary, digits = 4),
@@ -305,10 +304,13 @@ project_geography <- function(longitude, latitude) {
   degrees_to_radians <- pi / 180
 
   cbind(
-    x = earth_radius_km * cos(reference_latitude * degrees_to_radians) *
-      (longitude - reference_longitude) * degrees_to_radians,
+    x = earth_radius_km *
+      cos(reference_latitude * degrees_to_radians) *
+      (longitude - reference_longitude) *
+      degrees_to_radians,
     y = earth_radius_km *
-      (latitude - reference_latitude) * degrees_to_radians
+      (latitude - reference_latitude) *
+      degrees_to_radians
   )
 }
 ```
