@@ -7,7 +7,7 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/jlmelville/mize/blob/master/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/jlmelville/mize/blob/v0.3.0/DESCRIPTION)
 
 Melville J (2026). *mize: Unconstrained Numerical Optimization
 Algorithms*. R package version 0.3.0,

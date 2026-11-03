@@ -1,0 +1,25 @@
+<urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
+<url><loc>https://jlmelville.github.io/mize/dev/LICENSE-text.html</loc></url>
+<url><loc>https://jlmelville.github.io/mize/dev/articles/convergence.html</loc></url>
+<url><loc>https://jlmelville.github.io/mize/dev/articles/index.html</loc></url>
+<url><loc>https://jlmelville.github.io/mize/dev/articles/methods.html</loc></url>
+<url><loc>https://jlmelville.github.io/mize/dev/articles/mize.html</loc></url>
+<url><loc>https://jlmelville.github.io/mize/dev/articles/mmds.html</loc></url>
+<url><loc>https://jlmelville.github.io/mize/dev/articles/nesterov.html</loc></url>
+<url><loc>https://jlmelville.github.io/mize/dev/articles/qhm.html</loc></url>
+<url><loc>https://jlmelville.github.io/mize/dev/articles/stateful.html</loc></url>
+<url><loc>https://jlmelville.github.io/mize/dev/authors.html</loc></url>
+<url><loc>https://jlmelville.github.io/mize/dev/index.html</loc></url>
+<url><loc>https://jlmelville.github.io/mize/dev/nesterov.html</loc></url>
+<url><loc>https://jlmelville.github.io/mize/dev/news/index.html</loc></url>
+<url><loc>https://jlmelville.github.io/mize/dev/qhm.html</loc></url>
+<url><loc>https://jlmelville.github.io/mize/dev/reference/check_mize_convergence.html</loc></url>
+<url><loc>https://jlmelville.github.io/mize/dev/reference/check_mize_gradient.html</loc></url>
+<url><loc>https://jlmelville.github.io/mize/dev/reference/index.html</loc></url>
+<url><loc>https://jlmelville.github.io/mize/dev/reference/make_mize.html</loc></url>
+<url><loc>https://jlmelville.github.io/mize/dev/reference/mize.html</loc></url>
+<url><loc>https://jlmelville.github.io/mize/dev/reference/mize_init.html</loc></url>
+<url><loc>https://jlmelville.github.io/mize/dev/reference/mize_step.html</loc></url>
+<url><loc>https://jlmelville.github.io/mize/dev/reference/mize_step_summary.html</loc></url>
+</urlset>
+

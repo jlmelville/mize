@@ -1,0 +1,228 @@
+# Changelog
+
+## mize 0.3.0
+
+CRAN release: 2026-10-31
+
+This release improves optimizer robustness, input validation, and
+progress diagnostics.
+
+### New features
+
+- New function:
+  [`check_mize_gradient()`](https://jlmelville.github.io/mize/dev/reference/check_mize_gradient.md),
+  which compares an analytic gradient with a finite-difference
+  approximation.
+- [`mize()`](https://jlmelville.github.io/mize/dev/reference/mize.md)
+  now returns status fields: `converged`, `status`, and `message`, plus
+  explicit best/last result fields (`best_par`, `best_f`, `last_par`,
+  and `last_f`).
+- [`mize()`](https://jlmelville.github.io/mize/dev/reference/mize.md),
+  [`mize_step()`](https://jlmelville.github.io/mize/dev/reference/mize_step.md),
+  [`mize_step_summary()`](https://jlmelville.github.io/mize/dev/reference/mize_step_summary.md),
+  and stored progress now report accepted Hessian and inverse-Hessian
+  callback counts as `nh` and `nhi`.
+- With `store_progress = TRUE`,
+  [`mize()`](https://jlmelville.github.io/mize/dev/reference/mize.md)
+  now exposes optional line-search reason, selected-point provenance,
+  local callback counts, initial scale, and exact-Newton direction
+  provenance.
+
+### Bug fixes and minor improvements
+
+- Backtracking line searches no longer report `line_search_failed`
+  prematurely when small steps are needed to reach the requested
+  convergence tolerance.
+- Line searches now reuse `step0` after returning a zero step when
+  `step_next_init` depends on previous search results. This allows
+  momentum methods to recover on the next iteration.
+- Bold Driver now honors `step0` instead of always starting at 1. It
+  requires a positive finite numeric scalar, with `NULL` retaining the
+  default of 1.
+- Bold Driver now accepts step sizes below its former minimum, avoiding
+  premature line-search failures when smaller steps are needed. After a
+  zero or rejected gradient step, the next search starts with a positive
+  step size so gradient descent can resume after a momentum update.
+- BFGS and SR1 now accept one-dimensional inverse-Hessian vectors
+  consistently with equivalent one-by-one matrices.
+- The `cg_update = "HZ+"` safeguard now uses Euclidean norms as
+  specified by its formula. This correction can change optimization
+  trajectories and iteration counts.
+- [`check_mize_gradient()`](https://jlmelville.github.io/mize/dev/reference/check_mize_gradient.md)
+  rejects unrepresentable or non-finite coordinate perturbations and
+  dimensioned callback results instead of reporting misleading agreement
+  or flattening matrices.
+- Gradient norms and step lengths avoid intermediate overflow and
+  underflow when the Euclidean norm is representable. CG falls back to
+  steepest descent when its direction update produces unusable
+  arithmetic or fails to give a descent direction.
+- `store_progress = TRUE` has lower time and allocation costs on long
+  runs.
+- Classical Momentum with numeric `mom_schedule = 0`, and NAG with the
+  `"nsconvex"` schedule, `nest_q = 1`, and `nest_convex_approx = FALSE`,
+  no longer make redundant function and gradient calls. In these
+  configurations, `restart` is ignored and progress no longer includes
+  `mu`.
+- DBD now returns structured `fn_inf` or `gr_inf` failures when a later
+  objective or gradient is non-finite, and `par_inf` if an update would
+  produce non-finite parameters. Such an update is rolled back before
+  callbacks can observe it. DBD also validates its initial step controls
+  and safeguards named initial-step estimates using the current
+  parameter scale.
+- Momentum schedules now reject malformed or non-finite configured
+  values and function results. The `"ramp"` and `"switch"` schedules
+  require numeric `mom_init` and `mom_final` values, and adaptive
+  restart safely rejects non-finite comparisons instead of raising a
+  control-flow error.
+- Stateful optimization now handles lifecycle dependencies consistently,
+  and global function and gradient evaluation limits are enforced across
+  optimizer and line-search callbacks, including truncated Newton inner
+  iterations.
+- Optimizer inputs and objective, gradient, Hessian, and inverse-Hessian
+  callback results now receive consistent early validation and clearer
+  errors.
+- Quasi-Newton updates and exact-Newton directions now use safer
+  fallbacks when curvature information or Hessian factorization is
+  unsuitable.
+- NEWTON and L-BFGS now preserve plain vector parameters across multiple
+  iterations when a supplied inverse-Hessian callback returns a full
+  matrix.
+- Wolfe line searches now require an explicitly numeric `step0` to be a
+  positive finite scalar; string initializers are unchanged.
+- Line searches using weak Wolfe curvature now accept equality at the
+  curvature boundary. The optional Hager-Zhang initializer probe now
+  counts toward the line search’s local function and combined evaluation
+  limits. Hager-Zhang initializer arithmetic also safely handles
+  non-finite values and uses the specified Euclidean gradient norm.
+- Bracketed Wolfe line searches now avoid repeated objective and
+  gradient callbacks when floating-point step changes cannot produce a
+  new parameter vector.
+- A line search that selects no usable step and produces no complete
+  optimizer transition now reports `line_search_failed` instead of
+  tolerance convergence. Bold Driver now follows this contract, reports
+  line-search diagnostics, and avoids callbacks at trial step lengths
+  that reproduce an evaluated parameter vector.
+- Bold Driver’s `alpha` diagnostic reports the selected gradient step
+  length, and is zero when no gradient step was selected. Its
+  `ls_max_fn = 0` limit is handled consistently whether progress is
+  stored.
+- `mom_type = "nesterov"` now applies to momentum schedules attached to
+  methods other than `"Momentum"`, including DBD. These configurations
+  previously used classical momentum silently.
+
+## mize 0.2.5
+
+CRAN release: 2026-02-09
+
+Bug fix release.
+
+### Bug fixes
+
+- Removed `LazyData` from the `DESCRIPTION` file.
+- Some flaky unit tests were removed.
+
+## mize 0.2.4
+
+CRAN release: 2020-08-30
+
+Bug fix release.
+
+### Bug fixes.
+
+- If using `line_search = "backtracking"` with a specified `step_down`
+  parameter, an incorrectly large number of gradient calculations was
+  being reported.
+- The documentation now specifies that if you *don’t* provide a
+  `step_down` argument with `line_search = "backtracking"`,
+  interpolation using function and gradient evaluations is carried out.
+  To get a typical Armijo-style backtracking line search, specify a
+  value for `step_down` (e.g. `step_down = 0.5` to halve the step size),
+  and only function evaluations are used.
+
+## mize 0.2.3
+
+CRAN release: 2019-12-05
+
+A patch release to fix an incompatibility with R-devel.
+
+### Bug fixes
+
+- Fixed a bug where `class` was being checked directly and a scalar
+  value was assumed. The correct behavior is to use
+  [`methods::is`](https://rdrr.io/r/methods/is.html).
+
+## mize 0.2.2
+
+CRAN release: 2019-07-11
+
+A patch release for a bug fix.
+
+### Bug fixes
+
+- Fixed a bug where if the maximum number of function evaluations for
+  the Schmidt line search is exceeded (controlled by the `ls_max_fn`
+  parameter), a `'bracket_step' not found` error could result. Thank you
+  to reporter Charles Driver.
+- Fixed a couple of vignette links that were missing the “<http://>” at
+  the front.
+
+## mize 0.2.1
+
+CRAN release: 2019-04-14
+
+A patch release to fix an incompatibility with R-devel.
+
+### Bug fixes
+
+- Fixed an error with bold driver and back-tracking line search where
+  the stage was being incorrectly checked.
+
+## mize 0.2.0
+
+CRAN release: 2018-09-14
+
+### New features
+
+- New method: Truncated Newton (`method = "TN"`). Can be controlled
+  using the `tn_init` and `tn_exit` options.
+- New method: SR1 (`method = "SR1"`), falling back to the BFGS direction
+  if a descent direction is not found.
+- New option `preconditioner`, which applies to the conjugate gradient
+  and truncated newton methods. The only value currently available is
+  `preconditioner = "L-BFGS"` which uses L-BFGS to estimate the inverse
+  Hessian for preconditioning. The number of updates to store for this
+  preconditioner is controlled by the `memory` parameter, just as if you
+  were using `method = "L-BFGS"`.
+- BFGS, SR1, L-BFGS methods will now make use of a user-supplied inverse
+  Hessian function if provided. In the input `fg` list, supply a
+  function `hi`, that takes the `par` vector as input. The function can
+  return a matrix (obviously not a great idea for memory use), or a
+  vector, the latter of which is assumed to be the diagonal of the
+  matrix.
+- `ls_max_alpha` (for `line_search = "More-Thuente"` only): sets maximum
+  value of alpha that can be attained during line search.
+- `ls_max_alpha_mult` (for Wolfe-type line search only): sets maximum
+  value that can be attained by the ratio of the initial guess for alpha
+  for the current line search, to the final value of alpha of the
+  previous line search. Used to stop line searches diverging due to very
+  large initial guesses.
+- `ls_safe_cubic` (for `line_search = "More-Thuente"` only): if `TRUE`,
+  use the safe-guarded cubic modification suggested by Xie and Schlick.
+- `cg_update = "prfr"`, the “PR-FR” (Polak-Ribiere/Fletcher-Reeves)
+  conjugate gradient update suggested by Gilbert and Nocedal.
+
+### Bug fixes
+
+- An error occurred when checking if a step size was finite during line
+  search.
+- DBD method didn’t use momentum when asked to.
+- Fix incorrectly specified conjugate gradient descent methods:
+  Hestenes-Stiefel (`cg_update = "hs"`), Conjugate Descent
+  (`cg_update = "cd"`), Dai-Yuan (`cg_update = "dy"`) and Liu-Storey
+  (`cg_update = "ls"`).
+
+## mize 0.1.1
+
+CRAN release: 2017-07-14
+
+Initial release.
