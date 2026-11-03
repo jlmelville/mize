@@ -54,6 +54,7 @@ jobs:
           name: pkgdown-site
           path: pkgdown-site
           if-no-files-found: error
+          include-hidden-files: true
 
   deploy-site:
     if: github.event_name != 'pull_request'
