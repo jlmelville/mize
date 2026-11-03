@@ -451,7 +451,7 @@ non-strongly-convex limit and largest momentum, to `1`, zero momentum. The
 default is `0`. With `nest_q = 1` and `nest_convex_approx = FALSE`, callback
 counts match `method = "SD"` and progress data have no `mu` column.
 
-```{r nag-q-comparison, fig.width = 7, fig.height = 4.5, fig.cap = "Current objective against cumulative function callbacks for two NAG schedules. Both runs use the same start and fixed 100-iteration budget.", fig.alt = "Log-scale line plot comparing current objective over function callbacks for NAG with q equal to zero and q equal to 0.001."}
+```{r nag-q-comparison, fig.width = 7, fig.height = 4.5, fig.cap = "Current objective against cumulative function callbacks for two NAG schedules. Both runs use the same start and fixed 100-iteration budget.", fig.alt = "Log-scale line plot of objective against function callbacks. Both NAG paths rise and fall sharply; q = 0 has larger peaks, while q = 0.001 ends at a lower objective."}
 nag_runs <- list(
   `q = 0` = run_bounded("NAG", nest_q = 0),
   `q = 0.001` = run_bounded("NAG", nest_q = 0.001)
@@ -515,7 +515,7 @@ built-in schedule when it already expresses the intended experiment.
 `mom_type = "nesterov"` applies it before that step. The next comparison holds
 the schedule, start, objective, and budget fixed.
 
-```{r momentum-type-comparison, fig.width = 7, fig.height = 4.5, fig.cap = "Current objective for classical and Nesterov-style momentum under one fixed schedule and 100-iteration budget.", fig.alt = "Log-scale line plot comparing current objective over function callbacks for classical and Nesterov-style momentum."}
+```{r momentum-type-comparison, fig.width = 7, fig.height = 4.5, fig.cap = "Current objective for classical and Nesterov-style momentum under one fixed schedule and 100-iteration budget.", fig.alt = "Log-scale line plot of objective against function callbacks. Classical momentum oscillates at much higher objective values than Nesterov momentum, which ends below one."}
 momentum_runs <- list(
   Classical = run_bounded("Momentum", mom_schedule = 0.9),
   Nesterov = run_bounded(
@@ -599,7 +599,7 @@ default is 10.
 The comparison below uses classical momentum and varies only restart type and
 waiting period. The no-restart result is reused from the preceding comparison.
 
-```{r adaptive-restart-comparison, fig.width = 7, fig.height = 4.5, fig.cap = "Current objective for classical momentum with no restart and four adaptive-restart configurations under the same 100-iteration budget.", fig.alt = "Log-scale line plot comparing current objective over function callbacks for momentum without restart and with function- or gradient-based restart at waiting periods of ten or one iterations."}
+```{r adaptive-restart-comparison, fig.width = 7, fig.height = 4.5, fig.cap = "Current objective for classical momentum with no restart and four adaptive-restart configurations under the same 100-iteration budget.", fig.alt = "Log-scale line plot of objective against function callbacks. Without restart and with either ten-iteration wait, trajectories oscillate at high values. Both one-iteration waits fall to around 0.0001, with function restart falling sooner."}
 restart_runs <- list(
   None = momentum_runs[["Classical"]],
   `fn, wait = 10` = run_bounded(

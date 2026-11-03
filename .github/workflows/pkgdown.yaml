@@ -4,14 +4,17 @@ on:
   pull_request:
     branches: [main, master]
 
+  release:
+    types: [published]
+  workflow_dispatch:
+
 name: pkgdown
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: pkgdown-${{ github.event_name != 'pull_request' || github.run_id }}
 
 jobs:
   build-site:
@@ -24,6 +27,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          ref: ${{ github.event_name == 'release' && github.event.repository.default_branch || github.ref }}
 
       # Pinned to a full-length commit SHA for immutability; Dependabot updates this reference.
       - uses: r-lib/actions/setup-pandoc@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
@@ -39,9 +43,8 @@ jobs:
           extra-packages: any::pkgdown, local::.
           needs: website
 
-      - name: Build site
-        run: pkgdown::build_site_github_pages(dest_dir = "pkgdown-site", new_process = FALSE, install = FALSE)
-        shell: Rscript {0}
+      - name: Build release and development sites
+        run: Rscript .github/build-pkgdown.R
 
       # Pinned to a full-length commit SHA for immutability; Dependabot updates this reference.
       - name: Upload site artifact
@@ -76,4 +79,4 @@ jobs:
         with:
           branch: gh-pages
           folder: pkgdown-site
-          clean: false
+          clean: true

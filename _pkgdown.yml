@@ -4,12 +4,29 @@ destination: pkgdown-site
 template:
   bootstrap: 5
   math-rendering: katex
+  light-switch: true
+  theme: github-light
+  theme-dark: github-dark
+  bslib:
+    danger: "#A6081A"
+
+development:
+  mode: devel
+
+llm-docs: true
 
 navbar:
   structure:
     left: [intro, reference, articles, news]
-    right: [search, github]
+    right: [versions, search, github, lightswitch]
   components:
+    versions:
+      text: Documentation version
+      menu:
+        - text: CRAN release
+          href: https://jlmelville.github.io/mize/
+        - text: Development
+          href: https://jlmelville.github.io/mize/dev/
     intro:
       text: Getting started
       href: articles/mize.html
